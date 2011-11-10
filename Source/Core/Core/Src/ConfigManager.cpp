@@ -226,6 +226,7 @@ void SConfig::SaveSettings()
 	ini.Set("Core", "DVDRoot",			m_LocalCoreStartupParameter.m_strDVDRoot);
 	ini.Set("Core", "Apploader",		m_LocalCoreStartupParameter.m_strApploader);
 	ini.Set("Core", "EnableCheats",		m_LocalCoreStartupParameter.bEnableCheats);
+	ini.Set("Core", "InputSettingsISO",	m_LocalCoreStartupParameter.bInputSettingsISO);
 	ini.Set("Core", "SelectedLanguage",	m_LocalCoreStartupParameter.SelectedLanguage);
 	ini.Set("Core", "DPL2Decoder",		m_LocalCoreStartupParameter.bDPL2Decoder);
 	ini.Set("Core", "Latency",			m_LocalCoreStartupParameter.iLatency);
@@ -380,6 +381,7 @@ void SConfig::LoadSettings()
 		ini.Get("Core", "DVDRoot",		&m_LocalCoreStartupParameter.m_strDVDRoot);
 		ini.Get("Core", "Apploader",	&m_LocalCoreStartupParameter.m_strApploader);
 		ini.Get("Core", "EnableCheats",	&m_LocalCoreStartupParameter.bEnableCheats,				false);
+		ini.Get("Core", "InputSettingsISO",	&m_LocalCoreStartupParameter.bInputSettingsISO,		false);
 		ini.Get("Core", "SelectedLanguage", &m_LocalCoreStartupParameter.SelectedLanguage,		0);
 		ini.Get("Core", "DPL2Decoder",	&m_LocalCoreStartupParameter.bDPL2Decoder,	false);
 		ini.Get("Core", "Latency",		&m_LocalCoreStartupParameter.iLatency,		14);

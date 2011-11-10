@@ -9,6 +9,8 @@
 #include "FileUtil.h"
 #include "IniFile.h"
 
+#include "../../Core/Src/Core.h"
+#include "../../Core/Src/ConfigManager.h"
 #include "ControllerInterface/ControllerInterface.h"
 #include "ControllerEmu.h"
 
@@ -29,8 +31,8 @@ public:
 
 	~InputPlugin();
 
-	bool LoadConfig(bool isGC);
-	void SaveConfig();
+	bool LoadConfig(bool def = false);
+	void SaveConfig(bool def = false);
 
 	std::vector< ControllerEmu* >	controllers;
 

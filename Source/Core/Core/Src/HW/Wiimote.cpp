@@ -3,6 +3,7 @@
 // Refer to the license.txt file included.
 
 #include "Common.h"
+#include "CommonPaths.h"
 
 #include "Wiimote.h"
 #include "WiimoteReal/WiimoteReal.h"
@@ -19,7 +20,7 @@ namespace Wiimote
 
 bool IsInit = false;
 
-static InputPlugin g_plugin(WIIMOTE_INI_NAME, _trans("Wiimote"), "Wiimote");
+static InputPlugin g_plugin(WIIMOTE_INI_NAME, _trans("Wiimote"), WII_PROFILE_DIR);
 InputPlugin *GetPlugin()
 {
 	return &g_plugin;
@@ -57,7 +58,7 @@ void Initialize(void* const hwnd)
 	g_controller_interface.SetHwnd(hwnd);
 	g_controller_interface.Initialize();
 
-	g_plugin.LoadConfig(false);
+	g_plugin.LoadConfig();
 
 	WiimoteReal::Initialize();
 	

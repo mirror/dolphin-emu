@@ -199,6 +199,16 @@ void InputConfigDialog::UpdateGUI()
 		e = m_padpages.end();
 	for (; i != e; ++i)
 		(*i)->UpdateGUI();
+
+	wxString title = m_title;
+
+	if (!SConfig::GetInstance().m_LocalCoreStartupParameter.m_strGameIni.empty()
+		&& SConfig::GetInstance().m_LocalCoreStartupParameter.bInputSettingsISO)
+		title.append(wxString::Format(" - %s (%s)",
+			SConfig::GetInstance().m_LocalCoreStartupParameter.m_strName.c_str(),
+			SConfig::GetInstance().m_LocalCoreStartupParameter.m_strRegion.c_str()));
+
+	SetTitle(title);
 }
 
 void InputConfigDialog::Save(wxCommandEvent& event)
@@ -271,6 +281,12 @@ void GamepadPage::UpdateGUI()
 {
 	device_cbox->SetValue(StrToWxStr(controller->default_device.ToString()));
 
+	bool isoini_input = !SConfig::GetInstance().m_LocalCoreStartupParameter.m_strGameIni.empty()
+		&& SConfig::GetInstance().m_LocalCoreStartupParameter.bInputSettingsISO;
+
+	ud_load_button->Enable(isoini_input);
+	ud_save_button->Enable(isoini_input);
+
 	std::vector< ControlGroupBox* >::const_iterator g = control_groups.begin(),
 		ge = control_groups.end();
 	for (; g!=ge; ++g)
@@ -314,6 +330,18 @@ void GamepadPage::LoadDefaults(wxCommandEvent&)
 	std::lock_guard<std::recursive_mutex> lk(m_plugin.controls_lock);
 	controller->UpdateReferences(g_controller_interface);
 
+	UpdateGUI();
+}
+
+void GamepadPage::LoadUserDefault(wxCommandEvent&)
+{
+	m_plugin.LoadConfig(true);
+	UpdateGUI();
+}
+
+void GamepadPage::SaveUserDefault(wxCommandEvent&)
+{
+	m_plugin.SaveConfig(true);
 	UpdateGUI();
 }
 
@@ -954,6 +982,16 @@ GamepadPage::GamepadPage(wxWindow* parent, InputPlugin& plugin, const unsigned i
 	clearall_button->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GamepadPage::ClearAll, this);
 	default_button->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GamepadPage::LoadDefaults, this);
 
+	ud_load_button = new wxButton(this, -1, _("Load"), wxDefaultPosition, wxSize(48,-1));
+	ud_save_button = new wxButton(this, -1, _("Save"), wxDefaultPosition, wxSize(58,-1));
+
+	ud_load_button->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GamepadPage::LoadUserDefault, this);
+	ud_save_button->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GamepadPage::SaveUserDefault, this);
+
+	wxStaticBoxSizer* const ud_sbox = new wxStaticBoxSizer(wxHORIZONTAL, this, _("User Default"));
+	ud_sbox->Add(ud_load_button, 1, wxLEFT, 3);
+	ud_sbox->Add(ud_save_button, 1, wxRIGHT, 3);
+
 	profile_cbox = new wxComboBox(this, -1, wxT(""), wxDefaultPosition, wxSize(64,-1));
 
 	wxButton* const pload_btn = new wxButton(this, -1, _("Load"), wxDefaultPosition, wxSize(48,-1));
@@ -972,11 +1010,15 @@ GamepadPage::GamepadPage(wxWindow* parent, InputPlugin& plugin, const unsigned i
 	wxBoxSizer* const dio = new wxBoxSizer(wxHORIZONTAL);
 	dio->Add(device_sbox, 1, wxEXPAND|wxRIGHT, 5);
 	dio->Add(clear_sbox, 0, wxEXPAND|wxRIGHT, 5);
-	dio->Add(profile_sbox, 1, wxEXPAND|wxRIGHT, 5);
+
+	wxBoxSizer* const dio2 = new wxBoxSizer(wxHORIZONTAL);
+	dio2->Add(profile_sbox, 1, wxEXPAND|wxRIGHT, 5);
+	dio2->Add(ud_sbox, 0, wxEXPAND|wxRIGHT, 5);
 
 	wxBoxSizer* const mapping = new wxBoxSizer(wxVERTICAL);
 
 	mapping->Add(dio, 1, wxEXPAND|wxLEFT|wxTOP|wxBOTTOM, 5);
+	mapping->Add(dio2, 1, wxEXPAND|wxLEFT|wxTOP|wxBOTTOM, 5);
 	mapping->Add(control_group_sizer, 0, wxLEFT|wxEXPAND, 5);
 
 	UpdateGUI();
@@ -986,9 +1028,10 @@ GamepadPage::GamepadPage(wxWindow* parent, InputPlugin& plugin, const unsigned i
 };
 
 InputConfigDialog::InputConfigDialog(wxWindow* const parent, InputPlugin& plugin, const std::string& name, const int tab_num)
-	: wxDialog(parent, wxID_ANY, wxGetTranslation(StrToWxStr(name)), wxPoint(128,-1), wxDefaultSize, wxDEFAULT_DIALOG_STYLE|wxMINIMIZE_BOX|wxDIALOG_NO_PARENT)
+	: wxDialog(parent, wxID_ANY, wxEmptyString, wxPoint(128,-1), wxDefaultSize, wxDEFAULT_DIALOG_STYLE|wxMINIMIZE_BOX|wxDIALOG_NO_PARENT)
 	, m_parent(parent)
 	, m_plugin(plugin)
+	, m_title(name)
 {
 	m_ext.object = 0;
 
