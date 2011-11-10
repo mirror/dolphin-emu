@@ -13,12 +13,11 @@ const wxString& ConnectedWiimotesString()
 	return str;
 }
 
-WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin)
-	: wxDialog(parent, -1, _("Dolphin Wiimote Configuration"), wxDefaultPosition, wxDefaultSize)
+WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin, const wxString& title)
+	: wxDialog(parent, -1, title, wxDefaultPosition, wxDefaultSize)
 	, m_plugin(plugin)
 {
 	wxBoxSizer* const main_sizer = new wxBoxSizer(wxVERTICAL);
-
 
 	// "Wiimotes" controls
 	wxStaticText* wiimote_label[4];
@@ -185,7 +184,9 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin
 
 void WiimoteConfigDiag::ConfigEmulatedWiimote(wxCommandEvent& ev)
 {
-	InputConfigDialog* const m_emu_config_diag = new InputConfigDialog(this, m_plugin, _trans("Dolphin Emulated Wiimote Configuration"), m_wiimote_index_from_conf_bt_id[ev.GetId()]);
+	InputConfigDialog* const m_emu_config_diag = new InputConfigDialog(this, m_plugin, std::string("Dolphin Emulated Wiimote Configuration")
+		+ (Core::IsRunning() ? (std::string(" - ") + SConfig::GetInstance().m_LocalCoreStartupParameter.m_strName) : std::string("")),
+		m_wiimote_index_from_conf_bt_id[ev.GetId()]);
 	m_emu_config_diag->ShowModal();
 	m_emu_config_diag->Destroy();
 }

@@ -366,19 +366,6 @@ void EmuThread()
 		return;
 	}
 
-	Pad::Initialize(g_pWindowHandle);
-	// Load and Init Wiimotes - only if we are booting in wii mode	
-	if (g_CoreStartupParameter.bWii)
-	{
-		Wiimote::Initialize(g_pWindowHandle);
-
-		// Activate wiimotes which don't have source set to "None"
-		for (unsigned int i = 0; i != MAX_WIIMOTES; ++i)
-			if (g_wiimote_sources[i])
-				GetUsbPointer()->AccessWiiMote(i | 0x100)->
-					Activate(true);
-	}
-
 	// The hardware is initialized.
 	g_bHwInit = true;
 
@@ -389,6 +376,18 @@ void EmuThread()
 	PowerPC::SetMode(PowerPC::MODE_INTERPRETER);
 
 	CBoot::BootUp();
+	
+	// input
+	Pad::Initialize(g_pWindowHandle);
+	if (g_CoreStartupParameter.bWii)
+	{
+		Wiimote::Initialize(g_pWindowHandle);
+		// Activate wiimotes which don't have source set to "None"
+		for (unsigned int i = 0; i != MAX_WIIMOTES; ++i)
+			if (g_wiimote_sources[i])
+				GetUsbPointer()->AccessWiiMote(i | 0x100)->
+					Activate(true);
+	}
 
 	// Setup our core, but can't use dynarec if we are compare server
 	if (_CoreParameter.iCPUCore && (!_CoreParameter.bRunCompareServer ||

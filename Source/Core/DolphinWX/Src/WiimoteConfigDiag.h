@@ -22,7 +22,7 @@
 class WiimoteConfigDiag : public wxDialog
 {
 public:
-	WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin);
+	WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin, const wxString& title = _("Dolphin Wiimote Configuration"));
 
 #ifdef _WIN32
 	void PairUpRealWiimotes(wxCommandEvent& event);

@@ -28,8 +28,11 @@ InputPlugin::~InputPlugin()
 
 bool InputPlugin::LoadConfig()
 {
-	IniFile inifile;
-	if (inifile.Load(File::GetUserPath(D_CONFIG_IDX) + ini_name + ".ini"))
+	IniFile inifile, gameiniFile;
+	std::string ini = File::GetUserPath(D_CONFIG_IDX) + ini_name + ".ini";
+	std::string gameini = Core::IsRunning() ? SConfig::GetInstance().m_LocalCoreStartupParameter.m_strGameIni : "";
+
+	if (inifile.Load(ini))
 	{
 		std::vector< ControllerEmu* >::const_iterator
 			i = controllers.begin(),
@@ -38,6 +41,8 @@ bool InputPlugin::LoadConfig()
 		{
 			// load settings from ini
 			(*i)->LoadConfig(inifile.GetOrCreateSection((*i)->GetName().c_str()));
+			// override
+			if (gameini.length() > 0) if (gameiniFile.Load(gameini)) (*i)->LoadConfig(gameiniFile.GetOrCreateSection((*i)->GetName().c_str()));
 			// update refs
 			(*i)->UpdateReferences(g_controller_interface);
 		}
@@ -48,12 +53,13 @@ bool InputPlugin::LoadConfig()
 		controllers[0]->LoadDefaults(g_controller_interface);
 		controllers[0]->UpdateReferences(g_controller_interface);
 		return false;
-	}
+	}	
 }
 
 void InputPlugin::SaveConfig()
 {
-	std::string ini_filename = File::GetUserPath(D_CONFIG_IDX) + ini_name + ".ini";
+	std::string ini_filename = Core::IsRunning() ? SConfig::GetInstance().m_LocalCoreStartupParameter.m_strGameIni
+		: File::GetUserPath(D_CONFIG_IDX) + ini_name + ".ini";
 
 	IniFile inifile;
 	inifile.Load(ini_filename);

@@ -22,6 +22,8 @@
 #include "FileUtil.h"
 #include "IniFile.h"
 
+#include "../../Core/Src/Core.h"
+#include "../../Core/Src/ConfigManager.h"
 #include "ControllerInterface/ControllerInterface.h"
 #include "ControllerEmu.h"
 
@@ -43,7 +45,7 @@ public:
 	~InputPlugin();
 
 	bool LoadConfig();
-	void SaveConfig();
+	void SaveConfig();	
 
 	std::vector< ControllerEmu* >	controllers;
 
