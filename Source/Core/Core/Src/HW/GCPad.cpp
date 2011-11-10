@@ -3,6 +3,7 @@
 // Refer to the license.txt file included.
 
 #include "Common.h"
+#include "CommonPaths.h"
 #include "GCPadStatus.h"
 
 #include "ControllerInterface/ControllerInterface.h"
@@ -17,7 +18,7 @@ namespace Pad
 
 bool IsInit = false;
 
-static InputPlugin g_plugin("GCPadNew", _trans("Pad"), "GCPad");
+static InputPlugin g_plugin("GCPadNew", _trans("Pad"), GC_PROFILE_DIR);
 InputPlugin *GetPlugin()
 {
 	return &g_plugin;
@@ -52,7 +53,7 @@ void Initialize(void* const hwnd)
 	g_controller_interface.Initialize();
 
 	// load the saved controller config
-	g_plugin.LoadConfig(true);
+	g_plugin.LoadConfig();
 }
 
 void GetStatus(u8 _numPAD, SPADStatus* _pPADStatus)

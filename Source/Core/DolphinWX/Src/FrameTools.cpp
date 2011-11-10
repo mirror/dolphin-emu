@@ -926,6 +926,13 @@ void CFrame::StartGame(const std::string& filename)
 		m_RenderParent->SetFocus();
 #endif
 		
+		Pad::GetPlugin()->LoadConfig();
+		Wiimote::GetPlugin()->LoadConfig();
+		if (m_PadConfigDiag)
+			m_PadConfigDiag->UpdateGUI();
+		if (m_WiimoteConfigDiag)
+			m_WiimoteConfigDiag->UpdateGUI();
+
 		wxTheApp->Bind(wxEVT_KEY_DOWN, &CFrame::OnKeyDown, this);
 		wxTheApp->Bind(wxEVT_KEY_UP, &CFrame::OnKeyUp, this);
 		wxTheApp->Bind(wxEVT_RIGHT_DOWN, &CFrame::OnMouse, this);
@@ -1040,6 +1047,13 @@ void CFrame::DoStop()
 		X11Utils::InhibitScreensaver(X11Utils::XDisplayFromHandle(GetHandle()),
 				X11Utils::XWindowFromHandle(GetHandle()), false);
 #endif
+
+		Pad::GetPlugin()->LoadConfig();
+		Wiimote::GetPlugin()->LoadConfig();
+		if (m_PadConfigDiag)
+			m_PadConfigDiag->UpdateGUI();
+		if (m_WiimoteConfigDiag)
+			m_WiimoteConfigDiag->UpdateGUI();
 
 		m_RenderFrame->SetTitle(StrToWxStr(scm_rev_str));
 

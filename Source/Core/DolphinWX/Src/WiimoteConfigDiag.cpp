@@ -6,10 +6,11 @@
 #include "WxUtils.h"
 
 WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* parent, InputPlugin& plugin, const wxString& title)
-	: wxDialog(NULL, -1, _("Dolphin Wiimote Configuration"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE|wxMINIMIZE_BOX|wxDIALOG_NO_PARENT)
+	: wxDialog(NULL, -1, title, wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE|wxMINIMIZE_BOX|wxDIALOG_NO_PARENT)
 	, m_parent(parent)
 	, m_emu_config_diag(NULL)
 	, m_plugin(plugin)
+	, m_title(title)
 {
 	WiimoteReal::LoadSettings();
 
@@ -225,6 +226,16 @@ void WiimoteConfigDiag::ConfigEmulatedWiimote(wxCommandEvent& ev)
 
 void WiimoteConfigDiag::UpdateGUI()
 {
+	wxString title = m_title;
+
+	if (Core::IsRunning()
+		&& SConfig::GetInstance().m_LocalCoreStartupParameter.bInputSettingsISO)
+		title.append(wxString::Format(" - %s (%s)",
+			SConfig::GetInstance().m_LocalCoreStartupParameter.m_strName.c_str(),
+			SConfig::GetInstance().m_LocalCoreStartupParameter.m_strRegion.c_str()));
+
+	SetTitle(title);
+
 	if (m_emu_config_diag)
 		m_emu_config_diag->UpdateGUI();
 }

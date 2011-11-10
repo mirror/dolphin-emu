@@ -115,6 +115,7 @@ EVT_BUTTON(wxID_OK, CConfigMain::OnOk)
 EVT_CHECKBOX(ID_CPUTHREAD, CConfigMain::CoreSettingsChanged)
 EVT_CHECKBOX(ID_IDLESKIP, CConfigMain::CoreSettingsChanged)
 EVT_CHECKBOX(ID_ENABLECHEATS, CConfigMain::CoreSettingsChanged)
+EVT_CHECKBOX(ID_INPUTSETTINGSISO, CConfigMain::CoreSettingsChanged)
 EVT_CHOICE(ID_FRAMELIMIT, CConfigMain::CoreSettingsChanged)
 EVT_CHECKBOX(ID_FRAMELIMIT_USEFPSFORLIMITING, CConfigMain::CoreSettingsChanged)
 
@@ -214,6 +215,7 @@ void CConfigMain::UpdateGUI()
 		CPUThread->Disable();
 		SkipIdle->Disable();
 		EnableCheats->Disable();
+		InputSettingsISO->Disable();
 		
 		CPUEngine->Disable();
 		_NTSCJ->Disable();
@@ -321,6 +323,7 @@ void CConfigMain::InitializeGUIValues()
 	CPUThread->SetValue(startup_params.bCPUThread);
 	SkipIdle->SetValue(startup_params.bSkipIdle);
 	EnableCheats->SetValue(startup_params.bEnableCheats);
+	InputSettingsISO->SetValue(startup_params.bInputSettingsISO);
 	Framelimit->SetSelection(SConfig::GetInstance().m_Framelimit);
 	UseFPSForLimiting->SetValue(SConfig::GetInstance().b_UseFPS);
 
@@ -547,6 +550,7 @@ void CConfigMain::CreateGUIControls()
 	CPUThread = new wxCheckBox(GeneralPage, ID_CPUTHREAD, _("Enable Dual Core (speedup)"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator);
 	SkipIdle = new wxCheckBox(GeneralPage, ID_IDLESKIP, _("Enable Idle Skipping (speedup)"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator);
 	EnableCheats = new wxCheckBox(GeneralPage, ID_ENABLECHEATS, _("Enable Cheats"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator);
+	InputSettingsISO = new wxCheckBox(GeneralPage, ID_INPUTSETTINGSISO, _("Save Input Settings to ISO Settings"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator);
 	// Framelimit
 	Framelimit = new wxChoice(GeneralPage, ID_FRAMELIMIT, wxDefaultPosition, wxDefaultSize, arrayStringFor_Framelimit, 0, wxDefaultValidator);
 	UseFPSForLimiting = new wxCheckBox(GeneralPage, ID_FRAMELIMIT_USEFPSFORLIMITING, _("Limit by FPS"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator);
@@ -563,6 +567,7 @@ void CConfigMain::CreateGUIControls()
 	sbBasic->Add(CPUThread, 0, wxALL, 5);
 	sbBasic->Add(SkipIdle, 0, wxALL, 5);
 	sbBasic->Add(EnableCheats, 0, wxALL, 5);
+	sbBasic->Add(InputSettingsISO, 0, wxALL, 5);
 	sbBasic->Add(sFramelimit);
 
 	wxStaticBoxSizer* const sbAdvanced = new wxStaticBoxSizer(wxVERTICAL, GeneralPage, _("Advanced Settings"));
@@ -881,6 +886,9 @@ void CConfigMain::CoreSettingsChanged(wxCommandEvent& event)
 		break;
 	case ID_ENABLECHEATS:
 		SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableCheats = EnableCheats->IsChecked();
+		break;
+	case ID_INPUTSETTINGSISO:
+		SConfig::GetInstance().m_LocalCoreStartupParameter.bInputSettingsISO = InputSettingsISO->IsChecked();
 		break;
 	case ID_FRAMELIMIT:
 		SConfig::GetInstance().m_Framelimit = Framelimit->GetSelection();

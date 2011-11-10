@@ -79,6 +79,7 @@ private:
 	InputConfigDialog*	m_emu_config_diag;
 	InputPlugin&		m_plugin;
 	wxNotebook*			m_pad_notebook;
+	wxString			m_title;
 
 	std::map<wxWindowID, unsigned int> m_wiimote_index_from_ctrl_id;
 	unsigned int m_orig_wiimote_sources[MAX_BBMOTES];

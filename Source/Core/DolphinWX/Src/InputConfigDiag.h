@@ -192,6 +192,8 @@ public:
 
 	void ClearAll(wxCommandEvent& event);
 	void LoadDefaults(wxCommandEvent& event);
+	void LoadUserDefault(wxCommandEvent& event);
+	void SaveUserDefault(wxCommandEvent& event);
 
 	void AdjustControlOption(wxCommandEvent& event);
 	void AdjustSetting(wxCommandEvent& event);
@@ -200,6 +202,7 @@ public:
 
 	wxComboBox*					profile_cbox;
 	wxComboBox*					device_cbox;
+	wxButton					*ud_load_button, *ud_save_button;
 
 	std::vector<ControlGroupBox*>		control_groups;
 
@@ -251,6 +254,7 @@ private:
 	std::vector<GamepadPage*>	m_padpages;
 	InputPlugin&				m_plugin;
 	wxTimer*					m_update_timer;
+	wxString					m_title;
 };
 
 #endif

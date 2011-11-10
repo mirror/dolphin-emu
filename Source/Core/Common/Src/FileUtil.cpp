@@ -679,6 +679,9 @@ const std::string& GetUserPath(const unsigned int DirIDX, const std::string &new
 		paths[D_WIIROOT_IDX]		= paths[D_USER_IDX] + WII_USER_DIR;
 		paths[D_WIIUSER_IDX]		= paths[D_WIIROOT_IDX] + DIR_SEP;
 		paths[D_CONFIG_IDX]			= paths[D_USER_IDX] + CONFIG_DIR DIR_SEP;
+		paths[D_PROFILE_IDX]		= paths[D_CONFIG_IDX] + PROFILE_DIR DIR_SEP;
+		paths[D_GC_PROFILE_IDX]		= paths[D_PROFILE_IDX] + GC_PROFILE_DIR DIR_SEP;
+		paths[D_WII_PROFILE_IDX]	= paths[D_PROFILE_IDX] + WII_PROFILE_DIR DIR_SEP;
 		paths[D_GAMECONFIG_IDX]		= paths[D_USER_IDX] + GAMECONFIG_DIR DIR_SEP;
 		paths[D_MAPS_IDX]			= paths[D_USER_IDX] + MAPS_DIR DIR_SEP;
 		paths[D_CACHE_IDX]			= paths[D_USER_IDX] + CACHE_DIR DIR_SEP;
