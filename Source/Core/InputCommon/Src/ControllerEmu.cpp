@@ -125,7 +125,7 @@ void ControllerEmu::ControlGroup::LoadConfig(IniFile::Section *sec, const std::s
 		se = settings.end();
 	for (; si!=se; ++si)
 	{
-		sec->Get((group+(*si)->name).c_str(), &(*si)->value, (*si)->default_value*100);
+		sec->Get((group+(*si)->name).c_str(), &(*si)->value, (*si)->default_value);
 		(*si)->value /= 100;
 	}
 
@@ -239,6 +239,7 @@ ControllerEmu::AnalogStick::AnalogStick(const char* const _name) : ControlGroup(
 
 	controls.push_back(new Input(_trans("Modifier")));
 
+	settings.push_back(new Setting(_trans("Radius"), 65, 0, 100));
 	settings.push_back(new Setting(_trans("Dead Zone"), 0, 0, 50));
 	settings.push_back(new Setting(_trans("Square Stick"), 0));
 

@@ -48,6 +48,13 @@ enum
 	GROUP_TYPE_SLIDER,
 };
 
+enum
+{
+	SETTING_RADIUS,
+	SETTING_DEADZONE,
+	SETTING_SQUARE,
+};
+
 const char * const named_directions[] = 
 {
 	"Up",
@@ -139,8 +146,9 @@ public:
 			ControlState yy = controls[0]->control_ref->State() - controls[1]->control_ref->State();
 			ControlState xx = controls[3]->control_ref->State() - controls[2]->control_ref->State();
 
-			ControlState deadzone = settings[0]->value;
-			ControlState square = settings[1]->value;
+			ControlState radius = settings[SETTING_RADIUS]->value;
+			ControlState deadzone = settings[SETTING_DEADZONE]->value;
+			ControlState square = settings[SETTING_SQUARE]->value;
 			ControlState m = controls[4]->control_ref->State();
 
 			// modifier code
@@ -151,13 +159,14 @@ public:
 			}
 
 			// deadzone / square stick code
-			if (deadzone || square)
+			if (radius != 1 || deadzone || square)
 			{
 				// this section might be all wrong, but its working good enough, i think
 
-				ControlState ang = atan2(yy, xx); 
+				ControlState ang = atan2(yy, xx);
 				ControlState ang_sin = sin(ang);
 				ControlState ang_cos = cos(ang);
+				ControlState rad = sqrt(xx*xx + yy*yy);
 
 				// the amt a full square stick would have at current angle
 				ControlState square_full = std::min(ang_sin ? 1/fabsf(ang_sin) : 2, ang_cos ? 1/fabsf(ang_cos) : 2);
@@ -166,18 +175,19 @@ public:
 				// i think this is more like a pointed circle rather than a rounded square like it should be
 				ControlState stick_full = (1 + (square_full - 1) * square);
 
-				ControlState dist = sqrt(xx*xx + yy*yy);
+				// radius
+				rad *= radius;
 
 				// dead zone code
-				dist = std::max(0.0f, dist - deadzone * stick_full);
-				dist /= (1 - deadzone);
+				rad = std::max(0.0f, rad - deadzone * stick_full);
+				rad /= (1 - deadzone);
 
 				// square stick code
-				ControlState amt = dist / stick_full;
-				dist -= ((square_full - 1) * amt * square);
+				ControlState amt = rad / stick_full;
+				rad -= ((square_full - 1) * amt * square);
 
-				yy = std::max(-1.0f, std::min(1.0f, ang_sin * dist));
-				xx = std::max(-1.0f, std::min(1.0f, ang_cos * dist));
+				yy = std::max(-1.0f, std::min(1.0f, ang_sin * rad));
+				xx = std::max(-1.0f, std::min(1.0f, ang_cos * rad));
 			}
 
 			*y = C(yy * range + base);
