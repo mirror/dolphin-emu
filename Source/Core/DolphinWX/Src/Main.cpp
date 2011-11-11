@@ -552,6 +552,11 @@ void Host_ShowJitResults(unsigned int address)
 		main_frame->g_pCodeWindow->m_JitWindow->ViewAddr(address);
 }
 
+void Host_Yield()
+{
+	wxTheApp->Yield();
+}
+
 void Host_UpdateMainFrame()
 {
 	wxCommandEvent event(wxEVT_HOST_COMMAND, IDM_UPDATEGUI);

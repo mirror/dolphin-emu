@@ -55,10 +55,11 @@ private:
 	{
 	public:
 		std::string GetName() const;
-		Axis(u8 index, const LONG& axis, LONG range) : m_index(index), m_axis(axis), m_range(range) {}
+		bool IsRelative() { return true; }
+		Axis(u8 index, LONG& axis, LONG range) : m_index(index), m_axis(axis), m_range(range) {}
 		ControlState GetState() const;
 	private:
-		const LONG& m_axis;
+		LONG& m_axis;
 		const LONG m_range;
 		const u8 m_index;
 	};

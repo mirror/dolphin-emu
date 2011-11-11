@@ -169,6 +169,7 @@
     <ClCompile Include="Src\ControllerInterface\DInput\DInput.cpp" />
     <ClCompile Include="Src\ControllerInterface\DInput\DInputJoystick.cpp" />
     <ClCompile Include="Src\ControllerInterface\DInput\DInputKeyboardMouse.cpp" />
+    <ClCompile Include="Src\ControllerInterface\RInput\RInput.cpp" />
     <ClCompile Include="Src\ControllerInterface\SDL\SDL.cpp" />
     <ClCompile Include="Src\ControllerInterface\XInput\XInput.cpp" />
     <ClCompile Include="Src\InputConfig.cpp" />
@@ -182,6 +183,7 @@
     <ClInclude Include="Src\ControllerInterface\DInput\DInputJoystick.h" />
     <ClInclude Include="Src\ControllerInterface\DInput\DInputKeyboardMouse.h" />
     <ClInclude Include="Src\ControllerInterface\DInput\NamedKeys.h" />
+    <ClInclude Include="Src\ControllerInterface\RInput\RInput.h" />
     <ClInclude Include="Src\ControllerInterface\SDL\SDL.h" />
     <ClInclude Include="Src\ControllerInterface\XInput\XInput.h" />
     <ClInclude Include="Src\GCPadStatus.h" />

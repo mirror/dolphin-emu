@@ -23,6 +23,9 @@
     <ClCompile Include="Src\ControllerInterface\DInput\DInput.cpp">
       <Filter>ControllerInterface\DInput</Filter>
     </ClCompile>
+    <ClCompile Include="Src\ControllerInterface\RInput\RInput.cpp">
+      <Filter>ControllerInterface\RInput</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Src\ControllerEmu.h" />
@@ -51,6 +54,9 @@
     <ClInclude Include="Src\ControllerInterface\DInput\DInput.h">
       <Filter>ControllerInterface\DInput</Filter>
     </ClInclude>
+    <ClInclude Include="Src\ControllerInterface\RInput\RInput.h">
+      <Filter>ControllerInterface\RInput</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="CMakeLists.txt" />
@@ -67,6 +73,9 @@
     </Filter>
     <Filter Include="ControllerInterface\XInput">
       <UniqueIdentifier>{5a9c1b94-2eab-4357-b44f-87d5db50da3d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ControllerInterface\RInput">
+      <UniqueIdentifier>{6efec704-c7e2-44b8-b71d-480ce5d0b2c9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

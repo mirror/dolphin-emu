@@ -40,6 +40,7 @@ void Host_SysMessage(const char *fmt, ...);
 void Host_UpdateBreakPointView();
 void Host_UpdateDisasmDialog();
 void Host_UpdateLogDisplay();
+void Host_Yield();
 void Host_UpdateMainFrame();
 void Host_UpdateStatusBar(const char* _pText, int Filed = 0);
 void Host_UpdateTitle(const char* title);
