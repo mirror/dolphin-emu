@@ -133,12 +133,12 @@ KeyboardMouse::KeyboardMouse(const LPDIRECTINPUTDEVICE8 kb_device, const LPDIREC
 void GetMousePos(float* const x, float* const y)
 {
 	unsigned int win_width = 2, win_height = 2;
-	POINT point = { 1, 1 };
+	POINT point;
 	GetCursorPos(&point);
 	// Get the cursor position relative to the upper left corner of the rendering window
 	ScreenToClient(hwnd, &point);
 
-	// Get the size of the rendering window. (In my case Rect.top and Rect.left was zero.)
+	// Get the size of the rendering window.
 	RECT rect;
 	GetClientRect(hwnd, &rect);
 	// Width and height is the size of the rendering window
@@ -183,6 +183,9 @@ bool KeyboardMouse::UpdateInput()
 
 		// copy over the buttons
 		memcpy(m_state_in.mouse.rgbButtons, tmp_mouse.rgbButtons, sizeof(m_state_in.mouse.rgbButtons));
+		m_state_in.mouse.rgbButtons[0] = GetAsyncKeyState(VK_LBUTTON) != 0;
+		m_state_in.mouse.rgbButtons[1] = GetAsyncKeyState(VK_RBUTTON) != 0;
+		m_state_in.mouse.rgbButtons[2] = GetAsyncKeyState(VK_MBUTTON) != 0;
 
 		// update mouse cursor
 		GetMousePos(&m_state_in.cursor.x, &m_state_in.cursor.y);
@@ -237,7 +240,6 @@ std::string KeyboardMouse::GetName() const
 
 int KeyboardMouse::GetId() const
 {
-	// should this be -1, idk
 	return 0;
 }
 

@@ -13,6 +13,7 @@
 // enable disable sources
 #ifdef _WIN32
 	#define CIFACE_USE_XINPUT
+	#define CIFACE_USE_RINPUT
 	#define CIFACE_USE_DINPUT_JOYSTICK
 	#define CIFACE_USE_DINPUT_KBM
 	#define CIFACE_USE_DINPUT
@@ -109,6 +110,9 @@ public:
 		virtual int GetId() const = 0;
 		virtual std::string GetSource() const = 0;
 		virtual bool UpdateInput() = 0;
+		#ifdef _WIN32
+		virtual bool UpdateInput(LPARAM lParam) = 0;
+		#endif
 		virtual bool UpdateOutput() = 0;
 
 		virtual void ClearInputState();

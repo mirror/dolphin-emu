@@ -66,6 +66,9 @@ private:
 
 public:
 	bool UpdateInput();
+	#ifdef _WIN32
+	bool UpdateInput(LPARAM lParam) { return false; };
+	#endif
 	bool UpdateOutput();
 
 	void ClearInputState();
