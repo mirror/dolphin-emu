@@ -54,17 +54,21 @@ void InitKeyboardMouse(IDirectInput8* const idi8, std::vector<ControllerInterfac
 		{
 			if (SUCCEEDED(kb_device->SetCooperativeLevel(NULL, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE)))
 			{
+#ifndef CIFACE_USE_RINPUT
 				if (SUCCEEDED(idi8->CreateDevice( GUID_SysMouse, &mo_device, NULL )))
 				{
 					if (SUCCEEDED(mo_device->SetDataFormat(&c_dfDIMouse2)))
 					{
 						if (SUCCEEDED(mo_device->SetCooperativeLevel(NULL, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE)))
 						{
+#endif
 							devices.push_back(new KeyboardMouse(kb_device, mo_device));
 							return;
+#ifndef CIFACE_USE_RINPUT
 						}
 					}
 				}
+#endif
 			}
 		}
 	}
@@ -81,8 +85,11 @@ KeyboardMouse::~KeyboardMouse()
 	m_kb_device->Unacquire();
 	m_kb_device->Release();
 	// mouse
-	m_mo_device->Unacquire();
-	m_mo_device->Release();
+	if (m_mo_device)
+	{
+		m_mo_device->Unacquire();
+		m_mo_device->Release();
+	}
 }
 
 KeyboardMouse::KeyboardMouse(const LPDIRECTINPUTDEVICE8 kb_device, const LPDIRECTINPUTDEVICE8 mo_device)
@@ -90,7 +97,8 @@ KeyboardMouse::KeyboardMouse(const LPDIRECTINPUTDEVICE8 kb_device, const LPDIREC
 	, m_mo_device(mo_device)
 {
 	m_kb_device->Acquire();
-	m_mo_device->Acquire();
+	if (m_mo_device)
+		m_mo_device->Acquire();
 
 	m_last_update = GetTickCount();
 
@@ -107,37 +115,50 @@ KeyboardMouse::KeyboardMouse(const LPDIRECTINPUTDEVICE8 kb_device, const LPDIREC
 		AddOutput(new Light(i));
 
 	// MOUSE
-	// get caps
-	DIDEVCAPS mouse_caps;
-	ZeroMemory( &mouse_caps, sizeof(mouse_caps) );
-	mouse_caps.dwSize = sizeof(mouse_caps);
-	m_mo_device->GetCapabilities(&mouse_caps);
-	// mouse buttons
-	for (u8 i = 0; i < mouse_caps.dwButtons; ++i)
-		AddInput(new Button(i, m_state_in.mouse.rgbButtons[i]));
-	// mouse axes
-	for (unsigned int i = 0; i < mouse_caps.dwAxes; ++i)
+	if (m_mo_device)
 	{
-		const LONG& ax = (&m_state_in.mouse.lX)[i];
+		// get caps
+		DIDEVCAPS mouse_caps;
+		ZeroMemory( &mouse_caps, sizeof(mouse_caps) );
+		mouse_caps.dwSize = sizeof(mouse_caps);
+		m_mo_device->GetCapabilities(&mouse_caps);
+		// mouse buttons
+		for (u8 i = 0; i < mouse_caps.dwButtons; ++i)
+			AddInput(new Button(i, m_state_in.mouse.rgbButtons[i]));
+		// mouse axes
+		for (unsigned int i = 0; i < mouse_caps.dwAxes; ++i)
+		{
+			LONG& ax = (&m_state_in.mouse.lX)[i];
 
-		// each axis gets a negative and a positive input instance associated with it
-		AddInput(new Axis(i, ax, (2==i) ? -1 : -MOUSE_AXIS_SENSITIVITY));
-		AddInput(new Axis(i, ax, -(2==i) ? 1 : MOUSE_AXIS_SENSITIVITY));
+			// each axis gets a negative and a positive input instance associated with it
+			AddInput(new Axis(i, ax, (2==i) ? -1 : -MOUSE_AXIS_SENSITIVITY));
+			AddInput(new Axis(i, ax, -(2==i) ? 1 : MOUSE_AXIS_SENSITIVITY));
+		}
+		// cursor, with a hax for-loop
+		for (unsigned int i=0; i<4; ++i)
+			AddInput(new Cursor(!!(i&2), (&m_state_in.cursor.x)[i/2], !!(i&1)));
 	}
-	// cursor, with a hax for-loop
-	for (unsigned int i=0; i<4; ++i)
-		AddInput(new Cursor(!!(i&2), (&m_state_in.cursor.x)[i/2], !!(i&1)));
+	// system mouse
+	else
+	{
+		// mouse buttons
+		for (u8 i = 0; i < 3; ++i)
+			AddInput(new Button(i, m_state_in.mouse.rgbButtons[i]));
+
+		for (unsigned int i=0; i<4; ++i)
+			AddInput(new Cursor(!!(i&2), (&m_state_in.cursor.x)[i/2], !!(i&1)));
+	}
 }
 
 void GetMousePos(float* const x, float* const y)
 {
 	unsigned int win_width = 2, win_height = 2;
-	POINT point = { 1, 1 };
+	POINT point;
 	GetCursorPos(&point);
 	// Get the cursor position relative to the upper left corner of the rendering window
 	ScreenToClient(hwnd, &point);
 
-	// Get the size of the rendering window. (In my case Rect.top and Rect.left was zero.)
+	// Get the size of the rendering window.
 	RECT rect;
 	GetClientRect(hwnd, &rect);
 	// Width and height is the size of the rendering window
@@ -156,41 +177,42 @@ bool KeyboardMouse::UpdateInput()
 
 	DIMOUSESTATE2 tmp_mouse;
 
-	// if mouse position hasn't been updated in a short while, skip a dev state
-	DWORD cur_time = GetTickCount();
-	if (cur_time - m_last_update > DROP_INPUT_TIME)
-	{
-		// set axes to zero
-		ZeroMemory(&m_state_in.mouse, sizeof(m_state_in.mouse));
-		// skip this input state
-		m_mo_device->GetDeviceState(sizeof(tmp_mouse), &tmp_mouse);
-	}
-
-	m_last_update = cur_time;
-
 	HRESULT kb_hr = m_kb_device->GetDeviceState(sizeof(m_state_in.keyboard), &m_state_in.keyboard);
-	HRESULT mo_hr = m_mo_device->GetDeviceState(sizeof(tmp_mouse), &tmp_mouse);
+	HRESULT mo_hr = E_ABORT;
+	if (m_mo_device)
+		mo_hr = m_mo_device->GetDeviceState(sizeof(tmp_mouse), &tmp_mouse);
 
 	if (DIERR_INPUTLOST == kb_hr || DIERR_NOTACQUIRED == kb_hr)
 		m_kb_device->Acquire();
 
-	if (DIERR_INPUTLOST == mo_hr || DIERR_NOTACQUIRED == mo_hr)
-		m_mo_device->Acquire();
+	if (m_mo_device)
+		if (DIERR_INPUTLOST == mo_hr || DIERR_NOTACQUIRED == mo_hr)
+			m_mo_device->Acquire();
 
-	if (SUCCEEDED(kb_hr) && SUCCEEDED(mo_hr))
+	if (SUCCEEDED(mo_hr))
 	{
-		// need to smooth out the axes, otherwise it doesn't work for shit
-		for (unsigned int i = 0; i < 3; ++i)
-			((&m_state_in.mouse.lX)[i] += (&tmp_mouse.lX)[i]) /= 2;
-
+		DIDEVCAPS mouse_caps;
+		ZeroMemory( &mouse_caps, sizeof(mouse_caps) );
+		mouse_caps.dwSize = sizeof(mouse_caps);
+		m_mo_device->GetCapabilities(&mouse_caps);
+		for (unsigned int i = 0; i < mouse_caps.dwAxes; ++i)
+			(&m_state_in.mouse.lX)[i] += (&tmp_mouse.lX)[i];
 		// copy over the buttons
 		memcpy(m_state_in.mouse.rgbButtons, tmp_mouse.rgbButtons, sizeof(m_state_in.mouse.rgbButtons));
-
-		// update mouse cursor
-		GetMousePos(&m_state_in.cursor.x, &m_state_in.cursor.y);
-
-		return true;
 	}
+	else
+	{
+		// buttons
+		m_state_in.mouse.rgbButtons[0] = GetAsyncKeyState(VK_LBUTTON) != 0;
+		m_state_in.mouse.rgbButtons[1] = GetAsyncKeyState(VK_RBUTTON) != 0;
+		m_state_in.mouse.rgbButtons[2] = GetAsyncKeyState(VK_MBUTTON) != 0;
+	}
+
+	// update mouse cursor
+	GetMousePos(&m_state_in.cursor.x, &m_state_in.cursor.y);
+
+	if (SUCCEEDED(kb_hr) && (SUCCEEDED(mo_hr) || !m_mo_device))
+		return true;
 
 	return false;
 }
@@ -241,7 +263,6 @@ std::string KeyboardMouse::GetName() const
 
 int KeyboardMouse::GetId() const
 {
-	// should this be -1, idk
 	return 0;
 }
 
@@ -305,7 +326,10 @@ ControlState KeyboardMouse::Button::GetState() const
 
 ControlState KeyboardMouse::Axis::GetState() const
 {
-	return std::max(0.0f, ControlState(m_axis) / m_range);
+	ControlState state = std::max(0.0f, ControlState(m_axis) / m_range);
+	if (state)
+		m_axis = 0;
+	return state;
 }
 
 ControlState KeyboardMouse::Cursor::GetState() const

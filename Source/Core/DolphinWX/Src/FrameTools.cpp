@@ -1048,6 +1048,7 @@ void CFrame::DoStop()
 				X11Utils::XWindowFromHandle(GetHandle()), false);
 #endif
 
+		g_controller_interface.SetHwnd(m_RenderParent ? m_RenderParent->GetHandle() : GetHandle());
 		Pad::GetPlugin()->LoadConfig();
 		Wiimote::GetPlugin()->LoadConfig();
 		if (m_PadConfigDiag)

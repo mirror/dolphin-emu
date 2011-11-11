@@ -1,7 +1,9 @@
 #include "ControllerInterface.h"
-
 #ifdef CIFACE_USE_XINPUT
 	#include "XInput/XInput.h"
+#endif
+#ifdef CIFACE_USE_RINPUT
+	#include "RInput/RInput.h"
 #endif
 #ifdef CIFACE_USE_DINPUT
 	#include "DInput/DInput.h"
@@ -19,6 +21,7 @@
 	#include "Android/Android.h"
 #endif
 
+#include "MathUtil.h"
 #include "Thread.h"
 #include "../../Core/Src/Host.h"
 
@@ -43,6 +46,9 @@ void ControllerInterface::Initialize()
 
 #ifdef CIFACE_USE_DINPUT
 	ciface::DInput::Init(m_devices, (HWND)m_hwnd);
+#endif
+#ifdef CIFACE_USE_RINPUT
+	ciface::RInput::Init(m_devices, (HWND)m_hwnd);
 #endif
 #ifdef CIFACE_USE_XINPUT
 	ciface::XInput::Init(m_devices);
@@ -143,8 +149,12 @@ void ControllerInterface::ReInit()
 void ControllerInterface::SetHwnd( void* const hwnd )
 {
 	m_hwnd = hwnd;
+
 #ifdef CIFACE_USE_DINPUT
 	ciface::DInput::SetHWND((HWND)m_hwnd);
+#endif
+#ifdef CIFACE_USE_RINPUT
+	ciface::RInput::SetHWND((HWND)m_hwnd);
 #endif
 }
 
@@ -281,6 +291,9 @@ ControlState ControllerInterface::InputReference::State( const ControlState igno
 	for (; ci!=ce; ++ci)
 	{
 		const ControlState istate = ci->control->ToInput()->GetState();
+		// the input is relative if one control is relative
+		if (!is_relative)
+			is_relative = ci->control->ToInput()->IsRelative();
 
 		switch (ci->mode)
 		{
@@ -303,7 +316,7 @@ ControlState ControllerInterface::InputReference::State( const ControlState igno
 		}
 	}
 
-	return std::min(1.0f, state * range);
+	return state * range;
 }
 
 //
@@ -450,6 +463,7 @@ void ControllerInterface::UpdateReference(ControllerInterface::ControlReference*
 			// reset stuff for next ctrl
 			devc.mode = (int)f;
 			ctrl_str.clear();
+			ref->is_relative = false;
 		}
 		else if ('`' == c)
 		{
@@ -500,10 +514,12 @@ ControllerInterface::Device::Control* ControllerInterface::InputReference::Detec
 		i = device->Inputs().begin(),
 		e = device->Inputs().end();
 	for (std::vector<bool>::iterator state = states.begin(); i != e; ++i)
-		*state++ = ((*i)->GetState() > (1 - INPUT_DETECT_THRESHOLD));
+		*state++ = ((*i)->GetState() > INPUT_DETECT_THRESHOLD);
 
 	while (time < ms)
 	{
+		// read WM_INPUT
+		Host_Yield();
 		device->UpdateInput();
 		i = device->Inputs().begin();
 		for (std::vector<bool>::iterator state = states.begin(); i != e; ++i,++state)
