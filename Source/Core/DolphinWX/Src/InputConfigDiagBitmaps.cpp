@@ -67,7 +67,7 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 						((ControllerEmu::AnalogStick*)(*g)->control_group)->GetState( &x, &y, 32.0, 32-1.5 );
 						break;
 					case GROUP_TYPE_TILT :
-						((ControllerEmu::Tilt*)(*g)->control_group)->GetState( &x, &y, 32.0, 32-1.5 );
+						((ControllerEmu::Tilt*)(*g)->control_group)->GetState( &x, &y, &z, 32.0, 32-1.5 );
 						break;
 					case GROUP_TYPE_CURSOR :
 						((ControllerEmu::Cursor*)(*g)->control_group)->GetState( &x, &y, &z );
@@ -168,7 +168,8 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 					const float deadzone = 32 * ((*g)->control_group)->settings[0]->value;
 
 					// adjusted
-					((ControllerEmu::Force*)(*g)->control_group)->GetState( adj_dot, 32.0, 32-1.5 );
+					static float swing[3];
+					((ControllerEmu::Force*)(*g)->control_group)->GetState( adj_dot, swing, 32.0, 32-1.5 );
 
 					// raw
 					for ( unsigned int i=0; i<3; ++i )

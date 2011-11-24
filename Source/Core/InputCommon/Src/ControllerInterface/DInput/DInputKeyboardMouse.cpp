@@ -310,7 +310,7 @@ ControlState KeyboardMouse::Axis::GetState(bool relative) const
 
 ControlState KeyboardMouse::Cursor::GetState(bool relative) const
 {
-	SERROR_LOG(CONSOLE, "DI::Cursor::GetState: index %d, positive %d, state %f %f", m_index, m_positive, ControlState(m_axis), std::max(0.0f, ControlState(m_axis) / (m_positive ? 1.0f : -1.0f)));
+	//SERROR_LOG(CONSOLE, "DI::Cursor::GetState: index %d, positive %d, state %f %f", m_index, m_positive, ControlState(m_axis), std::max(0.0f, ControlState(m_axis) / (m_positive ? 1.0f : -1.0f)));
 	if (relative)
 		return ControlState(m_axis_d);
 	else

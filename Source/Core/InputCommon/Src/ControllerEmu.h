@@ -60,6 +60,25 @@ enum
 	C_WIDTH,
 	C_HEIGHT,
 };
+enum
+{
+	S_FORWARD,
+	S_BACKWARD,
+	S_LEFT,
+	S_RIGHT,
+	S_UP,
+	S_DOWN,
+};
+enum
+{
+	T_FORWARD,
+	T_BACKWARD,
+	T_LEFT,
+	T_RIGHT,
+	T_UP,
+	T_DOWN,
+	T_MODIFIER,
+};
 
 const char * const named_directions[] = 
 {
@@ -289,7 +308,7 @@ public:
 		Force(const char* const _name);
 
 		template <typename C, typename R>
-		void GetState(C* axis, const u8 base, const R range)
+		void GetState(C* axis, float* const swing, const u8 base, const R range)
 		{
 			const float deadzone = settings[0]->value;
 			for (unsigned int i=0; i<6; i+=2)
@@ -299,13 +318,11 @@ public:
 				if (fabsf(state) > deadzone)
 					tmpf = ((state - (deadzone * sign(state))) / (1 - deadzone));
 
-				float &ax = m_swing[i >> 1];
+				float &ax = swing[i >> 1];
 				*axis++	= (C)((tmpf - ax) * range + base);
 				ax = tmpf;
 			}
 		}
-	private:
-		float	m_swing[3];
 	};
 
 	class Tilt : public ControlGroup
@@ -314,22 +331,24 @@ public:
 		Tilt(const char* const _name);
 
 		template <typename C, typename R>
-		void GetState(C* const x, C* const y, const unsigned int base, const R range, const bool step = true)
+		void GetState(C* const x, C* const y, C* const z, const unsigned int base, const R range, const bool step = true)
 		{
 			// this is all a mess
 
-			ControlState yy = controls[0]->control_ref->State() - controls[1]->control_ref->State();
-			ControlState xx = controls[3]->control_ref->State() - controls[2]->control_ref->State();
+			ControlState yy = controls[T_FORWARD]->control_ref->State() - controls[T_BACKWARD]->control_ref->State();
+			ControlState xx = controls[T_RIGHT]->control_ref->State() - controls[T_LEFT]->control_ref->State();
+			ControlState zz = controls[T_DOWN]->control_ref->State() - controls[T_UP]->control_ref->State();
 
 			ControlState deadzone = settings[0]->value;
 			ControlState circle = settings[1]->value;
-			ControlState m = controls[4]->control_ref->State();
+			ControlState m = controls[T_MODIFIER]->control_ref->State();
 
 			// modifier code
 			if (m)
 			{
 				yy = (fabsf(yy)>deadzone) * sign(yy) * (m + deadzone/2);
 				xx = (fabsf(xx)>deadzone) * sign(xx) * (m + deadzone/2);
+				zz = (fabsf(zz)>deadzone) * sign(zz) * (m + deadzone/2);
 			}
 
 			// deadzone / circle stick code
@@ -377,13 +396,19 @@ public:
 					m_tilt[1] = std::min(m_tilt[1] + 0.1f, yy);
 				else if (yy < m_tilt[1])
 					m_tilt[1] = std::max(m_tilt[1] - 0.1f, yy);
+
+				if (zz > m_tilt[2])
+					m_tilt[2] = std::min(m_tilt[2] + 0.1f, zz);
+				else if (zz < m_tilt[2])
+					m_tilt[2] = std::max(m_tilt[2] - 0.1f, zz);
 			}
 
 			*y = C(m_tilt[1] * range + base);
 			*x = C(m_tilt[0] * range + base);
+			*z = C(m_tilt[2] * range + base);
 		}
 	private:
-		float	m_tilt[2];
+		float	m_tilt[3];
 	};
 
 	class Cursor : public ControlGroup

@@ -272,14 +272,12 @@ ControllerEmu::Slider::Slider(const char* const _name) : ControlGroup(_name, GRO
 
 ControllerEmu::Force::Force(const char* const _name) : ControlGroup(_name, GROUP_TYPE_FORCE)
 {
-	memset(m_swing, 0, sizeof(m_swing));
-
-	controls.push_back(new Input(_trans("Up")));
-	controls.push_back(new Input(_trans("Down")));
-	controls.push_back(new Input(_trans("Left")));
-	controls.push_back(new Input(_trans("Right")));
 	controls.push_back(new Input(_trans("Forward")));
 	controls.push_back(new Input(_trans("Backward")));
+	controls.push_back(new Input(_trans("Left")));
+	controls.push_back(new Input(_trans("Right")));
+	controls.push_back(new Input(_trans("Up")));
+	controls.push_back(new Input(_trans("Down")));
 
 	settings.push_back(new Setting(_trans("Dead Zone"), 0, 0, 50));
 }
@@ -293,6 +291,8 @@ ControllerEmu::Tilt::Tilt(const char* const _name)
 	controls.push_back(new Input("Backward"));
 	controls.push_back(new Input("Left"));
 	controls.push_back(new Input("Right"));
+	controls.push_back(new Input("Up"));
+	controls.push_back(new Input("Down"));
 
 	controls.push_back(new Input(_trans("Modifier")));
 
