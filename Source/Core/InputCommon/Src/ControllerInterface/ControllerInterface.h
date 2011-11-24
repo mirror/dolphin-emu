@@ -84,7 +84,7 @@ public:
 			// things like absolute axes/ absolute mouse position will override this
 			virtual bool IsDetectable() { return true; }
 
-			virtual ControlState GetState() const = 0;
+			virtual ControlState GetState(bool relative = false) const = 0;
 
 			Input* ToInput() { return this; }
 		};
@@ -110,9 +110,6 @@ public:
 		virtual int GetId() const = 0;
 		virtual std::string GetSource() const = 0;
 		virtual bool UpdateInput() = 0;
-		#ifdef _WIN32
-		virtual bool UpdateInput(LPARAM lParam) = 0;
-		#endif
 		virtual bool UpdateOutput() = 0;
 
 		virtual void ClearInputState();
@@ -172,7 +169,7 @@ public:
 	public:
 		virtual ~ControlReference() {}
 
-		virtual ControlState State(const ControlState state = 0) = 0;
+		virtual ControlState State(const ControlState state = 0, bool relative = false) = 0;
 		virtual Device::Control* Detect(const unsigned int ms, Device* const device) = 0;
 		size_t BoundCount() const { return m_controls.size(); }
 
@@ -203,7 +200,7 @@ public:
 	{
 	public:
 		InputReference() : ControlReference(true) {}
-		ControlState State(const ControlState state);
+		ControlState State(const ControlState state, bool relative = false);
 		Device::Control* Detect(const unsigned int ms, Device* const device);
 	};
 
@@ -216,7 +213,7 @@ public:
 	{
 	public:
 		OutputReference() : ControlReference(false) {}
-		ControlState State(const ControlState state);
+		ControlState State(const ControlState state, bool relative = false);
 		Device::Control* Detect(const unsigned int ms, Device* const device);
 	};
 

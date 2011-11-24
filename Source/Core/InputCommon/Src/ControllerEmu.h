@@ -47,12 +47,18 @@ enum
 	GROUP_TYPE_UDPWII,
 	GROUP_TYPE_SLIDER,
 };
-
 enum
 {
-	SETTING_RADIUS,
-	SETTING_DEADZONE,
-	SETTING_SQUARE,
+	AS_RADIUS,
+	AS_DEADZONE,
+	AS_SQUARE,
+};
+enum
+{
+	C_SENSITIVITY,
+	C_CENTER,
+	C_WIDTH,
+	C_HEIGHT,
 };
 
 const char * const named_directions[] = 
@@ -146,9 +152,9 @@ public:
 			ControlState yy = controls[0]->control_ref->State() - controls[1]->control_ref->State();
 			ControlState xx = controls[3]->control_ref->State() - controls[2]->control_ref->State();
 
-			ControlState radius = settings[SETTING_RADIUS]->value;
-			ControlState deadzone = settings[SETTING_DEADZONE]->value;
-			ControlState square = settings[SETTING_SQUARE]->value;
+			ControlState radius = settings[AS_RADIUS]->value;
+			ControlState deadzone = settings[AS_DEADZONE]->value;
+			ControlState square = settings[AS_SQUARE]->value;
 			ControlState m = controls[4]->control_ref->State();
 
 			// modifier code
@@ -386,9 +392,29 @@ public:
 		Cursor(const char* const _name);
 
 		template <typename C>
-		void GetState(C* const x, C* const y, C* const z, const bool adjusted = false)
+		void GetState(C* const x, C* const y, C* const z, const bool adjusted = false, const bool relative = false)
 		{
-			const float zz = controls[4]->control_ref->State() - controls[5]->control_ref->State();
+			if (relative) {
+				std::string state = ""; for(int i=0; i<controls.size(); i++)
+					state += StringFromFormat("%0.2f ", controls[i]->control_ref->State(0, true));				
+				//SWARN_LOG(CONSOLE, "Cursor::GetState: size %d, state %s", controls.size(), state.c_str());				
+				float yy = controls[0]->control_ref->State(0, true);
+				float xx = controls[2]->control_ref->State(0, true);
+				float zz = controls[4]->control_ref->State(0, true);
+				// settings
+				if (adjusted)
+				{
+					yy *= settings[C_SENSITIVITY]->value;
+					xx *= settings[C_SENSITIVITY]->value;					
+					zz *= settings[C_SENSITIVITY]->value;
+				}				
+				*y = yy;
+				*x = xx;
+				*z = zz;
+				return;
+			}
+
+			const float zz = controls[4]->control_ref->State(0, true) - controls[5]->control_ref->State();
 
 			// silly being here
 			if (zz > m_z)
@@ -406,14 +432,14 @@ public:
 			else
 			{
 				float yy = controls[0]->control_ref->State() - controls[1]->control_ref->State();
-				float xx = controls[3]->control_ref->State() - controls[2]->control_ref->State();
+				float xx = controls[3]->control_ref->State() - controls[2]->control_ref->State();				
 
 				// adjust cursor according to settings
 				if (adjusted)
 				{
-					xx *= (settings[1]->value * 2);
-					yy *= (settings[2]->value * 2);
-					yy += (settings[0]->value - 0.5f);
+					xx *= (settings[C_WIDTH]->value * 2) * settings[C_SENSITIVITY]->value;
+					yy *= (settings[C_HEIGHT]->value * 2) * settings[C_SENSITIVITY]->value;
+					yy += (settings[C_CENTER]->value - 0.5f) * settings[C_SENSITIVITY]->value;
 				}
 
 				*x = xx;

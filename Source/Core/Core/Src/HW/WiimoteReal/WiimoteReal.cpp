@@ -240,9 +240,11 @@ void Wiimote::Update()
 	Report const rpt = ProcessReadQueue();
 
 	// Send the report
-	if (rpt.first != NULL && m_channel > 0)
+	if (rpt.first != NULL && m_channel > 0) {
+		::Wiimote::Eavesdrop(NULL, rpt.first, rpt.second);
 		Core::Callback_WiimoteInterruptChannel(index, m_channel,
 			rpt.first, rpt.second);
+		}
 
 	// Delete the data if it isn't also the last data rpt
 	if (rpt != m_last_data_report)

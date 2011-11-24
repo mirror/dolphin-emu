@@ -47,6 +47,25 @@ struct hid_packet {
 
 typedef u16 wm_core;
 
+struct wm_core_bt {
+	u8 left : 1;
+	u8 right : 1;
+	u8 down : 1;
+	u8 up : 1;
+	u8 plus : 1;
+	u8 unknown1: 1;
+	u8 unknown2: 1;
+	u8 unknown3: 1;
+	u8 two : 1;
+	u8 one : 1;
+	u8 b : 1;
+	u8 a : 1;
+	u8 minus : 1;
+	u8 unknown4: 1;
+	u8 unknown5: 1;
+	u8 home : 1;
+};
+
 struct wm_accel
 {
 	u8 x, y, z;
@@ -82,7 +101,17 @@ struct wm_extension
 	u8 ax; // accelerometer
 	u8 ay;
 	u8 az;
-	u8 bt; // buttons
+	u8 bt;
+};
+struct wm_extension_bt
+{
+	u8 jx; // joystick x, y
+	u8 jy;
+	u8 ax; // accelerometer
+	u8 ay;
+	u8 az;
+	u8 bz : 1; // buttons
+	u8 bc : 1; 
 };
 
 struct wm_classic_extension
@@ -159,25 +188,77 @@ struct wm_turntable_extension
 	};
 };
 
-struct wm_motionplus_data
+struct wm_motionplus_nc //nunchuk data on motion-plus pass-through
+{
+	u8 jx;
+	u8 jy;
+	u8 ax;
+	u8 ay;
+
+	u8 extension_connected : 1; // 1 usually
+	u8 az : 7;
+	u8 dummy : 1; //0 always
+
+	u8 is_mp_data : 1; //0 when nunchuk interleaved data
+	u8 bz : 1;
+	u8 bc : 1;
+	u8 axLS : 1; // ls 1, ls0 = 0 by default,
+	u8 ayLS : 1;
+	u8 azLS : 2;
+};
+
+struct wm_motionplus
 {
 	u8 yaw1;
-	
 	u8 roll1;
-	
 	u8 pitch1;
 
-	u8 yaw2 : 6;
-	u8 yaw_slow : 1;
 	u8 pitch_slow : 1;
-
-	u8 roll2 : 6;
-	u8 roll_slow : 1;
+	u8 yaw_slow : 1;
+	u8 yaw2 : 6;
 	u8 extension_connected : 1;
 
-	u8 pitch2 : 6;
+	u8 roll_slow : 1;
+	u8 roll2 : 6;
+	u8 dummy : 1;
+
 	u8 is_mp_data : 1;
-	u8 zero : 1;
+	u8 pitch2 : 6;
+};
+
+struct wm_motionplus_calibration
+{
+	u16 pitch : 14;
+	u8 : 2;
+	u16 roll : 14;
+	u8 : 2;
+	u16 yaw : 14;
+	u8 : 2;
+
+	u16 pitch_min : 14;
+	u8 : 2;
+	u16 pitch_max : 14;
+	u8 : 2;
+	u16 roll_min : 14;
+	u8 : 2;
+	u16 roll_max : 14;
+	u8 : 2;
+
+	u16 pitch_slow : 14;
+	u8 : 2;
+	u16 roll_slow  : 14;
+	u8 : 2;
+	u16 yaw_slow  : 14;
+	u8 : 2;
+
+	u16 pitch_min_slow : 14;
+	u8 : 2;
+	u16 pitch_max_slow : 14;
+	u8 : 2;
+	u16 roll_min_slow : 14;
+	u8 : 2;
+	u16 : 16;
+	u16 : 16;
 };
 
 struct wm_report

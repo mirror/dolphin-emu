@@ -184,17 +184,17 @@ std::string Device::Motor::GetName() const
 
 // GET / SET STATES
 
-ControlState Device::Button::GetState() const
+ControlState Device::Button::GetState(bool relative) const
 {
 	return (m_buttons & named_buttons[m_index].bitmask) > 0;
 }
 
-ControlState Device::Trigger::GetState() const
+ControlState Device::Trigger::GetState(bool relative) const
 {
 	return ControlState(m_trigger) / m_range;
 }
 
-ControlState Device::Axis::GetState() const
+ControlState Device::Axis::GetState(bool relative) const
 {
 	return std::max( 0.0f, ControlState(m_axis) / m_range );
 }

@@ -10,31 +10,10 @@ namespace ciface
 namespace RInput
 {
 
-void write(const char *fmt, ...) {
-	return;
-	if (!GetConsoleWindow()) {
-		AllocConsole();
-		int iWidth = 120, iHeight = 50;
-		COORD Co = {iWidth, 1000};
-		bool SB = SetConsoleScreenBufferSize(GetStdHandle(STD_OUTPUT_HANDLE), Co);
-		MoveWindow(GetConsoleWindow(), 0,0, 3000*8,iHeight*14, true);
-	}
-	static int i = 0; i++;
-	static const int MAX_BYTES = 1024*8;
-	char s[MAX_BYTES];
-	va_list argptr;
-	int cnt;
-	va_start(argptr, fmt);
-	cnt = vsnprintf(s, MAX_BYTES, fmt, argptr);
-	va_end(argptr);
-	DWORD cCharsWritten;
-	WriteConsoleA(GetStdHandle(STD_OUTPUT_HANDLE), s, strlen(s), &cCharsWritten, NULL);
-}
-
 std::vector<ControllerInterface::Device*> *m_devices;
-bool UpdateInput(LPARAM lParam);
 WNDPROC pOldWinProc = 0;
 HWND hwnd = 0;
+void UpdateInput(LPARAM lParam);
 
 typedef WINUSERAPI INT (WINAPI *pGetRawInputDeviceList)(OUT PRAWINPUTDEVICELIST pRawInputDeviceList, IN OUT PINT puiNumDevices, IN UINT cbSize);
 typedef WINUSERAPI INT (WINAPI *pGetRawInputData)(IN HRAWINPUT hRawInput, IN UINT uiCommand, OUT LPVOID pData, IN OUT PINT pcbSize, IN UINT cbSizeHeader);
@@ -144,19 +123,16 @@ void SetHWND(HWND _hwnd)
 {
 	// restore old wndproc pointer
 	if(pOldWinProc) {
-		SetWindowLongPtr(hwnd, GWLP_WNDPROC, (long)pOldWinProc);
-		write("old %d %d\n", hwnd, pOldWinProc);
+		SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)pOldWinProc);
 	}
 	// update pointer
 	hwnd = _hwnd;
 	pOldWinProc = (WNDPROC)GetWindowLongPtr(hwnd, GWLP_WNDPROC);
-	SetWindowLongPtr(hwnd, GWLP_WNDPROC, (long)RWndproc);
-	write("new %d %d\n", hwnd, pOldWinProc);
+	SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)RWndproc);
 }
 
 void Init(std::vector<ControllerInterface::Device*>& devices, HWND _hwnd)
 {
-	write("Init\n");
 	char guid[512];	
 	m_devices = &devices;
 	SetHWND(_hwnd);
@@ -168,7 +144,6 @@ void Init(std::vector<ControllerInterface::Device*>& devices, HWND _hwnd)
 	for(int i=0; i<raw_mouse_count(); i++) {
 		strcpy(guid, get_raw_mouse_name(i));
 		devices.push_back(new Mouse(i,guid));
-		write("push_back %d %s\n", i, guid);
 	}
 	rawinput_active = true;
 }
@@ -187,16 +162,9 @@ bool MouseOver(HWND hwnd)
 }
 
 // called by windows
-bool UpdateInput(LPARAM lParam)
+void UpdateInput(LPARAM lParam)
 {
-	size_t ok_count = 0;
-	std::vector<ControllerInterface::Device*>::const_iterator
-		d = m_devices->begin(),
-		e = m_devices->end();
-	for ( ;d != e; ++d ) {
-		if ((*d)->UpdateInput(lParam)) ++ok_count;
-	}
-	return (m_devices->size() == ok_count);
+	add_to_raw_mouse_x_and_y((HRAWINPUT)lParam);
 }
 
 Mouse::~Mouse() {
@@ -208,7 +176,6 @@ Mouse::Mouse(int _hid, char _guid[512])
 {
 	hid = _hid;
 	mouse_x = 0; mouse_y = 0;
-	mouse_sensitivity = 30;
 	ZeroMemory(&m_state_in, sizeof(m_state_in));
 	strcpy(guid, _guid);
 	
@@ -217,7 +184,7 @@ Mouse::Mouse(int _hid, char _guid[512])
 		AddInput(new Button(i, m_state_in.button[i], this));
 	// cursor
 	for (unsigned int i=0; i<4; ++i)
-		AddInput(new Cursor(!!(i&2), (&m_state_in.cursor.x)[i/2], !!(i&1), this));
+		AddInput(new Cursor(!!(i&2), (&m_state_in.cursor.x)[i/2], (&m_state_in.cursor.x_d)[i/2], !!(i&1)));
 }
 void Mouse::DetectDevice() {
 	int done;
@@ -245,15 +212,17 @@ std::string Mouse::GetName() const { return "Mouse"; }
 int Mouse::GetId() const { return hid; }
 std::string Mouse::GetSource() const { return "RInput"; }
 
-ControlState Mouse::Button::GetState() const
+ControlState Mouse::Button::GetState(bool relative) const
 {
-	m_parent->_UpdateOutput();
 	return (m_button != 0);
 }
-ControlState Mouse::Cursor::GetState() const
+ControlState Mouse::Cursor::GetState(bool relative) const
 {
-	m_parent->_UpdateOutput();
-	return std::max(0.0f, ControlState(m_axis) / (m_positive ? 1.0f : -1.0f));
+	//SERROR_LOG(CONSOLE, "RI::Cursor::GetState: index %d %d, positive %d, state %f", m_i, m_index, m_positive, ControlState(m_axis));
+	if (relative)
+		return ControlState(m_axis_d);
+	else
+		return std::max(0.0f, ControlState(m_axis) / (m_positive ? 1.0f : -1.0f));
 }
 
 std::string Mouse::Button::GetName() const
@@ -268,46 +237,51 @@ std::string Mouse::Cursor::GetName() const
 	return tmpstr;
 }
 
-bool Mouse::_UpdateOutput()
+bool Mouse::UpdateInput()
 {
-	if(!MouseOver(hwnd)) return false;
+	static bool capture = false, keyDown = false;
+	if(!keyDown && GetAsyncKeyState(VK_F11)) { capture = !capture; keyDown = true;
+		WARN_LOG(CONSOLE, "Capture mouse: %d", capture); } if(!GetAsyncKeyState(VK_F11)) keyDown = false;
 
-	int data_x, data_y;
+	if(!MouseOver(hwnd) && !capture) return false;
+
 	BOOL data_absolute;
 
 	// retriev raw data
-	data_x = get_raw_mouse_x_delta(hid);
-	data_y = get_raw_mouse_y_delta(hid);	
+	mouse_x_d = get_raw_mouse_x_delta(hid);
+	mouse_y_d = get_raw_mouse_y_delta(hid);	
 	for(int i = 0; i < MAX_RAW_MOUSE_BUTTONS; i++) {
 		m_state_in.button[i] = is_raw_mouse_button_pressed(hid,i);
 	}
 	data_absolute = is_raw_mouse_absolute(hid);
 
-	data_x = ceil((double)data_x * mouse_sensitivity / 100.0-0.5);
-	data_y = ceil((double)data_y * mouse_sensitivity / 100.0-0.5);
+	//mouse_x_d = ceil(mouse_x_d * mouse_sensitivity / 100.0 - 0.5);
+	//mouse_y_d = ceil(mouse_y_d * mouse_sensitivity / 100.0 - 0.5);
 
 	// relative mouse
 	if(!data_absolute) {
-		mouse_x += data_x;
-		mouse_y += data_y;
+		mouse_x += mouse_x_d;
+		mouse_y += mouse_y_d;
 	} else {
-		mouse_x = data_x;
-		mouse_y = data_y;
+		mouse_x = mouse_x_d;
+		mouse_y = mouse_y_d;
 	}
 	// containing box
 	RECT r;
 	GetWindowRect(hwnd, &r);
 	if(mouse_x < 0) mouse_x = 0;
 	if(mouse_y < 0) mouse_y = 0;
-	if(mouse_x > r.right) mouse_x = r.right;
-	if(mouse_y > r.bottom) mouse_y = r.bottom;
+	if(mouse_x > r.right-r.left) mouse_x = r.right-r.left;
+	if(mouse_y > r.bottom-r.top) mouse_y = r.bottom-r.top;
 
 	// save
 	m_state_in.cursor.x = ((float)mouse_x-((float)(r.right-r.left)/2.0)) / ((float)(r.right-r.left)/2.0);
 	m_state_in.cursor.y = ((float)mouse_y-((float)(r.bottom-r.top)/2.0)) / ((float)(r.bottom-r.top)/2.0);
+	m_state_in.cursor.x_d = mouse_x_d;
+	m_state_in.cursor.y_d = mouse_y_d;
 
 	// sync cursor
-	if(!(mouse_x == last_mouse_x && mouse_y == last_mouse_y)) {
+	//if(!(mouse_x == last_mouse_x && mouse_y == last_mouse_y)) {
 		// force default cursor
 		ShowCursor(1);
 		// windowed mode adjustments
@@ -318,17 +292,17 @@ bool Mouse::_UpdateOutput()
 			r.right -= 4;
 			r.bottom -= 4;
 		}
-		SetCursorPos(r.left + mouse_x,r.top + mouse_y);
-	}
+		if(capture) {
+			ClipCursor(&r);
+			SetCursorPos(r.left + mouse_x,r.top + mouse_y);
+		}
+		else
+			ClipCursor(NULL);
+	//}
 	last_mouse_x = mouse_x; last_mouse_y = mouse_y;
-	write("UpdateOutput %d %d %d %dd | %d %d | %d %d | %0.2f %0.2f\n", r.top, r.left, r.right, r.bottom, data_x, data_y, mouse_x, mouse_y,
-		m_state_in.cursor.x, m_state_in.cursor.y);
-	return true;
-}
 
-bool Mouse::UpdateInput(LPARAM lParam)
-{
-	add_to_raw_mouse_x_and_y((HRAWINPUT)lParam);	
+	//SWARN_LOG(CONSOLE, "UpdateOutput %d %d %d %d | %d %d | %d %d | %0.2f %0.2f\n", r.top, r.left, r.right, r.bottom, mouse_x_d, mouse_y_d, mouse_x, mouse_y,
+	//	m_state_in.cursor.x, m_state_in.cursor.y);
 	return true;
 }
 

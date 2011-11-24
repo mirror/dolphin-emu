@@ -3,6 +3,7 @@
 #define _WIIMOTE_H_
 
 #include "../../InputCommon/Src/InputConfig.h"
+#include "WiimoteEmu/WiimoteEmu.h"
 
 #define MAX_WIIMOTES	4
 
@@ -17,9 +18,12 @@ enum
 };
 
 extern unsigned int g_wiimote_sources[MAX_WIIMOTES];
+u32 swap24(const u8* src);
 
 namespace Wiimote
 {
+
+void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size);
 
 void Shutdown();
 void Initialize(void* const hwnd);

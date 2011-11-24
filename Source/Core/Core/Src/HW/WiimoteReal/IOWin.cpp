@@ -376,6 +376,8 @@ int Wiimote::IOWrite(unsigned char* buf, int len)
 	DWORD bytes, dw;
 	int i;
 
+	::Wiimote::Eavesdrop(NULL, buf, len);
+
 	init_lib();
 
 	if (!IsConnected())

@@ -36,17 +36,12 @@
 #include "Common.h"
 #include "FileUtil.h"
 
+#include "../Wiimote.h"
 #include "WiimoteEmu.h"
 #include "WiimoteHid.h"
 #include "../WiimoteReal/WiimoteReal.h"
 
 #include "Attachment/Attachment.h"
-
-/* Bit shift conversions */
-static u32 swap24(const u8* src)
-{
-	return (src[0] << 16) | (src[1] << 8) | src[2];
-}
 
 namespace WiimoteEmu
 {
@@ -199,11 +194,16 @@ void Wiimote::SendAck(u8 _reportID)
 	ack->reportID = _reportID;
 	ack->errorID = 0;
 
+	::Wiimote::Eavesdrop(this, data, (int)sizeof(data));
 	Core::Callback_WiimoteInterruptChannel( m_index, m_reporting_channel, data, sizeof(data));
 }
 
 void Wiimote::HandleExtensionSwap()
 {
+	// m+ switch
+	if (GetMotionPlusActive() && !GetMotionPlusAttached()) {
+		m_reg_motion_plus.ext_identifier[2] = 0xa6;
+	}
 	// handle switch extension
 	if (m_extension->active_extension != m_extension->switch_extension)
 	{
@@ -218,8 +218,10 @@ void Wiimote::HandleExtensionSwap()
 		// set register, I hate this
 		const std::vector<u8> &reg = ((WiimoteEmu::Attachment*)m_extension->attachments[m_extension->active_extension])->reg;
 		memset(&m_reg_ext, 0, WIIMOTE_REG_EXT_SIZE);
-		memcpy(&m_reg_ext, &reg[0], reg.size());
-
+		memcpy(&m_reg_ext, &reg[0], reg.size());			
+		if(m_extension->active_extension == EXT_NUNCHUK && GetMotionPlusAttached()) {
+			memcpy(&m_reg_motion_plus.ext_calib, nunchuck_calibration, sizeof(nunchuck_calibration));			
+		}
 	}
 }
 
@@ -228,12 +230,17 @@ void Wiimote::HandleExtensionSwap()
    the status request rs and all its eventual instructions it may include (for
    example turn off rumble or something else) and just send the status
    report. */
-void Wiimote::RequestStatus(const wm_request_status* const rs)
+void Wiimote::RequestStatus(const wm_request_status* const rs, int ext)
 {
 	HandleExtensionSwap();
 
 	// update status struct
-	m_status.extension = (m_extension->active_extension || m_motion_plus_active) ? 1 : 0;
+	if (ext == -1)
+		m_status.extension = (m_extension->active_extension || GetMotionPlusActive()) ? 1 : 0;
+	else
+		m_status.extension = ext;
+
+	m_status.speaker = m_status.speaker;
 
 	// set up report
 	u8 data[8];
@@ -261,6 +268,7 @@ void Wiimote::RequestStatus(const wm_request_status* const rs)
 	}
 
 	// send report
+	::Wiimote::Eavesdrop(this, data, sizeof(data));
 	Core::Callback_WiimoteInterruptChannel(m_index, m_reporting_channel, data, sizeof(data));
 }
 
@@ -268,8 +276,8 @@ void Wiimote::RequestStatus(const wm_request_status* const rs)
 void Wiimote::WriteData(const wm_write_data* const wd)
 {
 	u32 address = swap24(wd->address);
-
-	// ignore the 0x010000 bit
+	u8 addressHI = (address >> 16) & 0xFE;
+	u8 addressLO = address & 0xFFFF;
 	address &= ~0x010000;
 
 	if (wd->size > 16)
@@ -309,16 +317,11 @@ void Wiimote::WriteData(const wm_write_data* const wd)
 	case WM_SPACE_REGS2 :
 		{
 			// Write to Control Register
-
-			// ignore second byte for extension area
-			if (0xA4 == (address >> 16))
-				address &= 0xFF00FF;
-
 			const u8 region_offset = (u8)address;
 			void *region_ptr = NULL;
 			int region_size = 0;
 
-			switch (address >> 16)
+			switch (addressHI)
 			{
 			// speaker
 			case 0xa2 :
@@ -328,13 +331,13 @@ void Wiimote::WriteData(const wm_write_data* const wd)
 
 			// extension register
 			case 0xa4 :
-				region_ptr = m_motion_plus_active ? (void*)&m_reg_motion_plus : (void*)&m_reg_ext;
+				region_ptr = GetMotionPlusActive() ? (void*)&m_reg_motion_plus : (void*)&m_reg_ext;
 				region_size = WIIMOTE_REG_EXT_SIZE;
 				break;
 
 			// motion plus
 			case 0xa6 :
-				if (false == m_motion_plus_active)
+				if (!GetMotionPlusActive() && GetMotionPlusAttached())
 				{
 					region_ptr = &m_reg_motion_plus;
 					region_size = WIIMOTE_REG_EXT_SIZE;
@@ -368,23 +371,70 @@ void Wiimote::WriteData(const wm_write_data* const wd)
 
 			if (&m_reg_ext == region_ptr)
 			{
-				// Run the key generation on all writes in the key area, it doesn't matter 
-				// that we send it parts of a key, only the last full key will have an effect
-				if (address >= 0xa40040 && address <= 0xa4004c)
+				// Run the key generation on all writes in the key area, only the last full key will have an effect
+				if(addressLO >= 0x40 && addressLO <= 0x4c)
 					wiimote_gen_key(&m_ext_key, m_reg_ext.encryption_key);
 			}
+
 			else if (&m_reg_motion_plus == region_ptr)
 			{
-				// activate/deactivate motion plus
-				if (0x55 == m_reg_motion_plus.activated)
+				switch (addressHI)
 				{
-					// maybe hacky
-					m_reg_motion_plus.activated = 0;
-					m_motion_plus_active ^= 1;
-
-					RequestStatus();
+				case 0xa4:
+				switch (region_offset) {
+					case 0xfb:
+						if (mp_last_write_reg == 0xfe) {
+						}
+						if (mp_last_write_reg == 0xf0) {
+							ERROR_LOG(CONSOLE, "W[0x%02x 0x%02x:%04x]: WM+ already disabled [ext:%i]", wd->data[0], addressHI, region_offset, m_extension->active_extension);							
+							m_reg_motion_plus.ext_identifier[4] = 0x05;
+							m_reg_motion_plus.state = 0x08;
+						}
+					break;
+					// calibration
+					case 0xf1:
+						// failed, try again. TODO: make it never fail
+						if (!wd->data[0]) {
+							m_reg_motion_plus.ext_identifier[2] = 0xa6;
+							m_reg_motion_plus.state = 0x08;
+							RequestStatus(NULL, 0);
+							if (m_extension->active_extension != EXT_NONE) {
+								RequestStatus(NULL, 1);
+								RequestStatus(NULL, 0);
+							}
+							RequestStatus(NULL, 1);
+						} else {
+							m_reg_motion_plus.state = 0x1a;
+							memcpy(&m_reg_motion_plus.gyro_calib, motionplus_accel_gyro_syncing2, sizeof(motionplus_accel_gyro_syncing2));
+						}
+					break;
+					case 0xf2:
+						if(m_reg_motion_plus.state < 0x0e) {
+							m_reg_motion_plus.state = 0x0e;
+							memcpy(&m_reg_motion_plus.gyro_calib, motionplus_accel_gyro_syncing, sizeof(motionplus_accel_gyro_syncing));
+						}
+					break;
+				}
+				break;
+				case 0xa6:
+				switch (region_offset) {
+					case 0xfe:
+					// activate
+					if (!GetMotionPlusActive() && 0x05 == wd->data[0])
+					{
+						ERROR_LOG(CONSOLE, "W[0x%02x 0x%02x:%04x]: Enabling WM+", wd->data[0], addressHI, region_offset);
+						m_reg_motion_plus.ext_identifier[2] = 0xa4;
+						m_reg_motion_plus.ext_identifier[4] = wd->data[0];
+						m_reg_motion_plus.state = 0x08;
+						RequestStatus(NULL, 0);
+						RequestStatus(NULL, 1);
+					}
+					break;
+				}
+				break;			
 				}
 			}
+			mp_last_write_reg = region_offset;
 		}
 		break;
 
@@ -393,13 +443,11 @@ void Wiimote::WriteData(const wm_write_data* const wd)
 		break;
 	}
 }
-
-/* Read data from Wiimote and Extensions registers. */
-void Wiimote::ReadData(const wm_read_data* const rd) 
+// Read data from Wiimote and Extensions registers
+void Wiimote::ReadData(const wm_read_data* const rd)
 {
 	u32 address = swap24(rd->address);
 	u16 size = Common::swap16(rd->size);
-
 	// ignore the 0x010000 bit
 	address &= 0xFEFFFF;
 
@@ -472,14 +520,14 @@ void Wiimote::ReadData(const wm_read_data* const rd)
 
 			// extension
 			case 0xa4:
-				region_ptr = m_motion_plus_active ? (void*)&m_reg_motion_plus : (void*)&m_reg_ext;
+				region_ptr = GetMotionPlusActive() ? (void*)&m_reg_motion_plus : (void*)&m_reg_ext;
 				region_size = WIIMOTE_REG_EXT_SIZE;
 				break;
 
 			// motion plus
 			case 0xa6:
 				// reading from 0xa6 returns error when mplus is activated
-				if (false == m_motion_plus_active)
+				if (false == GetMotionPlusActive())
 				{
 					region_ptr = &m_reg_motion_plus;
 					region_size = WIIMOTE_REG_EXT_SIZE;
@@ -496,16 +544,15 @@ void Wiimote::ReadData(const wm_read_data* const rd)
 			if (region_ptr && (region_offset + size <= region_size))
 			{
 				memcpy(block, (u8*)region_ptr + region_offset, size);
-			}
-			else
+			} else
 				size = 0;	// generate read error
 
 			if (&m_reg_ext == region_ptr)
 			{
-				// Encrypt data read from extension register
-				// Check if encrypted reads is on
-				if (0xaa == m_reg_ext.encryption)
-					wiimote_encrypt(&m_ext_key, block, address & 0xffff, (u8)size);
+				// encrypt
+				if (0xaa == m_reg_ext.encryption) {
+					wiimote_encrypt(&m_ext_key, block, address&0xffff, (u8)size);
+				}
 			}
 		}
 		break;
@@ -588,6 +635,7 @@ void Wiimote::SendReadDataReply(ReadRequest& _request)
 	}
 
 	// Send a piece
+	::Wiimote::Eavesdrop(this, data, sizeof(data));
 	Core::Callback_WiimoteInterruptChannel(m_index, m_reporting_channel, data, sizeof(data));
 }
 

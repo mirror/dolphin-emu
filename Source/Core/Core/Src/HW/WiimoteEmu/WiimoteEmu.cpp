@@ -42,27 +42,6 @@ inline double round(double x) { return (x-floor(x))>0.5 ? ceil(x) : floor(x); } 
 namespace WiimoteEmu
 {
 
-/* An example of a factory default first bytes of the Eeprom memory. There are differences between
-   different Wiimotes, my Wiimote had different neutral values for the accelerometer. */
-static const u8 eeprom_data_0[] = {
-	// IR, maybe more
-	// assuming last 2 bytes are checksum
-	0xA1, 0xAA, 0x8B, 0x99, 0xAE, 0x9E, 0x78, 0x30, 0xA7, /*0x74, 0xD3,*/ 0x00, 0x00,	// messing up the checksum on purpose
-	0xA1, 0xAA, 0x8B, 0x99, 0xAE, 0x9E, 0x78, 0x30, 0xA7, /*0x74, 0xD3,*/ 0x00, 0x00,
-	// Accelerometer
-	// 0g x,y,z, 1g x,y,z, idk, last byte is a checksum
-	0x80, 0x80, 0x80, 0x00, 0x9A, 0x9A, 0x9A, 0x00, 0x40, 0xE3,
-	0x80, 0x80, 0x80, 0x00, 0x9A, 0x9A, 0x9A, 0x00, 0x40, 0xE3,
-};
-
-static const u8 motion_plus_id[] = { 0x00, 0x00, 0xA6, 0x20, 0x00, 0x05 };
-
-static const u8 eeprom_data_16D0[] = {
-	0x00, 0x00, 0x00, 0xFF, 0x11, 0xEE, 0x00, 0x00,
-	0x33, 0xCC, 0x44, 0xBB, 0x00, 0x00, 0x66, 0x99,
-	0x77, 0x88, 0x00, 0x00, 0x2B, 0x01, 0xE8, 0x13
-};
-
 const ReportFeatures reporting_mode_features[] = 
 {
     //0x30: Core Buttons
@@ -193,6 +172,16 @@ const char* const named_buttons[] =
 	"A", "B", "1", "2", "-", "+", "Home",
 };
 
+bool Wiimote::GetMotionPlusAttached() const
+{
+	return m_options->settings[3]->value != 0;
+}
+
+bool Wiimote::GetMotionPlusActive() const
+{
+	return m_reg_motion_plus.ext_identifier[2] == 0xa4;
+}
+
 void Wiimote::Reset()
 {
 	m_reporting_mode = WM_REPORT_CORE;
@@ -202,9 +191,7 @@ void Wiimote::Reset()
 
 	m_rumble_on = false;
 	m_speaker_mute = false;
-	m_motion_plus_present = false;
-	m_motion_plus_active = false;
-
+	mp_passthrough = false;
 	// will make the first Update() call send a status request
 	// the first call to RequestStatus() will then set up the status struct extension bit
 	m_extension->active_extension = -1;
@@ -222,6 +209,8 @@ void Wiimote::Reset()
 	memset(&m_reg_ext, 0, sizeof(m_reg_ext));
 	memset(&m_reg_motion_plus, 0, sizeof(m_reg_motion_plus));
 
+	memcpy(&m_reg_motion_plus.calibration, motion_plus_calibration, sizeof(motion_plus_calibration));
+	memcpy(&m_reg_motion_plus.gyro_calib, motionplus_accel_gyro_syncing, sizeof(motionplus_accel_gyro_syncing));
 	memcpy(&m_reg_motion_plus.ext_identifier, motion_plus_id, sizeof(motion_plus_id));
 
 	// status
@@ -299,6 +288,7 @@ Wiimote::Wiimote( const unsigned int index )
 	m_options->settings.push_back(new ControlGroup::Setting(_trans("Background Input"), false));
 	m_options->settings.push_back(new ControlGroup::Setting(_trans("Sideways Wiimote"), false));
 	m_options->settings.push_back(new ControlGroup::Setting(_trans("Upright Wiimote"), false));
+	m_options->settings.push_back(new ControlGroup::Setting(_trans("MotionPlus"), true));
 
 	// TODO: This value should probably be re-read if SYSCONF gets changed
 	m_sensor_bar_on_top = (bool)SConfig::GetInstance().m_SYSCONF->GetData<u8>("BT.BAR");
@@ -319,9 +309,6 @@ bool Wiimote::Step()
 {
 	const bool has_focus = HAS_FOCUS;
 	const bool is_sideways = m_options->settings[1]->value != 0;
-
-	// TODO: change this a bit
-	m_motion_plus_present = m_extension->settings[0]->value != 0;
 
 	// no rumble if no focus
 	if (false == has_focus)
@@ -370,6 +357,12 @@ bool Wiimote::Step()
 		m_reporting_auto = false;
 
 		return true;
+	}
+	// m+ switch
+	if (GetMotionPlusActive() && !GetMotionPlusAttached()) {
+		RequestStatus(NULL, 0);
+		if (m_extension->active_extension != EXT_NONE)
+			RequestStatus();
 	}
 
 	return false;
@@ -461,6 +454,7 @@ void Wiimote::GetIRData(u8* const data, bool use_accel)
 		LowPassFilter(ir_sin,nsin,1.0f/60);
 		LowPassFilter(ir_cos,ncos,1.0f/60);
 
+		//SERROR_LOG(CONSOLE, "IR:GetState()");
 		m_ir->GetState(&xx, &yy, &zz, true);
 		UDPTLayer::GetIR(m_udp, &xx, &yy, &zz);
 
@@ -579,43 +573,123 @@ void Wiimote::GetExtData(u8* const data)
 	memcpy(m_reg_ext.controller_data, data, sizeof(wm_extension));
 
 	// motionplus pass-through modes
-	if (m_motion_plus_active)
+	if (GetMotionPlusActive())
 	{
-		switch (m_reg_motion_plus.ext_identifier[0x4])
-		{
-		// nunchuck pass-through mode
-		// Bit 7 of byte 5 is moved to bit 6 of byte 5, overwriting it
-		// Bit 0 of byte 4 is moved to bit 7 of byte 5
-		// Bit 3 of byte 5 is moved to bit 4 of byte 5, overwriting it
-		// Bit 1 of byte 5 is moved to bit 3 of byte 5
-		// Bit 0 of byte 5 is moved to bit 2 of byte 5, overwriting it 
-		case 0x5:
-			//data[5] & (1 << 7)
-			//data[4] & (1 << 0)
-			//data[5] & (1 << 3)
-			//data[5] & (1 << 1)
-			//data[5] & (1 << 0)
-			break;
+		if(mp_passthrough && m_extension->active_extension != EXT_NONE) {
+			static u8 _data[6] = {0x00, 0x80, 0x80, 0x80, 0xb3, 0x8c};
+			switch (m_reg_motion_plus.ext_identifier[0x4])
+			{
+			// nunchuck pass-through mode
+			// Bit 7 of byte 5 is moved to bit 6 of byte 5, overwriting it
+			// Bit 0 of byte 4 is moved to bit 7 of byte 5
+			// Bit 3 of byte 5 is moved to bit 4 of byte 5, overwriting it
+			// Bit 1 of byte 5 is moved to bit 3 of byte 5
+			// Bit 0 of byte 5 is moved to bit 2 of byte 5, overwriting it 
+			case 0x5:
+				//data[5] & (1 << 7);
+				//data[4] & (1 << 0);
+				//data[5] & (1 << 3);
+				//data[5] & (1 << 1);
+				//data[5] & (1 << 0);
+				((wm_motionplus_nc*)data)->jx = ((wm_extension*)data)->jx;
+				((wm_motionplus_nc*)data)->jy = ((wm_extension*)data)->jy;
+				((wm_motionplus_nc*)data)->ax = ((wm_extension*)data)->ax;
+				((wm_motionplus_nc*)data)->ay = ((wm_extension*)data)->ay;
+				((wm_motionplus_nc*)data)->az = ((wm_extension*)data)->az;
+				((wm_motionplus_nc*)data)->bz = ((wm_extension_bt*)data)->bz;
+				((wm_motionplus_nc*)data)->bc = ((wm_extension_bt*)data)->bc;
+				((wm_motionplus_nc*)data)->is_mp_data = 0;
+				((wm_motionplus_nc*)data)->extension_connected = 1;
+				((wm_motionplus_nc*)data)->dummy = 0;
+				//memcpy(data, _data, 6);
+				//ERROR_LOG(CONSOLE, "Ext: %s", ArrayToString(data, 6).c_str());
+				break;
+			// classic controller/musical instrument pass-through mode
+			// Bit 0 of Byte 4 is overwritten
+			// Bits 0 and 1 of Byte 5 are moved to bit 0 of Bytes 0 and 1, overwriting
+			case 0x7:
+				//data[4] & (1 << 0)
+				//data[5] & (1 << 0)
+				//data[5] & (1 << 1)
+				break;
+			// unknown pass-through mode
+			default:
+				break;
+			}
+		} else {
+			memset(data, 0, sizeof(wm_motionplus));
+			const bool has_focus = HAS_FOCUS;
+			const bool is_sideways = m_options->settings[1]->value != 0;
+			const bool is_upright = m_options->settings[2]->value != 0;
+			static const float SWING_INT = 2.5;
+			AccelData sh;
+			float sw[3] = {0};
+			float tr = 0, tp = 0;		
+			static float dx = 0, dy = 0, dz = 0;
+			static u16 y, p, r;
+			u8 y1,y2, p1,p2, r1,r2;
+			if (has_focus)
+			{
+				// shake
+				static const double shake_data[] = { -2.5f, -5.0f, -2.5f, 0.0f, 2.5f, 5.0f, 2.5f, 0.0f };
+				static const unsigned int btns[] = { 0x01, 0x02, 0x04 };
+				unsigned int shake = 0;
+				m_shake->GetState(&shake, btns);
+				for ( unsigned int i=0; i<3; ++i )
+					if (shake & (1 << i))
+					{
+						(&(sh.x))[i] = shake_data[m_shake_step[i]++];
+						m_shake_step[i] %= sizeof(shake_data)/sizeof(double);
+					}
+					else
+						m_shake_step[i] = 0;
+				m_accel.z -= 1;
+				// swing
+				m_swing->GetState(sw, 0, SWING_INT);
+				// tilt
+				m_tilt->GetState(&tr, &tp, 0, PI/2);
+				// cursor
+				m_ir->GetState(&dx, &dy, &dz, true, true);
+			}
+			// TODO: use m+ calibration?
+			//accel_cal* calib = (accel_cal*)&m_eeprom[0x16];
+			//double y,r,p;
+			//r=trim(m_accel.x); //*(calib->one_g.x-calib->zero_g.x)+calib->zero_g.x);
+			//p=trim(m_accel.y); //*(calib->one_g.y-calib->zero_g.y)+calib->zero_g.y);
+			//y=trim(m_accel.z); //*(calib->one_g.z-calib->zero_g.z)+calib->zero_g.z);
 
-		// classic controller/musical instrument pass-through mode
-		// Bit 0 of Byte 4 is overwritten
-		// Bits 0 and 1 of Byte 5 are moved to bit 0 of Bytes 0 and 1, overwriting
-		case 0x7:
-			//data[4] & (1 << 0)
-			//data[5] & (1 << 0)
-			//data[5] & (1 << 1)
-			break;
+			// control with ir (mouse) and tilt
+			y = trim14(-dx*0x7f	-tr*0x1fff		+sh.x	+0x1f7f);
+			p = trim14(dy*0x7f	-tp*0x1fff		+sh.y	+0x1f7f);
+			r = trim14(-dz*0x7f	-sw[2]*0x1fff	+sh.z	+0x1f7f);
+			((wm_motionplus*)data)->yaw1 = y&0xff; ((wm_motionplus*)data)->yaw2 = ((y>>8)&0x3f);
+			((wm_motionplus*)data)->pitch1 = p&0xff; ((wm_motionplus*)data)->pitch2 = ((p>>8)&0x3f);
+			((wm_motionplus*)data)->roll1 = r&0xff; ((wm_motionplus*)data)->roll2 = ((r>>8)&0x3f);
 
-		// unknown pass-through mode
-		default:
-			break;
+			// info: non-slow is considered to be five times faster in wiiyourself
+			if (tr==0 && tp==0 && sh.x==0 && sh.y==0 && sh.z==0 && abs(dx) < 100 && abs(dy) < 100) {
+				((wm_motionplus*)data)->yaw_slow = 1;
+				((wm_motionplus*)data)->pitch_slow = 1;
+				((wm_motionplus*)data)->roll_slow = 1;
+			}	
+			// control bits			
+			((wm_motionplus*)data)->is_mp_data = 1;
+			((wm_motionplus*)data)->extension_connected = (m_extension->active_extension != EXT_NONE) ? 1 : 0;
+			((wm_motionplus*)data)->dummy = 0;
+
+			//SWARN_LOG(CONSOLE, "%4.2f %4.2f | %0.2f %0.2f | %0.2f %0.2f %0.2f | %04x %04x %04x (%02x %02x %02x %02x %02x %02x)",
+			//	dx, dy,
+			//	tr, tp,
+			//	//sw[0], sw[2], sw[1],
+			//	sh.x, sh.z, sh.y,
+			//	y, p, r,
+			//	((wm_motionplus*)data)->yaw1, ((wm_motionplus*)data)->yaw2,
+			//	((wm_motionplus*)data)->pitch1, ((wm_motionplus*)data)->pitch2,
+			//	((wm_motionplus*)data)->roll1, ((wm_motionplus*)data)->roll2);
 		}
-
-		((wm_motionplus_data*)data)->is_mp_data = 0;
-		((wm_motionplus_data*)data)->extension_connected = m_extension->active_extension;
+		mp_passthrough = !mp_passthrough;
 	}
-
-	if (0xAA == m_reg_ext.encryption)
+	else if(0xAA == m_reg_ext.encryption)
 		wiimote_encrypt(&m_ext_key, data, 0x00, sizeof(wm_extension));
 }
 
@@ -753,8 +827,10 @@ void Wiimote::Update()
 		return;
 
 	// send data report
-	if (rptf_size)
+	if (rptf_size) {
+		::Wiimote::Eavesdrop(this, data, rptf_size);
 		Core::Callback_WiimoteInterruptChannel(m_index, m_reporting_channel, data, rptf_size);
+	}
 }
 
 void Wiimote::ControlChannel(const u16 _channelID, const void* _pData, u32 _Size) 
@@ -796,6 +872,7 @@ void Wiimote::ControlChannel(const u16 _channelID, const void* _pData, u32 _Size
 
 			u8 handshake = HID_HANDSHAKE_SUCCESS;
 			Core::Callback_WiimoteInterruptChannel(m_index, _channelID, &handshake, 1);
+			::Wiimote::Eavesdrop(this, &handshake, 1);
 		}
 		break;
 
@@ -812,6 +889,8 @@ void Wiimote::ControlChannel(const u16 _channelID, const void* _pData, u32 _Size
 
 void Wiimote::InterruptChannel(const u16 _channelID, const void* _pData, u32 _Size)
 {
+	::Wiimote::Eavesdrop(this, _pData, _Size);
+
 	// this all good?
 	m_reporting_channel = _channelID;
 

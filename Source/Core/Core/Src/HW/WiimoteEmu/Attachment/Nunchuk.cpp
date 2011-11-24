@@ -10,16 +10,6 @@ static const u8 nunchuck_id[] = { 0x00, 0x00, 0xa4, 0x20, 0x00, 0x00 };
 /* Default calibration for the nunchuck. It should be written to 0x20 - 0x3f of the
    extension register. 0x80 is the neutral x and y accelerators and 0xb3 is the
    neutral z accelerometer that is adjusted for gravity. */
-static const u8 nunchuck_calibration[] =
-{
-	0x80, 0x80, 0x80, 0x00, // accelerometer x, y, z neutral
-	0xb3, 0xb3, 0xb3, 0x00, //  x, y, z g-force values 
-
-	// 0x80 = analog stick x and y axis center
-	0xff, 0x00, 0x80,
-	0xff, 0x00, 0x80,
-	0xec, 0x41 // checksum on the last two bytes
-};
 
 static const u8 nunchuk_button_bitmasks[] =
 {

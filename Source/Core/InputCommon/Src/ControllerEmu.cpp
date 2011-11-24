@@ -241,7 +241,7 @@ ControllerEmu::AnalogStick::AnalogStick(const char* const _name) : ControlGroup(
 
 	controls.push_back(new Input(_trans("Modifier")));
 
-	settings.push_back(new Setting(_trans("Radius"), 65, 0, 100));
+	settings.push_back(new Setting(_trans("Radius"), 0.65f, 0, 100));
 	settings.push_back(new Setting(_trans("Dead Zone"), 0, 0, 50));
 	settings.push_back(new Setting(_trans("Square Stick"), 0));
 
@@ -310,10 +310,10 @@ ControllerEmu::Cursor::Cursor(const char* const _name)
 	controls.push_back(new Input("Backward"));
 	controls.push_back(new Input(_trans("Hide")));
 
+	settings.push_back(new Setting(_trans("Sensitivity"), 1.0f, 0, 500));
 	settings.push_back(new Setting(_trans("Center"), 0.5f));
 	settings.push_back(new Setting(_trans("Width"), 0.5f));
 	settings.push_back(new Setting(_trans("Height"), 0.5f));
-
 }
 
 void ControllerEmu::LoadDefaults(const ControllerInterface &ciface)

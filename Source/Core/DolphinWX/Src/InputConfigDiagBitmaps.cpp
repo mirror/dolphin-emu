@@ -137,7 +137,7 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 					{
 						// deadzone circle
 						dc.SetBrush(*wxLIGHT_GREY_BRUSH);
-						dc.DrawCircle( 32, 32, ((*g)->control_group)->settings[SETTING_DEADZONE]->value * 32 );
+						dc.DrawCircle( 32, 32, ((*g)->control_group)->settings[AS_DEADZONE]->value * 32 );
 					}
 
 					// raw dot

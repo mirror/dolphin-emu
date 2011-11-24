@@ -265,17 +265,17 @@ std::string Joystick::Hat::GetName() const
 	return tmpstr;
 }
 
-ControlState Joystick::Button::GetState() const
+ControlState Joystick::Button::GetState(bool relative) const
 {
 	return SDL_JoystickGetButton(m_js, m_index);
 }
 
-ControlState Joystick::Axis::GetState() const
+ControlState Joystick::Axis::GetState(bool relative) const
 {
 	return std::max(0.0f, ControlState(SDL_JoystickGetAxis(m_js, m_index)) / m_range);
 }
 
-ControlState Joystick::Hat::GetState() const
+ControlState Joystick::Hat::GetState(bool relative) const
 {
 	return (SDL_JoystickGetHat(m_js, m_index) & (1 << m_direction)) > 0;
 }
