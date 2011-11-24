@@ -119,13 +119,20 @@ void LogManager::Log(LogTypes::LOG_LEVELS level, LogTypes::LOG_TYPE type,
 	CharArrayFromFormatV(temp, MAX_MSGLEN, format, args);
 
 	static const char level_to_char[7] = "-NEWID";
-	sprintf(msg, "%s %s:%u %c[%s]: %s\n",
+	if (file)
+		sprintf(msg, "%s %s:%u %c[%s]: %s\n",
+			Common::Timer::GetTimeFormatted().c_str(),
+			file, line, level_to_char[(int)level],
+			log->GetShortName(), temp);
+	else
+		sprintf(msg, "%s %s\n",
 		Common::Timer::GetTimeFormatted().c_str(),
-		file, line, level_to_char[(int)level],
-		log->GetShortName(), temp);
+		temp);
+
 #ifdef ANDROID
 	Host_SysMessage(msg);	
 #endif
+
 	log->Trigger(level, msg);
 }
 
