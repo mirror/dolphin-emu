@@ -44,6 +44,7 @@ void Shutdown()
 	g_controller_interface.Shutdown();
 
 	IsInit = false;
+	WiimoteEmu::spy_wm = 0;
 }
 
 // if plugin isn't initialized, init and load config

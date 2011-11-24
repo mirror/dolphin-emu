@@ -33,7 +33,24 @@ struct hid_packet
 
 //source: http://wiibrew.org/wiki/Wiimote
 
-typedef u16 wm_core;
+struct wm_core
+{
+	u8 left : 1;
+	u8 right : 1;
+	u8 down : 1;
+	u8 up : 1;
+	u8 plus : 1;
+	u8 xL: 2;
+	u8 unknown: 1;
+	u8 two : 1;
+	u8 one : 1;
+	u8 b : 1;
+	u8 a : 1;
+	u8 minus : 1;
+	u8 yL: 1;
+	u8 zL: 1;
+	u8 home : 1;
+};
 
 struct wm_accel
 {
@@ -63,14 +80,23 @@ struct wm_ir_extended
 	u8 yhi : 2;
 };
 
-struct wm_extension
+struct wm_nc_bt
+{
+	u8 z : 1; // buttons
+	u8 c : 1;
+	u8 axL : 2; // accelerometer
+	u8 ayL : 2;
+	u8 azL : 2;
+};
+
+struct wm_nc
 {
 	u8 jx; // joystick x, y
 	u8 jy;
 	u8 ax; // accelerometer
 	u8 ay;
 	u8 az;
-	u8 bt; // buttons
+	wm_nc_bt bt;
 };
 
 struct wm_classic_extension
@@ -147,25 +173,77 @@ struct wm_turntable_extension
 	};
 };
 
-struct wm_motionplus_data
+struct wm_nc_mp //nunchuk data on motion-plus pass-through
+{
+	u8 jx;
+	u8 jy;
+	u8 ax;
+	u8 ay;
+
+	u8 extension_connected : 1; // 1 usually
+	u8 az : 7;
+	u8 dummy : 1; //0 always
+
+	u8 is_mp_data : 1; //0 when nunchuk interleaved data
+	u8 bz : 1;
+	u8 bc : 1;
+	u8 axL : 1; // ls 1, ls0 = 0 by default,
+	u8 ayL : 1;
+	u8 azL : 2;
+};
+
+struct wm_motionplus
 {
 	u8 yaw1;
-	
 	u8 roll1;
-	
 	u8 pitch1;
 
-	u8 yaw2 : 6;
-	u8 yaw_slow : 1;
 	u8 pitch_slow : 1;
-
-	u8 roll2 : 6;
-	u8 roll_slow : 1;
+	u8 yaw_slow : 1;
+	u8 yaw2 : 6;
 	u8 extension_connected : 1;
 
-	u8 pitch2 : 6;
+	u8 roll_slow : 1;
+	u8 roll2 : 6;
+	u8 dummy : 1;
+
 	u8 is_mp_data : 1;
-	u8 zero : 1;
+	u8 pitch2 : 6;
+};
+
+struct wm_motionplus_calibration
+{
+	u16 pitch : 14;
+	u8 : 2;
+	u16 roll : 14;
+	u8 : 2;
+	u16 yaw : 14;
+	u8 : 2;
+
+	u16 pitch_min : 14;
+	u8 : 2;
+	u16 pitch_max : 14;
+	u8 : 2;
+	u16 roll_min : 14;
+	u8 : 2;
+	u16 roll_max : 14;
+	u8 : 2;
+
+	u16 pitch_slow : 14;
+	u8 : 2;
+	u16 roll_slow  : 14;
+	u8 : 2;
+	u16 yaw_slow  : 14;
+	u8 : 2;
+
+	u16 pitch_min_slow : 14;
+	u8 : 2;
+	u16 pitch_max_slow : 14;
+	u8 : 2;
+	u16 roll_min_slow : 14;
+	u8 : 2;
+	u16 : 16;
+	u16 : 16;
 };
 
 struct wm_report
@@ -263,6 +341,11 @@ struct wm_read_data
 #define WM_SPACE_REGS2 2
 #define WM_SPACE_INVALID 3
 
+#define WIIMOTE_REG_SPEAKER 0xa2
+#define WIIMOTE_REG_EXT 0xa4
+#define WIIMOTE_REG_MP 0xa6
+#define WIIMOTE_REG_IR 0xb0
+
 #define WM_READ_DATA_REPLY 0x21
 struct wm_read_data_reply
 {
@@ -308,7 +391,7 @@ struct wm_report_core_accel_ext16
 {
 	wm_core c;
 	wm_accel a;
-	wm_extension ext;
+	wm_nc ext;
 	//wm_ir_basic ir[2];
 	u8 pad[10];
 	
@@ -322,8 +405,7 @@ struct wm_report_core_accel_ir10_ext6
 	wm_core c;
 	wm_accel a;
 	wm_ir_basic ir[2];
-	//u8 ext[6];
-	wm_extension ext;
+	wm_nc ext;
 };
 
 #define WM_REPORT_EXT21 0x3d // never used?
@@ -356,17 +438,17 @@ struct accel_cal
 	struct
 	{
 		u8 x, y, z;
-		u8 xlo : 2;
-		u8 ylo : 2;
-		u8 zlo : 2;
+		u8 xL : 2;
+		u8 yL : 2;
+		u8 zL : 2;
 	} zero_g;
 
 	struct
 	{
 		u8 x, y, z;
-		u8 xlo : 2;
-		u8 ylo : 2;
-		u8 zlo : 2;
+		u8 xL : 2;
+		u8 yL : 2;
+		u8 zL : 2;
 	} one_g;
 };
 

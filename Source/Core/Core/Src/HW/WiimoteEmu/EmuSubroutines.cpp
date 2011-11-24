@@ -23,14 +23,1012 @@
 #include "Common.h"
 #include "FileUtil.h"
 
+#include "../Wiimote.h"
 #include "WiimoteEmu.h"
 #include "WiimoteHid.h"
 #include "../WiimoteReal/WiimoteReal.h"
 
 #include "Attachment/Attachment.h"
+#include "Attachment/Nunchuk.h"
+
+using namespace std;
 
 namespace WiimoteEmu
 {
+
+Wiimote* spy_wm = 0;
+
+struct last_report_
+{
+	u8 type;
+	u8 data[MAX_PAYLOAD];
+};
+
+void Spy(Wiimote* wm_, const void* data_, int size_)
+{
+#if 0
+	if (size_ <= 0 || size_ > MAX_PAYLOAD)
+		return;
+
+	// enable log
+	bool log_com = true;
+	bool log_data = true;
+	bool log_mp = false;
+	bool log_audio = false;
+
+	// save data
+	bool save = false;
+
+	// use empty container or emulated Wiimote 0
+	bool empty_container = false;
+
+	static Wiimote* wm_emu;
+
+	if (!spy_wm)
+	{
+		wm_emu = 0;
+
+		if (empty_container)
+			spy_wm = new Wiimote(0);
+		else
+			if (wm_)
+				spy_wm = wm_;
+	}
+
+	if (!spy_wm)
+		return;
+
+	if (wm_)
+		wm_emu = wm_;
+
+	// short name
+	Wiimote* wm = &*spy_wm;
+
+	bool audio_data = false;
+	bool data_report = false;
+
+	bool emu = wm_;
+	string com = "", formatted = "";
+	static int c;
+	u8 report_mode = 0;
+	u16 reg_type = 0;
+	static wm_read_data g_rd;
+
+	// last report
+	static last_report_ last_report_emu;
+	static last_report_ last_report_real;
+	last_report_ &last_data = emu ? last_report_emu : last_report_real;
+
+	// use a non-pointer array because that makes read syntax shorter
+	u8 data[MAX_PAYLOAD] = {};
+	memcpy(data, data_, size_);
+
+	const hid_packet* const hidp = (hid_packet*)data;
+	const wm_report* const sr = (wm_report*)hidp->data;
+
+	// ignore emulated Wiimote data
+	//if (emu) return;
+
+	if (g_wiimote_sources[0]
+		&& WIIMOTE_SRC_HYBRID == g_wiimote_sources[0]
+		&& !emu)
+		return;
+
+	// log controls
+	static bool key_down[0xff] = {false};
+	static int modify = 0;
+
+	if (!key_down[VK_PRIOR] && GetAsyncKeyState(VK_PRIOR))
+	{
+		log_data = !log_data; key_down[VK_PRIOR] = true;
+		WARN_LOG(CONSOLE, "log_data: %d", log_data);
+	}
+	if (!GetAsyncKeyState(VK_PRIOR)) key_down[VK_PRIOR] = false;
+
+	if (!key_down[VK_NEXT] && GetAsyncKeyState(VK_NEXT))
+	{
+		log_mp = !log_mp;
+		key_down[VK_NEXT] = true;
+		WARN_LOG(CONSOLE, "log_mp: %d", log_mp);
+	}
+	if (!GetAsyncKeyState(VK_NEXT)) key_down[VK_NEXT] = false;
+
+	if (!key_down[VK_INSERT] && GetAsyncKeyState(VK_INSERT))
+	{
+		modify++;
+		if (modify > 2)
+			modify = 0;
+		key_down[VK_INSERT] = true;
+		WARN_LOG(CONSOLE, "Modify: %d", modify);
+	}
+	if (!GetAsyncKeyState(VK_INSERT)) key_down[VK_INSERT] = false;
+
+	if (!key_down[VK_HOME] && GetAsyncKeyState(VK_HOME))
+	{
+		wm->m_options->settings[3]->value = !wm->GetMotionPlusAttached();
+		key_down[VK_HOME] = true;
+		WARN_LOG(CONSOLE, "M+: %f", wm->m_options->settings[3]->value);
+	}
+	if (!GetAsyncKeyState(VK_HOME)) key_down[VK_HOME] = false;
+
+
+	if (!key_down[VK_END] && GetAsyncKeyState(VK_END))
+	{
+		wm->m_extension->switch_extension = wm->m_extension->active_extension != 1 ? 1 : 0; key_down[VK_END] = true;
+		WARN_LOG(CONSOLE, "NC: %d (%d)", wm->m_extension->switch_extension, wm->m_extension->active_extension);
+	}
+	if(!GetAsyncKeyState(VK_END)) key_down[VK_END] = false;
+
+	if(!key_down[VK_DELETE] && GetAsyncKeyState(VK_DELETE)) {
+		wm->m_options->settings[SETTING_IR_HIDE]->value = wm->m_options->settings[SETTING_IR_HIDE]->value != 1 ? 1 : 0;
+		key_down[VK_DELETE] = true;
+		WARN_LOG(CONSOLE, "IR: %d", wm->m_options->settings[SETTING_IR_HIDE]->value);
+	}
+	if(!GetAsyncKeyState(VK_DELETE)) key_down[VK_DELETE] = false;
+
+	//WARN_LOG_S(CONSOLE, "Data: %s", ArrayToString((const u8*)data_, Size, 0, 30).c_str());
+
+
+	// print data
+	//DEBUG_LOG(CONSOLE, "DATA: %s", ArrayToString((u8*)data_, Size, 0, 30).c_str());
+	//DEBUG_LOG(CONSOLE, "E: %s", ArrayToString(((u8*)&wm->m_reg_ext), sizeof(tmp), 0, 30).c_str());
+	//DEBUG_LOG(CONSOLE, "+: %s", ArrayToString(((u8*)&wm->m_reg_motion_plus)[0xfa], 6, 0, 30).c_str());
+	//DEBUG_LOG(CONSOLE, "+: %s", ArrayToString(((u8*)&wm->m_reg_motion_plus), sizeof(wm->m_reg_motion_plus), 0, 30).c_str());
+	//DEBUG_LOG(CONSOLE, "E: %s", ArrayToString(((u8*)&wm->m_reg_ext.constant_id), sizeof(wm->m_reg_ext.constant_id)).c_str());
+	//DEBUG_LOG(CONSOLE, "+: %s", ArrayToString(((u8*)&wm->m_reg_motion_plus.ext_identifier), sizeof(wm->m_reg_motion_plus.ext_identifier)).c_str());
+
+	// modify report
+	if (modify)
+	{
+		if (sr->wm >= WM_REPORT_CORE && sr->wm <= WM_REPORT_CORE_ACCEL_IR10_EXT6)
+		{
+			if (sr->wm == WM_REPORT_CORE_ACCEL_IR10_EXT6 && ((wm_motionplus*)&sr->data[15])->is_mp_data)
+			{
+				//ERROR_LOG_S(CONSOLE, "1 | %s", ArrayToString(sr->data, size).c_str());
+				accel_cal* calib = (accel_cal*)&wm->m_eeprom[0x16];
+
+				if (modify == 1)
+				{
+					((wm_accel*)&sr->data[2])->x = calib->zero_g.x; ((wm_core*)&sr->data[0])->xL = calib->zero_g.xL;
+					((wm_accel*)&sr->data[2])->y = calib->zero_g.y; ((wm_core*)&sr->data[0])->yL = calib->zero_g.yL;
+					((wm_accel*)&sr->data[2])->z = calib->one_g.z; ((wm_core*)&sr->data[0])->zL = calib->one_g.zL;
+				}
+				if (modify == 2)
+				{
+					((wm_motionplus*)&sr->data[15])->yaw2 = 0x1f; ((wm_motionplus*)&sr->data[15])->yaw1 = 0x7f;
+					((wm_motionplus*)&sr->data[15])->roll2 = 0x1f; ((wm_motionplus*)&sr->data[15])->roll1 = 0x7f;
+					((wm_motionplus*)&sr->data[15])->pitch2 = 0x1f; ((wm_motionplus*)&sr->data[15])->pitch1 = 0x7f;
+				}
+				//ERROR_LOG_S(CONSOLE, "2 | %s", ArrayToString(sr->data, size).c_str());
+			}
+		}
+	}
+
+	switch(sr->wm)
+	{
+	case WM_RUMBLE:
+		if (log_com) com.append("WM_RUMBLE");
+		break;
+
+	case WM_LEDS:
+		if (log_com) com.append("WM_LEDS");
+		break;
+
+	case WM_REPORT_MODE:
+		if (log_com)
+		{
+			com.append("WM_REPORT_MODE");
+			formatted = StringFromFormat("mode: 0x%02x", data[3]);
+		}
+		wm->m_reporting_mode = data[3];
+		break;
+
+	case WM_IR_PIXEL_CLOCK:
+		if (log_com) com.append("WM_IR_PIXEL_CLOCK");
+		break;
+
+	case WM_SPEAKER_ENABLE:
+		if (log_com)
+		{
+			com.append("WM_SPEAKER_ENABLE");
+			formatted = StringFromFormat("on: %d", sr->enable);
+		}
+		break;
+
+	case WM_REQUEST_STATUS:
+	{
+		wm_request_status* status = (wm_request_status*)sr->data;
+		if (log_com)
+		{
+			com.append("WM_REQUEST_STATUS");
+			formatted.append(StringFromFormat("rumble %d", status->rumble));
+		}
+		break;
+	}
+
+	case WM_WRITE_DATA:
+	{
+		wm_write_data* wd = (wm_write_data*)sr->data;
+		//memcpy(wd, &data[7], 0x10);
+		u32 address = Common::swap24(wd->address);
+		address &= ~0x010000;
+		reg_type;
+
+		if (log_com)
+		{
+			com.append("WRITE");
+			formatted.append(StringFromFormat("%02x %08x %02x: %s\n", wd->space, address, wd->size, ArrayToString(wd->data, wd->size, 0).c_str()));
+		}
+
+		switch(wd->space)
+		{
+		case WM_SPACE_EEPROM:
+			if (log_com) com.append(" REG_EEPROM");
+			if (save)
+				memcpy(wm->m_eeprom + address, wd->data, wd->size);
+			break;
+
+		case WM_SPACE_REGS1:
+		case WM_SPACE_REGS2:
+		{
+			// reg
+			reg_type = address >> 16;
+			const u8 region_offset = (u8)address;
+			void *region_ptr = NULL;
+			int region_size = 0;
+
+			switch(reg_type)
+			{
+			case WIIMOTE_REG_SPEAKER :
+				if (log_com) com.append(" REG_SPEAKER");
+				region_ptr = &wm->m_reg_speaker;
+				region_size = WIIMOTE_REG_SPEAKER_SIZE;
+				break;
+
+			case WIIMOTE_REG_EXT:
+				if (log_com) com.append(" REG_EXT");
+				region_ptr = wm->GetMotionPlusActive() ? (void*)&wm->m_reg_motion_plus : (void*)&wm->m_reg_ext;
+				region_size = WIIMOTE_REG_EXT_SIZE;
+				break;
+
+			case WIIMOTE_REG_MP :
+				if (log_com) com.append(" REG_M+");
+				if (!wm->GetMotionPlusActive())
+				{
+					region_ptr = &wm->m_reg_motion_plus;
+					region_size = WIIMOTE_REG_EXT_SIZE;
+				}
+				break;
+
+			case WIIMOTE_REG_IR:
+				 if (log_com) com.append(" REG_IR");
+				region_ptr = &wm->m_reg_ir;
+				region_size = WIIMOTE_REG_IR_SIZE;
+				 break;
+			}
+
+			// save register
+			if (save && region_ptr && (region_offset + wd->size <= region_size))
+				memcpy((u8*)region_ptr + region_offset, wd->data, wd->size);
+
+			// save key
+			if (save && region_ptr == &wm->m_reg_ext && address >= 0xa40040 && address <= 0xa4004c)
+			{
+				wiimote_gen_key(&wm->m_ext_key, wm->m_reg_ext.encryption_key);
+				formatted.append(StringFromFormat("writing key: %s", ArrayToString((u8*)&wm->m_ext_key, sizeof(wm->m_ext_key), 0, 30).c_str()));
+			}
+
+			switch(wd->space)
+			{
+			case WM_SPACE_REGS1:
+			case WM_SPACE_REGS2:
+			{
+			switch(reg_type)
+			{
+			case WIIMOTE_REG_SPEAKER:
+				if (log_com)
+				{
+					com.append(" REG_SPEAKER");
+					if(wd->data[0] == 7)
+					{
+						u16 sampleValue;
+
+						formatted.append("Sound configuration\n");
+						if (wd->data[2] == 0x00)
+						{
+							memcpy(&sampleValue, &data[9], 2);
+							formatted.append(StringFromFormat(
+								"    format: 4-bit ADPCM (%i Hz)"
+								"    volume: %02i%%"
+
+								, 6000000 / sampleValue
+								, (data[11] / 0x40) * 100
+								));
+						}
+						else if (wd->data[2] == 0x40)
+						{
+							memcpy(&sampleValue, &data[9], 2);
+							formatted.append(StringFromFormat(
+							"    format: 8-bit PCM (%i Hz)"
+							"    volume: %02i%%"
+
+							, 12000000 / sampleValue
+							, (data[11] / 0xff) * 100
+							));
+						}
+					}
+				}
+				break;
+
+				case WIIMOTE_REG_EXT:
+				case WIIMOTE_REG_MP :
+					if (data[5] == 0xf0)
+						formatted.append(StringFromFormat("extension encryption: %02x", wm->m_reg_ext.encryption));
+					break;
+
+				break;
+			}
+			}
+			}
+		}
+		}
+
+		break;
+	}
+
+	case WM_READ_DATA:
+	{
+		wm_read_data* rd = (wm_read_data*)sr->data;
+		u32 address = Common::swap24(rd->address);
+		address &= 0xFEFFFF;
+		rd->size = Common::swap16(rd->size);
+		u8 *const block = new u8[rd->size];
+
+		void *region_ptr = NULL;
+		int region_size = 0;
+
+		g_rd = *rd;
+
+		if (log_com)
+		{
+			com.append("READ");
+			formatted.append(StringFromFormat("%02x %06x %04x", rd->space, address, rd->size));
+		}
+
+		switch(rd->space)
+		{
+		case WM_SPACE_EEPROM:
+			if (log_com) com.append(" REG_EEPROM");
+			if (save)
+				memcpy(block, wm->m_eeprom + address, rd->size);
+			break;
+
+		case WM_SPACE_REGS1:
+		case WM_SPACE_REGS2:
+
+			if (address >> 16 == 0xA4)
+				address &= 0xFF00FF;
+			reg_type = address >> 16;
+
+			const u8 region_offset = (u8)address;
+
+			switch(reg_type)
+			{
+			case WIIMOTE_REG_SPEAKER:
+				if (log_com) com.append(" REG_SPEAKER");
+				region_ptr = &wm->m_reg_speaker;
+				region_size = WIIMOTE_REG_SPEAKER_SIZE;
+				break;
+
+			case WIIMOTE_REG_EXT:
+				if (log_com) com.append(" REG_EXT");
+				region_ptr = wm->GetMotionPlusActive() ? (void*)&wm->m_reg_motion_plus : (void*)&wm->m_reg_ext;
+				region_size = WIIMOTE_REG_EXT_SIZE;
+				break;
+
+			case WIIMOTE_REG_MP:
+				if (log_com) com.append(" REG_M+");
+				if (!wm->GetMotionPlusActive())
+				{
+					region_ptr = &wm->m_reg_motion_plus;
+					region_size = WIIMOTE_REG_EXT_SIZE;
+				}
+				break;
+
+			case WIIMOTE_REG_IR:
+				if (log_com) com.append(" REG_IR");
+				region_ptr = &wm->m_reg_ir;
+				region_size = WIIMOTE_REG_IR_SIZE;
+				break;
+			}
+
+			// print data to read
+			//if (region_ptr)
+			//	memcpy(block, (u8*)region_ptr + region_offset, rd->size);
+			//LOG3(CONSOLE, "READING[0x%02x 0x%02x %d]: %s", data[3], region_offset, rd->size, ArrayToString(block, size, 0, 30).c_str());
+
+			break;
+		}}
+		break;
+
+	case WM_WRITE_SPEAKER_DATA:
+		if (log_audio)
+			com.append("WM_SPEAKER_DATA");
+		else
+			return;
+		break;
+
+	case WM_SPEAKER_MUTE:
+		if (log_com)
+		{
+			com.append("WM_SPEAKER");
+			formatted.append(StringFromFormat("mute: %d", sr->enable));
+		}
+		break;
+
+	case WM_IR_LOGIC:
+		if (log_com) com.append("WM_IR");
+		break;
+
+	case WM_STATUS_REPORT:
+	{
+		if (log_com) {
+			com.append("WM_STATUS_REPORT");
+			wm_status_report* pStatus = (wm_status_report*)(data + 2);
+
+			formatted = StringFromFormat(
+				"extension: %i"
+				//"speaker enabled: %i"
+				//"IR enabled: %i"
+				//"LED 1: %i"
+				//"LED 2: %i"
+				//"LED 3: %i"
+				//"LED 4: %i"
+				//"Battery low: %i"
+				//"Battery level: %i"
+				, pStatus->extension
+				//, pStatus->speaker
+				//, pStatus->ir
+				//, (pStatus->leds >> 0)
+				//, (pStatus->leds >> 1)
+				//, (pStatus->leds >> 2)
+				//, (pStatus->leds >> 3)
+				//, pStatus->battery_low
+				//, pStatus->battery
+				);
+			// Update the global (for both the real and emulated) extension settings from whatever
+			//   the real Wiimote use. We will enable the extension from the 0x21 report.
+			if(!emu && !pStatus->extension)
+			{
+				//DisableExtensions();
+				//if (m_BasicConfigFrame) m_BasicConfigFrame->UpdateGUI();
+			}
+		}
+
+		break;
+	}
+
+	case WM_READ_DATA_REPLY:
+	{
+		wm_read_data_reply* const rdr = (wm_read_data_reply*)(data + 2);
+		u16 address = Common::swap16(rdr->address);
+		u8 size = rdr->size + 1;
+
+		if (address != u16(Common::swap24(g_rd.address)))
+			LOG3(COMMON, "WM_READ_DATA_REPLY address %04x is different from WM_READ_DATA address %06x", address, Common::swap24(g_rd.address));
+
+		g_rd.address[2] += size;
+
+		if (log_com)
+		{
+			com.append("READ_REPLY");
+			formatted.append(StringFromFormat("%02x %04x %02x %02x: %s\n", g_rd.space, address, size, rdr->error, ArrayToString(rdr->data, size, 0).c_str()));
+		}
+
+		switch(g_rd.space)
+		{
+		case WM_SPACE_EEPROM:
+			if (log_com)
+				com.append(" REG_EEPROM");
+
+			//LOG3(CONSOLE, "%s", ArrayToString(rdr->data, size).c_str());
+
+			// save
+			if (save)
+				memcpy(wm->m_eeprom + address, rdr->data, size);
+
+			// Wiimote calibration
+			if (address == 0x10) {
+				accel_cal* calib = (accel_cal*)&wm->m_eeprom[0x16];
+				formatted = StringFromFormat(
+					"Wiimote calibration\n"
+					"zero x: %u\n"
+					"zero y: %u\n"
+					"zero z: %u\n"
+
+					"g x: %u\n"
+					"g y: %u\n"
+					"g z: %u"
+
+					, calib->zero_g.x
+					, calib->zero_g.y
+					, calib->zero_g.z
+
+					, calib->one_g.x
+					, calib->one_g.y
+					, calib->one_g.z
+					);
+			}
+			break;
+
+		case WM_SPACE_REGS1:
+		case WM_SPACE_REGS2:
+		{
+			reg_type = Common::swap24(g_rd.address) >> 16;
+			const u8 region_offset = (u8)address;
+			void *region_ptr = NULL;
+			int region_size = 0;
+
+			switch(reg_type)
+			{
+			case WIIMOTE_REG_SPEAKER:
+				if (log_com) com.append(" REG_SPEAKER");
+				region_ptr = &wm->m_reg_speaker;
+				region_size = WIIMOTE_REG_SPEAKER_SIZE;
+				break;
+
+			case WIIMOTE_REG_EXT:
+				if (log_com) com.append(" REG_EXT");
+				region_ptr = wm->GetMotionPlusActive() ? (void*)&wm->m_reg_motion_plus : (void*)&wm->m_reg_ext;
+				region_size = WIIMOTE_REG_EXT_SIZE;
+				break;
+
+			case WIIMOTE_REG_MP:
+				if (log_com) com.append(" REG_M+");
+				if (!wm->GetMotionPlusActive())
+				{
+					region_ptr = &wm->m_reg_motion_plus;
+					region_size = WIIMOTE_REG_EXT_SIZE;
+				}
+				break;
+
+			case WIIMOTE_REG_IR:
+				if (log_com) com.append(" REG_IR");
+				region_ptr = &wm->m_reg_ir;
+				region_size = WIIMOTE_REG_IR_SIZE;
+				break;
+			}
+
+			if (wm->m_reg_ext.encryption == 0xaa && region_ptr == &wm->m_reg_ext) {
+
+				//formatted.append(StringFromFormat("key %s\n", ArrayToString(((u8*)&wm->m_ext_key), sizeof(wm->m_ext_key), 0, 30).c_str()));
+				formatted.append(StringFromFormat("encrypted %s\n", ArrayToString(rdr->data, size, 0, 30).c_str()));
+				wiimote_decrypt(&wm->m_ext_key, rdr->data, address, size);
+				formatted.append(StringFromFormat("decrypted %s\n", ArrayToString(rdr->data, size, 0, 30).c_str()));
+			}
+
+			// save data
+			if (save && !rdr->error && region_ptr == &wm->m_reg_ext && (region_offset + size <= region_size))
+				memcpy((u8*)region_ptr + region_offset, rdr->data, size);
+
+			if (!rdr->error && address >= 0xf0 && address <= 0xff)
+			{
+				formatted.append(StringFromFormat("extension ID: %s\n", ArrayToString(rdr->data, size).c_str()));
+				/*
+				u16 id = Common::swap16(*(u16*)rdr->data);
+				int i = 0;
+				for (int i = 0; i < wm->m_extension->attachments.size(); i++)
+				{
+					WiimoteEmu::Attachment* a = (WiimoteEmu::Attachment*)wm->m_extension->attachments.at(i);
+					u16 id_ = Common::swap16(*(u16*)&a->reg.constant_id[4]);
+					if (id_ == id)
+					{
+						wm->m_extension->active_extension = i;
+						break;
+					}
+				}
+				*/
+			}
+
+			// save key
+			if (save && region_ptr == &wm->m_reg_ext && address == 0x40)
+			{
+				memcpy(((u8*)&wm->m_reg_ext.encryption_key), rdr->data, size);
+				wiimote_gen_key(&wm->m_ext_key, wm->m_reg_ext.encryption_key);
+				formatted.append(StringFromFormat("reading key: %s", ArrayToString(((u8*)&wm->m_ext_key), sizeof(wm->m_ext_key), 0, 30).c_str()));
+			}
+
+			// Nunchuk calibration
+			if (region_ptr == &wm->m_reg_ext && address == 0x20)
+			{
+				u16 type = *(u16*)&wm->m_reg_ext.constant_id[4];
+
+				if (type == 0x0000)
+				{
+					nu_cal* cal = (nu_cal*)&wm->m_reg_ext.calibration;
+
+					formatted.append(StringFromFormat(
+					"Nunchuk calibration\n"
+
+					"zero x: %u\n"
+					"zero y: %u\n"
+					"zero z: %u\n"
+					"g x: %u\n"
+					"g y: %u\n"
+					"g z: %u\n"
+
+					"j x center: %u\n"
+					"j x max: %i\n"
+					"j x min: %i\n"
+
+					"j y center: %u\n"
+					"j y max: %u\n"
+					"j y min: %u"
+
+					, cal->cal_zero.x
+					, cal->cal_zero.y
+					, cal->cal_zero.z
+
+					, cal->cal_g.x
+					, cal->cal_g.y
+					, cal->cal_g.z
+
+					, cal->jx.center
+					, cal->jx.max
+					, cal->jx.min
+
+					, cal->jy.center
+					, cal->jy.max
+					, cal->jy.min
+					));
+				}
+
+				else if (type == 0x0101)
+				{
+					cc_cal* cal = (cc_cal*)&rdr->data;
+
+					formatted.append(StringFromFormat(
+						"Classic Controller calibration\n"
+
+						"l x center: %u\n"
+						"l x max: %u\n"
+						"l x min: %u\n"
+
+						"l y center: %u\n"
+						"l y max: %u\n"
+						"l y min: %u\n"
+
+						"r x center.x: %u\n"
+						"r x max.x: %u\n"
+						"r x min.x: %u\n"
+
+						"r y center: %u\n"
+						"r y max.y: %u\n"
+						"r y min: %u\n"
+
+						"lt neutral: %u\n"
+						"rt neutral %u"
+
+						, cal->Lx.center
+						, cal->Lx.max
+						, cal->Lx.min
+
+						, cal->Ly.center
+						, cal->Ly.max
+						, cal->Ly.min
+
+						, cal->Rx.center
+						, cal->Rx.max
+						, cal->Rx.min
+
+						, cal->Ry.center
+						, cal->Ry.max
+						, cal->Ry.min
+
+						, cal->Tl.neutral
+						, cal->Tr.neutral
+						));
+				}
+			}
+
+			break;
+		}
+		}
+
+			break;
+		}
+
+	case WM_ACK_DATA:
+	{
+		wm_acknowledge* const ack = (wm_acknowledge*)sr->data;
+		if (log_com) com.append(StringFromFormat("WM_ACK_DATA %02x %02x", ack->reportID, ack->errorID));
+		break;
+	}
+
+	case WM_REPORT_CORE:
+	case WM_REPORT_CORE_ACCEL:
+	case WM_REPORT_CORE_EXT8:
+	case WM_REPORT_CORE_ACCEL_IR12:
+	case WM_REPORT_CORE_EXT19:
+	case WM_REPORT_CORE_ACCEL_EXT16:
+	case WM_REPORT_CORE_IR10_EXT9:
+	case WM_REPORT_CORE_ACCEL_IR10_EXT6:
+		data_report = true;
+		break;
+
+	default:
+		if (log_com)
+			com = StringFromFormat("unknown report 0x%02x", sr->wm);
+		break;
+	}
+
+	if (data_report)
+		report_mode = data[1];
+
+	//if (data_report && wm->GetMotionPlusActive())
+	//{
+	//	if (data[1] == WM_REPORT_CORE_ACCEL_IR10_EXT6)
+	//		static bool extension = false;
+	//	if (extension != (bool)(data[17+4]&1))
+	//		LOG3(CONSOLE, "Datareport extension %d", data[17+4]&1);
+	//		extension = data[17+4]&1;
+	//}
+
+	if (log_com && !com.empty())
+	{
+		switch(sr->wm)
+		{
+		case WM_WRITE_DATA:
+		case WM_READ_DATA:
+		case WM_READ_DATA_REPLY:
+			switch(reg_type)
+			{
+			case WIIMOTE_REG_EXT:
+				LOG6(CONSOLE, "com[%s] %s", emu ? "E" : "R", com.c_str());
+				break;
+			default:
+				LOG8(CONSOLE, "com[%s] %s", emu ? "E" : "R", com.c_str());
+				break;
+			}
+			break;
+
+		default:
+			LOG2(CONSOLE, "com[%s] %s", emu ? "E" : "R", com.c_str());
+		}
+
+		if (!formatted.empty())
+			LOG1(CONSOLE, "%s", formatted.c_str());
+	}
+
+	if (log_audio && audio_data)
+	{
+		//DEBUG_LOG(CONSOLE, "%s: %s\n", com.c_str(), ArrayToString(data, min(10, data_size), 0, 30).c_str());
+	}
+
+	if (data_report && (log_data || log_mp))
+	{
+		u8 mode = data[1];
+		const ReportFeatures& rptf = reporting_mode_features[mode - WM_REPORT_CORE];
+
+		//if (wm->m_reporting_mode != mode)
+			//LOG2(WIIMOTE, "state mode %x, data mode %x", wm->m_reporting_mode, mode);
+
+		string s_core = "", s_acc = "", s_ir = "", s_ext = "", s_ext_id = "";
+
+		wm_core* core = (wm_core*)sr->data;
+		accel_cal* calib = (accel_cal*)&wm->m_eeprom[0x16];
+		wm_accel* accel = (wm_accel*)&data[4];
+
+		s_acc = StringFromFormat(
+			//"%3d %3d %3d"
+			//"%3d %3d %3d"
+			//"%3d %3d %3d"
+			"%5.2f %5.2f %5.2f"
+
+			//, calib->zero_g.x, calib->zero_g.y, calib->zero_g.z
+
+			//, (calib->zero_g.x<<2) + calib->zero_g.xL, (calib->zero_g.y<<2) + calib->zero_g.yL, (calib->zero_g.z << 2) + calib->zero_g.zL
+
+			//, calib->one_g.x, calib->one_g.y, calib->one_g.z
+			//, (calib->one_g.x << 2) + calib->one_g.xL, (calib->one_g.y << 2) + calib->one_g.yL, (calib->one_g.z << 2) + calib->one_g.zL
+
+			//, accel->x, accel->y, accel->z
+			//, (accel->x << 2) + core->xL, (accel->y << 2) + core->yL, (accel->z << 2) + core->zL
+
+			, (accel->x - calib->zero_g.x) / float(calib->one_g.x - calib->zero_g.x)
+			, (accel->y - calib->zero_g.y) / float(calib->one_g.y - calib->zero_g.y)
+			, (accel->z - calib->zero_g.z) / float(calib->one_g.z - calib->zero_g.z));
+
+		if (rptf.ir)
+		{
+			if (mode == WM_REPORT_CORE_ACCEL_IR12)
+			{
+				wm_ir_extended *ir = (wm_ir_extended*)&data[rptf.ir];
+
+				s_ir = StringFromFormat(
+					"%4u %4u | %u"
+					, ir->x | ir->xhi << 8
+					, ir->y | ir->yhi << 8
+					, ir->size);
+			}
+
+			else if (mode == WM_REPORT_CORE_ACCEL_IR10_EXT6)
+			{
+				wm_ir_basic *ir = (wm_ir_basic*)&data[rptf.ir];
+
+				s_ir = StringFromFormat(
+					"%4u %4u %4u %4u"
+					, ir->x1 | ir->x1hi << 8
+					, ir->y1 | ir->y1hi << 8
+					, ir->x2 | ir->x2hi << 8
+					, ir->y2 | ir->y1hi << 8);
+			}
+		}
+
+		if (rptf.ext)
+		{
+			// decrypt
+			//if (wm->m_reg_ext.encryption == 0xaa && !wm->GetMotionPlusActive())
+			if (wm->m_reg_ext.encryption == 0xaa)
+				wiimote_decrypt(&wm->m_ext_key, &data[rptf.ext], 0x00, 0x06);
+
+			if (wm->GetMotionPlusActive())
+			{
+				/*
+				wm_motionplus_data *mp = (wm_motionplus_data*)&data[17];
+				wm_nc_mp *nc_mp = (wm_nc_mp*)&data[17];
+
+				if (!log_mp && mp->is_mp_data)
+					return;
+				if (!log_data && !mp->is_mp_data)
+					return;
+
+				if (mp->is_mp_data)
+				{
+					s_ext = StringFromFormat(""
+						//"%02x %02x %02x %02x %02x %02x"
+						//"| %04x %04x %04x
+						" %5.2f %5.2f %5.2f"
+						" %s%s%s"
+						//, mp->roll1, mp->roll2
+						//, mp->pitch1, mp->pitch2
+						//, mp->yaw1, mp->yaw2
+						//, mp->pitch2<<8 | mp->pitch1
+						//, mp->roll2<<8 | mp->roll1
+						//, mp->yaw2<<8 | mp->yaw1
+						//, mp->pitch2<<8 | mp->pitch1
+						//, mp->roll2<<8 | mp->roll1
+						//, mp->yaw2<<8 | mp->yaw1
+						, float((mp->pitch2<<8 | mp->pitch1) - 0x1f7f) / float(0x1fff)
+						, float((mp->roll2<<8 | mp->roll1) - 0x1f7f) / float(0x1fff)
+						, float((mp->yaw2<<8 | mp->yaw1) - 0x1f7f) / float(0x1fff)
+						, mp->pitch_slow?"*":" ", mp->roll_slow?"*":" ", mp->yaw_slow?"*":" ");
+				}
+				else
+				{
+					s_ext = StringFromFormat(
+						"%02x %02x | %02x %02x | %02x %02x %02x | %02x %02x %02x",
+						nc_mp->bt.z, nc_mp->bt.c,
+						nc_mp->jx, nc_mp->jy,
+						nc_mp->ax + nc_mp->axL, nc_mp->ay + nc_mp->ayL, (nc_mp->az << 1) + nc_mp->azL);
+				}
+
+				s_ext_id = StringFromFormat(
+					"%s %d %d"
+					, mp->is_mp_data ? "+" : "e"
+					, mp->is_mp_data ? mp->extension_connected : wm_nc_mp->extension_connected
+					, wm->m_extension->active_extension);
+				*/
+			}
+			else
+			{
+				nu_cal *cal = (nu_cal*)&wm->m_reg_ext.calibration;
+				wm_nc *nc = (wm_nc*)&data[rptf.ext];
+
+				s_ext = StringFromFormat(
+					"%d %d"
+
+					", %3u %3u"
+					", %.2f [%.2f, %.2f] %.2f [%.2f, %.2f]"
+
+					", %4d %4d %4d"
+					, nc->bt.z, nc->bt.c
+
+					, nc->jx, nc->jy
+
+					, double(nc->jx - cal->jx.center) / (double(abs(cal->jx.min - cal->jx.center) + abs(cal->jx.max - cal->jx.center)) / 2.0)
+					, double(cal->jx.min - cal->jx.center) / double(abs(cal->jx.min - cal->jx.center))
+					, double(cal->jx.max - cal->jx.center) /double(abs(cal->jx.max - cal->jx.center))
+
+					, double(nc->jy - cal->jy.center) / (double(abs(cal->jy.min - cal->jy.center) + abs(cal->jy.max - cal->jy.center)) / 2.0)
+					, double(cal->jy.min - cal->jy.center) / double(abs(cal->jy.min - cal->jx.center))
+					, double(cal->jy.max - cal->jy.center) / double(abs(cal->jy.max - cal->jx.center))
+
+					, nc->ax
+					, nc->ay
+					, nc->az
+
+					//, (nc->ax << 1) + nc->axL
+					//, (nc->ay << 1) + nc->ayL
+					//, (nc->az << 1) + nc->azL
+					);
+			}
+
+			//LOG1(CONSOLE, "M+ %d Extension %d %d %s", mp->is_mp_data, mp->is_mp_data ?
+			//		mp->extension_connected : ((wm_nc_mp*)&data[17])->extension_connected, wm->m_extension->active_extension,
+			//		ArrayToString(((u8*)&wm->m_reg_motion_plus.ext_identifier), sizeof(wm->m_reg_motion_plus.ext_identifier), 0).c_str());
+		}
+
+		// log data
+		string s_data = StringFromFormat("data[%s] %02x:", (emu ? "E" : "R"), report_mode);
+
+		if (!s_ext_id.empty())
+			s_data.append(StringFromFormat(" | e %s", s_ext_id.c_str()));
+
+		if (!s_core.empty())
+			s_data.append(StringFromFormat(" | c %s", s_core.c_str()));
+
+		if (!s_acc.empty())
+			s_data.append(StringFromFormat(" | a %s", s_acc.c_str()));
+
+		if (!s_ir.empty())
+			s_data.append(StringFromFormat(" | ir %s", s_ir.c_str()));
+
+		if (!s_ext.empty())
+			s_data.append(StringFromFormat(" | ext %s", s_ext.c_str()));
+
+		// unformatted
+		//s_data = StringFromFormat("data[%s]: %s", (emu ? "E" : "R"), ArrayToString(data, rptf.size).c_str());
+
+		// data report changed
+		u16 unset = 0x20 | 0x40 | 0x80 | 0x2000 | 0x4000;
+		*(u16*)&data[rptf.core] &= ~unset;
+
+		// ignore ir because it change often
+		if (rptf.ir)
+		{
+			if (rptf.ext)
+				memset(&data[rptf.ir], 0xff, rptf.ext - rptf.ir);
+			else
+				memset(&data[rptf.ir], 0xff, rptf.size - rptf.ir);
+		}
+
+		wm_accel &acc = *(wm_accel*)&data[rptf.accel];
+		wm_accel &acc_last = *(wm_accel*)&last_data.data[rptf.accel];
+		if (abs(acc.x - acc_last.x) < 10)
+			acc_last.x = acc.x;
+		if (abs(acc.y - acc_last.y) < 10)
+			acc_last.y = acc.y;
+		if (abs(acc.z - acc_last.z) < 10)
+			acc_last.z = acc.z;
+
+		if (rptf.ext)
+		{
+			wm_nc &ext = *(wm_nc*)&data[rptf.ext];
+			wm_nc &ext_last = *(wm_nc*)&last_data.data[rptf.ext];
+			if (abs(ext.ax - ext_last.ax) < 10)
+				ext_last.ax = ext.ax;
+			if (abs(ext.ay - ext_last.ay) < 10)
+				ext_last.ay = ext.ay;
+			if (abs(ext.az - ext_last.az) < 10)
+				ext_last.az = ext.az;
+			ext.bt.axL = 0;
+			ext.bt.ayL = 0;
+			ext.bt.azL = 0;
+		}
+
+		bool data_report_change = memcmp(last_data.data, data, rptf.size);
+
+		if (data_report_change)
+			LOG3(CONSOLE, "%s", s_data.c_str());
+		else
+			LOG4(CONSOLE, "%s", s_data.c_str());
+
+		memcpy(last_data.data, data, rptf.size);
+		last_data.type = sr->wm;
+	}
+#endif
+}
 
 void Wiimote::ReportMode(const wm_report_mode* const dr)
 {
@@ -180,11 +1178,16 @@ void Wiimote::SendAck(u8 _reportID)
 	ack->reportID = _reportID;
 	ack->errorID = 0;
 
+	WiimoteEmu::Spy(this, data, (int)sizeof(data));
 	Core::Callback_WiimoteInterruptChannel( m_index, m_reporting_channel, data, sizeof(data));
 }
 
 void Wiimote::HandleExtensionSwap()
 {
+	// m+ switch
+	if (GetMotionPlusActive() && !GetMotionPlusAttached())
+		m_reg_motion_plus.ext_identifier[2] = 0xa6;
+
 	// handle switch extension
 	if (m_extension->active_extension != m_extension->switch_extension)
 	{
@@ -200,7 +1203,9 @@ void Wiimote::HandleExtensionSwap()
 		const std::vector<u8> &reg = ((WiimoteEmu::Attachment*)m_extension->attachments[m_extension->active_extension])->reg;
 		memset(&m_reg_ext, 0, WIIMOTE_REG_EXT_SIZE);
 		memcpy(&m_reg_ext, &reg[0], reg.size());
-
+		if (m_extension->active_extension == EXT_NUNCHUK
+			&& GetMotionPlusAttached())
+			memcpy(&m_reg_motion_plus.ext_calib, nunchuck_calibration, sizeof(nunchuck_calibration));
 	}
 }
 
@@ -209,12 +1214,17 @@ void Wiimote::HandleExtensionSwap()
    the status request rs and all its eventual instructions it may include (for
    example turn off rumble or something else) and just send the status
    report. */
-void Wiimote::RequestStatus(const wm_request_status* const rs)
+void Wiimote::RequestStatus(const wm_request_status* const rs, int ext)
 {
 	HandleExtensionSwap();
 
 	// update status struct
-	m_status.extension = (m_extension->active_extension || m_motion_plus_active) ? 1 : 0;
+	if (ext == -1)
+		m_status.extension = (m_extension->active_extension || GetMotionPlusActive()) ? 1 : 0;
+	else
+		m_status.extension = ext;
+
+	m_status.speaker = m_status.speaker;
 
 	// set up report
 	u8 data[8];
@@ -241,6 +1251,7 @@ void Wiimote::RequestStatus(const wm_request_status* const rs)
 	}
 
 	// send report
+	WiimoteEmu::Spy(this, data, sizeof(data));
 	Core::Callback_WiimoteInterruptChannel(m_index, m_reporting_channel, data, sizeof(data));
 }
 
@@ -248,8 +1259,8 @@ void Wiimote::RequestStatus(const wm_request_status* const rs)
 void Wiimote::WriteData(const wm_write_data* const wd)
 {
 	u32 address = Common::swap24(wd->address);
-
-	// ignore the 0x010000 bit
+	u8 addressHI = (address >> 16) & 0xFE;
+	u8 addressLO = address & 0xFFFF;
 	address &= ~0x010000;
 
 	if (wd->size > 16)
@@ -289,32 +1300,27 @@ void Wiimote::WriteData(const wm_write_data* const wd)
 	case WM_SPACE_REGS2 :
 		{
 			// Write to Control Register
-
-			// ignore second byte for extension area
-			if (0xA4 == (address >> 16))
-				address &= 0xFF00FF;
-
 			const u8 region_offset = (u8)address;
 			void *region_ptr = NULL;
 			int region_size = 0;
 
-			switch (address >> 16)
+			switch (addressHI)
 			{
 			// speaker
-			case 0xa2 :
+			case WIIMOTE_REG_SPEAKER :
 				region_ptr = &m_reg_speaker;
 				region_size = WIIMOTE_REG_SPEAKER_SIZE;
 				break;
 
 			// extension register
-			case 0xa4 :
-				region_ptr = m_motion_plus_active ? (void*)&m_reg_motion_plus : (void*)&m_reg_ext;
+			case WIIMOTE_REG_EXT :
+				region_ptr = GetMotionPlusActive() ? (void*)&m_reg_motion_plus : (void*)&m_reg_ext;
 				region_size = WIIMOTE_REG_EXT_SIZE;
 				break;
 
 			// motion plus
-			case 0xa6 :
-				if (false == m_motion_plus_active)
+			case WIIMOTE_REG_MP :
+				if (!GetMotionPlusActive() && GetMotionPlusAttached())
 				{
 					region_ptr = &m_reg_motion_plus;
 					region_size = WIIMOTE_REG_EXT_SIZE;
@@ -322,7 +1328,7 @@ void Wiimote::WriteData(const wm_write_data* const wd)
 				break;
 
 			// ir
-			case 0xB0 :
+			case WIIMOTE_REG_IR :
 				region_ptr = &m_reg_ir;
 				region_size = WIIMOTE_REG_IR_SIZE;
 
@@ -348,23 +1354,78 @@ void Wiimote::WriteData(const wm_write_data* const wd)
 
 			if (&m_reg_ext == region_ptr)
 			{
-				// Run the key generation on all writes in the key area, it doesn't matter 
-				// that we send it parts of a key, only the last full key will have an effect
-				if (address >= 0xa40040 && address <= 0xa4004c)
+				// Run the key generation on all writes in the key area, only the last full key will have an effect
+				if (addressLO >= 0x40 && addressLO <= 0x4c)
 					wiimote_gen_key(&m_ext_key, m_reg_ext.encryption_key);
 			}
+
 			else if (&m_reg_motion_plus == region_ptr)
 			{
-				// activate/deactivate motion plus
-				if (0x55 == m_reg_motion_plus.activated)
+				switch (addressHI)
 				{
-					// maybe hacky
-					m_reg_motion_plus.activated = 0;
-					m_motion_plus_active ^= 1;
-
-					RequestStatus();
+				case 0xa4:
+				switch (region_offset)
+				{
+					case 0xfb:
+						if (mp_last_write_reg == 0xfe)
+						{
+						}
+						if (mp_last_write_reg == 0xf0)
+						{
+							DEBUG_LOG(WIIMOTE, "W[0x%02x 0x%02x:%04x]: WM+ already disabled [ext:%i]", wd->data[0], addressHI, region_offset, m_extension->active_extension);
+							m_reg_motion_plus.ext_identifier[4] = 0x05;
+							m_reg_motion_plus.state = 0x08;
+						}
+					break;
+					// calibration
+					case 0xf1:
+						// failed, try again. TODO: make it never fail
+						if (!wd->data[0])
+						{
+							m_reg_motion_plus.ext_identifier[2] = 0xa6;
+							m_reg_motion_plus.state = 0x08;
+							RequestStatus(NULL, 0);
+							if (m_extension->active_extension != EXT_NONE)
+							{
+								RequestStatus(NULL, 1);
+								RequestStatus(NULL, 0);
+							}
+							RequestStatus(NULL, 1);
+						}
+						else
+						{
+							m_reg_motion_plus.state = 0x1a;
+							memcpy(&m_reg_motion_plus.gyro_calib, mp_gyro_calib2, sizeof(mp_gyro_calib2));
+						}
+					break;
+					case 0xf2:
+						if(m_reg_motion_plus.state < 0x0e) {
+							m_reg_motion_plus.state = 0x0e;
+							memcpy(&m_reg_motion_plus.gyro_calib, mp_gyro_calib, sizeof(mp_gyro_calib));
+						}
+					break;
+				}
+				break;
+				case 0xa6:
+				switch (region_offset)
+				{
+					case 0xfe:
+					// activate
+					if (!GetMotionPlusActive() && 0x05 == wd->data[0])
+					{
+						DEBUG_LOG(WIIMOTE, "W[0x%02x 0x%02x:%04x]: Enabling WM+", wd->data[0], addressHI, region_offset);
+						m_reg_motion_plus.ext_identifier[2] = 0xa4;
+						m_reg_motion_plus.ext_identifier[4] = wd->data[0];
+						m_reg_motion_plus.state = 0x08;
+						RequestStatus(NULL, 0);
+						RequestStatus(NULL, 1);
+					}
+					break;
+				}
+				break;
 				}
 			}
+			mp_last_write_reg = region_offset;
 		}
 		break;
 
@@ -373,13 +1434,11 @@ void Wiimote::WriteData(const wm_write_data* const wd)
 		break;
 	}
 }
-
-/* Read data from Wiimote and Extensions registers. */
-void Wiimote::ReadData(const wm_read_data* const rd) 
+// Read data from Wiimote and Extensions registers
+void Wiimote::ReadData(const wm_read_data* const rd)
 {
 	u32 address = Common::swap24(rd->address);
 	u16 size = Common::swap16(rd->size);
-
 	// ignore the 0x010000 bit
 	address &= 0xFEFFFF;
 
@@ -446,21 +1505,21 @@ void Wiimote::ReadData(const wm_read_data* const rd)
 			switch (address >> 16)
 			{
 			// speaker
-			case 0xa2:
+			case WIIMOTE_REG_SPEAKER:
 				region_ptr = &m_reg_speaker;
 				region_size = WIIMOTE_REG_SPEAKER_SIZE;
 				break;
 
 			// extension
-			case 0xa4:
-				region_ptr = m_motion_plus_active ? (void*)&m_reg_motion_plus : (void*)&m_reg_ext;
+			case WIIMOTE_REG_EXT:
+				region_ptr = GetMotionPlusActive() ? (void*)&m_reg_motion_plus : (void*)&m_reg_ext;
 				region_size = WIIMOTE_REG_EXT_SIZE;
 				break;
 
 			// motion plus
-			case 0xa6:
+			case WIIMOTE_REG_MP:
 				// reading from 0xa6 returns error when mplus is activated
-				if (false == m_motion_plus_active)
+				if (false == GetMotionPlusActive())
 				{
 					region_ptr = &m_reg_motion_plus;
 					region_size = WIIMOTE_REG_EXT_SIZE;
@@ -468,7 +1527,7 @@ void Wiimote::ReadData(const wm_read_data* const rd)
 				break;
 
 			// ir
-			case 0xb0:
+			case WIIMOTE_REG_IR:
 				region_ptr = &m_reg_ir;
 				region_size = WIIMOTE_REG_IR_SIZE;
 				break;
@@ -483,10 +1542,9 @@ void Wiimote::ReadData(const wm_read_data* const rd)
 
 			if (&m_reg_ext == region_ptr)
 			{
-				// Encrypt data read from extension register
-				// Check if encrypted reads is on
+				// encrypt
 				if (0xaa == m_reg_ext.encryption)
-					wiimote_encrypt(&m_ext_key, block, address & 0xffff, (u8)size);
+					wiimote_encrypt(&m_ext_key, block, address&0xffff, (u8)size);
 			}
 		}
 		break;
@@ -569,6 +1627,7 @@ void Wiimote::SendReadDataReply(ReadRequest& _request)
 	}
 
 	// Send a piece
+	WiimoteEmu::Spy(this, data, sizeof(data));
 	Core::Callback_WiimoteInterruptChannel(m_index, m_reporting_channel, data, sizeof(data));
 }
 
@@ -583,8 +1642,6 @@ void Wiimote::DoState(PointerWrap& p)
 	p.Do(ir_cos);
 	p.Do(m_rumble_on);
 	p.Do(m_speaker_mute);
-	p.Do(m_motion_plus_present);
-	p.Do(m_motion_plus_active);
 	p.Do(m_reporting_auto);
 	p.Do(m_reporting_mode);
 	p.Do(m_reporting_channel);
