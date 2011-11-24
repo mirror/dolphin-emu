@@ -12,7 +12,7 @@
 
 namespace UDPTLayer
 {
-	void GetButtons(UDPWrapper * m , wm_core * butt)
+	void GetButtons(UDPWrapper * m , u16 * butt)
 	{
 		if (!(m->inst)) return;
 		if (!(m->updButt)) return;
