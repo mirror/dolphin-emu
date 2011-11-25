@@ -18,6 +18,8 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* parent, InputPlugin& plugin, cons
 	, m_parent(parent)
 	, m_plugin(plugin)
 {
+	WiimoteReal::LoadSettings();
+
 	wxBoxSizer* const main_sizer = new wxBoxSizer(wxVERTICAL);
 
 	// "Wiimotes" controls
@@ -189,6 +191,8 @@ void WiimoteConfigDiag::OnClose(wxCloseEvent& event)
 		Wiimote::Shutdown();
 	}
 	m_parent->m_WiimoteConfigDiag = NULL;
+	Destroy();
+	event.Skip();
 }
 
 void WiimoteConfigDiag::ConfigEmulatedWiimote(wxCommandEvent& ev)

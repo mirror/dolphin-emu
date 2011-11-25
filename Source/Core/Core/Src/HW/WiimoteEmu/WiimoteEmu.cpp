@@ -92,7 +92,7 @@ void EmulateTilt(AccelData* const accel
 	, const bool focus, const bool sideways, const bool upright)
 {
 	float roll, pitch, yaw;
-	tilt_group->GetState( &roll, &pitch, &yaw, 0, focus ? (PI / 2) : 0 ); // 90 degrees
+	tilt_group->GetState( &roll, &pitch, &yaw, 0, focus ? (PI / 2) * tilt_group->settings[T_ACC_RANGE]->value : 0 ); // 90 degrees
 
 	unsigned int	ud = 0, lr = 0, fb = 0;
 
@@ -117,6 +117,8 @@ void EmulateTilt(AccelData* const accel
 	(&accel->x)[ud] = (sin((PI / 2) - std::max(fabsf(roll), fabsf(pitch))))*sgn[ud];
 	(&accel->x)[lr] = -sin(roll)*sgn[lr];
 	(&accel->x)[fb] = sin(pitch)*sgn[fb];
+	// y-axis move
+	accel->y += yaw*(2/PI)*0x7f;
 }
 
 #define SWING_INTENSITY		2.5f//-uncalibrated(aprox) 0x40-calibrated
@@ -263,6 +265,7 @@ Wiimote::Wiimote( const unsigned int index )
 	m_shake->controls.push_back(new ControlGroup::Input("X"));
 	m_shake->controls.push_back(new ControlGroup::Input("Y"));
 	m_shake->controls.push_back(new ControlGroup::Input("Z"));
+	m_shake->settings.push_back(new ControlGroup::Setting(_trans("Range"), 1.0f, 0, 500));
 
 	// extension
 	groups.push_back(m_extension = new Extension(_trans("Extension")));
@@ -417,12 +420,12 @@ inline void LowPassFilter(double & var, double newval, double period)
 
 void Wiimote::GetIRData(u8* const data, bool use_accel)
 {
+	if (m_options->settings[SETTING_IR_HIDE]->value != 0) { memset(data, 0xFF, 10); return; }
+
 	const bool has_focus = HAS_FOCUS;
 
 	u16 x[4], y[4];
 	memset(x, 0xFF, sizeof(x));
-
-	if (m_options->settings[SETTING_IR_HIDE]->value != 0) return;
 
 	if (has_focus)
 	{
@@ -637,11 +640,13 @@ void Wiimote::GetExtData(u8* const data)
 			if (has_focus)
 			{
 				// shake
-				EmulateShake(&sh, m_shake, m_shake_step_mp);
+				EmulateShake(&sh, m_shake, m_shake_step_mp);				
+				for (unsigned int i=0; i<3; ++i)
+					(&(sh.x))[i] *= m_shake->settings[B_RANGE]->value;
 				// swing
-				m_swing->GetState(sw, sw_state, 0, PI/2);
+				m_swing->GetState(sw, sw_state, 0, 1);
 				// tilt
-				m_tilt->GetState(&ty, &tp, &tr, 0, PI/2, false);
+				m_tilt->GetState(&ty, &tp, &tr, 0, m_tilt->settings[T_GYRO_RANGE]->value, false);
 				// cursor
 				m_ir->GetState(&dx, &dy, &dz, true, true);
 			}
@@ -652,10 +657,10 @@ void Wiimote::GetExtData(u8* const data)
 			//p=trim(m_accel.y); //*(calib->one_g.y-calib->zero_g.y)+calib->zero_g.y);
 			//y=trim(m_accel.z); //*(calib->one_g.z-calib->zero_g.z)+calib->zero_g.z);
 
-			// control with ir (mouse) and tilt
-			y = trim14(-dx*0x7f	-ty*0x1fff	-sw[1]*0x1fff	+sh.x	+0x1f7f);
-			p = trim14(dy*0x7f	-tp*0x1fff	-sw[2]*0x1fff	+sh.y	+0x1f7f);
-			r = trim14(-dz*0x7f	-tr*0x1fff	-sw[0]*0x1fff	+sh.z	+0x1f7f);
+			// gyro controls
+			y = trim14(-dx*0x7f	-ty*0x1fff	-sw[1]*0x1fff	+sh.x*0.5*0x1fff	+0x1f7f);
+			p = trim14(dy*0x7f	-tp*0x1fff	-sw[2]*0x1fff	+sh.y*0.5*0x1fff	+0x1f7f);
+			r = trim14(-dz*0x7f	-tr*0x1fff	-sw[0]*0x1fff	+sh.z*0.5*0x1fff	+0x1f7f);
 			((wm_motionplus*)data)->yaw1 = y&0xff; ((wm_motionplus*)data)->yaw2 = ((y>>8)&0x3f);
 			((wm_motionplus*)data)->pitch1 = p&0xff; ((wm_motionplus*)data)->pitch2 = ((p>>8)&0x3f);
 			((wm_motionplus*)data)->roll1 = r&0xff; ((wm_motionplus*)data)->roll2 = ((r>>8)&0x3f);
@@ -672,20 +677,25 @@ void Wiimote::GetExtData(u8* const data)
 			((wm_motionplus*)data)->dummy = 0;
 
 			// logging
-			static float mx = 0, my = 0, mz = 0;
-			if (m_options->settings[SETTING_IR_HIDE]->value != 0)  m_ir->GetState(&mx, &my, &mz, true);
+			float mx = 0, my = 0, mz = 0;
+			if (m_options->settings[SETTING_IR_HIDE]->value == 0)  m_ir->GetState(&mx, &my, &mz, true);
+			accel_cal* calib = (accel_cal*)&m_eeprom[0x16];
 			SNOTICE_LOG(CONSOLE, ""
-			"%4.2f %4.2f"
-			" | %0.2f %0.2f"
-			" | %0.2f %0.2f %0.2f"
+			"%0.2f %0.2f"
+			" | %02x %02x %02x"
+			" | %4.2f %4.2f"
 			" | %0.2f %0.2f %0.2f"
 			//" | %0.2f %0.2f %0.2f"
+			//" | %0.2f %0.2f %0.2f"
 			" | %04x %04x %04x (%02x %02x %02x %02x %02x %02x)",
-				dx, dy,
-				mx, my,
+				mx, my,				
+				(u8)trim(m_accel.x*(calib->one_g.x-calib->zero_g.x)+calib->zero_g.x),
+				(u8)trim(m_accel.y*(calib->one_g.y-calib->zero_g.y)+calib->zero_g.y),
+				(u8)trim(m_accel.z*(calib->one_g.z-calib->zero_g.z)+calib->zero_g.z),
+				dx, dy,				
 				ty, tp, tr,
-				sw[1], sw[2], sw[0],
-				//sh.x, sh.z, sh.y,
+				//sw[1], sw[2], sw[0],
+				sh.x, sh.z, sh.y,
 				y, p, r,
 				((wm_motionplus*)data)->yaw1, ((wm_motionplus*)data)->yaw2,
 				((wm_motionplus*)data)->pitch1, ((wm_motionplus*)data)->pitch2,

@@ -235,7 +235,8 @@ public:
 
 	void OnClose(wxCloseEvent& event);
 
-	void ClickSave(wxCommandEvent& event);
+	void Save(wxCommandEvent& event);
+	void Apply(wxCommandEvent& event);
 	void Cancel(wxCommandEvent& event);
 
 	void UpdateDeviceComboBox();

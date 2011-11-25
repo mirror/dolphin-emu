@@ -41,7 +41,7 @@ void Shutdown()
 		delete *i;
 	g_plugin.controllers.clear();
 
-	g_controller_interface.Shutdown();
+	//if(!main_frame->m_WiimoteConfigDiag)g_controller_interface.Shutdown();
 }
 
 // if plugin isn't initialized, init and load config

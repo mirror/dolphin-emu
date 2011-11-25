@@ -252,7 +252,7 @@ bool Mouse::UpdateInput()
 {
 	static bool capture = false, keyDown = false;
 	if(!keyDown && GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_MENU)) { capture = !capture; keyDown = true;
-		WARN_LOG(CONSOLE, "Capture mouse: %d", capture); } if(!GetAsyncKeyState(VK_F11)) keyDown = false;
+		WARN_LOG(CONSOLE, "Capture mouse: %d", capture); } if(!(GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_MENU))) keyDown = false;
 
 	if(!MouseOver(hwnd) && !capture) return false;
 

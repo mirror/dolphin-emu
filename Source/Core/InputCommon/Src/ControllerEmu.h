@@ -71,24 +71,22 @@ enum
 };
 enum
 {
-	C_SENSITIVITY,
-	C_CENTER,
-	C_WIDTH,
-	C_HEIGHT,
+	B_THRESHOLD,
+	B_RANGE,
 };
 enum
 {
-	S_FORWARD,
-	S_BACKWARD,
-	S_LEFT,
-	S_RIGHT,
-	S_UP,
-	S_DOWN,
+	F_FORWARD,
+	F_BACKWARD,
+	F_LEFT,
+	F_RIGHT,
+	F_UP,
+	F_DOWN,
 };
 enum
 {
-	S_RANGE,
-	S_DEADZONE,
+	F_RANGE,
+	F_DEADZONE,
 };
 enum
 {
@@ -102,9 +100,17 @@ enum
 };
 enum
 {
-	T_RANGE,
+	T_ACC_RANGE,
+	T_GYRO_RANGE,
 	T_DEADZONE,
 	T_CIRCLESTICK,
+};
+enum
+{
+	C_SENSITIVITY,
+	C_CENTER,
+	C_WIDTH,
+	C_HEIGHT,
 };
 
 const char * const named_directions[] = 
@@ -261,7 +267,7 @@ public:
 			std::vector<Control*>::iterator i = controls.begin(),
 				e = controls.end();
 			for (; i!=e; ++i, ++bitmasks)
-				if ((*i)->control_ref->State() > settings[0]->value) // threshold
+				if ((*i)->control_ref->State() > settings[B_THRESHOLD]->value) // threshold
 					*buttons |= *bitmasks;
 		}
 
@@ -337,7 +343,7 @@ public:
 		template <typename C, typename R>
 		void GetState(C* axis, float* const swing, const u8 base, const R range)
 		{
-			ControlState master_range = settings[S_RANGE]->value;
+			ControlState master_range = settings[F_RANGE]->value;
 			const float deadzone = settings[0]->value;
 			for (unsigned int i=0; i<6; i+=2)
 			{
@@ -367,7 +373,6 @@ public:
 			ControlState xx = controls[T_RIGHT]->control_ref->State() - controls[T_LEFT]->control_ref->State();
 			ControlState zz = controls[T_DOWN]->control_ref->State() - controls[T_UP]->control_ref->State();
 
-			ControlState master_range = settings[T_RANGE]->value;
 			ControlState deadzone = settings[T_DEADZONE]->value;
 			ControlState circle = settings[T_CIRCLESTICK]->value;
 			ControlState m = controls[T_MODIFIER]->control_ref->State();
@@ -432,9 +437,9 @@ public:
 					m_tilt[2] = std::max(m_tilt[2] - 0.1f, zz);
 			}
 
-			*y = C(m_tilt[1] * master_range * range + base);
-			*x = C(m_tilt[0] * master_range * range + base);
-			*z = C(m_tilt[2] * master_range * range + base);
+			*y = C(m_tilt[1] * range + base);
+			*x = C(m_tilt[0] * range + base);
+			*z = C(m_tilt[2] * range + base);
 		}
 	private:
 		float	m_tilt[3];
@@ -452,9 +457,9 @@ public:
 				//std::string state = ""; for(int i=0; i<controls.size(); i++)
 				//	state += StringFromFormat("%0.2f ", controls[i]->control_ref->State(0, true));				
 				//SWARN_LOG(CONSOLE, "Cursor::GetState: size %d, state %s", controls.size(), state.c_str());				
-				float yy = controls[0]->control_ref->State(0, settings[C_SENSITIVITY]->value, true);
-				float xx = controls[2]->control_ref->State(0, settings[C_SENSITIVITY]->value, true);
-				float zz = controls[4]->control_ref->State(0, settings[C_SENSITIVITY]->value, true);
+				float yy = controls[0]->control_ref->State(0, true);
+				float xx = controls[2]->control_ref->State(0, true);
+				float zz = controls[4]->control_ref->State(0, true);
 				// settings
 				if (adjusted)
 				{
@@ -485,8 +490,8 @@ public:
 			}
 			else
 			{
-				float yy = controls[0]->control_ref->State(0, settings[C_SENSITIVITY]->value) - controls[1]->control_ref->State(0, settings[C_SENSITIVITY]->value);
-				float xx = controls[3]->control_ref->State(0, settings[C_SENSITIVITY]->value) - controls[2]->control_ref->State(0, settings[C_SENSITIVITY]->value);				
+				float yy = controls[0]->control_ref->State() - controls[1]->control_ref->State();
+				float xx = controls[3]->control_ref->State() - controls[2]->control_ref->State();				
 
 				// adjust cursor according to settings
 				if (adjusted)

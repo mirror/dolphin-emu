@@ -190,10 +190,16 @@ void InputConfigDialog::UpdateControlReferences()
 		(*i)->controller->UpdateReferences(g_controller_interface);
 }
 
-void InputConfigDialog::ClickSave(wxCommandEvent& event)
+void InputConfigDialog::Save(wxCommandEvent& event)
 {
 	m_plugin.SaveConfig();
 	Close();
+	event.Skip();
+}
+
+void InputConfigDialog::Apply(wxCommandEvent& event)
+{
+	m_plugin.SaveConfig();
 	event.Skip();
 }
 
@@ -760,17 +766,20 @@ ControlGroupBox::ControlGroupBox(ControllerEmu::ControlGroup* const group, wxWin
 			dc.Clear();
 			static_bitmap = new wxStaticBitmap(parent, -1, bitmap, wxDefaultPosition, wxDefaultSize, wxBITMAP_TYPE_BMP);
 
-			PadSettingSpin* const threshold_cbox = new PadSettingSpin(parent, group->settings[0]);
-			_connect_macro_(threshold_cbox->wxcontrol, GamepadPage::AdjustSetting, wxEVT_COMMAND_SPINCTRL_UPDATED, eventsink);
+			std::vector< ControllerEmu::ControlGroup::Setting* >::reverse_iterator
+				i = group->settings.rbegin(),
+				e = group->settings.rend();
 
-			threshold_cbox->wxcontrol->SetToolTip(_("Adjust the analog control pressure required to activate buttons."));
-
-			options.push_back(threshold_cbox);
-
-			wxBoxSizer* const szr = new wxBoxSizer(wxHORIZONTAL);
-			szr->Add(new wxStaticText(parent, -1, WXTSTR_FROM_CSTR(group->settings[0]->name)),
-					0, wxCENTER|wxRIGHT, 3);
-			szr->Add(threshold_cbox->wxcontrol, 0, wxRIGHT, 3);
+			wxBoxSizer* const szr = new wxBoxSizer(wxVERTICAL);
+			for (; i!=e; ++i)
+			{
+				PadSettingSpin* setting = new PadSettingSpin(parent, *i);
+				_connect_macro_(setting->wxcontrol, GamepadPage::AdjustSetting, wxEVT_COMMAND_SPINCTRL_UPDATED, eventsink);
+				if((*i)->default_value==0.5f) setting->wxcontrol->SetToolTip(_("Adjust the analog control pressure required to activate buttons."));
+				options.push_back(setting);
+				szr->Add(new wxStaticText(parent, -1, WXTSTR_FROM_CSTR((*i)->name)));
+				szr->Add(setting->wxcontrol, 0, wxLEFT, 0);
+			}
 
 			Add(szr, 0, wxALL|wxCENTER, 3);
 			Add(static_bitmap, 0, wxALL|wxCENTER, 3);
@@ -978,13 +987,14 @@ InputConfigDialog::InputConfigDialog(wxWindow* const parent, InputPlugin& plugin
 	UpdateDeviceComboBox();
 	UpdateProfileComboBox();
 
-	Connect(wxID_OK, wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(InputConfigDialog::ClickSave));
+	Connect(wxID_OK, wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(InputConfigDialog::Save));
+	Connect(wxID_APPLY, wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(InputConfigDialog::Apply));
 	Connect(wxID_CANCEL, wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(InputConfigDialog::Cancel));
 	Connect(wxID_ANY, wxEVT_CLOSE_WINDOW, wxCloseEventHandler(InputConfigDialog::OnClose));
 
 	wxBoxSizer* const szr = new wxBoxSizer(wxVERTICAL);
 	szr->Add(m_pad_notebook, 0, wxEXPAND|wxTOP|wxLEFT|wxRIGHT, 5);
-	szr->Add(CreateButtonSizer(wxOK | wxCANCEL | wxNO_DEFAULT), 0, wxEXPAND|wxALL, 5);
+	szr->Add(CreateButtonSizer(wxOK | wxAPPLY | wxCANCEL | wxNO_DEFAULT), 0, wxEXPAND|wxALL, 5);
 
 	SetSizerAndFit(szr);
 	Center();
@@ -998,4 +1008,6 @@ InputConfigDialog::InputConfigDialog(wxWindow* const parent, InputPlugin& plugin
 void InputConfigDialog::OnClose(wxCloseEvent& event)
 {
 	m_update_timer->Stop();
+	Destroy();
+	event.Skip();
 }

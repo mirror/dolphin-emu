@@ -21,7 +21,7 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 {
 	wxFont small_font(6, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
 
-	g_controller_interface.UpdateInput();
+	if(!g_controller_interface.UpdateInput()) return;
 
 	// don't want game thread updating input when we are using it here
 	std::unique_lock<std::recursive_mutex> lk(g_controller_interface.update_lock, std::try_to_lock);
@@ -139,7 +139,7 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 					{
 						// deadzone circle
 						dc.SetBrush(*wxLIGHT_GREY_BRUSH);
-						dc.DrawCircle( 32, 32, ((*g)->control_group)->settings[AS_DEADZONE]->value * 32 );
+						dc.DrawCircle( 32, 32, ((*g)->control_group)->settings[(*g)->control_group->type == GROUP_TYPE_TILT ? T_DEADZONE:AS_DEADZONE]->value * 32 );
 					}
 
 					// raw dot
@@ -167,7 +167,7 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 				{
 					float raw_dot[3];
 					float adj_dot[3];
-					const float deadzone = 32 * ((*g)->control_group)->settings[S_DEADZONE]->value;
+					const float deadzone = 32 * ((*g)->control_group)->settings[F_DEADZONE]->value;
 
 					// adjusted
 					static float swing[3];
