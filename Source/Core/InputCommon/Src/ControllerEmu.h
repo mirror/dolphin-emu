@@ -49,6 +49,22 @@ enum
 };
 enum
 {
+	SETTING_BACKGROUND_INPUT,
+	SETTING_SIDEWAYS_WIIMOTE,
+	SETTING_UPRIGHT_WIIMOTE,
+	SETTING_MOTIONPLUS,
+	SETTING_IR_HIDE,
+};
+enum
+{
+	AS_LEFT,
+	AS_RIGHT,
+	AS_UP,
+	AS_DOWN,
+	AS_MODIFIER,
+};
+enum
+{
 	AS_RADIUS,
 	AS_DEADZONE,
 	AS_SQUARE,
@@ -71,6 +87,11 @@ enum
 };
 enum
 {
+	S_RANGE,
+	S_DEADZONE,
+};
+enum
+{
 	T_FORWARD,
 	T_BACKWARD,
 	T_LEFT,
@@ -78,6 +99,12 @@ enum
 	T_UP,
 	T_DOWN,
 	T_MODIFIER,
+};
+enum
+{
+	T_RANGE,
+	T_DEADZONE,
+	T_CIRCLESTICK,
 };
 
 const char * const named_directions[] = 
@@ -174,7 +201,7 @@ public:
 			ControlState radius = settings[AS_RADIUS]->value;
 			ControlState deadzone = settings[AS_DEADZONE]->value;
 			ControlState square = settings[AS_SQUARE]->value;
-			ControlState m = controls[4]->control_ref->State();
+			ControlState m = controls[AS_MODIFIER]->control_ref->State();
 
 			// modifier code
 			if (m)
@@ -310,6 +337,7 @@ public:
 		template <typename C, typename R>
 		void GetState(C* axis, float* const swing, const u8 base, const R range)
 		{
+			ControlState master_range = settings[S_RANGE]->value;
 			const float deadzone = settings[0]->value;
 			for (unsigned int i=0; i<6; i+=2)
 			{
@@ -319,7 +347,7 @@ public:
 					tmpf = ((state - (deadzone * sign(state))) / (1 - deadzone));
 
 				float &ax = swing[i >> 1];
-				*axis++	= (C)((tmpf - ax) * range + base);
+				*axis++	= (C)((tmpf - ax) * master_range * range + base);
 				ax = tmpf;
 			}
 		}
@@ -339,8 +367,9 @@ public:
 			ControlState xx = controls[T_RIGHT]->control_ref->State() - controls[T_LEFT]->control_ref->State();
 			ControlState zz = controls[T_DOWN]->control_ref->State() - controls[T_UP]->control_ref->State();
 
-			ControlState deadzone = settings[0]->value;
-			ControlState circle = settings[1]->value;
+			ControlState master_range = settings[T_RANGE]->value;
+			ControlState deadzone = settings[T_DEADZONE]->value;
+			ControlState circle = settings[T_CIRCLESTICK]->value;
 			ControlState m = controls[T_MODIFIER]->control_ref->State();
 
 			// modifier code
@@ -403,9 +432,9 @@ public:
 					m_tilt[2] = std::max(m_tilt[2] - 0.1f, zz);
 			}
 
-			*y = C(m_tilt[1] * range + base);
-			*x = C(m_tilt[0] * range + base);
-			*z = C(m_tilt[2] * range + base);
+			*y = C(m_tilt[1] * master_range * range + base);
+			*x = C(m_tilt[0] * master_range * range + base);
+			*z = C(m_tilt[2] * master_range * range + base);
 		}
 	private:
 		float	m_tilt[3];
@@ -420,26 +449,26 @@ public:
 		void GetState(C* const x, C* const y, C* const z, const bool adjusted = false, const bool relative = false)
 		{
 			if (relative) {
-				std::string state = ""; for(int i=0; i<controls.size(); i++)
-					state += StringFromFormat("%0.2f ", controls[i]->control_ref->State(0, true));				
+				//std::string state = ""; for(int i=0; i<controls.size(); i++)
+				//	state += StringFromFormat("%0.2f ", controls[i]->control_ref->State(0, true));				
 				//SWARN_LOG(CONSOLE, "Cursor::GetState: size %d, state %s", controls.size(), state.c_str());				
-				float yy = controls[0]->control_ref->State(0, true);
-				float xx = controls[2]->control_ref->State(0, true);
-				float zz = controls[4]->control_ref->State(0, true);
+				float yy = controls[0]->control_ref->State(0, settings[C_SENSITIVITY]->value, true);
+				float xx = controls[2]->control_ref->State(0, settings[C_SENSITIVITY]->value, true);
+				float zz = controls[4]->control_ref->State(0, settings[C_SENSITIVITY]->value, true);
 				// settings
 				if (adjusted)
 				{
 					yy *= settings[C_SENSITIVITY]->value;
-					xx *= settings[C_SENSITIVITY]->value;					
+					xx *= settings[C_SENSITIVITY]->value;
 					zz *= settings[C_SENSITIVITY]->value;
-				}				
+				}
 				*y = yy;
 				*x = xx;
 				*z = zz;
 				return;
 			}
 
-			const float zz = controls[4]->control_ref->State(0, true) - controls[5]->control_ref->State();
+			const float zz = controls[4]->control_ref->State(0, settings[C_SENSITIVITY]->value) - controls[5]->control_ref->State(0, settings[C_SENSITIVITY]->value);
 
 			// silly being here
 			if (zz > m_z)
@@ -456,15 +485,15 @@ public:
 			}
 			else
 			{
-				float yy = controls[0]->control_ref->State() - controls[1]->control_ref->State();
-				float xx = controls[3]->control_ref->State() - controls[2]->control_ref->State();				
+				float yy = controls[0]->control_ref->State(0, settings[C_SENSITIVITY]->value) - controls[1]->control_ref->State(0, settings[C_SENSITIVITY]->value);
+				float xx = controls[3]->control_ref->State(0, settings[C_SENSITIVITY]->value) - controls[2]->control_ref->State(0, settings[C_SENSITIVITY]->value);				
 
 				// adjust cursor according to settings
 				if (adjusted)
 				{
-					xx *= (settings[C_WIDTH]->value * 2) * settings[C_SENSITIVITY]->value;
-					yy *= (settings[C_HEIGHT]->value * 2) * settings[C_SENSITIVITY]->value;
-					yy += (settings[C_CENTER]->value - 0.5f) * settings[C_SENSITIVITY]->value;
+					xx *= (settings[C_WIDTH]->value * 2);
+					yy *= (settings[C_HEIGHT]->value * 2);
+					yy += (settings[C_CENTER]->value - 0.5f);
 				}
 
 				*x = xx;

@@ -41,17 +41,18 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 	bool Emu = wm;
 	if(!wm) wm = (WiimoteEmu::Wiimote*)GetPlugin()->controllers[0];
 
-	// controls
+	// debugging controls
 	if(!keyDown[VK_HOME] && GetAsyncKeyState(VK_HOME)) { wm->m_options->settings[3]->value = !wm->GetMotionPlusAttached(); keyDown[VK_HOME] = true;
 		WARN_LOG(CONSOLE, "M+: %f", wm->m_options->settings[3]->value); } if(!GetAsyncKeyState(VK_HOME)) keyDown[VK_HOME] = false;
 	if(!keyDown[VK_END] && GetAsyncKeyState(VK_END)) { wm->m_extension->switch_extension = wm->m_extension->active_extension != 1 ? 1 : 0; keyDown[VK_END] = true;
 		WARN_LOG(CONSOLE, "NC: %d (%d)", wm->m_extension->switch_extension, wm->m_extension->active_extension); } if(!GetAsyncKeyState(VK_END)) keyDown[VK_END] = false;
+	if(!keyDown[VK_DELETE] && GetAsyncKeyState(VK_DELETE)) { wm->m_options->settings[SETTING_IR_HIDE]->value = wm->m_options->settings[SETTING_IR_HIDE]->value != 1 ? 1 : 0; keyDown[VK_DELETE] = true;
+		WARN_LOG(CONSOLE, "IR: %d", wm->m_options->settings[SETTING_IR_HIDE]->value); } if(!GetAsyncKeyState(VK_DELETE)) keyDown[VK_DELETE] = false;
 	if(!keyDown[VK_PRIOR] && GetAsyncKeyState(VK_PRIOR)) { g_DebugData = !g_DebugData; keyDown[VK_PRIOR] = true;
 		WARN_LOG(CONSOLE, "g_DebugData: %d", g_DebugData); } if(!GetAsyncKeyState(VK_PRIOR)) keyDown[VK_PRIOR] = false;
 	if(!keyDown[VK_NEXT] && GetAsyncKeyState(VK_NEXT)) { g_DebugMP = !g_DebugMP; keyDown[VK_NEXT] = true;
 		WARN_LOG(CONSOLE, "g_DebugMP: %d", g_DebugMP); } if(!GetAsyncKeyState(VK_NEXT)) keyDown[VK_NEXT] = false;
-	if(!keyDown[VK_DELETE] && GetAsyncKeyState(VK_DELETE)) { keep_still = !keep_still; keyDown[VK_DELETE] = true;
-		WARN_LOG(CONSOLE, "keep_still: %d", keep_still); } if(!GetAsyncKeyState(VK_DELETE)) keyDown[VK_DELETE] = false;
+
 	//INFO_LOG(CONSOLE, "Data: %s", ArrayToString((const u8*)_pData, Size, 0, 30).c_str()); 
 
 	// print data

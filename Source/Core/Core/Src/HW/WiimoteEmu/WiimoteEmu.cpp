@@ -175,7 +175,7 @@ const char* const named_buttons[] =
 
 bool Wiimote::GetMotionPlusAttached() const
 {
-	return m_options->settings[3]->value != 0;
+	return m_options->settings[SETTING_MOTIONPLUS]->value != 0;
 }
 
 bool Wiimote::GetMotionPlusActive() const
@@ -290,6 +290,7 @@ Wiimote::Wiimote( const unsigned int index )
 	m_options->settings.push_back(new ControlGroup::Setting(_trans("Sideways Wiimote"), false));
 	m_options->settings.push_back(new ControlGroup::Setting(_trans("Upright Wiimote"), false));
 	m_options->settings.push_back(new ControlGroup::Setting(_trans("MotionPlus"), true));
+	m_options->settings.push_back(new ControlGroup::Setting(_trans("Hide IR"), false));
 
 	// TODO: This value should probably be re-read if SYSCONF gets changed
 	m_sensor_bar_on_top = (bool)SConfig::GetInstance().m_SYSCONF->GetData<u8>("BT.BAR");
@@ -420,6 +421,8 @@ void Wiimote::GetIRData(u8* const data, bool use_accel)
 
 	u16 x[4], y[4];
 	memset(x, 0xFF, sizeof(x));
+
+	if (m_options->settings[SETTING_IR_HIDE]->value != 0) return;
 
 	if (has_focus)
 	{
@@ -668,11 +671,21 @@ void Wiimote::GetExtData(u8* const data)
 			((wm_motionplus*)data)->extension_connected = (m_extension->active_extension != EXT_NONE) ? 1 : 0;
 			((wm_motionplus*)data)->dummy = 0;
 
-			SNOTICE_LOG(CONSOLE, "%4.2f %4.2f | %0.2f %0.2f %0.2f | %0.2f %0.2f %0.2f | %0.2f %0.2f %0.2f | %04x %04x %04x (%02x %02x %02x %02x %02x %02x)",
+			// logging
+			static float mx = 0, my = 0, mz = 0;
+			if (m_options->settings[SETTING_IR_HIDE]->value != 0)  m_ir->GetState(&mx, &my, &mz, true);
+			SNOTICE_LOG(CONSOLE, ""
+			"%4.2f %4.2f"
+			" | %0.2f %0.2f"
+			" | %0.2f %0.2f %0.2f"
+			" | %0.2f %0.2f %0.2f"
+			//" | %0.2f %0.2f %0.2f"
+			" | %04x %04x %04x (%02x %02x %02x %02x %02x %02x)",
 				dx, dy,
+				mx, my,
 				ty, tp, tr,
 				sw[1], sw[2], sw[0],
-				sh.x, sh.z, sh.y,
+				//sh.x, sh.z, sh.y,
 				y, p, r,
 				((wm_motionplus*)data)->yaw1, ((wm_motionplus*)data)->yaw2,
 				((wm_motionplus*)data)->pitch1, ((wm_motionplus*)data)->pitch2,

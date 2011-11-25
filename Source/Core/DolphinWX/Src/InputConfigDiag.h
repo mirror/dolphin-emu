@@ -233,9 +233,10 @@ public:
 	InputConfigDialog(wxWindow* const parent, InputPlugin& plugin, const std::string& name, const int tab_num = 0);
 	//~InputConfigDialog();
 
-	bool Destroy();
+	void OnClose(wxCloseEvent& event);
 
 	void ClickSave(wxCommandEvent& event);
+	void Cancel(wxCommandEvent& event);
 
 	void UpdateDeviceComboBox();
 	void UpdateProfileComboBox();

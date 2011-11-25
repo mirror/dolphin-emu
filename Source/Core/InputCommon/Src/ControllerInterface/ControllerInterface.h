@@ -169,7 +169,7 @@ public:
 	public:
 		virtual ~ControlReference() {}
 
-		virtual ControlState State(const ControlState state = 0, bool relative = false) = 0;
+		virtual ControlState State(const ControlState state = 0, const ControlState master_range = 1, bool relative = false) = 0;
 		virtual Device::Control* Detect(const unsigned int ms, Device* const device) = 0;
 		size_t BoundCount() const { return m_controls.size(); }
 
@@ -200,7 +200,7 @@ public:
 	{
 	public:
 		InputReference() : ControlReference(true) {}
-		ControlState State(const ControlState state, bool relative = false);
+		ControlState State(const ControlState state, const ControlState master_range = 1, bool relative = false);
 		Device::Control* Detect(const unsigned int ms, Device* const device);
 	};
 
@@ -213,7 +213,7 @@ public:
 	{
 	public:
 		OutputReference() : ControlReference(false) {}
-		ControlState State(const ControlState state, bool relative = false);
+		ControlState State(const ControlState state, const ControlState master_range = 1, bool relative = false);
 		Device::Control* Detect(const unsigned int ms, Device* const device);
 	};
 

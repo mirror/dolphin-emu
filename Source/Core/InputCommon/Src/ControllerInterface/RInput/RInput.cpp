@@ -110,8 +110,18 @@ BOOL is_raw_mouse_virtual_desktop(int);
 
 void reset_raw_mouse_data(int);
 
+PSTR WinText(HWND hwnd) {
+	int cTxtLen; 
+	PSTR pszMem; 
+	cTxtLen = GetWindowTextLength(hwnd); 
+	pszMem = (PSTR) VirtualAlloc((LPVOID) NULL, (DWORD) (cTxtLen + 1), MEM_COMMIT, PAGE_READWRITE); 
+	GetWindowTextA(hwnd, pszMem,  cTxtLen + 1);
+	return pszMem;
+}
+
 LRESULT WINAPI RWndproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	if(!IsWindow(hwnd)) return 0;
 	switch(message) {
 		case WM_INPUT: UpdateInput(lParam); break;
 	}
@@ -122,25 +132,26 @@ LRESULT WINAPI RWndproc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 void SetHWND(HWND _hwnd)
 {
 	// restore old wndproc pointer
-	if(pOldWinProc) {
+	if(pOldWinProc && IsWindow(hwnd)) {
 		SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)pOldWinProc);
-	}
-	// update pointer
+	}	
 	hwnd = _hwnd;
+	// update pointer
 	pOldWinProc = (WNDPROC)GetWindowLongPtr(hwnd, GWLP_WNDPROC);
 	SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)RWndproc);
+	DEBUG_LOG(CONSOLE, "SetHWND: '%s'", WinText(_hwnd));
+	// register for wm_input
+	register_raw_mouse(hwnd);
 }
 
 void Init(std::vector<ControllerInterface::Device*>& devices, HWND _hwnd)
 {
-	char guid[512];	
+	char guid[512];
 	m_devices = &devices;
-	SetHWND(_hwnd);
 	// prevent double hooking
 	if(rawinput_active) return;	
 	// registers for (sysmouse=yes, terminal services mouse=no, HID_mice=yes)
 	if(!init_raw_mouse(0, 0, 1)) return;
-	register_raw_mouse(hwnd);
 	for(int i=0; i<raw_mouse_count(); i++) {
 		strcpy(guid, get_raw_mouse_name(i));
 		devices.push_back(new Mouse(i,guid));
@@ -164,7 +175,7 @@ bool MouseOver(HWND hwnd)
 // called by windows
 void UpdateInput(LPARAM lParam)
 {
-	add_to_raw_mouse_x_and_y((HRAWINPUT)lParam);
+	if(rawinput_active) add_to_raw_mouse_x_and_y((HRAWINPUT)lParam);
 }
 
 Mouse::~Mouse() {
@@ -240,7 +251,7 @@ std::string Mouse::Cursor::GetName() const
 bool Mouse::UpdateInput()
 {
 	static bool capture = false, keyDown = false;
-	if(!keyDown && GetAsyncKeyState(VK_F11)) { capture = !capture; keyDown = true;
+	if(!keyDown && GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_MENU)) { capture = !capture; keyDown = true;
 		WARN_LOG(CONSOLE, "Capture mouse: %d", capture); } if(!GetAsyncKeyState(VK_F11)) keyDown = false;
 
 	if(!MouseOver(hwnd) && !capture) return false;
@@ -495,7 +506,7 @@ BOOL register_raw_mouse(HWND hwnd)
 	Rid[0].usUsage = 0x02;
 	Rid[0].dwFlags = RIDEV_INPUTSINK;
 	Rid[0].hwndTarget = hwnd;
-	if (!(*_RRID)(Rid, 1, sizeof(Rid[0]))) return 0;
+	if (!RegisterRawInputDevices(Rid, 1, sizeof(Rid[0]))) return 0;
 	return 1;
 }
 
@@ -507,7 +518,7 @@ BOOL unregister_raw_mouse(HWND hwnd)
 	Rid[0].usUsage = 0x02;
 	Rid[0].dwFlags = RIDEV_REMOVE;
 	Rid[0].hwndTarget = hwnd;
-	if (!(*_RRID)(Rid, 1, sizeof(Rid[0]))) return 0;
+	if (!RegisterRawInputDevices(Rid, 1, sizeof(Rid[0]))) return 0;
 	return 1;
 }
 

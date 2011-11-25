@@ -279,6 +279,7 @@ ControllerEmu::Force::Force(const char* const _name) : ControlGroup(_name, GROUP
 	controls.push_back(new Input(_trans("Up")));
 	controls.push_back(new Input(_trans("Down")));
 
+	settings.push_back(new Setting(_trans("Range"), 1.0f, 0, 500));
 	settings.push_back(new Setting(_trans("Dead Zone"), 0, 0, 50));
 }
 
@@ -296,6 +297,7 @@ ControllerEmu::Tilt::Tilt(const char* const _name)
 
 	controls.push_back(new Input(_trans("Modifier")));
 
+	settings.push_back(new Setting(_trans("Range"), 1.0f, 0, 500));
 	settings.push_back(new Setting(_trans("Dead Zone"), 0, 0, 50));
 	settings.push_back(new Setting(_trans("Circle Stick"), 0));
 }

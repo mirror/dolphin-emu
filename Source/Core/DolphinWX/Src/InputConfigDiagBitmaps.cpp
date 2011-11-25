@@ -133,6 +133,8 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 					else
 						dc.DrawRectangle( 16, 16, 32, 32 );
 
+					if ((*g)->control_group->type == GROUP_TYPE_CURSOR && current_page->control_groups.back()->control_group->settings[SETTING_IR_HIDE]->value != 0) break;	
+
 					if ( GROUP_TYPE_CURSOR != (*g)->control_group->type )
 					{
 						// deadzone circle
@@ -165,7 +167,7 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 				{
 					float raw_dot[3];
 					float adj_dot[3];
-					const float deadzone = 32 * ((*g)->control_group)->settings[0]->value;
+					const float deadzone = 32 * ((*g)->control_group)->settings[S_DEADZONE]->value;
 
 					// adjusted
 					static float swing[3];

@@ -34,6 +34,7 @@
 #include "LogWindow.h"
 #include "LogConfigWindow.h"
 #include "TASInputDlg.h"
+#include "WiimoteConfigDiag.h"
 #include "Movie.h"
 #if defined(HAVE_X11) && HAVE_X11
 #include "X11Utils.h"
@@ -121,6 +122,7 @@ public:
 	NetPlaySetupDiag* g_NetPlaySetupDiag;
 	wxCheatsWindow* g_CheatsWindow;
 	TASInputDlg* g_TASInputDlg;
+	WiimoteConfigDiag* m_WiimoteConfigDiag;
 
 	void InitBitmaps();
 	void DoPause();

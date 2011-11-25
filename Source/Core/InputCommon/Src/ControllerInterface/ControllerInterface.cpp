@@ -114,6 +114,7 @@ void ControllerInterface::Shutdown()
 void ControllerInterface::SetHwnd( void* const hwnd )
 {
 	m_hwnd = hwnd;
+	ciface::RInput::SetHWND((HWND)m_hwnd);
 }
 
 //
@@ -228,13 +229,13 @@ void ControllerInterface::Device::ClearInputState()
 // get the state of an input reference
 // override function for ControlReference::State ...
 //
-ControlState ControllerInterface::InputReference::State( const ControlState ignore, bool relative )
+ControlState ControllerInterface::InputReference::State( const ControlState ignore, const ControlState master_range, bool relative )
 {
 	//if (NULL == device)
 		//return 0;
 
 	if(relative && m_controls.size()>0)
-		return m_controls[0].control->ToInput()->GetState(true) * range;
+		return m_controls[0].control->ToInput()->GetState(true) * master_range * range;
 
 	ControlState state = 0;
 
@@ -271,7 +272,7 @@ ControlState ControllerInterface::InputReference::State( const ControlState igno
 			break;
 		}
 	}
-	return std::min(1.0f, state * range);
+	return std::min(1.0f, state * master_range * range);
 }
 
 //
@@ -281,9 +282,9 @@ ControlState ControllerInterface::InputReference::State( const ControlState igno
 // overrides ControlReference::State .. combined them so i could make the gui simple / inputs == same as outputs one list
 // i was lazy and it works so watever
 //
-ControlState ControllerInterface::OutputReference::State(const ControlState state, bool relative)
+ControlState ControllerInterface::OutputReference::State(const ControlState state, const ControlState master_range, bool relative)
 {
-	const ControlState tmp_state = std::min(1.0f, state * range);
+	const ControlState tmp_state = std::min(1.0f, state * master_range * range);
 
 	// output ref just ignores the modes ( |&!... )
 

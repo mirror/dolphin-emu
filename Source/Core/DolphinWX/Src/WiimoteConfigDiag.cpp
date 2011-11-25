@@ -13,8 +13,9 @@ const wxString& ConnectedWiimotesString()
 	return str;
 }
 
-WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin, const wxString& title)
-	: wxDialog(parent, -1, title, wxDefaultPosition, wxDefaultSize)
+WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* parent, InputPlugin& plugin, const wxString& title)
+	: wxDialog(NULL, -1, title, wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE|wxMINIMIZE_BOX|wxDIALOG_NO_PARENT)
+	, m_parent(parent)
 	, m_plugin(plugin)
 {
 	wxBoxSizer* const main_sizer = new wxBoxSizer(wxVERTICAL);
@@ -176,19 +177,26 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin
 
 	Connect(wxID_OK, wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WiimoteConfigDiag::Save));
 	Connect(wxID_CANCEL, wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(WiimoteConfigDiag::Cancel));
+	Connect(wxID_ANY, wxEVT_CLOSE_WINDOW, wxCloseEventHandler(WiimoteConfigDiag::OnClose));
 
 	SetSizerAndFit(main_sizer);
 	Center();
 }
-
+void WiimoteConfigDiag::OnClose(wxCloseEvent& event)
+{
+	if (!Core::IsRunning())				// if game isn't running
+	{
+		Wiimote::Shutdown();
+	}
+	m_parent->m_WiimoteConfigDiag = NULL;
+}
 
 void WiimoteConfigDiag::ConfigEmulatedWiimote(wxCommandEvent& ev)
 {
 	InputConfigDialog* const m_emu_config_diag = new InputConfigDialog(this, m_plugin, std::string("Dolphin Emulated Wiimote Configuration")
 		+ (Core::IsRunning() ? (std::string(" - ") + SConfig::GetInstance().m_LocalCoreStartupParameter.m_strName) : std::string("")),
 		m_wiimote_index_from_conf_bt_id[ev.GetId()]);
-	m_emu_config_diag->ShowModal();
-	m_emu_config_diag->Destroy();
+	m_emu_config_diag->Show();
 }
 
 void WiimoteConfigDiag::UpdateGUI()
@@ -273,11 +281,14 @@ void WiimoteConfigDiag::Save(wxCommandEvent& event)
 
 	inifile.Save(ini_filename);
 
+	Close();
+
 	event.Skip();
 }
 
 void WiimoteConfigDiag::Cancel(wxCommandEvent& event)
 {
 	RevertSource();
+	Close();
 	event.Skip();
 }

@@ -20,6 +20,7 @@ namespace RInput
 static bool rawinput_active = 0;
 
 void Init(std::vector<ControllerInterface::Device*>& devices, HWND hwnd);
+void SetHWND(HWND _hwnd);
 void DetectDevice(int d);
 
 class Mouse : public ControllerInterface::Device

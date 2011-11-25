@@ -193,6 +193,13 @@ void InputConfigDialog::UpdateControlReferences()
 void InputConfigDialog::ClickSave(wxCommandEvent& event)
 {
 	m_plugin.SaveConfig();
+	Close();
+	event.Skip();
+}
+
+void InputConfigDialog::Cancel(wxCommandEvent& event)
+{
+	Close();
 	event.Skip();
 }
 
@@ -954,9 +961,8 @@ GamepadPage::GamepadPage(wxWindow* parent, InputPlugin& plugin, const unsigned i
 	Layout();
 };
 
-
 InputConfigDialog::InputConfigDialog(wxWindow* const parent, InputPlugin& plugin, const std::string& name, const int tab_num)
-	: wxDialog(parent, wxID_ANY, WXTSTR_FROM_CSTR(name.c_str()), wxPoint(128,-1), wxDefaultSize)
+	: wxDialog(parent, wxID_ANY, WXTSTR_FROM_CSTR(name.c_str()), wxPoint(128,-1), wxDefaultSize, wxDEFAULT_DIALOG_STYLE|wxMINIMIZE_BOX|wxDIALOG_NO_PARENT)
 	, m_plugin(plugin)
 {
 	m_pad_notebook = new wxNotebook(this, -1, wxDefaultPosition, wxDefaultSize, wxNB_DEFAULT);
@@ -973,6 +979,8 @@ InputConfigDialog::InputConfigDialog(wxWindow* const parent, InputPlugin& plugin
 	UpdateProfileComboBox();
 
 	Connect(wxID_OK, wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(InputConfigDialog::ClickSave));
+	Connect(wxID_CANCEL, wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(InputConfigDialog::Cancel));
+	Connect(wxID_ANY, wxEVT_CLOSE_WINDOW, wxCloseEventHandler(InputConfigDialog::OnClose));
 
 	wxBoxSizer* const szr = new wxBoxSizer(wxVERTICAL);
 	szr->Add(m_pad_notebook, 0, wxEXPAND|wxTOP|wxLEFT|wxRIGHT, 5);
@@ -987,8 +995,7 @@ InputConfigDialog::InputConfigDialog(wxWindow* const parent, InputPlugin& plugin
 	m_update_timer->Start(PREVIEW_UPDATE_TIME, wxTIMER_CONTINUOUS);
 }
 
-bool InputConfigDialog::Destroy()
+void InputConfigDialog::OnClose(wxCloseEvent& event)
 {
 	m_update_timer->Stop();
-	return true;
 }

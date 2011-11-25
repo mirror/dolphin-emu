@@ -13,16 +13,19 @@
 #include <wx/panel.h>
 #include <wx/spinctrl.h>
 
+//#include "Frame.h"
 #include "InputConfigDiag.h"
 #include "ConfigManager.h"
 #include <HW/Wiimote.h>
 
 #include <map>
 
+class CFrame;
+
 class WiimoteConfigDiag : public wxDialog
 {
 public:
-	WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin, const wxString& title = _("Dolphin Wiimote Configuration"));
+	WiimoteConfigDiag(CFrame* parent, InputPlugin& plugin, const wxString& title = _("Dolphin Wiimote Configuration"));
 
 #ifdef _WIN32
 	void PairUpRealWiimotes(wxCommandEvent& event);
@@ -67,7 +70,9 @@ public:
 
 private:
 	void Cancel(wxCommandEvent& event);
+	void OnClose(wxCloseEvent& event);
 
+	CFrame*			m_parent;
 	InputPlugin&	m_plugin;
 	wxNotebook*		m_pad_notebook;
 
