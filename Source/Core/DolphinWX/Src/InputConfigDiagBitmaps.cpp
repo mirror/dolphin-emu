@@ -170,8 +170,7 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 					const float deadzone = 32 * ((*g)->control_group)->settings[F_DEADZONE]->value;
 
 					// adjusted
-					static float swing[3];
-					((ControllerEmu::Force*)(*g)->control_group)->GetState( adj_dot, swing, 32.0, 32-1.5 );
+					((ControllerEmu::Force*)(*g)->control_group)->GetState( adj_dot, 32.0, 32-1.5 );
 
 					// raw
 					for ( unsigned int i=0; i<3; ++i )

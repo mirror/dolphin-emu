@@ -28,13 +28,13 @@ Nunchuk::Nunchuk(UDPWrapper *wrp) : Attachment(_trans("Nunchuk")) , m_udpWrap(wr
 	groups.push_back(m_stick = new AnalogStick("Stick"));
 
 	// swing
-	groups.push_back(m_swing = new Force("Swing"));
+	groups.push_back(m_swing = new Force("Thrust"));
 
 	// tilt
 	groups.push_back(m_tilt = new Tilt("Tilt"));
 
 	// shake
-	groups.push_back(m_shake = new Buttons("Shake"));
+	groups.push_back(m_shake = new Buttons("Shake", true));
 	m_shake->controls.push_back(new ControlGroup::Input("X"));
 	m_shake->controls.push_back(new ControlGroup::Input("Y"));
 	m_shake->controls.push_back(new ControlGroup::Input("Z"));
@@ -56,18 +56,16 @@ void Nunchuk::GetState(u8* const data, const bool focus)
 
 	// stick / not using calibration data for stick, o well
 	m_stick->GetState(&ncdata->jx, &ncdata->jy, 0x80, focus ? 127 : 0);
-	
-	AccelData accel;
 
 	// tilt
-	EmulateTilt(&accel, m_tilt, focus);
+	EmulateTilt(&m_accel, m_tilt, focus);
 
 	if (focus)
 	{
 		// swing
-		EmulateSwing(&accel, m_swing);
+		EmulateSwing(&m_accel, m_swing);
 		// shake
-		EmulateShake(&accel, m_shake, m_shake_step);
+		EmulateShake(&m_accel, m_shake, m_shake_step);
 		// buttons
 		m_buttons->GetState(&ncdata->bt, nunchuk_button_bitmasks);
 	}
@@ -98,17 +96,18 @@ void Nunchuk::GetState(u8* const data, const bool focus)
 		{
 			float x, y, z;
 			m_udpWrap->inst->getNunchuckAccel(x, y, z);
-			accel.x = x;
-			accel.y = y;
-			accel.z = z;
+			m_accel.x = x;
+			m_accel.y = y;
+			m_accel.z = z;
 		}	
 	}
 
 	wm_accel* dt = (wm_accel*)&ncdata->ax;
 	accel_cal* calib = (accel_cal*)&reg[0x20];
-	dt->x = u8(trim(accel.x * (calib->one_g.x - calib->zero_g.x) + calib->zero_g.x));
-	dt->y = u8(trim(accel.y * (calib->one_g.y - calib->zero_g.y) + calib->zero_g.y));
-	dt->z = u8(trim(accel.z * (calib->one_g.z - calib->zero_g.z) + calib->zero_g.z));
+	dt->x = u8(trim(m_accel.x * (calib->one_g.x - calib->zero_g.x) + calib->zero_g.x));
+	dt->y = u8(trim(m_accel.y * (calib->one_g.y - calib->zero_g.y) + calib->zero_g.y));
+	dt->z = u8(trim(m_accel.z * (calib->one_g.z - calib->zero_g.z) + calib->zero_g.z));
+	//SWARN_LOG(CONSOLE, "%02x %02x %02x", dt->x, dt->y, dt->z);
 }
 
 void Nunchuk::LoadDefaults(const ControllerInterface& ciface)

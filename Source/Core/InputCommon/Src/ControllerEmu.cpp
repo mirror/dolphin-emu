@@ -247,8 +247,10 @@ ControllerEmu::AnalogStick::AnalogStick(const char* const _name) : ControlGroup(
 
 }
 
-ControllerEmu::Buttons::Buttons(const char* const _name) : ControlGroup(_name, GROUP_TYPE_BUTTONS)
+ControllerEmu::Buttons::Buttons(const char* const _name, bool range) : m_range(range), ControlGroup(_name, GROUP_TYPE_BUTTONS)
 {
+	if (range)
+		settings.push_back(new Setting(_trans("Range"), 1.0f, 0, 500));
 	settings.push_back(new Setting(_trans("Threshold"), 0.5f));
 }
 
@@ -272,6 +274,8 @@ ControllerEmu::Slider::Slider(const char* const _name) : ControlGroup(_name, GRO
 
 ControllerEmu::Force::Force(const char* const _name) : ControlGroup(_name, GROUP_TYPE_FORCE)
 {
+	memset(m_thrust, 0, sizeof(m_thrust));
+
 	controls.push_back(new Input(_trans("Forward")));
 	controls.push_back(new Input(_trans("Backward")));
 	controls.push_back(new Input(_trans("Left")));
@@ -283,22 +287,25 @@ ControllerEmu::Force::Force(const char* const _name) : ControlGroup(_name, GROUP
 	settings.push_back(new Setting(_trans("Dead Zone"), 0, 0, 50));
 }
 
-ControllerEmu::Tilt::Tilt(const char* const _name)
-	: ControlGroup(_name, GROUP_TYPE_TILT)
+ControllerEmu::Tilt::Tilt(const char* const _name, bool gyro)
+	: m_gyro(gyro)
+	, ControlGroup(_name, GROUP_TYPE_TILT)
 {
 	memset(m_tilt, 0, sizeof(m_tilt));
 
-	controls.push_back(new Input("Forward"));
-	controls.push_back(new Input("Backward"));
-	controls.push_back(new Input("Left"));
-	controls.push_back(new Input("Right"));
-	controls.push_back(new Input("Up"));
-	controls.push_back(new Input("Down"));
+	controls.push_back(new Input("Pitch Forward"));
+	controls.push_back(new Input("Pitch Backward"));
+	controls.push_back(new Input("Roll Left"));
+	controls.push_back(new Input("Roll Right"));
+	controls.push_back(new Input("Yaw Left"));
+	controls.push_back(new Input("Yaw Right"));
 
 	controls.push_back(new Input(_trans("Modifier")));
-
-	settings.push_back(new Setting(_trans("Acc Range"), 1.0f, 0, 500));
-	settings.push_back(new Setting(_trans("Gyro Range"), 1.0f, 0, 500));
+	if (gyro) {
+		settings.push_back(new Setting(_trans("Acc Range"), 1.0f, 0, 500));
+		settings.push_back(new Setting(_trans("Gyro Range"), 1.0f, 0, 500));
+	} else
+		settings.push_back(new Setting(_trans("Range"), 1.0f, 0, 500));
 	settings.push_back(new Setting(_trans("Dead Zone"), 0, 0, 50));
 	settings.push_back(new Setting(_trans("Circle Stick"), 0));
 }

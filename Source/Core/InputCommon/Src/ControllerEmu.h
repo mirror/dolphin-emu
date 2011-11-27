@@ -71,8 +71,12 @@ enum
 };
 enum
 {
-	B_THRESHOLD,
+	B_NR_THRESHOLD,
+};
+enum
+{
 	B_RANGE,
+	B_THRESHOLD,
 };
 enum
 {
@@ -104,6 +108,12 @@ enum
 	T_GYRO_RANGE,
 	T_DEADZONE,
 	T_CIRCLESTICK,
+};
+enum
+{
+	T_NG_RANGE,
+	T_NG_DEADZONE,
+	T_NG_CIRCLESTICK,
 };
 enum
 {
@@ -259,7 +269,7 @@ public:
 	class Buttons : public ControlGroup
 	{
 	public:
-		Buttons(const char* const _name);
+		Buttons(const char* const _name, bool range = false);
 
 		template <typename C>
 		void GetState(C* const buttons, const C* bitmasks)
@@ -267,10 +277,11 @@ public:
 			std::vector<Control*>::iterator i = controls.begin(),
 				e = controls.end();
 			for (; i!=e; ++i, ++bitmasks)
-				if ((*i)->control_ref->State() > settings[B_THRESHOLD]->value) // threshold
+				if ((*i)->control_ref->State() > settings[m_range?B_THRESHOLD:B_NR_THRESHOLD]->value) // threshold
 					*buttons |= *bitmasks;
 		}
-
+	private:
+		bool	m_range;
 	};
 
 	class MixedTriggers : public ControlGroup
@@ -341,47 +352,54 @@ public:
 		Force(const char* const _name);
 
 		template <typename C, typename R>
-		void GetState(C* axis, float* const swing, const u8 base, const R range)
+		void GetState(C* axis, const u8 base, const R range, bool step = true)
 		{
-			ControlState master_range = settings[F_RANGE]->value;
-			const float deadzone = settings[0]->value;
+			const float master_range = settings[F_RANGE]->value;
+			const float deadzone = settings[F_DEADZONE]->value;
 			for (unsigned int i=0; i<6; i+=2)
 			{
-				float tmpf = 0;
-				const float state = controls[i+1]->control_ref->State() - controls[i]->control_ref->State();
+				float dz = 0;
+				ControlState state = controls[i]->control_ref->State() - controls[i+1]->control_ref->State();
 				if (fabsf(state) > deadzone)
-					tmpf = ((state - (deadzone * sign(state))) / (1 - deadzone));
-
-				float &ax = swing[i >> 1];
-				*axis++	= (C)((tmpf - ax) * master_range * range + base);
-				ax = tmpf;
+					dz = ((state - (deadzone * sign(state))) / (1 - deadzone));
+				step = true;
+				if (step) {
+					if (state > m_thrust[i])
+						m_thrust[i] = std::min(m_thrust[i] + 0.1f, state);
+					else if (state < m_thrust[i])
+						m_thrust[i] = std::max(m_thrust[i] - 0.1f, state);
+				}
+				
+				*axis++ = (C)((abs(m_thrust[i]) >= 0.7 ? -2*sign(state)+m_thrust[i]*2 : m_thrust[i]) * sign(state) * range * master_range + base);
+				//if(i==0) SWARN_LOG(CONSOLE, "%d | %0.2f %0.2f | %0.2f %0.2f | state %0.2f, sign %0.2f, dz %0.2f", i, master_range, range, *(axis-1), m_thrust[i], state, (float)sign(state), dz);
 			}
 		}
+	private:
+		float	m_thrust[3];
 	};
 
 	class Tilt : public ControlGroup
 	{
 	public:
-		Tilt(const char* const _name);
+		Tilt(const char* const _name, bool gyro = false);
 
 		template <typename C, typename R>
 		void GetState(C* const x, C* const y, C* const z, const unsigned int base, const R range, const bool step = true)
 		{
 			// this is all a mess
-
-			ControlState yy = controls[T_FORWARD]->control_ref->State() - controls[T_BACKWARD]->control_ref->State();
 			ControlState xx = controls[T_RIGHT]->control_ref->State() - controls[T_LEFT]->control_ref->State();
+			ControlState yy = controls[T_FORWARD]->control_ref->State() - controls[T_BACKWARD]->control_ref->State();			
 			ControlState zz = controls[T_DOWN]->control_ref->State() - controls[T_UP]->control_ref->State();
 
-			ControlState deadzone = settings[T_DEADZONE]->value;
-			ControlState circle = settings[T_CIRCLESTICK]->value;
+			ControlState deadzone = settings[m_gyro?T_DEADZONE:T_NG_DEADZONE]->value;
+			ControlState circle = settings[m_gyro?T_CIRCLESTICK:T_NG_CIRCLESTICK]->value;
 			ControlState m = controls[T_MODIFIER]->control_ref->State();
 
 			// modifier code
 			if (m)
 			{
-				yy = (fabsf(yy)>deadzone) * sign(yy) * (m + deadzone/2);
 				xx = (fabsf(xx)>deadzone) * sign(xx) * (m + deadzone/2);
+				yy = (fabsf(yy)>deadzone) * sign(yy) * (m + deadzone/2);				
 				zz = (fabsf(zz)>deadzone) * sign(zz) * (m + deadzone/2);
 			}
 
@@ -437,12 +455,13 @@ public:
 					m_tilt[2] = std::max(m_tilt[2] - 0.1f, zz);
 			}
 
-			*y = C(m_tilt[1] * range + base);
 			*x = C(m_tilt[0] * range + base);
+			*y = C(m_tilt[1] * range + base);			
 			*z = C(m_tilt[2] * range + base);
 		}
 	private:
 		float	m_tilt[3];
+		bool	m_gyro;
 	};
 
 	class Cursor : public ControlGroup

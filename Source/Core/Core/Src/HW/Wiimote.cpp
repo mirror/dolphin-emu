@@ -560,7 +560,9 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 					((wm_core_bt*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown4,
 					((wm_core_bt*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown5);
 			if (((wm_motionplus*)&data[17])->is_mp_data) {
-				SExt = StringFromFormat("%02x %02x %d %02x %02x %d %02x %02x %d | %04x %04x %04x",
+				SExt = StringFromFormat(""
+				"%02x %02x %d %02x %02x %d %02x %02x %d |"
+				"%04x %04x %04x",
 					((wm_motionplus*)&data[17])->yaw1, ((wm_motionplus*)&data[17])->yaw2, ((wm_motionplus*)&data[17])->yaw_slow,
 					((wm_motionplus*)&data[17])->roll1, ((wm_motionplus*)&data[17])->roll2, ((wm_motionplus*)&data[17])->roll_slow,
 					((wm_motionplus*)&data[17])->pitch1, ((wm_motionplus*)&data[17])->pitch2, ((wm_motionplus*)&data[17])->pitch_slow,
@@ -575,7 +577,12 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 					((wm_motionplus_nc*)&data[17])->ax, ((wm_motionplus_nc*)&data[17])->ay, ((wm_motionplus_nc*)&data[17])->az, // Nunchuck Accelerometer					
 					((wm_motionplus_nc*)&data[17])->axLS, ((wm_motionplus_nc*)&data[17])->ayLS, ((wm_motionplus_nc*)&data[17])->azLS); // Nunchuck Accelerometer low
 			}
-			SData = StringFromFormat("Data[%s][%s][%d|%d] %s| %s| %s| %s| %s (%s) (%s)",
+			SData = StringFromFormat("Data[%s][%s][%d|%d] %s| %s"
+			"| %s"
+			//"| %s"
+			//"| %s"
+			//" (%s)"
+			" (%s)",
 			(Emu ? "E" : "R"),
 			((wm_motionplus*)&data[17])->is_mp_data ? "+" : "e",
 			((wm_motionplus*)&data[17])->is_mp_data ? ((wm_motionplus*)&data[17])->extension_connected : ((wm_motionplus_nc*)&data[17])->extension_connected,
@@ -583,9 +590,10 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 			ArrayToString(data, 2, 0).c_str(),
 			ArrayToString(&data[2], 2, 0).c_str(),
 			ArrayToString(&data[4], 3, 0).c_str(),
-			ArrayToString(&data[7], 10, 0).c_str(),
+			//ArrayToString(&data[7], 10, 0).c_str(),
 			ArrayToString(&data[17], 6, 0).c_str(),
-			SCore.c_str(), SExt.c_str());
+			//SCore.c_str(),
+			SExt.c_str());
 		//DEBUG_LOG(CONSOLE, "M+ %d Extension %d %d %s", ((wm_motionplus*)&data[17])->is_mp_data, ((wm_motionplus*)&data[17])->is_mp_data ?
 		//		((wm_motionplus*)&data[17])->extension_connected : ((wm_motionplus_nc*)&data[17])->extension_connected, wm->m_extension->active_extension,
 		//		ArrayToString(((u8*)&wm->m_reg_motion_plus.ext_identifier), sizeof(wm->m_reg_motion_plus.ext_identifier), 0).c_str());

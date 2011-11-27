@@ -250,9 +250,10 @@ std::string Mouse::Cursor::GetName() const
 
 bool Mouse::UpdateInput()
 {
-	static bool capture = false, keyDown = false;
-	if(!keyDown && GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_MENU)) { capture = !capture; keyDown = true;
-		WARN_LOG(CONSOLE, "Capture mouse: %d", capture); } if(!(GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_MENU))) keyDown = false;
+	static bool capture = false, keyDown[0xff] = {false};
+	if(!keyDown[VK_CONTROL] && (GetAsyncKeyState(VK_CONTROL))) keyDown[VK_CONTROL] = true;  if(!(GetAsyncKeyState(VK_CONTROL))) keyDown[VK_CONTROL] = false;
+	if(!keyDown[VK_MENU] && (GetAsyncKeyState(VK_MENU))) keyDown[VK_MENU] = true; if(!(GetAsyncKeyState(VK_MENU))) keyDown[VK_MENU] = false;
+	if(!keyDown && GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_MENU)) { capture = !capture; WARN_LOG(CONSOLE, "Capture mouse: %d", capture); }
 
 	if(!MouseOver(hwnd) && !capture) return false;
 

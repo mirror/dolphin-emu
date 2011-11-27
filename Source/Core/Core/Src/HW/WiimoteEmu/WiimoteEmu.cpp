@@ -117,27 +117,24 @@ void EmulateTilt(AccelData* const accel
 	(&accel->x)[ud] = (sin((PI / 2) - std::max(fabsf(roll), fabsf(pitch))))*sgn[ud];
 	(&accel->x)[lr] = -sin(roll)*sgn[lr];
 	(&accel->x)[fb] = sin(pitch)*sgn[fb];
-	// y-axis move
-	accel->y += yaw*(2/PI)*0x7f;
 }
 
-#define SWING_INTENSITY		2.5f//-uncalibrated(aprox) 0x40-calibrated
+#define SWING_INTENSITY		5.0f//-uncalibrated(aprox) 0x40-calibrated
 
 void EmulateSwing(AccelData* const accel
 	, ControllerEmu::Force* const swing_group
 	, const bool sideways, const bool upright)
 {
-	float axis[3];
 	float swing[3];
-	swing_group->GetState(axis, swing, 0, SWING_INTENSITY);
+	swing_group->GetState(swing, 0, SWING_INTENSITY);
 
 	s8 g_dir[3] = {-1, -1, -1};
 	u8 axis_map[3];
 
 	// determine which axis is which direction
-	axis_map[0] = upright ? (sideways ? 0 : 1) : 2;	// up/down
+	axis_map[0] = upright ? 2 : (sideways ? 0 : 1);	// forward/backward
 	axis_map[1] = sideways;	// left|right
-	axis_map[2] = upright ? 2 : (sideways ? 0 : 1);	// forward/backward
+	axis_map[2] = upright ? (sideways ? 0 : 1) : 2;	// up/down
 
 	// some orientations have up as positive, some as negative
 	// same with forward
@@ -147,7 +144,8 @@ void EmulateSwing(AccelData* const accel
 		g_dir[axis_map[0]] *= -1;
 
 	for (unsigned int i=0; i<3; ++i)
-		(&accel->x)[axis_map[i]] += axis[i] * g_dir[i];
+		(&accel->x)[axis_map[i]] += swing[i] * g_dir[i];
+	//SERROR_LOG(CONSOLE, "%0.2f %0.2f %0.2f", swing[0]*g_dir[0], swing[1]*g_dir[1], swing[2]*g_dir[2]);
 }
 
 const u16 button_bitmasks[] =
@@ -252,20 +250,19 @@ Wiimote::Wiimote( const unsigned int index )
 	groups.push_back(m_ir = new Cursor(_trans("IR")));
 
 	// swing
-	groups.push_back(m_swing = new Force(_trans("Swing")));
+	groups.push_back(m_swing = new Force(_trans("Thrust")));
 
 	// tilt
-	groups.push_back(m_tilt = new Tilt(_trans("Tilt")));
+	groups.push_back(m_tilt = new Tilt(_trans("Tilt"), true));
 
 	// udp 
 	groups.push_back(m_udp = new UDPWrapper(m_index, _trans("UDP Wiimote")));
 
 	// shake
-	groups.push_back(m_shake = new Buttons(_trans("Shake")));
+	groups.push_back(m_shake = new Buttons(_trans("Shake"), true));
 	m_shake->controls.push_back(new ControlGroup::Input("X"));
 	m_shake->controls.push_back(new ControlGroup::Input("Y"));
-	m_shake->controls.push_back(new ControlGroup::Input("Z"));
-	m_shake->settings.push_back(new ControlGroup::Setting(_trans("Range"), 1.0f, 0, 500));
+	m_shake->controls.push_back(new ControlGroup::Input("Z"));	
 
 	// extension
 	groups.push_back(m_extension = new Extension(_trans("Extension")));
@@ -409,6 +406,7 @@ void Wiimote::GetAccelData(u8* const data, u8* const buttons)
 		buttons[0]|=(u8(cx*4)&3)<<5;
 		buttons[1]|=((u8(cy*2)&1)<<5)|((u8(cz*2)&1)<<6);
 	}
+	//SWARN_LOG(CONSOLE, "%02x %02x %02x", dt->x, dt->y, dt->z);
 }
 #define kCutoffFreq 5.0f
 inline void LowPassFilter(double & var, double newval, double period)
@@ -573,17 +571,13 @@ void Wiimote::GetIRData(u8* const data, bool use_accel)
 
 void Wiimote::GetExtData(u8* const data)
 {
-	m_extension->GetState(data, HAS_FOCUS);
-
-	// i dont think anything accesses the extension data like this, but ill support it. Indeed, commercial games don't do this.
-	// i think it should be unencrpyted in the register, encrypted when read.
-	memcpy(m_reg_ext.controller_data, data, sizeof(wm_extension));
-
 	// motionplus pass-through modes
 	if (GetMotionPlusActive())
 	{
 		if(mp_passthrough && m_extension->active_extension != EXT_NONE) {
-			static u8 _data[6] = {0x00, 0x80, 0x80, 0x80, 0xb3, 0x8c};
+			m_extension->GetState(data, HAS_FOCUS);
+			memcpy(m_reg_ext.controller_data, data, sizeof(wm_extension));
+			//static u8 _data[6] = {0x00, 0x80, 0x80, 0x80, 0xb3, 0x8c};
 			switch (m_reg_motion_plus.ext_identifier[0x4])
 			{
 			// nunchuck pass-through mode
@@ -644,9 +638,9 @@ void Wiimote::GetExtData(u8* const data)
 				for (unsigned int i=0; i<3; ++i)
 					(&(sh.x))[i] *= m_shake->settings[B_RANGE]->value;
 				// swing
-				m_swing->GetState(sw, sw_state, 0, 1);
+				//m_swing->GetState(sw, sw_state, 0, 1);
 				// tilt
-				m_tilt->GetState(&ty, &tp, &tr, 0, m_tilt->settings[T_GYRO_RANGE]->value, false);
+				m_tilt->GetState(&tr, &tp, &ty, 0, m_tilt->settings[T_GYRO_RANGE]->value, false);
 				// cursor
 				m_ir->GetState(&dx, &dy, &dz, true, true);
 			}
@@ -658,18 +652,18 @@ void Wiimote::GetExtData(u8* const data)
 			//y=trim(m_accel.z); //*(calib->one_g.z-calib->zero_g.z)+calib->zero_g.z);
 
 			// gyro controls
-			y = trim14(-dx*0x7f	-ty*0x1fff	-sw[1]*0x1fff	+sh.x*0.5*0x1fff	+0x1f7f);
-			p = trim14(dy*0x7f	-tp*0x1fff	-sw[2]*0x1fff	+sh.y*0.5*0x1fff	+0x1f7f);
-			r = trim14(-dz*0x7f	-tr*0x1fff	-sw[0]*0x1fff	+sh.z*0.5*0x1fff	+0x1f7f);
-			((wm_motionplus*)data)->yaw1 = y&0xff; ((wm_motionplus*)data)->yaw2 = ((y>>8)&0x3f);
+			p = trim14(dy*0x7f	-tp*0x1fff	+sh.y*0.5*0x1fff	+0x1f7f); // -sw[2]*0x1fff
+			r = trim14(-dz*0x7f	-tr*0x1fff	+sh.z*0.5*0x1fff	+0x1f7f); // -sw[0]*0x1fff
+			y = trim14(-dx*0x7f	-ty*0x1fff	+sh.x*0.5*0x1fff	+0x1f7f);	// -sw[1]*0x1fff
 			((wm_motionplus*)data)->pitch1 = p&0xff; ((wm_motionplus*)data)->pitch2 = ((p>>8)&0x3f);
 			((wm_motionplus*)data)->roll1 = r&0xff; ((wm_motionplus*)data)->roll2 = ((r>>8)&0x3f);
+			((wm_motionplus*)data)->yaw1 = y&0xff; ((wm_motionplus*)data)->yaw2 = ((y>>8)&0x3f);
 
 			// info: non-slow is considered to be five times faster in wiiyourself
-			if ((ty==0 && tp==0 && tr==0) && (sw[1]==0 && sw[2]==0 && sw[0]==0) && (sh.x==0 && sh.y==0 && sh.z==0) && (abs(dx) < 100 && abs(dy) < 100)) {
-				((wm_motionplus*)data)->yaw_slow = 1;
+			if ((ty==0 && tp==0 && tr==0) && (sw[1]==0 && sw[2]==0 && sw[0]==0) && (sh.x==0 && sh.y==0 && sh.z==0) && (abs(dx) < 100 && abs(dy) < 100)) {				
 				((wm_motionplus*)data)->pitch_slow = 1;
 				((wm_motionplus*)data)->roll_slow = 1;
+				((wm_motionplus*)data)->yaw_slow = 1;
 			}	
 			// control bits			
 			((wm_motionplus*)data)->is_mp_data = 1;
@@ -680,31 +674,40 @@ void Wiimote::GetExtData(u8* const data)
 			float mx = 0, my = 0, mz = 0;
 			if (m_options->settings[SETTING_IR_HIDE]->value == 0)  m_ir->GetState(&mx, &my, &mz, true);
 			accel_cal* calib = (accel_cal*)&m_eeprom[0x16];
+			AccelData n_accel;
+			memset(&n_accel, 0, sizeof(n_accel));
+			if(m_extension->active_extension>0) n_accel = ((WiimoteEmu::Nunchuk*)m_extension->attachments[m_extension->active_extension])->m_accel;
+			accel_cal* n_calib = (accel_cal*)&((WiimoteEmu::Nunchuk*)m_extension->attachments[m_extension->active_extension])->reg[0x20];			
 			SNOTICE_LOG(CONSOLE, ""
 			"%0.2f %0.2f"
 			" | %02x %02x %02x"
+			" | %02x %02x %02x"
 			" | %4.2f %4.2f"
-			" | %0.2f %0.2f %0.2f"
 			//" | %0.2f %0.2f %0.2f"
 			//" | %0.2f %0.2f %0.2f"
-			" | %04x %04x %04x (%02x %02x %02x %02x %02x %02x)",
-				mx, my,				
-				(u8)trim(m_accel.x*(calib->one_g.x-calib->zero_g.x)+calib->zero_g.x),
-				(u8)trim(m_accel.y*(calib->one_g.y-calib->zero_g.y)+calib->zero_g.y),
-				(u8)trim(m_accel.z*(calib->one_g.z-calib->zero_g.z)+calib->zero_g.z),
-				dx, dy,				
-				ty, tp, tr,
+			" | %04x %04x %04x"
+			" (%02x %02x %02x %02x %02x %02x)",
+				mx, my,					
+				(u8)trim(m_accel.x*(calib->one_g.x-calib->zero_g.x)+calib->zero_g.x), (u8)trim(m_accel.y*(calib->one_g.y-calib->zero_g.y)+calib->zero_g.y), (u8)trim(m_accel.z*(calib->one_g.z-calib->zero_g.z)+calib->zero_g.z),
+				(u8)trim(n_accel.x*(n_calib->one_g.x-n_calib->zero_g.x)+n_calib->zero_g.x), (u8)trim(n_accel.y*(n_calib->one_g.y-n_calib->zero_g.y)+n_calib->zero_g.y), (u8)trim(n_accel.z*(n_calib->one_g.z-n_calib->zero_g.z)+n_calib->zero_g.z),
+				dx, dy,	
+				//tp, tr, ty,
 				//sw[1], sw[2], sw[0],
-				sh.x, sh.z, sh.y,
-				y, p, r,
-				((wm_motionplus*)data)->yaw1, ((wm_motionplus*)data)->yaw2,
-				((wm_motionplus*)data)->pitch1, ((wm_motionplus*)data)->pitch2,
-				((wm_motionplus*)data)->roll1, ((wm_motionplus*)data)->roll2);
+				//sh.y, sh.z, sh.x,
+				p, r, y
+				//((wm_motionplus*)data)->yaw1, ((wm_motionplus*)data)->yaw2, ((wm_motionplus*)data)->pitch1, ((wm_motionplus*)data)->pitch2, ((wm_motionplus*)data)->roll1, ((wm_motionplus*)data)->roll2
+				);
 		}
 		mp_passthrough = !mp_passthrough;
 	}
-	else if(0xAA == m_reg_ext.encryption)
-		wiimote_encrypt(&m_ext_key, data, 0x00, sizeof(wm_extension));
+	else {
+		m_extension->GetState(data, HAS_FOCUS);
+		// i dont think anything accesses the extension data like this, but ill support it. Indeed, commercial games don't do this.
+		// i think it should be unencrpyted in the register, encrypted when read.
+		memcpy(m_reg_ext.controller_data, data, sizeof(wm_extension));
+		if(0xAA == m_reg_ext.encryption)
+			wiimote_encrypt(&m_ext_key, data, 0x00, sizeof(wm_extension));
+	}
 }
 
 void Wiimote::Update()

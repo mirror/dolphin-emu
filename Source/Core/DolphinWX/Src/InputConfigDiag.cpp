@@ -766,9 +766,9 @@ ControlGroupBox::ControlGroupBox(ControllerEmu::ControlGroup* const group, wxWin
 			dc.Clear();
 			static_bitmap = new wxStaticBitmap(parent, -1, bitmap, wxDefaultPosition, wxDefaultSize, wxBITMAP_TYPE_BMP);
 
-			std::vector< ControllerEmu::ControlGroup::Setting* >::reverse_iterator
-				i = group->settings.rbegin(),
-				e = group->settings.rend();
+			std::vector< ControllerEmu::ControlGroup::Setting* >::iterator
+				i = group->settings.begin(),
+				e = group->settings.end();
 
 			wxBoxSizer* const szr = new wxBoxSizer(wxVERTICAL);
 			for (; i!=e; ++i)
