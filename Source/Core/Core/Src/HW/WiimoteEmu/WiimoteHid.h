@@ -45,9 +45,7 @@ struct hid_packet {
 
 //source: http://wiibrew.org/wiki/Wiimote
 
-typedef u16 wm_core;
-
-struct wm_core_bt {
+struct wm_core {
 	u8 left : 1;
 	u8 right : 1;
 	u8 down : 1;
@@ -94,24 +92,42 @@ struct wm_ir_extended
 	u8 yhi : 2;
 };
 
-struct wm_extension
+struct wm_nc_bt
 {
-	u8 jx; // joystick x, y
-	u8 jy;
-	u8 ax; // accelerometer
-	u8 ay;
-	u8 az;
-	u8 bt;
+	u8 z : 1; // buttons
+	u8 c : 1; 
 };
-struct wm_extension_bt
+
+struct wm_nc
 {
 	u8 jx; // joystick x, y
 	u8 jy;
 	u8 ax; // accelerometer
 	u8 ay;
 	u8 az;
-	u8 bz : 1; // buttons
-	u8 bc : 1; 
+	wm_nc_bt bt;
+	u8 axL : 2;
+	u8 ayL : 2;
+	u8 azL : 2;
+};
+
+struct wm_nc_mp //nunchuk data on motion-plus pass-through
+{
+	u8 jx;
+	u8 jy;
+	u8 ax;
+	u8 ay;
+
+	u8 extension_connected : 1; // 1 usually
+	u8 az : 7;
+	u8 dummy : 1; //0 always
+
+	u8 is_mp_data : 1; //0 when nunchuk interleaved data
+	u8 bz : 1;
+	u8 bc : 1;
+	u8 axL : 1; // ls 1, ls0 = 0 by default,
+	u8 ayL : 1;
+	u8 azL : 2;
 };
 
 struct wm_classic_extension
@@ -186,25 +202,6 @@ struct wm_turntable_extension
 		u16 ltable2 : 1;
 		u16 bt; // buttons
 	};
-};
-
-struct wm_motionplus_nc //nunchuk data on motion-plus pass-through
-{
-	u8 jx;
-	u8 jy;
-	u8 ax;
-	u8 ay;
-
-	u8 extension_connected : 1; // 1 usually
-	u8 az : 7;
-	u8 dummy : 1; //0 always
-
-	u8 is_mp_data : 1; //0 when nunchuk interleaved data
-	u8 bz : 1;
-	u8 bc : 1;
-	u8 axLS : 1; // ls 1, ls0 = 0 by default,
-	u8 ayLS : 1;
-	u8 azLS : 2;
 };
 
 struct wm_motionplus
@@ -390,7 +387,7 @@ struct wm_report_core_accel_ext16
 {
 	wm_core c;
 	wm_accel a;
-	wm_extension ext;
+	wm_nc ext;
 	//wm_ir_basic ir[2];
 	u8 pad[10];
 	
@@ -404,8 +401,7 @@ struct wm_report_core_accel_ir10_ext6
 	wm_core c;
 	wm_accel a;
 	wm_ir_basic ir[2];
-	//u8 ext[6];
-	wm_extension ext;
+	wm_nc ext;
 };
 
 #define WM_REPORT_EXT21 0x3d // never used?

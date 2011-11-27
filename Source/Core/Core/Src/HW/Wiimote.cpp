@@ -548,17 +548,17 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 				"%02x %02x %02x %02x %02x %02x",
 			data[7], data[8], // Nunchuck stick
 			data[9], data[10], data[11], // Nunchuck Accelerometer
-			data[12]); //  Nunchuck buttons
+			data[12]>>6); //  Nunchuck buttons
 		}
 		if (data[1] == 0x37) // WM_REPORT_CORE_ACCEL_IR10_EXT6
 		{
 			SCore = StringFromFormat(	
 					"%02x %02x %02x %02x %02x",
-					((wm_core_bt*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown1,
-					((wm_core_bt*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown2,
-					((wm_core_bt*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown3,
-					((wm_core_bt*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown4,
-					((wm_core_bt*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown5);
+					((wm_core*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown1,
+					((wm_core*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown2,
+					((wm_core*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown3,
+					((wm_core*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown4,
+					((wm_core*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown5);
 			if (((wm_motionplus*)&data[17])->is_mp_data) {
 				SExt = StringFromFormat(""
 				"%02x %02x %d %02x %02x %d %02x %02x %d |"
@@ -572,10 +572,9 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 			} else {
 				SExt = StringFromFormat(
 					"%02x %02x | %02x %02x | %02x %02x %02x | %02x %02x %02x",
-					((wm_motionplus_nc*)&data[17])->bz, ((wm_motionplus_nc*)&data[17])->bc, //  Nunchuck buttons
-					((wm_motionplus_nc*)&data[17])->jx, ((wm_motionplus_nc*)&data[17])->jy, // Nunchuck stick
-					((wm_motionplus_nc*)&data[17])->ax, ((wm_motionplus_nc*)&data[17])->ay, ((wm_motionplus_nc*)&data[17])->az, // Nunchuck Accelerometer					
-					((wm_motionplus_nc*)&data[17])->axLS, ((wm_motionplus_nc*)&data[17])->ayLS, ((wm_motionplus_nc*)&data[17])->azLS); // Nunchuck Accelerometer low
+					((wm_nc_mp*)&data[17])->bz, ((wm_nc_mp*)&data[17])->bc, //  Nunchuck buttons
+					((wm_nc_mp*)&data[17])->jx, ((wm_nc_mp*)&data[17])->jy, // Nunchuck stick
+					((wm_nc_mp*)&data[17])->ax+((wm_nc_mp*)&data[17])->axL, ((wm_nc_mp*)&data[17])->ay+((wm_nc_mp*)&data[17])->ayL, ((wm_nc_mp*)&data[17])->az<<1+((wm_nc_mp*)&data[17])->azL); // Nunchuck Accelerometer					
 			}
 			SData = StringFromFormat("Data[%s][%s][%d|%d] %s| %s"
 			"| %s"
@@ -585,13 +584,13 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 			" (%s)",
 			(Emu ? "E" : "R"),
 			((wm_motionplus*)&data[17])->is_mp_data ? "+" : "e",
-			((wm_motionplus*)&data[17])->is_mp_data ? ((wm_motionplus*)&data[17])->extension_connected : ((wm_motionplus_nc*)&data[17])->extension_connected,
+			((wm_motionplus*)&data[17])->is_mp_data ? ((wm_motionplus*)&data[17])->extension_connected : ((wm_nc_mp*)&data[17])->extension_connected,
 			wm->m_extension->active_extension,
 			ArrayToString(data, 2, 0).c_str(),
 			ArrayToString(&data[2], 2, 0).c_str(),
 			ArrayToString(&data[4], 3, 0).c_str(),
 			//ArrayToString(&data[7], 10, 0).c_str(),
-			ArrayToString(&data[17], 6, 0).c_str(),
+			//ArrayToString(&data[17], 6, 0).c_str(),
 			//SCore.c_str(),
 			SExt.c_str());
 		//DEBUG_LOG(CONSOLE, "M+ %d Extension %d %d %s", ((wm_motionplus*)&data[17])->is_mp_data, ((wm_motionplus*)&data[17])->is_mp_data ?
@@ -644,7 +643,7 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 		// Dot distance
 		//IRData += StringFromFormat(" | Distance:%i", WiimoteEmu::g_Wiimote_kbd.IR.Distance);
 
-		SNOTICE_LOG(CONSOLE, "%s", SData.c_str());
+		SWARN_LOG(CONSOLE, "%s", SData.c_str());
 	}
 }
 

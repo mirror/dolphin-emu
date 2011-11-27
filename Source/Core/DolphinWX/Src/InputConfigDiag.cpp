@@ -994,7 +994,11 @@ InputConfigDialog::InputConfigDialog(wxWindow* const parent, InputPlugin& plugin
 
 	wxBoxSizer* const szr = new wxBoxSizer(wxVERTICAL);
 	szr->Add(m_pad_notebook, 0, wxEXPAND|wxTOP|wxLEFT|wxRIGHT, 5);
+#if wxCHECK_VERSION(2, 9, 0)
 	szr->Add(CreateButtonSizer(wxOK | wxAPPLY | wxCANCEL | wxNO_DEFAULT), 0, wxEXPAND|wxALL, 5);
+#else
+	szr->Add(CreateButtonSizer(wxOK | wxCANCEL | wxNO_DEFAULT), 0, wxEXPAND|wxALL, 5);
+#endif
 
 	SetSizerAndFit(szr);
 	Center();

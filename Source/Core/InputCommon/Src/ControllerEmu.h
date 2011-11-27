@@ -272,13 +272,13 @@ public:
 		Buttons(const char* const _name, bool range = false);
 
 		template <typename C>
-		void GetState(C* const buttons, const C* bitmasks)
+		void GetState(C* const buttons, const C* bitmasks, bool unset = false)
 		{
 			std::vector<Control*>::iterator i = controls.begin(),
 				e = controls.end();
 			for (; i!=e; ++i, ++bitmasks)
 				if ((*i)->control_ref->State() > settings[m_range?B_THRESHOLD:B_NR_THRESHOLD]->value) // threshold
-					*buttons |= *bitmasks;
+					unset ? *buttons &= ~*bitmasks : *buttons |= *bitmasks;
 		}
 	private:
 		bool	m_range;

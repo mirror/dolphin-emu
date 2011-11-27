@@ -319,12 +319,12 @@ bool Wiimote::Step()
 	m_rumble->controls[0]->control_ref->State(m_rumble_on);
 
 	// update buttons in status struct
-	m_status.buttons = 0;
+	memset(&m_status.buttons, 0, sizeof(m_status.buttons));
 	if (has_focus)
 	{
-		m_buttons->GetState(&m_status.buttons, button_bitmasks);
-		m_dpad->GetState(&m_status.buttons, is_sideways ? dpad_sideways_bitmasks : dpad_bitmasks);
-		UDPTLayer::GetButtons(m_udp, &m_status.buttons);
+		m_buttons->GetState((u16*)&m_status.buttons, button_bitmasks);
+		m_dpad->GetState((u16*)&m_status.buttons, is_sideways ? dpad_sideways_bitmasks : dpad_bitmasks);
+		UDPTLayer::GetButtons(m_udp, (u16*)&m_status.buttons);
 	}
 
 	// check if there is a read data request
@@ -372,7 +372,7 @@ bool Wiimote::Step()
 
 void Wiimote::GetCoreData(u8* const data)
 {
-	*(wm_core*)data |= m_status.buttons;
+	memcpy(data, &m_status.buttons, sizeof(m_status.buttons));
 }
 
 void Wiimote::GetAccelData(u8* const data, u8* const buttons)
@@ -576,7 +576,7 @@ void Wiimote::GetExtData(u8* const data)
 	{
 		if(mp_passthrough && m_extension->active_extension != EXT_NONE) {
 			m_extension->GetState(data, HAS_FOCUS);
-			memcpy(m_reg_ext.controller_data, data, sizeof(wm_extension));
+			memcpy(m_reg_ext.controller_data, data, sizeof(wm_nc));
 			//static u8 _data[6] = {0x00, 0x80, 0x80, 0x80, 0xb3, 0x8c};
 			switch (m_reg_motion_plus.ext_identifier[0x4])
 			{
@@ -592,18 +592,19 @@ void Wiimote::GetExtData(u8* const data)
 				//data[5] & (1 << 3);
 				//data[5] & (1 << 1);
 				//data[5] & (1 << 0);
-				((wm_motionplus_nc*)data)->jx = ((wm_extension*)data)->jx;
-				((wm_motionplus_nc*)data)->jy = ((wm_extension*)data)->jy;
-				((wm_motionplus_nc*)data)->ax = ((wm_extension*)data)->ax;
-				((wm_motionplus_nc*)data)->ay = ((wm_extension*)data)->ay;
-				((wm_motionplus_nc*)data)->az = ((wm_extension*)data)->az;
-				((wm_motionplus_nc*)data)->bz = ((wm_extension_bt*)data)->bz;
-				((wm_motionplus_nc*)data)->bc = ((wm_extension_bt*)data)->bc;
-				((wm_motionplus_nc*)data)->is_mp_data = 0;
-				((wm_motionplus_nc*)data)->extension_connected = 1;
-				((wm_motionplus_nc*)data)->dummy = 0;
+				((wm_nc_mp*)data)->jx = ((wm_nc*)data)->jx;
+				((wm_nc_mp*)data)->jy = ((wm_nc*)data)->jy;
+				((wm_nc_mp*)data)->ax = ((wm_nc*)data)->ax;
+				((wm_nc_mp*)data)->ay = ((wm_nc*)data)->ay;
+				((wm_nc_mp*)data)->az = ((wm_nc*)data)->az>>1;
+				((wm_nc_mp*)data)->azL = ((wm_nc*)data)->az&1;
+				((wm_nc_mp*)data)->bz = ((wm_nc_bt*)&((wm_nc*)data)->bt)->z;
+				((wm_nc_mp*)data)->bc = ((wm_nc_bt*)&((wm_nc*)data)->bt)->c;
+				((wm_nc_mp*)data)->is_mp_data = 0;
+				((wm_nc_mp*)data)->extension_connected = 1;
+				((wm_nc_mp*)data)->dummy = 0;
 				//memcpy(data, _data, 6);
-				//ERROR_LOG(CONSOLE, "Ext: %s", ArrayToString(data, 6).c_str());
+				//SERROR_LOG(CONSOLE, "Ext: %s", ArrayToString(data, 6).c_str());
 				break;
 			// classic controller/musical instrument pass-through mode
 			// Bit 0 of Byte 4 is overwritten
@@ -619,7 +620,6 @@ void Wiimote::GetExtData(u8* const data)
 			}
 		} else {
 			memset(data, 0, sizeof(wm_motionplus));
-			const bool has_focus = HAS_FOCUS;
 			const bool is_sideways = m_options->settings[1]->value != 0;
 			const bool is_upright = m_options->settings[2]->value != 0;			
 			AccelData sh;
@@ -631,7 +631,7 @@ void Wiimote::GetExtData(u8* const data)
 			static float dx = 0, dy = 0, dz = 0;
 			static u16 y, p, r;
 			u8 y1,y2, p1,p2, r1,r2;
-			if (has_focus)
+			if (HAS_FOCUS)
 			{
 				// shake
 				EmulateShake(&sh, m_shake, m_shake_step_mp);				
@@ -654,12 +654,12 @@ void Wiimote::GetExtData(u8* const data)
 			// gyro controls
 			p = trim14(dy*0x7f	-tp*0x1fff	+sh.y*0.5*0x1fff	+0x1f7f); // -sw[2]*0x1fff
 			r = trim14(-dz*0x7f	-tr*0x1fff	+sh.z*0.5*0x1fff	+0x1f7f); // -sw[0]*0x1fff
-			y = trim14(-dx*0x7f	-ty*0x1fff	+sh.x*0.5*0x1fff	+0x1f7f);	// -sw[1]*0x1fff
+			y = trim14(-dx*0x7f	-ty*0x1fff	+sh.x*0.5*0x1fff	+0x1f7f); // -sw[1]*0x1fff
 			((wm_motionplus*)data)->pitch1 = p&0xff; ((wm_motionplus*)data)->pitch2 = ((p>>8)&0x3f);
 			((wm_motionplus*)data)->roll1 = r&0xff; ((wm_motionplus*)data)->roll2 = ((r>>8)&0x3f);
 			((wm_motionplus*)data)->yaw1 = y&0xff; ((wm_motionplus*)data)->yaw2 = ((y>>8)&0x3f);
 
-			// info: non-slow is considered to be five times faster in wiiyourself
+			// fast or slow
 			if ((ty==0 && tp==0 && tr==0) && (sw[1]==0 && sw[2]==0 && sw[0]==0) && (sh.x==0 && sh.y==0 && sh.z==0) && (abs(dx) < 100 && abs(dy) < 100)) {				
 				((wm_motionplus*)data)->pitch_slow = 1;
 				((wm_motionplus*)data)->roll_slow = 1;
@@ -676,7 +676,7 @@ void Wiimote::GetExtData(u8* const data)
 			accel_cal* calib = (accel_cal*)&m_eeprom[0x16];
 			AccelData n_accel;
 			memset(&n_accel, 0, sizeof(n_accel));
-			if(m_extension->active_extension>0) n_accel = ((WiimoteEmu::Nunchuk*)m_extension->attachments[m_extension->active_extension])->m_accel;
+			if(m_extension->active_extension > 0) n_accel = ((WiimoteEmu::Nunchuk*)m_extension->attachments[m_extension->active_extension])->m_accel;
 			accel_cal* n_calib = (accel_cal*)&((WiimoteEmu::Nunchuk*)m_extension->attachments[m_extension->active_extension])->reg[0x20];			
 			SNOTICE_LOG(CONSOLE, ""
 			"%0.2f %0.2f"
@@ -685,8 +685,8 @@ void Wiimote::GetExtData(u8* const data)
 			" | %4.2f %4.2f"
 			//" | %0.2f %0.2f %0.2f"
 			//" | %0.2f %0.2f %0.2f"
-			" | %04x %04x %04x"
-			" (%02x %02x %02x %02x %02x %02x)",
+			" | %04x %04x %04x",
+			//" (%02x %02x %02x %02x %02x %02x)",
 				mx, my,					
 				(u8)trim(m_accel.x*(calib->one_g.x-calib->zero_g.x)+calib->zero_g.x), (u8)trim(m_accel.y*(calib->one_g.y-calib->zero_g.y)+calib->zero_g.y), (u8)trim(m_accel.z*(calib->one_g.z-calib->zero_g.z)+calib->zero_g.z),
 				(u8)trim(n_accel.x*(n_calib->one_g.x-n_calib->zero_g.x)+n_calib->zero_g.x), (u8)trim(n_accel.y*(n_calib->one_g.y-n_calib->zero_g.y)+n_calib->zero_g.y), (u8)trim(n_accel.z*(n_calib->one_g.z-n_calib->zero_g.z)+n_calib->zero_g.z),
@@ -704,9 +704,9 @@ void Wiimote::GetExtData(u8* const data)
 		m_extension->GetState(data, HAS_FOCUS);
 		// i dont think anything accesses the extension data like this, but ill support it. Indeed, commercial games don't do this.
 		// i think it should be unencrpyted in the register, encrypted when read.
-		memcpy(m_reg_ext.controller_data, data, sizeof(wm_extension));
+		memcpy(m_reg_ext.controller_data, data, sizeof(wm_nc));
 		if(0xAA == m_reg_ext.encryption)
-			wiimote_encrypt(&m_ext_key, data, 0x00, sizeof(wm_extension));
+			wiimote_encrypt(&m_ext_key, data, 0x00, sizeof(wm_nc));
 	}
 }
 
@@ -780,8 +780,8 @@ void Wiimote::Update()
 							// mix real-buttons with emu-buttons in the status struct, and in the report
 							if (real_rptf.core && rptf.core)
 							{
-								m_status.buttons |= *(wm_core*)(real_data + real_rptf.core);
-								*(wm_core*)(data + rptf.core) = m_status.buttons;
+								memcpy(&m_status.buttons, real_data + real_rptf.core, sizeof(m_status.buttons));
+								memcpy(data + rptf.core, &m_status.buttons, sizeof(m_status.buttons));
 							}
 	
 							// accel
@@ -795,7 +795,7 @@ void Wiimote::Update()
 							// ext
 							// use real-ext data if an emu-extention isn't chosen
 							if (real_rptf.ext && rptf.ext && (0 == m_extension->switch_extension))
-								memcpy(data + rptf.ext, real_data + real_rptf.ext, sizeof(wm_extension));
+								memcpy(data + rptf.ext, real_data + real_rptf.ext, sizeof(wm_nc));
 						}
 						else if (WM_ACK_DATA != real_data[1] || m_extension->active_extension > 0)
 							rptf_size = 0;
