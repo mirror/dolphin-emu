@@ -41,6 +41,8 @@ public:
 
 	void LoadDefaults(const ControllerInterface& ciface);
 
+	AccelData		m_accel;
+
 private:
 	Tilt*			m_tilt;
 	Force*			m_swing;

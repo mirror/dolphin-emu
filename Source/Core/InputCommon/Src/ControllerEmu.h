@@ -307,19 +307,27 @@ public:
 		Force(const char* const _name);
 
 		template <typename C, typename R>
-		void GetState(C* axis, const u8 base, const R range)
+		void GetState(C* axis, const u8 base, const R range, bool step = true)
 		{
 			const float deadzone = settings[0]->value;
-			for (unsigned int i=0; i<6; i+=2)
+			for (unsigned int i=0; i < 3; i++)
 			{
-				float tmpf = 0;
-				const float state = controls[i+1]->control_ref->State() - controls[i]->control_ref->State();
+				float dz = 0;
+				const float state = controls[i*2 + 1]->control_ref->State() - controls[i*2]->control_ref->State();
 				if (fabsf(state) > deadzone)
-					tmpf = ((state - (deadzone * sign(state))) / (1 - deadzone));
+					dz = ((state - (deadzone * sign(state))) / (1 - deadzone));
 
-				float &ax = m_swing[i >> 1];
-				*axis++	= (C)((tmpf - ax) * range + base);
-				ax = tmpf;
+				if (step)
+				{
+					if (state > m_swing[i])
+						m_swing[i] = std::min(m_swing[i] + 0.1f, state);
+					else if (state < m_swing[i])
+						m_swing[i] = std::max(m_swing[i] - 0.1f, state);
+				}
+
+				*axis++ = (C)((abs(m_swing[i]) >= 0.7
+					? -2 * sign(state) + m_swing[i] * 2
+					: m_swing[i]) * sign(state) * range + base);
 			}
 		}
 	private:

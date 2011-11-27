@@ -56,18 +56,17 @@ void Nunchuk::GetState(u8* const data, const bool focus)
 	// stick / not using calibration data for stick, o well
 	m_stick->GetState(&ncdata->jx, &ncdata->jy, 0x80, focus ? 127 : 0);
 
-	AccelData accel;
 	accel_cal* calib = (accel_cal*)&reg[0x20];
 
 	// tilt
-	EmulateTilt(&accel, m_tilt, focus);
+	EmulateTilt(&m_accel, m_tilt, focus);
 
 	if (focus)
 	{
 		// swing
-		EmulateSwing(&accel, m_swing);
+		EmulateSwing(&m_accel, m_swing);
 		// shake
-		EmulateShake(&accel, calib, m_shake, m_shake_step);
+		EmulateShake(&m_accel, calib, m_shake, m_shake_step);
 		// buttons
 		m_buttons->GetState((u8*)&ncdata->bt, nunchuk_button_bitmasks);
 	}
@@ -98,16 +97,16 @@ void Nunchuk::GetState(u8* const data, const bool focus)
 		{
 			float x, y, z;
 			m_udpWrap->inst->getNunchuckAccel(x, y, z);
-			accel.x = x;
-			accel.y = y;
-			accel.z = z;
+			m_accel.x = x;
+			m_accel.y = y;
+			m_accel.z = z;
 		}
 	}
 
 	wm_accel* dt = (wm_accel*)&ncdata->ax;
-	dt->x = u8(Common::trim8(accel.x * (calib->one_g.x - calib->zero_g.x) + calib->zero_g.x));
-	dt->y = u8(Common::trim8(accel.y * (calib->one_g.y - calib->zero_g.y) + calib->zero_g.y));
-	dt->z = u8(Common::trim8(accel.z * (calib->one_g.z - calib->zero_g.z) + calib->zero_g.z));
+	dt->x = u8(Common::trim8(m_accel.x * (calib->one_g.x - calib->zero_g.x) + calib->zero_g.x));
+	dt->y = u8(Common::trim8(m_accel.y * (calib->one_g.y - calib->zero_g.y) + calib->zero_g.y));
+	dt->z = u8(Common::trim8(m_accel.z * (calib->one_g.z - calib->zero_g.z) + calib->zero_g.z));
 }
 
 void Nunchuk::LoadDefaults(const ControllerInterface& ciface)
