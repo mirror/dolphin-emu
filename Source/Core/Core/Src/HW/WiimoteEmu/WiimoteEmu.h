@@ -157,6 +157,7 @@ protected:
 	void HandleExtensionSwap();
 	void UpdateButtonsStatus(bool has_focus);
 
+	void GetSettings();
 	void GetCoreData(u8* const data);
 	void GetAccelData(u8* const data, u8* const buttons);
 	void GetIRData(u8* const data, bool use_accel);

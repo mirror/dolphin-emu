@@ -4,6 +4,7 @@
 
 #include "InputConfigDiag.h"
 #include "WxUtils.h"
+#include "Host.h"
 
 void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 {
@@ -17,12 +18,59 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 		return;
 
 	GamepadPage* const current_page = (GamepadPage*)m_pad_notebook->GetPage(m_pad_notebook->GetSelection());
+	static bool gyro_disabled;
+	static bool hide_ir;
 
 	std::vector< ControlGroupBox* >::iterator
 		g = current_page->control_groups.begin(),
 		ge = current_page->control_groups.end();
 	for ( ; g != ge; ++g  )
 	{
+		switch ( (*g)->control_group->type )
+		{
+		case GROUP_TYPE_OPTIONS :
+		{
+			gyro_disabled = (*g)->control_group->settings.size() > SETTING_MOTIONPLUS
+				&& (*g)->control_group->settings[SETTING_MOTIONPLUS]->value == 0;
+
+			hide_ir = (*g)->control_group->settings.size() > SETTING_IR_HIDE
+				&& (*g)->control_group->settings[SETTING_IR_HIDE]->value != 0;
+
+			// update ui
+			std::vector<ControllerEmu::ControlGroup::Setting*>::const_iterator
+				si = (*g)->control_group->settings.begin(),
+				se = (*g)->control_group->settings.end();
+			for (; si!=se; ++si)
+			{
+				(*si)->GetState();
+			}
+
+			std::vector<ControlButton*> cb = (*g)->control_buttons;
+			std::vector<ControlButton*>::const_iterator bi = (*g)->control_buttons.begin()
+				, be = (*g)->control_buttons.end();
+			for (int n = 0; bi!=be; ++bi, ++n)
+			{
+				(*bi)->Enable(!(gyro_disabled
+					&& n == SETTING_MOTIONPLUS_FAST));
+			}
+
+			std::vector<PadSetting*>::const_iterator
+				oi = (*g)->options.begin(),
+				oe = (*g)->options.end();
+			for (int n = 0; oi!=oe; ++oi, ++n)
+			{
+				if ((*oi)->wxcontrol->IsKindOf(CLASSINFO(wxCheckBox)))
+				{
+					(*oi)->wxcontrol->Enable(!(gyro_disabled
+						&& n == SETTING_MOTIONPLUS_FAST));
+					(*oi)->UpdateGUI();
+				}
+			}
+
+			break;
+		}
+		}
+
 		// if this control group has a bitmap
 		if ( (*g)->static_bitmap )
 		{
@@ -40,36 +88,39 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 
 			switch ( (*g)->control_group->type )
 			{
-			case GROUP_TYPE_TILT :
+
 			case GROUP_TYPE_STICK :
 			case GROUP_TYPE_CURSOR :
 				{
 					// this is starting to be a mess combining all these in one case
 
 					float x = 0, y = 0, z = 0;
-					float xx, yy;
+					float xx, yy, zz;
 
 					switch ((*g)->control_group->type)
 					{
 					case GROUP_TYPE_STICK :
 						((ControllerEmu::AnalogStick*)(*g)->control_group)->GetState( &x, &y, 32.0, 32-1.5 );
+
+						xx = (*g)->control_group->controls[C_RIGHT]->control_ref->State() - (*g)->control_group->controls[C_LEFT]->control_ref->State();
+						yy = (*g)->control_group->controls[C_DOWN]->control_ref->State() - (*g)->control_group->controls[C_UP]->control_ref->State();
+
+						xx *= 32 - 1; xx += 32;
+						yy *= 32 - 1; yy += 32;
 						break;
-					case GROUP_TYPE_TILT :
-						((ControllerEmu::Tilt*)(*g)->control_group)->GetState( &x, &y, 32.0, 32-1.5 );
-						break;
+
+					// read through Cursor::GetState instead of directly from State because that doesn't remove relative input from the emulation
 					case GROUP_TYPE_CURSOR :
-						((ControllerEmu::Cursor*)(*g)->control_group)->GetState( &x, &y, &z );
+						((ControllerEmu::Cursor*)(*g)->control_group)->GetState( &x, &y, &z, ((ControllerEmu::Cursor*)(*g)->control_group)->settings[C_RANGE]->value, true, false );
 						x *= (32-1.5); x+= 32;
 						y *= (32-1.5); y+= 32;
+
+						((ControllerEmu::Cursor*)(*g)->control_group)->GetState( &xx, &yy, &zz, 1.0, false, false );
+						xx *= (32-1.5); xx+= 32;
+						yy *= (32-1.5) * -1; yy+= 32;
+
 						break;
 					}
-
-					xx = (*g)->control_group->controls[3]->control_ref->State();
-					xx -= (*g)->control_group->controls[2]->control_ref->State();
-					yy = (*g)->control_group->controls[1]->control_ref->State();
-					yy -= (*g)->control_group->controls[0]->control_ref->State();
-					xx *= 32 - 1; xx += 32;
-					yy *= 32 - 1; yy += 32;
 
 					// draw the shit
 
@@ -146,7 +197,7 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 					{
 						// deadzone circle
 						dc.SetBrush(*wxLIGHT_GREY_BRUSH);
-						dc.DrawCircle( 32, 32, ((*g)->control_group)->settings[SETTING_DEADZONE]->value * 32 );
+						dc.DrawCircle( 32, 32, ((*g)->control_group)->settings[AS_DEADZONE]->value * 32 );
 					}
 
 					// raw dot
@@ -156,6 +207,10 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 					dc.DrawRectangle( xx - 2, yy - 2, 4, 4 );
 					//dc.DrawRectangle( xx-1, 64-yy-4, 2, 8 );
 					//dc.DrawRectangle( xx-4, 64-yy-1, 8, 2 );
+
+					if (hide_ir
+						&& (*g)->control_group->type == GROUP_TYPE_CURSOR)
+						break;
 
 					// adjusted dot
 					if (x!=32 || y!=32)
@@ -167,17 +222,56 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 						//dc.DrawRectangle( x-1, 64-y-4, 2, 8 );
 						//dc.DrawRectangle( x-4, 64-y-1, 8, 2 );
 					}
-
 				}
 				break;
 			case GROUP_TYPE_FORCE :
+			case GROUP_TYPE_TILT :
 				{
 					float raw_dot[3];
 					float adj_dot[3];
-					const float deadzone = 32 * ((*g)->control_group)->settings[0]->value;
+					float gyro_dot[3];
+					float deadzone;
 
 					// adjusted
-					((ControllerEmu::Force*)(*g)->control_group)->GetState( adj_dot, 32.0, 32-1.5 );
+					switch ((*g)->control_group->type)
+					{
+					case GROUP_TYPE_FORCE :
+						deadzone = 32 * ((*g)->control_group)->settings[F_DEADZONE]->value;
+						((ControllerEmu::Force*)(*g)->control_group)->GetState( adj_dot, 32.0, 32-1.5 );
+						break;
+
+					case GROUP_TYPE_TILT :
+						ControllerEmu::Tilt *cg = (ControllerEmu::Tilt*)(*g)->control_group;
+						bool has_gyro = cg->HasGyro();
+
+						deadzone = 32 * cg->settings[T_DEADZONE]->value;
+						cg->GetState( &(*adj_dot), &(*adj_dot)+1, &(*adj_dot)+2, false, 32.0, 32-1.5, !Core::IsRunning() );
+						if (cg->HasGyro())
+							cg->GetState( &(*gyro_dot), &(*gyro_dot)+1, &(*gyro_dot)+2, true, 32.0, 32-1.5, !Core::IsRunning() );
+
+						// update ui
+						std::vector<ControlButton*>::const_iterator bi = (*g)->control_buttons.begin()
+							, be = (*g)->control_buttons.end();
+						for (int n = 0; bi!=be; ++bi, ++n)
+						{
+							(*bi)->Enable(!(has_gyro
+							&& gyro_disabled
+							&& (n == T_FAST
+							|| n == T_GYRO_RANGE_1
+							|| n == T_GYRO_RANGE_2)));
+						}
+
+						std::vector<PadSetting*>::const_iterator si = (*g)->options.begin()
+							, se = (*g)->options.end();
+						for (int n = 0; si!=se; ++si, ++n)
+						{
+							(*si)->wxcontrol->Enable(!(has_gyro
+							&& gyro_disabled
+							&& (n == T_GYRO_RANGE
+							|| n == T_GYRO_SETTLE)));
+						}
+						break;
+					}
 
 					// raw
 					for ( unsigned int i=0; i<3; ++i )
@@ -204,6 +298,15 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 						dc.SetBrush(*wxRED_BRUSH);
 						dc.DrawRectangle( 0, adj_dot[2] - 1, 64, 2 );
 					}
+					if ( (*g)->control_group->type == GROUP_TYPE_TILT )
+					{
+						if ( ((ControllerEmu::Tilt*)(*g)->control_group)->HasGyro() )
+						{
+							dc.SetPen(*wxBLUE_PEN);
+							dc.SetBrush(*wxBLUE_BRUSH);
+							dc.DrawRectangle( 0, gyro_dot[2], 64, 1 );
+						}
+					}
 
 					// a rectangle, for looks i guess
 					dc.SetBrush(*wxWHITE_BRUSH);
@@ -225,6 +328,15 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 						dc.SetPen(*wxRED_PEN);
 						dc.SetBrush(*wxRED_BRUSH);
 						dc.DrawRectangle( adj_dot[1]-2, adj_dot[0]-2, 4, 4 );
+					}
+					if ( (*g)->control_group->type == GROUP_TYPE_TILT )
+					{
+						if ( ((ControllerEmu::Tilt*)(*g)->control_group)->HasGyro() )
+						{
+							dc.SetPen(*wxBLUE_PEN);
+							dc.SetBrush(*wxBLUE_BRUSH);
+							dc.DrawRectangle( gyro_dot[1] - 1, gyro_dot[0]-  1, 2, 2 );
+						}
 					}
 
 				}
