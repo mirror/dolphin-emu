@@ -33,7 +33,7 @@ Nunchuk::Nunchuk(UDPWrapper *wrp) : Attachment(_trans("Nunchuk")) , m_udpWrap(wr
 	groups.push_back(m_tilt = new Tilt("Tilt"));
 
 	// shake
-	groups.push_back(m_shake = new Buttons("Shake"));
+	groups.push_back(m_shake = new Buttons("Shake", true));
 	m_shake->controls.push_back(new ControlGroup::Input("X"));
 	m_shake->controls.push_back(new ControlGroup::Input("Y"));
 	m_shake->controls.push_back(new ControlGroup::Input("Z"));

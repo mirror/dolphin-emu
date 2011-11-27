@@ -782,20 +782,53 @@ ControlGroupBox::ControlGroupBox(ControllerEmu::ControlGroup* const group, wxWin
 				e = group->settings.end();
 
 			wxBoxSizer* const szr = new wxBoxSizer(wxVERTICAL);
-			for (; i!=e; ++i)
+			wxBoxSizer* r_szr = NULL;
+			wxBoxSizer* c_szr = NULL;
+			for (int n = 0, s = group->settings.size(); i!=e; ++i, ++n, --s)
 			{
 				PadSettingSpin* setting = new PadSettingSpin(parent, *i);
 				setting->wxcontrol->Bind(wxEVT_COMMAND_SPINCTRL_UPDATED, &GamepadPage::AdjustSetting, eventsink);
 				options.push_back(setting);
-				szr->Add(new wxStaticText(parent, -1, wxGetTranslation(StrToWxStr((*i)->name))));
-				szr->Add(setting->wxcontrol, 0, wxLEFT, 0);
+
+				wxBoxSizer* const g_szr = new wxBoxSizer(wxVERTICAL);
+				g_szr->Add(new wxStaticText(parent, -1, wxGetTranslation(StrToWxStr((*i)->name))));
+				g_szr->Add(setting->wxcontrol, 0, wxLEFT, 0);
+
+				if (s >= 3)
+				{
+					if (n % 2 == 0)
+					{
+						r_szr = new wxBoxSizer(wxHORIZONTAL);
+						r_szr->Add(g_szr, 0, 0, 0);
+					}
+					else
+					{
+						r_szr->Add(g_szr, 0, wxLEFT, 5);
+						szr->Add(r_szr, 0, 0, 0);
+						r_szr = 0;
+					}
+				}
+				else
+				{
+					if (r_szr)
+					{
+						szr->Add(r_szr, 0, 0, 0);
+						r_szr = 0;
+					}
+
+					if (!c_szr)
+						c_szr = new wxBoxSizer(wxVERTICAL);
+					c_szr->Add(g_szr, 0, 0, 0);
+				}
 			}
 
-			wxBoxSizer* const h_szr = new wxBoxSizer(wxHORIZONTAL);
-			h_szr->Add(szr, 1, 0, 5);
-			h_szr->Add(static_bitmap, 0, wxALL|wxCENTER, 3);
+			if (!r_szr)
+				r_szr = new wxBoxSizer(wxHORIZONTAL);
+			r_szr->Add(c_szr, 1, 0, 5);
+			r_szr->Add(static_bitmap, 0, wxALL|wxCENTER, 3);
+			szr->Add(r_szr, 0, 0, 0);
 
-			Add(h_szr, 0, wxEXPAND|wxLEFT|wxCENTER|wxTOP, 3);
+			Add(szr, 0, wxLEFT|wxCENTER|wxTOP, 3);
 		}
 		break;
 	case GROUP_TYPE_BUTTONS:
@@ -897,8 +930,19 @@ ControlGroupBox::ControlGroupBox(ControllerEmu::ControlGroup* const group, wxWin
 				setting_cbox->wxcontrol->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &GamepadPage::AdjustSetting, eventsink);
 				options.push_back(setting_cbox);
 
-				Add(setting_cbox->wxcontrol, 0, wxALL|wxLEFT, 5);
+				ControlButton* const control_button = new ControlButton(parent, (*i)->control->control_ref, 40);
+				control_button->SetFont(m_SmallFont);
 
+				control_buttons.push_back(control_button);
+
+				control_button->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GamepadPage::DetectControl, eventsink);
+				control_button->Bind(wxEVT_MIDDLE_DOWN, &GamepadPage::ClearControl, eventsink);
+				control_button->Bind(wxEVT_RIGHT_UP, &GamepadPage::ConfigControl, eventsink);
+
+				wxBoxSizer* const sng_szr = new wxBoxSizer(wxHORIZONTAL);
+				sng_szr->Add(control_button, 0);
+				sng_szr->Add(setting_cbox->wxcontrol, 0, wxALIGN_CENTER_VERTICAL|wxLEFT, 3);
+				Add(sng_szr, 0, wxALL, 3);
 			}
 		}
 		break;
@@ -912,7 +956,14 @@ ControlGroupBox::ControlGroupBox(ControllerEmu::ControlGroup* const group, wxWin
 ControlGroupsSizer::ControlGroupsSizer(ControllerEmu* const controller, wxWindow* const parent, GamepadPage* const eventsink, std::vector<ControlGroupBox*>* groups)
 	: wxBoxSizer(wxHORIZONTAL)
 {
-	size_t col_size = 0;
+	size_t col_size = 0, max_size = 0;
+
+	for (unsigned int i = 0; i < controller->groups.size(); ++i)
+	{
+		const size_t grp_size = controller->groups[i]->controls.size() + controller->groups[i]->settings.size();
+		if (grp_size > max_size)
+			max_size = grp_size;
+	}
 
 	wxBoxSizer* stacked_groups = NULL;
 	for (unsigned int i = 0; i < controller->groups.size(); ++i)
@@ -924,7 +975,8 @@ ControlGroupsSizer::ControlGroupsSizer(ControllerEmu* const controller, wxWindow
 
 		const size_t grp_size = controller->groups[i]->controls.size() + controller->groups[i]->settings.size();
 		col_size += grp_size;
-		if (col_size > 8 || NULL == stacked_groups)
+
+		if (col_size >= max_size || NULL == stacked_groups)
 		{
 			if (stacked_groups)
 				Add(stacked_groups, 0, /*wxEXPAND|*/wxBOTTOM|wxRIGHT, 5);

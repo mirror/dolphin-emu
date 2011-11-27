@@ -3,6 +3,7 @@
 // Refer to the license.txt file included.
 
 #include "ControllerEmu.h"
+#include "../../Core/Src/Core.h"
 
 #if defined(HAVE_X11) && HAVE_X11
 #include <X11/Xlib.h>
@@ -62,6 +63,12 @@ void ControllerEmu::UpdateReferences(ControllerInterface& devi)
 		for (; ci!=ce; ++ci)
 			devi.UpdateReference((*ci)->control_ref, default_device);
 
+		std::vector<ControlGroup::Setting*>::const_iterator
+			si = (*i)->settings.begin(),
+			se = (*i)->settings.end();
+		for (; si!=se; ++si)
+			devi.UpdateReference((*si)->control->control_ref, default_device);
+
 		// extension
 		if (GROUP_TYPE_EXTENSION == (*i)->type)
 		{
@@ -114,6 +121,7 @@ void ControllerEmu::ControlGroup::LoadConfig(IniFile::Section *sec, const std::s
 	{
 		sec->Get((group+(*si)->name).c_str(), &(*si)->value, (*si)->default_value*100);
 		(*si)->value /= 100;
+		sec->Get((group+(*si)->name+"/Input").c_str(), &(*si)->control->control_ref->expression, "");
 	}
 
 	// controls
@@ -178,7 +186,10 @@ void ControllerEmu::ControlGroup::SaveConfig(IniFile::Section *sec, const std::s
 		si = settings.begin(),
 		se = settings.end();
 	for (; si!=se; ++si)
+	{
 		sec->Set((group+(*si)->name).c_str(), (*si)->value*100.0f, (*si)->default_value*100.0f);
+		sec->Set((group+(*si)->name+"/Input").c_str(), (*si)->control->control_ref->expression, "");
+	}
 
 	// controls
 	std::vector<ControlGroup::Control*>::const_iterator
@@ -217,6 +228,22 @@ void ControllerEmu::SaveConfig(IniFile::Section *sec, const std::string& base)
 		e = groups.end();
 	for (; i!=e; ++i)
 		(*i)->SaveConfig(sec, defdev, base);
+}
+
+void ControllerEmu::ControlGroup::Setting::GetState()
+{
+	bool state = control->control_ref->State() ? true : false;
+
+	if (state == lastState)
+		return;
+	lastState = state;
+
+	if (!state)
+		return;
+
+	value = !value;
+
+	Core::DisplayMessage(StringFromFormat("%s: %s", name, value ? "Enabled" : "Disabled").c_str(), 2000, (value ? 0x00FFFF : 0xABABAB));
 }
 
 ControllerEmu::AnalogStick::AnalogStick(const char* const _name) : ControlGroup(_name, GROUP_TYPE_STICK)
@@ -260,6 +287,7 @@ ControllerEmu::Slider::Slider(const char* const _name) : ControlGroup(_name, GRO
 ControllerEmu::Force::Force(const char* const _name) : ControlGroup(_name, GROUP_TYPE_FORCE)
 {
 	memset(m_swing, 0, sizeof(m_swing));
+	memset(m_state, 0, sizeof(m_state));
 
 	controls.push_back(new Input(_trans("Up")));
 	controls.push_back(new Input(_trans("Down")));
@@ -268,21 +296,40 @@ ControllerEmu::Force::Force(const char* const _name) : ControlGroup(_name, GROUP
 	controls.push_back(new Input(_trans("Forward")));
 	controls.push_back(new Input(_trans("Backward")));
 
+	settings.push_back(new Setting(_trans("Range"), 1.0f, 0, 500));
 	settings.push_back(new Setting(_trans("Dead Zone"), 0, 0, 50));
 }
 
-ControllerEmu::Tilt::Tilt(const char* const _name)
-	: ControlGroup(_name, GROUP_TYPE_TILT)
+ControllerEmu::Tilt::Tilt(const char* const _name, bool gyro)
+	: m_has_gyro(gyro)
+	, ControlGroup(_name, GROUP_TYPE_TILT)
 {
-	memset(m_tilt, 0, sizeof(m_tilt));
+	memset(m_acc, 0, sizeof(m_acc));
+	memset(m_gyro, 0, sizeof(m_gyro));
+	memset(m_settle, 0, sizeof(m_settle));
 
 	controls.push_back(new Input("Forward"));
 	controls.push_back(new Input("Backward"));
 	controls.push_back(new Input("Left"));
 	controls.push_back(new Input("Right"));
+	controls.push_back(new Input("Yaw Left"));
+	controls.push_back(new Input("Yaw Right"));
 
-	controls.push_back(new Input(_trans("Modifier")));
-
+	if (gyro)
+	{
+		controls.push_back(new Input(_trans("Fast")));
+		controls.push_back(new Input(_trans("Acc Range")));
+		controls.push_back(new Input(_trans("Gyro Range 1")));
+		controls.push_back(new Input(_trans("Gyro Range 2")));
+		settings.push_back(new Setting(_trans("Acc Range"), 1.0f, 0, 500));
+		settings.push_back(new Setting(_trans("Gyro Range"), 1.0f, 0, 500));
+		settings.push_back(new Setting(_trans("Gyro Settle"), 0.25f, 0, 9999));
+	}
+	else
+	{
+		controls.push_back(new Input(_trans("Range")));
+		settings.push_back(new Setting(_trans("Range"), 1.0f, 0, 500));
+	}
 	settings.push_back(new Setting(_trans("Dead Zone"), 0, 0, 50));
 	settings.push_back(new Setting(_trans("Circle Stick"), 0));
 	settings.push_back(new Setting(_trans("Angle"), 0.9f, 0, 180));
@@ -290,18 +337,23 @@ ControllerEmu::Tilt::Tilt(const char* const _name)
 
 ControllerEmu::Cursor::Cursor(const char* const _name)
 	: ControlGroup(_name, GROUP_TYPE_CURSOR)
-	, m_z(0)
 {
+	memset(m_state, 0, sizeof(m_state));
+	memset(m_absolute, 0, sizeof(m_absolute));
+	memset(m_last, 0, sizeof(m_last));
+
 	for (unsigned int i = 0; i < 4; ++i)
 		controls.push_back(new Input(named_directions[i]));
 	controls.push_back(new Input("Forward"));
 	controls.push_back(new Input("Backward"));
+	controls.push_back(new Input(_trans("Range")));
 	controls.push_back(new Input(_trans("Hide")));
+	controls.push_back(new Input(_trans("Show")));
 
+	settings.push_back(new Setting(_trans("Range"), 1.0f, 0, 500));
 	settings.push_back(new Setting(_trans("Center"), 0.5f));
 	settings.push_back(new Setting(_trans("Width"), 0.5f));
 	settings.push_back(new Setting(_trans("Height"), 0.5f));
-
 }
 
 void ControllerEmu::LoadDefaults(const ControllerInterface &ciface)

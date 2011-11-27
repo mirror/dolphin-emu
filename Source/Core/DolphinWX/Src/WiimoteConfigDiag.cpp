@@ -220,7 +220,9 @@ void WiimoteConfigDiag::ConfigEmulatedWiimote(wxCommandEvent& ev)
 		return;
 	}
 
+
 	m_emu_config_diag = new InputConfigDialog(this, m_plugin, _trans("Dolphin Emulated Wiimote Configuration"), m_wiimote_index_from_conf_bt_id[ev.GetId()]);
+
 	m_emu_config_diag->Show();
 }
 
