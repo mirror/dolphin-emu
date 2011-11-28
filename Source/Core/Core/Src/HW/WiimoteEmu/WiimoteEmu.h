@@ -57,13 +57,6 @@ void EmulateSwing(AccelData* const accel
 	 , ControllerEmu::Force* const tilt_group
 	 , const bool sideways = false, const bool upright = false);
 
-inline double trim(double a)
-{
-	if (a<=0) return 0;
-	if (a>=255) return 255;
-	return a;
-}
-
 class Wiimote : public ControllerEmu
 {
 public:

@@ -14,6 +14,13 @@
 namespace MathUtil
 {
 
+float Round(float n, float dec = 7);
+float Sign(float n);
+double Trim(double n, double min, double max);
+float Trim(float n, float min, float max);
+float MinAbs(float i, float j, bool sign = false);
+float MaxAbs(float i, float j, bool sign = false);
+
 static const u64 DOUBLE_SIGN = 0x8000000000000000ULL,
 	DOUBLE_EXP  = 0x7FF0000000000000ULL,
 	DOUBLE_FRAC = 0x000FFFFFFFFFFFFFULL,

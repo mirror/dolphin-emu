@@ -120,9 +120,9 @@ void Nunchuk::GetState(u8* const data, const bool focus)
 	}
 
 	wm_accel* dt = (wm_accel*)&ncdata->ax;
-	dt->x = u8(trim(accel.x * (calib->one_g.x - calib->zero_g.x) + calib->zero_g.x));
-	dt->y = u8(trim(accel.y * (calib->one_g.y - calib->zero_g.y) + calib->zero_g.y));
-	dt->z = u8(trim(accel.z * (calib->one_g.z - calib->zero_g.z) + calib->zero_g.z));
+	dt->x = u8(Common::trim8(accel.x * (calib->one_g.x - calib->zero_g.x) + calib->zero_g.x));
+	dt->y = u8(Common::trim8(accel.y * (calib->one_g.y - calib->zero_g.y) + calib->zero_g.y));
+	dt->z = u8(Common::trim8(accel.z * (calib->one_g.z - calib->zero_g.z) + calib->zero_g.z));
 }
 
 void Nunchuk::LoadDefaults(const ControllerInterface& ciface)

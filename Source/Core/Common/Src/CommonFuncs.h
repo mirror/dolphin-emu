@@ -162,6 +162,7 @@ const char* GetLastErrorMsg();
 namespace Common
 {
 inline u8 swap8(u8 _data) {return _data;}
+inline u32 swap24(const u8* _data) {return (_data[0] << 16) | (_data[1] << 8) | _data[2];}
 
 #ifdef _WIN32
 inline u16 swap16(u16 _data) {return _byteswap_ushort(_data);}
@@ -234,6 +235,25 @@ inline T FromBigEndian(T data)
 	
 	swap<sizeof(data)>(reinterpret_cast<u8*>(&data));
 	return data;
+}
+
+inline double trim8(double a)
+{
+	if (a <= 0) return 0;
+	if (a >= 0xff) return 0xff;
+	return a;
+}
+inline double trim6(double a)
+{
+	if (a <= 0) return 0;
+	if (a >= 0x3f) return 0x3f;
+	return a;
+}
+inline double trim14(double a)
+{
+	if (a <= 0) return 0;
+	if (a >= 0x3fff) return 0x3fff;
+	return a;
 }
 
 }  // Namespace Common
