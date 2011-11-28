@@ -29,12 +29,6 @@
 
 #include "Attachment/Attachment.h"
 
-/* Bit shift conversions */
-static u32 swap24(const u8* src)
-{
-	return (src[0] << 16) | (src[1] << 8) | src[2];
-}
-
 namespace WiimoteEmu
 {
 
@@ -253,7 +247,7 @@ void Wiimote::RequestStatus(const wm_request_status* const rs)
 /* Write data to Wiimote and Extensions registers. */
 void Wiimote::WriteData(const wm_write_data* const wd)
 {
-	u32 address = swap24(wd->address);
+	u32 address = Common::swap24(wd->address);
 
 	// ignore the 0x010000 bit
 	address &= ~0x010000;
@@ -383,7 +377,7 @@ void Wiimote::WriteData(const wm_write_data* const wd)
 /* Read data from Wiimote and Extensions registers. */
 void Wiimote::ReadData(const wm_read_data* const rd) 
 {
-	u32 address = swap24(rd->address);
+	u32 address = Common::swap24(rd->address);
 	u16 size = Common::swap16(rd->size);
 
 	// ignore the 0x010000 bit
@@ -503,7 +497,7 @@ void Wiimote::ReadData(const wm_read_data* const rd)
 	}
 
 	// want the requested address, not the above modified one
-	rr.address = swap24(rd->address);
+	rr.address = Common::swap24(rd->address);
 	rr.size = size;
 	//rr.channel = _channelID;
 	rr.position = 0;

@@ -425,9 +425,9 @@ void Wiimote::GetAccelData(u8* const data, u8* const buttons)
 	}
 	wm_accel* dt = (wm_accel*)data;
 	double cx,cy,cz;
-	cx=trim(m_accel.x*(calib->one_g.x-calib->zero_g.x)+calib->zero_g.x);
-	cy=trim(m_accel.y*(calib->one_g.y-calib->zero_g.y)+calib->zero_g.y);
-	cz=trim(m_accel.z*(calib->one_g.z-calib->zero_g.z)+calib->zero_g.z);
+	cx=Common::trim8(m_accel.x*(calib->one_g.x-calib->zero_g.x)+calib->zero_g.x);
+	cy=Common::trim8(m_accel.y*(calib->one_g.y-calib->zero_g.y)+calib->zero_g.y);
+	cz=Common::trim8(m_accel.z*(calib->one_g.z-calib->zero_g.z)+calib->zero_g.z);
 	dt->x=u8(cx);
 	dt->y=u8(cy);
 	dt->z=u8(cz);
