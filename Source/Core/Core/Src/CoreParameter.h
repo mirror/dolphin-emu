@@ -175,6 +175,7 @@ struct SCoreStartupParameter
 	std::string m_strApploader;
 	std::string m_strUniqueID;
 	std::string m_strName;
+	std::string m_strRegion;
 	std::string m_strGameIni;
 
 	// Constructor just calls LoadDefaults
