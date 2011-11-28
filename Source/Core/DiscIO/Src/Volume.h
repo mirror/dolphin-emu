@@ -53,6 +53,23 @@ public:
 	};
 
 	virtual ECountry GetCountry() const = 0;
+
+	std::string GetRegion()
+	{
+		switch (GetCountry())
+		{
+		case COUNTRY_EUROPE: return "PAL";
+		case COUNTRY_FRANCE: return "PAL-F";
+		case COUNTRY_RUSSIA: return "PAL-R";
+		case COUNTRY_USA: return "NTSC";
+		case COUNTRY_JAPAN: return "NTSC-J";
+		case COUNTRY_KOREA: return "NTSC-K";
+		case COUNTRY_ITALY: return "PAL-I";
+		case COUNTRY_SDK: return "SDK";
+		case COUNTRY_UNKNOWN: return "";
+		}
+	}
+
 	virtual u64 GetSize() const = 0;
 	
 	// Size on disc (compressed size)
