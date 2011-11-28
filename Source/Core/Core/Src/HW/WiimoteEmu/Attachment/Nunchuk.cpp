@@ -31,7 +31,7 @@ Nunchuk::Nunchuk(UDPWrapper *wrp) : Attachment(_trans("Nunchuk")) , m_udpWrap(wr
 	groups.push_back(m_swing = new Force("Thrust"));
 
 	// tilt
-	groups.push_back(m_tilt = new Tilt("Tilt"));
+	groups.push_back(m_tilt = new Rotate("Rotate"));
 
 	// shake
 	groups.push_back(m_shake = new Buttons("Shake", true));

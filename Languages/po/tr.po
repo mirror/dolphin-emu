@@ -4967,7 +4967,7 @@ msgid "Threshold"
 msgstr "Eşik"
 
 #: Source/Core/Core/Src/HW/WiimoteEmu/WiimoteEmu.cpp:266
-msgid "Tilt"
+msgid "Rotate"
 msgstr "Eğim"
 
 #: Source/Core/DolphinWX/Src/MemcardManager.cpp:625

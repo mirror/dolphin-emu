@@ -19,9 +19,9 @@
 
 void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 {
-	wxFont small_font(6, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
-
 	if(!g_controller_interface.UpdateInput()) return;
+
+	wxFont small_font(6, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD);
 
 	// don't want game thread updating input when we are using it here
 	std::unique_lock<std::recursive_mutex> lk(g_controller_interface.update_lock, std::try_to_lock);
@@ -67,12 +67,17 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 						((ControllerEmu::AnalogStick*)(*g)->control_group)->GetState( &x, &y, 32.0, 32-1.5 );
 						break;
 					case GROUP_TYPE_TILT :
-						((ControllerEmu::Tilt*)(*g)->control_group)->GetState( &x, &y, &z, 32.0, 32-1.5 );
+						((ControllerEmu::Rotate*)(*g)->control_group)->GetState( &x, &y, &z, 32.0, 32-1.5 );
 						break;
 					case GROUP_TYPE_CURSOR :
-						((ControllerEmu::Cursor*)(*g)->control_group)->GetState( &x, &y, &z );
+						((ControllerEmu::Cursor*)(*g)->control_group)->GetState( &x, &y, &z, true, current_page->control_groups.back()->control_group->settings[SETTING_RELATIVE_CURSOR]->value != 0 );
 						x *= (32-1.5); x+= 32;
 						y *= (32-1.5); y+= 32;
+						// ui enable/disable			
+						std::vector<PadSetting*>::const_iterator si = (*g)->options.begin()
+							, se = (*g)->options.end(); int n = 0;
+						for (; si!=se; ++si, ++n)
+							if(n == C_IR_SENSITIVITY) if (current_page->control_groups.back()->control_group->settings[SETTING_RELATIVE_CURSOR]->value == 0) (*si)->wxcontrol->Disable(); else (*si)->wxcontrol->Enable();
 						break;
 					}
 
@@ -160,7 +165,6 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 						//dc.DrawRectangle( x-1, 64-y-4, 2, 8 );
 						//dc.DrawRectangle( x-4, 64-y-1, 8, 2 );
 					}
-
 				}
 				break;
 			case GROUP_TYPE_FORCE :

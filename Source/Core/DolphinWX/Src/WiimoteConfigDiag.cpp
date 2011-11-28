@@ -16,6 +16,7 @@ const wxString& ConnectedWiimotesString()
 WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* parent, InputPlugin& plugin, const wxString& title)
 	: wxDialog(NULL, -1, title, wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE|wxMINIMIZE_BOX|wxDIALOG_NO_PARENT)
 	, m_parent(parent)
+	, m_emu_config_diag(NULL)
 	, m_plugin(plugin)
 {
 	WiimoteReal::LoadSettings();
@@ -53,7 +54,6 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* parent, InputPlugin& plugin, cons
 		if (m_orig_wiimote_sources[i] != WIIMOTE_SRC_EMU && m_orig_wiimote_sources[i] != WIIMOTE_SRC_HYBRID)
 			wiimote_configure_bt[i]->Disable();
 	}
-
 
 	// "Wiimotes" layout
 	wxStaticBoxSizer* const wiimote_group = new wxStaticBoxSizer(wxHORIZONTAL, this, _("Wiimotes"));
@@ -186,26 +186,32 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* parent, InputPlugin& plugin, cons
 }
 void WiimoteConfigDiag::OnClose(wxCloseEvent& event)
 {
-	if (!Core::IsRunning())				// if game isn't running
-	{
-		Wiimote::Shutdown();
-	}
-	m_parent->m_WiimoteConfigDiag = NULL;
-	Destroy();
+	// close open dialogs
+	if (m_emu_config_diag) m_emu_config_diag->Close();
+	Hide();
+	m_parent->Update();	
 	event.Skip();
 }
 
 void WiimoteConfigDiag::ConfigEmulatedWiimote(wxCommandEvent& ev)
 {
-	InputConfigDialog* const m_emu_config_diag = new InputConfigDialog(this, m_plugin, std::string("Dolphin Emulated Wiimote Configuration")
-		+ (Core::IsRunning() ? (std::string(" - ") + SConfig::GetInstance().m_LocalCoreStartupParameter.m_strName) : std::string("")),
-		m_wiimote_index_from_conf_bt_id[ev.GetId()]);
+	m_emu_config_diag = new InputConfigDialog(this, m_plugin, std::string("Dolphin Emulated Wiimote Configuration"), m_wiimote_index_from_conf_bt_id[ev.GetId()]);
 	m_emu_config_diag->Show();
 }
 
 void WiimoteConfigDiag::UpdateGUI()
 {
 	connected_wiimotes_txt->SetLabel(ConnectedWiimotesString());
+
+	SetTitle(_("Dolphin Wiimote Configuration%s") +	(Core::IsRunning() ? _(" - ") + SConfig::GetInstance().m_LocalCoreStartupParameter.m_strName
+		+ " (" + SConfig::GetInstance().m_LocalCoreStartupParameter.m_strRegion + ")" : _("")));
+
+	if(m_emu_config_diag) m_emu_config_diag->UpdateGUI();
+}
+
+void WiimoteConfigDiag::Update()
+{
+	if (m_emu_config_diag) if (!m_emu_config_diag->IsShown()) { m_emu_config_diag->Destroy(); m_emu_config_diag = NULL; }
 }
 
 #ifdef _WIN32

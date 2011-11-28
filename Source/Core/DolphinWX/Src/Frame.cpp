@@ -476,6 +476,19 @@ CFrame::~CFrame()
 	delete m_Mgr;
 }
 
+void CFrame::Update() {
+	if (m_WiimoteConfigDiag)
+		if (!m_WiimoteConfigDiag->IsShown()) {
+			m_WiimoteConfigDiag->Destroy(); m_WiimoteConfigDiag = NULL;
+			if (!Core::IsRunning()) Wiimote::Shutdown();
+		}
+}
+
+void CFrame::OnQuit(wxCommandEvent& WXUNUSED (event))
+{
+	Close(true);
+}
+
 bool CFrame::RendererIsFullscreen()
 {
 	if (Core::GetState() == Core::CORE_RUN || Core::GetState() == Core::CORE_PAUSE)
@@ -485,13 +498,40 @@ bool CFrame::RendererIsFullscreen()
 	return false;
 }
 
-void CFrame::OnQuit(wxCommandEvent& WXUNUSED (event))
+// Events
+
+void CFrame::OnClose(wxCloseEvent& event)
 {
-	Close(true);
+	if (Core::GetState() != Core::CORE_UNINITIALIZED)
+	{
+		DoStop();
+		if (Core::GetState() != Core::CORE_UNINITIALIZED)
+			return;
+		UpdateGUI();
+	}
+
+	//Stop Dolphin from saving the minimized Xpos and Ypos
+	if(main_frame->IsIconized())
+		main_frame->Iconize(false);
+
+	// Save GUI settings
+	if (g_pCodeWindow) SaveIniPerspectives();
+	// Close the log window now so that its settings are saved
+	else
+	{
+		m_LogWindow->Close();
+		m_LogWindow = NULL;
+	}
+	// Close open dialogs
+	if (m_WiimoteConfigDiag) m_WiimoteConfigDiag->Close();
+
+	// Uninit
+	m_Mgr->UnInit();
+
+	// Don't forget the skip or the window won't be destroyed
+	event.Skip();
 }
 
-// --------
-// Events
 void CFrame::OnActive(wxActivateEvent& event)
 {
 	if (Core::GetState() == Core::CORE_RUN || Core::GetState() == Core::CORE_PAUSE)
@@ -514,37 +554,6 @@ void CFrame::OnActive(wxActivateEvent& event)
 		}
 	}
 	event.Skip();
-}
-
-void CFrame::OnClose(wxCloseEvent& event)
-{
-	if (Core::GetState() != Core::CORE_UNINITIALIZED)
-	{
-		DoStop();
-		if (Core::GetState() != Core::CORE_UNINITIALIZED)
-			return;
-		UpdateGUI();
-	}
-
-	//Stop Dolphin from saving the minimized Xpos and Ypos
-	if(main_frame->IsIconized())
-		main_frame->Iconize(false);
-
-	// Don't forget the skip or the window won't be destroyed
-	event.Skip();
-
-	// Save GUI settings
-	if (g_pCodeWindow) SaveIniPerspectives();
-	// Close the log window now so that its settings are saved
-	else
-	{
-		m_LogWindow->Close();
-		m_LogWindow = NULL;
-	}
-
-
-	// Uninit
-	m_Mgr->UnInit();
 }
 
 // Post events

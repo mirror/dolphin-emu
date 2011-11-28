@@ -22,8 +22,6 @@
 #include "CDUtils.h"
 #include "NANDContentLoader.h"
 
-#include "VolumeCreator.h" // DiscIO
-
 #include "Boot/Boot.h" // Core
 #include "Boot/Boot_DOL.h"
 #include "CoreParameter.h"
@@ -146,6 +144,7 @@ bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2)
 					return false;
 				}
 				m_strName = pVolume->GetName();
+				m_strRegion  = GetRegion(pVolume->GetCountry());
 				m_strUniqueID = pVolume->GetUniqueID();
 				
 				// Check if we have a Wii disc
@@ -339,6 +338,22 @@ bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2)
 	}
 
 	return true;
+}
+
+std::string SCoreStartupParameter::GetRegion(DiscIO::IVolume::ECountry region)
+{
+	switch (region)
+	{
+	case DiscIO::IVolume::COUNTRY_EUROPE: return "PAL";
+	case DiscIO::IVolume::COUNTRY_FRANCE: return "PAL-F";
+	case DiscIO::IVolume::COUNTRY_RUSSIA: return "PAL-R";
+	case DiscIO::IVolume::COUNTRY_USA: return "NTSC";
+	case DiscIO::IVolume::COUNTRY_JAPAN: return "NTSC-J";
+	case DiscIO::IVolume::COUNTRY_KOREA: return "NTSC-K";
+	case DiscIO::IVolume::COUNTRY_ITALY: return "PAL-I";
+	case DiscIO::IVolume::COUNTRY_SDK: return "SDK";
+	case DiscIO::IVolume::COUNTRY_UNKNOWN: return "";
+	}
 }
 
 void SCoreStartupParameter::CheckMemcardPath(std::string& memcardPath, std::string gameRegion, bool isSlotA)

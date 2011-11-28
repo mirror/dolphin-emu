@@ -4957,7 +4957,7 @@ msgid "Threshold"
 msgstr "Práh"
 
 #: Source/Core/Core/Src/HW/WiimoteEmu/WiimoteEmu.cpp:266
-msgid "Tilt"
+msgid "Rotate"
 msgstr "Naklánění"
 
 #: Source/Core/DolphinWX/Src/MemcardManager.cpp:625

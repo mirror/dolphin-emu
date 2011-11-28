@@ -30,6 +30,7 @@
 
 #include "ControllerInterface/ControllerInterface.h"
 #include "IniFile.h"
+#include "MathUtil.h"
 
 #define sign(x) ((x)?(x)<0?-1:1:0)
 
@@ -53,6 +54,7 @@ enum
 	SETTING_SIDEWAYS_WIIMOTE,
 	SETTING_UPRIGHT_WIIMOTE,
 	SETTING_MOTIONPLUS,
+	SETTING_RELATIVE_CURSOR,
 	SETTING_IR_HIDE,
 };
 enum
@@ -117,7 +119,19 @@ enum
 };
 enum
 {
-	C_SENSITIVITY,
+	C_UP,
+	C_DOWN,
+	C_LEFT,
+	C_RIGHT,
+	C_FORWARD,
+	C_BACKWARD,
+	C_MODIFIER,
+	C_HIDE
+};
+enum
+{
+	C_IR_SENSITIVITY,
+	C_GYRO_SENSITIVITY,
 	C_CENTER,
 	C_WIDTH,
 	C_HEIGHT,
@@ -356,21 +370,22 @@ public:
 		{
 			const float master_range = settings[F_RANGE]->value;
 			const float deadzone = settings[F_DEADZONE]->value;
+			
 			for (unsigned int i=0; i<6; i+=2)
 			{
 				float dz = 0;
 				ControlState state = controls[i]->control_ref->State() - controls[i+1]->control_ref->State();
 				if (fabsf(state) > deadzone)
 					dz = ((state - (deadzone * sign(state))) / (1 - deadzone));
-				step = true;
+
 				if (step) {
-					if (state > m_thrust[i])
-						m_thrust[i] = std::min(m_thrust[i] + 0.1f, state);
-					else if (state < m_thrust[i])
-						m_thrust[i] = std::max(m_thrust[i] - 0.1f, state);
+					if (state > m_thrust[i>>1])
+						m_thrust[i>>1] = std::min(m_thrust[i>>1] + 0.1f, state);
+					else if (state < m_thrust[i>>1])
+						m_thrust[i>>1] = std::max(m_thrust[i>>1] - 0.1f, state);
 				}
-				
-				*axis++ = (C)((abs(m_thrust[i]) >= 0.7 ? -2*sign(state)+m_thrust[i]*2 : m_thrust[i]) * sign(state) * range * master_range + base);
+
+				*axis++ = (C)((abs(m_thrust[i>>1]) >= 0.7 ? -2*sign(state)+m_thrust[i>>1]*2 : m_thrust[i>>1]) * sign(state) * range * master_range + base);
 				//if(i==0) SWARN_LOG(CONSOLE, "%d | %0.2f %0.2f | %0.2f %0.2f | state %0.2f, sign %0.2f, dz %0.2f", i, master_range, range, *(axis-1), m_thrust[i], state, (float)sign(state), dz);
 			}
 		}
@@ -378,10 +393,10 @@ public:
 		float	m_thrust[3];
 	};
 
-	class Tilt : public ControlGroup
+	class Rotate : public ControlGroup
 	{
 	public:
-		Tilt(const char* const _name, bool gyro = false);
+		Rotate(const char* const _name, bool gyro = false);
 
 		template <typename C, typename R>
 		void GetState(C* const x, C* const y, C* const z, const unsigned int base, const R range, const bool step = true)
@@ -395,13 +410,15 @@ public:
 			ControlState circle = settings[m_gyro?T_CIRCLESTICK:T_NG_CIRCLESTICK]->value;
 			ControlState m = controls[T_MODIFIER]->control_ref->State();
 
+			//SERROR_LOG(CONSOLE, "Rotate: %5.2f", xx);
 			// modifier code
 			if (m)
 			{
-				xx = (fabsf(xx)>deadzone) * sign(xx) * (m + deadzone/2);
-				yy = (fabsf(yy)>deadzone) * sign(yy) * (m + deadzone/2);				
-				zz = (fabsf(zz)>deadzone) * sign(zz) * (m + deadzone/2);
+				xx = (fabsf(xx)>deadzone) * sign(xx) * (m + deadzone/2.0);
+				yy = (fabsf(yy)>deadzone) * sign(yy) * (m + deadzone/2.0);				
+				zz = (fabsf(zz)>deadzone) * sign(zz) * (m + deadzone/2.0);
 			}
+			//SERROR_LOG(CONSOLE, "Rotate: %5.2f", xx);
 
 			// deadzone / circle stick code
 			if (deadzone || circle)
@@ -473,26 +490,37 @@ public:
 		void GetState(C* const x, C* const y, C* const z, const bool adjusted = false, const bool relative = false)
 		{
 			if (relative) {
-				//std::string state = ""; for(int i=0; i<controls.size(); i++)
-				//	state += StringFromFormat("%0.2f ", controls[i]->control_ref->State(0, true));				
-				//SWARN_LOG(CONSOLE, "Cursor::GetState: size %d, state %s", controls.size(), state.c_str());				
-				float yy = controls[0]->control_ref->State(0, true);
 				float xx = controls[2]->control_ref->State(0, true);
+				float yy = controls[0]->control_ref->State(0, true);
 				float zz = controls[4]->control_ref->State(0, true);
-				// settings
+				ControlState m = controls[C_MODIFIER]->control_ref->State();
+				// trim relative input within [-1,1] box
 				if (adjusted)
 				{
-					yy *= settings[C_SENSITIVITY]->value;
-					xx *= settings[C_SENSITIVITY]->value;
-					zz *= settings[C_SENSITIVITY]->value;
+					m_x += xx * settings[C_IR_SENSITIVITY]->value * 0.005;			
+					m_y -= yy * settings[C_IR_SENSITIVITY]->value * 0.005;
+					m_z += zz * settings[C_IR_SENSITIVITY]->value * 0.005;
+					m_x = MathUtil::TrimRange(m_x, -1, 1);
+					m_y = MathUtil::TrimRange(m_y, -1, 1);
+					m_z = MathUtil::TrimRange(m_z, -1, 1);
+					*x = m_x;
+					*y = m_y;
+					*z = m_z;
+					return;
 				}
-				*y = yy;
+				// return raw relative input
+				//SWARN_LOG(CONSOLE, "%5.2f", xx * settings[C_GYRO_SENSITIVITY]->value);
+				//SWARN_LOG(CONSOLE, "%5.2f %5.2f", xx * settings[C_GYRO_SENSITIVITY]->value * (m>0?m*10.0:1.0), m);
+				xx *= settings[C_GYRO_SENSITIVITY]->value * (m>0?m*10.0:1.0);
+				yy *= settings[C_GYRO_SENSITIVITY]->value * (m>0?m*10.0:1.0);
+				zz *= settings[C_GYRO_SENSITIVITY]->value * (m>0?m*10.0:1.0);
 				*x = xx;
+				*y = yy;				
 				*z = zz;
-				return;
+				return;	
 			}
 
-			const float zz = controls[4]->control_ref->State(0, settings[C_SENSITIVITY]->value) - controls[5]->control_ref->State(0, settings[C_SENSITIVITY]->value);
+			const float zz = controls[4]->control_ref->State() - controls[5]->control_ref->State();
 
 			// silly being here
 			if (zz > m_z)
@@ -503,7 +531,7 @@ public:
 			*z = m_z;
 			
 			// hide
-			if (controls[6]->control_ref->State() > 0.5f)
+			if (controls[C_HIDE]->control_ref->State() > 0.5f)
 			{
 				*x = 10000; *y = 0;
 			}
@@ -515,8 +543,8 @@ public:
 				// adjust cursor according to settings
 				if (adjusted)
 				{
-					xx *= (settings[C_WIDTH]->value * 2);
-					yy *= (settings[C_HEIGHT]->value * 2);
+					xx *= (settings[C_WIDTH]->value * 2.0);
+					yy *= (settings[C_HEIGHT]->value * 2.0);
 					yy += (settings[C_CENTER]->value - 0.5f);
 				}
 
@@ -525,7 +553,7 @@ public:
 			}
 		}
 
-		float	m_z;
+		float	m_x, m_y, m_z;
 	};
 
 	class Extension : public ControlGroup

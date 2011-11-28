@@ -5005,7 +5005,7 @@ msgid "Threshold"
 msgstr "Κατώφλι"
 
 #: Source/Core/Core/Src/HW/WiimoteEmu/WiimoteEmu.cpp:266
-msgid "Tilt"
+msgid "Rotate"
 msgstr "Πλάγιασμα"
 
 #: Source/Core/DolphinWX/Src/MemcardManager.cpp:625

@@ -244,9 +244,11 @@ public:
 
 	void UpdateControlReferences();
 	void UpdateBitmaps(wxTimerEvent&);
+	void UpdateGUI();
 
 private:
 
+	wxWindow*					m_parent;
 	wxNotebook*					m_pad_notebook;
 	std::vector<GamepadPage*>	m_padpages;
 	InputPlugin&				m_plugin;

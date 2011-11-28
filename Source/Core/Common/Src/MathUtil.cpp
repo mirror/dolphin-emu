@@ -31,6 +31,18 @@ static const u32 default_sse_state = _mm_getcsr();
 namespace MathUtil
 {
 
+double TrimRange(double n, double min, double max) {
+	if (n<min) return min;
+	if (n>max) return max;
+	return n;
+}
+
+float TrimRange(float n, float min, float max) {
+	if (n<min) return min;
+	if (n>max) return max;
+	return n;
+}
+
 u32 ClassifyDouble(double dvalue)
 {
 	// TODO: Optimize the below to be as fast as possible.

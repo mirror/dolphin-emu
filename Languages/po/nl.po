@@ -4992,7 +4992,7 @@ msgid "Threshold"
 msgstr "Drempelwaarde"
 
 #: Source/Core/Core/Src/HW/WiimoteEmu/WiimoteEmu.cpp:266
-msgid "Tilt"
+msgid "Rotate"
 msgstr "Kantelen"
 
 #: Source/Core/DolphinWX/Src/MemcardManager.cpp:625

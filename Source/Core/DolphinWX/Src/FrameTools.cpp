@@ -963,7 +963,8 @@ void CFrame::StartGame(const std::string& filename)
 #else
 		m_RenderParent->SetFocus();
 #endif
-		
+		if(m_WiimoteConfigDiag) m_WiimoteConfigDiag->UpdateGUI();
+
 		wxTheApp->Connect(wxID_ANY, wxEVT_KEY_DOWN, // Keyboard
 				wxKeyEventHandler(CFrame::OnKeyDown),
 				(wxObject*)0, this);
@@ -1078,6 +1079,8 @@ void CFrame::DoStop()
 		X11Utils::InhibitScreensaver(X11Utils::XDisplayFromHandle(GetHandle()),
 				X11Utils::XWindowFromHandle(GetHandle()), false);
 #endif
+		Wiimote::GetPlugin()->LoadConfig();
+
 		m_RenderFrame->SetTitle(wxString::FromAscii(scm_rev_str));
 
 		// Destroy the renderer frame when not rendering to main
@@ -1215,22 +1218,18 @@ void CFrame::OnConfigPAD(wxCommandEvent& WXUNUSED (event))
 
 void CFrame::OnConfigWiimote(wxCommandEvent& WXUNUSED (event))
 {
-	if (m_WiimoteConfigDiag) return;
-	InputPlugin *const wiimote_plugin = Wiimote::GetPlugin();
-	bool was_init = false;
-	if (g_controller_interface.IsInit())	// check if game is running
-		was_init = true;
-	else
-	{
-#if defined(HAVE_X11) && HAVE_X11
-		Window win = X11Utils::XWindowFromHandle(GetHandle());
-		Wiimote::Initialize((void *)win);
-#else
-		Wiimote::Initialize(GetHandle());
-#endif
+	if (m_WiimoteConfigDiag) {
+		m_WiimoteConfigDiag->SetFocus();
+		return;
 	}
-	m_WiimoteConfigDiag = new WiimoteConfigDiag(this, *wiimote_plugin, wxString::Format(_("Dolphin Wiimote Configuration%s%s"), (Core::IsRunning() ? _(" - ") : _("")),
-		(Core::IsRunning() ? wxString(SConfig::GetInstance().m_LocalCoreStartupParameter.m_strName.c_str(), wxConvUTF8).c_str() : _(""))));
+	InputPlugin *const wiimote_plugin = Wiimote::GetPlugin();
+#if defined(HAVE_X11) && HAVE_X11
+	Window win = X11Utils::XWindowFromHandle(GetHandle());
+	Wiimote::Initialize((void *)win);
+#else
+	Wiimote::Initialize(m_RenderParent ? m_RenderParent->GetHandle() : GetHandle());
+#endif
+	m_WiimoteConfigDiag = new WiimoteConfigDiag(this, *wiimote_plugin, _("Dolphin Wiimote Configuration"));
 	m_WiimoteConfigDiag->Show();
 }
 
@@ -1670,6 +1669,8 @@ void CFrame::UpdateGUI()
 	}
 
 	if (m_ToolBar) m_ToolBar->Refresh();
+
+	if (m_WiimoteConfigDiag) m_WiimoteConfigDiag->UpdateGUI();
 
 	// Commit changes to manager
 	m_Mgr->Update();

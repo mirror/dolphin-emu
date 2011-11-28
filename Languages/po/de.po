@@ -4887,7 +4887,7 @@ msgid "Threshold"
 msgstr "Schwelle"
 
 #: Source/Core/Core/Src/HW/WiimoteEmu/WiimoteEmu.cpp:266
-msgid "Tilt"
+msgid "Rotate"
 msgstr "Neigung"
 
 #: Source/Core/DolphinWX/Src/MemcardManager.cpp:625

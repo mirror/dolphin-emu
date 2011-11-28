@@ -250,12 +250,7 @@ std::string Mouse::Cursor::GetName() const
 
 bool Mouse::UpdateInput()
 {
-	static bool capture = false, keyDown[0xff] = {false};
-	if(!keyDown[VK_CONTROL] && (GetAsyncKeyState(VK_CONTROL))) keyDown[VK_CONTROL] = true;  if(!(GetAsyncKeyState(VK_CONTROL))) keyDown[VK_CONTROL] = false;
-	if(!keyDown[VK_MENU] && (GetAsyncKeyState(VK_MENU))) keyDown[VK_MENU] = true; if(!(GetAsyncKeyState(VK_MENU))) keyDown[VK_MENU] = false;
-	if(!keyDown && GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_MENU)) { capture = !capture; WARN_LOG(CONSOLE, "Capture mouse: %d", capture); }
-
-	if(!MouseOver(hwnd) && !capture) return false;
+	//if(!MouseOver(hwnd) && !capture) return false;
 
 	BOOL data_absolute;
 
@@ -292,6 +287,7 @@ bool Mouse::UpdateInput()
 	m_state_in.cursor.x_d = mouse_x_d;
 	m_state_in.cursor.y_d = mouse_y_d;
 
+	/*
 	// sync cursor
 	//if(!(mouse_x == last_mouse_x && mouse_y == last_mouse_y)) {
 		// force default cursor
@@ -304,14 +300,11 @@ bool Mouse::UpdateInput()
 			r.right -= 4;
 			r.bottom -= 4;
 		}
-		if(capture) {
-			ClipCursor(&r);
 			SetCursorPos(r.left + mouse_x,r.top + mouse_y);
 		}
-		else
-			ClipCursor(NULL);
 	//}
-	last_mouse_x = mouse_x; last_mouse_y = mouse_y;
+	//last_mouse_x = mouse_x; last_mouse_y = mouse_y;
+	*/
 
 	//SWARN_LOG(CONSOLE, "UpdateOutput %d %d %d %d | %d %d | %d %d | %0.2f %0.2f\n", r.top, r.left, r.right, r.bottom, mouse_x_d, mouse_y_d, mouse_x, mouse_y,
 	//	m_state_in.cursor.x, m_state_in.cursor.y);

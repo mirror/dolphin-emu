@@ -19,6 +19,8 @@ u32 swap24(const u8* src)
 namespace Wiimote
 {
 
+bool IsInit = false;
+
 // Debugging
 bool g_DebugComm = false;
 bool g_DebugData = false;
@@ -615,7 +617,7 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 		// Show a test of our calculations
 		//WiimoteEmu::TiltTest(data[4], data[5], data[6]);
 		//u8 x, y, z;
-		//WiimoteEmu::Tilt(x, y, z);
+		//WiimoteEmu::Rotate(x, y, z);
 		//WiimoteEmu::TiltTest(x, y, z);
 
 		// Show the number of g forces on the axes
@@ -666,14 +668,19 @@ void Shutdown()
 	//WiimoteReal::Shutdown();
 
 	g_controller_interface.Shutdown();
+
+	IsInit = false;
 }
 
 // if plugin isn't initialized, init and load config
 void Initialize(void* const hwnd)
 {
 	// add 4 wiimotes
-	for (unsigned int i = 0; i<4; ++i)
-		g_plugin.controllers.push_back(new WiimoteEmu::Wiimote(i));
+	if(!IsInit)
+		for (unsigned int i = 0; i<4; ++i)
+			g_plugin.controllers.push_back(new WiimoteEmu::Wiimote(i));
+
+	SWARN_LOG(CONSOLE, "controllers: %d", g_plugin.controllers.size());
 
 	g_controller_interface.SetHwnd(hwnd);
 	g_controller_interface.Initialize();
@@ -684,6 +691,8 @@ void Initialize(void* const hwnd)
 	
 	if (Movie::IsPlayingInput()) // reload Wiimotes with our settings
 		Movie::ChangeWiiPads();
+
+	IsInit = true;
 }
 
 // __________________________________________________________________________________________________

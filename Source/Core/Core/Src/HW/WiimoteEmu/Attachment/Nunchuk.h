@@ -26,7 +26,7 @@ public:
 	AccelData		m_accel;
 
 private:
-	Tilt*			m_tilt;
+	Rotate*			m_tilt;
 	Force*			m_swing;
 
 	Buttons*		m_shake;

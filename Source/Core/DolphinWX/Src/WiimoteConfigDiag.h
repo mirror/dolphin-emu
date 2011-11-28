@@ -13,34 +13,30 @@
 #include <wx/panel.h>
 #include <wx/spinctrl.h>
 
-//#include "Frame.h"
 #include "InputConfigDiag.h"
 #include "ConfigManager.h"
 #include <HW/Wiimote.h>
 
 #include <map>
 
-class CFrame;
-
 class WiimoteConfigDiag : public wxDialog
 {
 public:
-	WiimoteConfigDiag(CFrame* parent, InputPlugin& plugin, const wxString& title = _("Dolphin Wiimote Configuration"));
+	WiimoteConfigDiag(wxWindow* parent, InputPlugin& plugin, const wxString& title = _("Dolphin Wiimote Configuration"));
 
 #ifdef _WIN32
 	void PairUpRealWiimotes(wxCommandEvent& event);
 #endif
 	void RefreshRealWiimotes(wxCommandEvent& event);
 
-
 	void SelectSource(wxCommandEvent& event);
 	void UpdateWiimoteStatus();
 	void RevertSource();
 
-
 	void ConfigEmulatedWiimote(wxCommandEvent& event);
-	void Save(wxCommandEvent& event);
+	void Save(wxCommandEvent& event);	
 	void UpdateGUI();
+	void Update();
 
 	void OnSensorBarPos(wxCommandEvent& event)
 	{
@@ -72,9 +68,10 @@ private:
 	void Cancel(wxCommandEvent& event);
 	void OnClose(wxCloseEvent& event);
 
-	CFrame*			m_parent;
-	InputPlugin&	m_plugin;
-	wxNotebook*		m_pad_notebook;
+	wxWindow*			m_parent;
+	InputConfigDialog*	m_emu_config_diag;
+	InputPlugin&		m_plugin;	
+	wxNotebook*			m_pad_notebook;
 
 	std::map<wxWindowID, unsigned int> m_wiimote_index_from_ctrl_id;
 	unsigned int m_orig_wiimote_sources[4];

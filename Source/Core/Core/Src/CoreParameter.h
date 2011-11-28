@@ -18,8 +18,9 @@
 #ifndef _COREPARAMETER_H
 #define _COREPARAMETER_H
 
-#include "IniFile.h"
 #include <string>
+#include "IniFile.h"
+#include "../../DiscIO/Src/VolumeCreator.h" // DiscIO
 
 enum Hotkey {
 	HK_OPEN,
@@ -171,6 +172,7 @@ struct SCoreStartupParameter
 	std::string m_strApploader;
 	std::string m_strUniqueID;
 	std::string m_strName;
+	std::string m_strRegion;	
 	std::string m_strGameIni;
 
 	// Constructor just calls LoadDefaults
@@ -179,6 +181,7 @@ struct SCoreStartupParameter
 	void LoadDefaults();
 	bool AutoSetup(EBootBS2 _BootBS2);
 	const std::string &GetUniqueID() const { return m_strUniqueID; }
+	std::string GetRegion(DiscIO::IVolume::ECountry region);
 	void CheckMemcardPath(std::string& memcardPath, std::string Region, bool isSlotA);
 };
 

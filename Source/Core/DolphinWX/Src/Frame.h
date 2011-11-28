@@ -121,8 +121,7 @@ public:
 	CCodeWindow* g_pCodeWindow;
 	NetPlaySetupDiag* g_NetPlaySetupDiag;
 	wxCheatsWindow* g_CheatsWindow;
-	TASInputDlg* g_TASInputDlg;
-	WiimoteConfigDiag* m_WiimoteConfigDiag;
+	TASInputDlg* g_TASInputDlg;	
 
 	void InitBitmaps();
 	void DoPause();
@@ -184,6 +183,7 @@ private:
 	CLogWindow* m_LogWindow;
 	LogConfigWindow* m_LogConfigWindow;
 	FifoPlayerDlg* m_FifoPlayerDlg;
+	WiimoteConfigDiag* m_WiimoteConfigDiag;
 	bool UseDebugger;
 	bool m_bBatchMode;
 	bool m_bEdit;
@@ -279,7 +279,9 @@ private:
 	// Override window proc for tricks like screensaver disabling
 	WXLRESULT MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam);
 #endif
+	void Update();
 	// Event functions
+	void OnClose(wxCloseEvent &event);	
 	void OnQuit(wxCommandEvent& event);
 	void OnHelp(wxCommandEvent& event);
 	void OnToolBar(wxCommandEvent& event);
@@ -301,8 +303,7 @@ private:
 	void OnTASInput(wxCommandEvent& event);
 	void OnChangeDisc(wxCommandEvent& event);
 	void OnScreenshot(wxCommandEvent& event);
-	void OnActive(wxActivateEvent& event);
-	void OnClose(wxCloseEvent &event);	
+	void OnActive(wxActivateEvent& event);	
 	void OnLoadState(wxCommandEvent& event);
 	void OnSaveState(wxCommandEvent& event);
 	void OnLoadStateFromFile(wxCommandEvent& event);

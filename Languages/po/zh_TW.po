@@ -4773,7 +4773,7 @@ msgid "Threshold"
 msgstr "閾值"
 
 #: Source/Core/Core/Src/HW/WiimoteEmu/WiimoteEmu.cpp:266
-msgid "Tilt"
+msgid "Rotate"
 msgstr "傾斜"
 
 #: Source/Core/DolphinWX/Src/MemcardManager.cpp:625

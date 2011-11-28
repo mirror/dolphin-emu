@@ -287,7 +287,7 @@ ControllerEmu::Force::Force(const char* const _name) : ControlGroup(_name, GROUP
 	settings.push_back(new Setting(_trans("Dead Zone"), 0, 0, 50));
 }
 
-ControllerEmu::Tilt::Tilt(const char* const _name, bool gyro)
+ControllerEmu::Rotate::Rotate(const char* const _name, bool gyro)
 	: m_gyro(gyro)
 	, ControlGroup(_name, GROUP_TYPE_TILT)
 {
@@ -318,9 +318,11 @@ ControllerEmu::Cursor::Cursor(const char* const _name)
 		controls.push_back(new Input(named_directions[i]));
 	controls.push_back(new Input("Forward"));
 	controls.push_back(new Input("Backward"));
+	controls.push_back(new Input(_trans("Modifier")));
 	controls.push_back(new Input(_trans("Hide")));
 
-	settings.push_back(new Setting(_trans("Sensitivity"), 1.0f, 0, 500));
+	settings.push_back(new Setting(_trans("IR Sensitivity"), 1.0f, 0, 500));
+	settings.push_back(new Setting(_trans("Gyro Sensitivity"), 1.0f, 0, 500));
 	settings.push_back(new Setting(_trans("Center"), 0.5f));
 	settings.push_back(new Setting(_trans("Width"), 0.5f));
 	settings.push_back(new Setting(_trans("Height"), 0.5f));
