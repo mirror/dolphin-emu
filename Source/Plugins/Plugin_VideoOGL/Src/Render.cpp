@@ -1470,8 +1470,7 @@ void Renderer::RestoreAPIState()
 	SetBlendMode(true);
 	VertexShaderManager::SetViewportChanged();
 
-	if (g_ActiveConfig.bWireFrame)
- 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glPolygonMode(GL_FRONT_AND_BACK, g_ActiveConfig.bWireFrame ? GL_LINE : GL_FILL);
  		
 	if (g_ActiveConfig.bUseGLSL)
 		ProgramShaderCache::SetBothShaders(0, 0);
