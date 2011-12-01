@@ -103,7 +103,8 @@ void EmulateShake(AccelData* const accel_data
 
 void EmulateTilt(AccelData* const accel
 	 , ControllerEmu::Tilt* const tilt_group
-	 , const bool focus, const bool sideways = false, const bool upright = false);
+	 , const bool focus, const bool sideways = false, const bool upright = false
+	 , const bool fast = false);
 
 void EmulateSwing(AccelData* const accel
 	 , ControllerEmu::Force* const tilt_group
