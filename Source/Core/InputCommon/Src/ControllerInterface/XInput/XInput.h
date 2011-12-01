@@ -22,7 +22,7 @@ private:
 	public:
 		std::string GetName() const;
 		Button(u8 index, const WORD& buttons) : m_index(index), m_buttons(buttons) {}
-		ControlState GetState(bool relative = false) const;
+		ControlState GetState() const;
 	private:
 		const WORD& m_buttons;
 		u8 m_index;
@@ -33,7 +33,7 @@ private:
 	public:
 		std::string GetName() const;
 		Axis(u8 index, const SHORT& axis, SHORT range) : m_index(index), m_axis(axis), m_range(range) {}
-		ControlState GetState(bool relative = false) const;
+		ControlState GetState() const;
 	private:
 		const SHORT& m_axis;
 		const SHORT m_range;
@@ -45,7 +45,7 @@ private:
 	public:
 		std::string GetName() const;
 		Trigger(u8 index, const BYTE& trigger, BYTE range) : m_index(index), m_trigger(trigger), m_range(range) {}
-		ControlState GetState(bool relative = false) const;
+		ControlState GetState() const;
 	private:
 		const BYTE& m_trigger;
 		const BYTE m_range;

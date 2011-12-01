@@ -1054,7 +1054,7 @@ void CFrame::CaptureMouse(wxKeyEvent& event)
 	RECT r;
 	GetClipCursor(&r);
 	if(GetSystemMetrics(SM_CXSCREEN) == r.right && GetSystemMetrics(SM_CYSCREEN) == r.bottom) {
-		if(m_RenderParent) GetWindowRect(m_RenderParent->GetHandle(), &r);
+		if(m_RenderParent) GetWindowRect((HWND)m_RenderParent->GetHandle(), &r);
 		ClipCursor(&r);		
 	}
 	else

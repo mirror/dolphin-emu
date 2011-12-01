@@ -31,16 +31,38 @@ static const u32 default_sse_state = _mm_getcsr();
 namespace MathUtil
 {
 
-double TrimRange(double n, double min, double max) {
+float Round(float n, float dec)
+{
+	return floor(n*pow(10,dec) + 0.5) / pow(10,dec);
+}
+
+float Sign(float n)
+{
+	return n ? (n < 0 ? -1.0 : 1.0) : 0;
+}
+
+double Trim(double n, double min, double max)
+{
 	if (n<min) return min;
 	if (n>max) return max;
 	return n;
 }
 
-float TrimRange(float n, float min, float max) {
+float Trim(float n, float min, float max)
+{
 	if (n<min) return min;
 	if (n>max) return max;
 	return n;
+}
+
+float MaxAbs(float i, float j)
+{
+	return abs(i) > abs(j) ? i : j;
+}
+
+float MinAbs(float i, float j)
+{
+	return abs(i) < abs(j) ? i : j;
 }
 
 u32 ClassifyDouble(double dvalue)

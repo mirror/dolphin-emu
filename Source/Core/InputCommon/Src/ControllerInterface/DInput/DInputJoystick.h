@@ -42,7 +42,7 @@ private:
 	public:
 		std::string GetName() const;
 		Button(u8 index, const BYTE& button) : m_index(index), m_button(button) {}
-		ControlState GetState(bool relative = false) const;
+		ControlState GetState() const;
 	private:
 		const BYTE& m_button;
 		const u8 m_index;
@@ -53,7 +53,7 @@ private:
 	public:
 		std::string GetName() const;
 		Axis(u8 index, const LONG& axis, LONG base, LONG range) : m_index(index), m_axis(axis), m_base(base), m_range(range) {}
-		ControlState GetState(bool relative = false) const;
+		ControlState GetState() const;
 	private:
 		const LONG& m_axis;
 		const LONG m_base, m_range;
@@ -65,7 +65,7 @@ private:
 	public:
 		std::string GetName() const;
 		Hat(u8 index, const DWORD& hat, u8 direction) : m_index(index), m_hat(hat), m_direction(direction) {}
-		ControlState GetState(bool relative = false) const;
+		ControlState GetState() const;
 	private:
 		const DWORD& m_hat;
 		const u8 m_index, m_direction;

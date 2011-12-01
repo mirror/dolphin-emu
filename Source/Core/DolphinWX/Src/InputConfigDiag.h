@@ -240,7 +240,7 @@ public:
 	void Cancel(wxCommandEvent& event);
 
 	void UpdateDeviceComboBox();
-	void UpdateProfileComboBox();
+	void UpdateProfileComboBox(std::string fname = "");
 
 	void UpdateControlReferences();
 	void UpdateBitmaps(wxTimerEvent&);

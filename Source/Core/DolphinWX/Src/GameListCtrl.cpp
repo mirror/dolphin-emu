@@ -615,8 +615,7 @@ void CGameListCtrl::ScanForISOs()
 		wxProgressDialog dialog(_("Scanning for ISOs"),
 					_("Scanning..."),
 					(int)rFilenames.size(), // range
-					this, // parent
-					wxPD_APP_MODAL |
+					NULL, // parent
 					wxPD_ELAPSED_TIME |
 					wxPD_ESTIMATED_TIME |
 					wxPD_REMAINING_TIME |

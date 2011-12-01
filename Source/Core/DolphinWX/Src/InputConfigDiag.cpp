@@ -19,9 +19,15 @@
 #include "UDPConfigDiag.h"
 
 #define _connect_macro_(b, f, c, s)	(b)->Connect(wxID_ANY, (c), wxCommandEventHandler(f), (wxObject*)0, (wxEvtHandler*)s)
-#define WXSTR_FROM_STR(s)	(wxString::FromUTF8((s).c_str()))
-#define WXTSTR_FROM_CSTR(s)	(wxGetTranslation(wxString::FromUTF8(s)))
-#define STR_FROM_WXSTR(w)	(std::string((w).ToUTF8()))
+#if wxCHECK_VERSION(2, 9, 0)
+	#define WXSTR_FROM_STR(s)	(wxString(s))
+	#define WXTSTR_FROM_CSTR(s)	(wxGetTranslation(wxString(s)))
+	#define STR_FROM_WXSTR(w)	((w).ToStdString())
+#else
+	#define WXSTR_FROM_STR(s)	(wxString::FromUTF8((s).c_str()))
+	#define WXTSTR_FROM_CSTR(s)	(wxGetTranslation(wxString::FromUTF8(s)))
+	#define STR_FROM_WXSTR(w)	(std::string((w).ToUTF8()))
+#endif
 
 void GamepadPage::ConfigUDPWii(wxCommandEvent &event)
 {
@@ -103,12 +109,12 @@ void PadSettingCheckBox::UpdateValue()
 
 void PadSettingSpin::UpdateGUI()
 {
-	((wxSpinCtrl*)wxcontrol)->SetValue((int)(value * 100));
+	((wxSpinCtrl*)wxcontrol)->SetValue(int(MathUtil::Round(value * 100.0f,0)));
 }
 
 void PadSettingSpin::UpdateValue()
 {
-	value = float(((wxSpinCtrl*)wxcontrol)->GetValue()) / 100;
+	value = 0.01 * float(((wxSpinCtrl*)wxcontrol)->GetValue());
 }
 
 ControlDialog::ControlDialog(GamepadPage* const parent, InputPlugin& plugin, ControllerInterface::ControlReference* const ref)
@@ -151,7 +157,7 @@ ControlButton::ControlButton(wxWindow* const parent, ControllerInterface::Contro
 		SetLabel(WXSTR_FROM_STR(label));
 }
 
-void InputConfigDialog::UpdateProfileComboBox()
+void InputConfigDialog::UpdateProfileComboBox(std::string fname)
 {
 	std::string pname(File::GetUserPath(D_CONFIG_IDX));
 	pname += PROFILES_PATH;
@@ -179,6 +185,7 @@ void InputConfigDialog::UpdateProfileComboBox()
 	{
 		(*i)->profile_cbox->Clear();
 		(*i)->profile_cbox->Append(strs);
+		(*i)->profile_cbox->SetValue(WXSTR_FROM_STR(fname));
 	}
 }
 
@@ -197,8 +204,8 @@ void InputConfigDialog::UpdateGUI()
 	for (; i != e; ++i)
 		(*i)->UpdateGUI();
 
-	SetTitle(_("Dolphin Emulated Wiimote Configuration") + (Core::IsRunning() ? (std::string(" - ") + SConfig::GetInstance().m_LocalCoreStartupParameter.m_strName
-		+ " (" + SConfig::GetInstance().m_LocalCoreStartupParameter.m_strRegion + ")") : std::string("")));
+	SetTitle(wxString(std::string("Dolphin Emulated Wiimote Configuration" + (Core::IsRunning() ? (" - " + SConfig::GetInstance().m_LocalCoreStartupParameter.m_strName
+		+ " (" + SConfig::GetInstance().m_LocalCoreStartupParameter.m_strRegion + ")") : "")).c_str(), wxConvUTF8));
 }
 
 void InputConfigDialog::Save(wxCommandEvent& event)
@@ -270,6 +277,8 @@ void ControlDialog::UpdateGUI()
 void GamepadPage::UpdateGUI()
 {
 	device_cbox->SetValue(WXSTR_FROM_STR(controller->default_device.ToString()));
+	// device not avaliable
+	if (device_cbox->GetValue() != WXSTR_FROM_STR(controller->default_device.ToString())) device_cbox->SetSelection(0);
 
 	std::vector< ControlGroupBox* >::const_iterator g = control_groups.begin(),
 		ge = control_groups.end();
@@ -544,8 +553,7 @@ wxStaticBoxSizer* ControlDialog::CreateControlChooser(wxWindow* const parent, wx
 		button_sizer->Add(add_button, 1, 0, 5);
 	}
 
-	range_slider = new wxSlider(parent, -1, SLIDER_TICK_COUNT, 0, SLIDER_TICK_COUNT * 5, wxDefaultPosition, wxDefaultSize, wxSL_TOP | wxSL_LABELS /*| wxSL_AUTOTICKS*/);
-
+	range_slider = new wxSlider(parent, -1, SLIDER_TICK_COUNT, 0, SLIDER_TICK_COUNT * 10, wxDefaultPosition, wxDefaultSize, wxSL_TOP | wxSL_LABELS /*| wxSL_AUTOTICKS*/);
 	range_slider->SetValue((int)(control_reference->range * SLIDER_TICK_COUNT));
 
 	_connect_macro_(detect_button, ControlDialog::DetectControl, wxEVT_COMMAND_BUTTON_CLICKED, parent);
@@ -553,11 +561,10 @@ wxStaticBoxSizer* ControlDialog::CreateControlChooser(wxWindow* const parent, wx
 	_connect_macro_(set_button, ControlDialog::SetControl, wxEVT_COMMAND_BUTTON_CLICKED, parent);
 
 	_connect_macro_(range_slider, GamepadPage::AdjustControlOption, wxEVT_SCROLL_CHANGED, eventsink);
-	wxStaticText* const range_label = new wxStaticText(parent, -1, _("Range"));
 	m_bound_label = new wxStaticText(parent, -1, wxT(""));
 
 	wxBoxSizer* const range_sizer = new wxBoxSizer(wxHORIZONTAL);
-	range_sizer->Add(range_label, 0, wxCENTER|wxLEFT, 5);
+	range_sizer->Add(new wxStaticText(parent, -1, _("Range")), 0, wxTOP|wxLEFT, 5);
 	range_sizer->Add(range_slider, 1, wxEXPAND|wxLEFT, 5);
 
 	wxBoxSizer* const ctrls_sizer = new wxBoxSizer(wxHORIZONTAL);
@@ -625,7 +632,7 @@ void GamepadPage::SaveProfile(wxCommandEvent&)
 		controller->SaveConfig(inifile.GetOrCreateSection("Profile"));
 		inifile.Save(fname);
 		
-		m_config_dialog->UpdateProfileComboBox();
+		m_config_dialog->UpdateProfileComboBox(STR_FROM_WXSTR(profile_cbox->GetValue()));
 	}
 	else
 		PanicAlertT("You must enter a valid profile name.");
@@ -928,13 +935,11 @@ GamepadPage::GamepadPage(wxWindow* parent, InputPlugin& plugin, const unsigned i
 
 	wxStaticBoxSizer* const device_sbox = new wxStaticBoxSizer(wxHORIZONTAL, this, _("Device"));
 
-	device_cbox = new wxComboBox(this, -1, wxT(""), wxDefaultPosition, wxSize(64,-1));
-	device_cbox->ToggleWindowStyle(wxTE_PROCESS_ENTER);
+	device_cbox = new wxComboBox(this, -1, wxT(""), wxDefaultPosition, wxSize(64,-1), wxArrayString(), wxCB_SORT|wxCB_READONLY);
 
 	wxButton* refresh_button = new wxButton(this, -1, _("Refresh"), wxDefaultPosition, wxSize(60,-1));
 
 	_connect_macro_(device_cbox, GamepadPage::SetDevice, wxEVT_COMMAND_COMBOBOX_SELECTED, this);
-	_connect_macro_(device_cbox, GamepadPage::SetDevice, wxEVT_COMMAND_TEXT_ENTER, this);
 	_connect_macro_(refresh_button, GamepadPage::RefreshDevices, wxEVT_COMMAND_BUTTON_CLICKED, this);
 
 	device_sbox->Add(device_cbox, 1, wxLEFT|wxRIGHT, 3);
@@ -1013,6 +1018,7 @@ InputConfigDialog::InputConfigDialog(wxWindow* const parent, InputPlugin& plugin
 
 	SetSizerAndFit(szr);
 	Center();
+	UpdateGUI();
 
 	// live preview update timer
 	m_update_timer = new wxTimer(this, -1);

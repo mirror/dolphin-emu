@@ -1,4 +1,21 @@
-// Code partially copied from nuvee pcsx2 guncon plugin
+// Copyright (C) 2011 Dolphin Project.
+// Copyright (C) 2011 nuvee pcsx2 guncon plugin.
+
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, version 2.0.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License 2.0 for more details.
+
+// A copy of the GPL 2.0 should have been included with the program.
+// If not, see http://www.gnu.org/licenses/
+
+// Official SVN repository and contact information can be found at
+// http://code.google.com/p/dolphin-emu/
+
 #include "../ControllerInterface.h"
 
 #ifdef CIFACE_USE_RINPUT
@@ -149,44 +166,31 @@ void Init(std::vector<ControllerInterface::Device*>& devices, HWND _hwnd)
 	char guid[512];
 	m_devices = &devices;
 	// prevent double hooking
-	if(rawinput_active) return;	
+	if(is_init) return;
+	is_init = true;
 	// registers for (sysmouse=yes, terminal services mouse=no, HID_mice=yes)
 	if(!init_raw_mouse(0, 0, 1)) return;
 	for(int i=0; i<raw_mouse_count(); i++) {
 		strcpy(guid, get_raw_mouse_name(i));
 		devices.push_back(new Mouse(i,guid));
-	}
-	rawinput_active = true;
-}
-
-bool MouseOver(HWND hwnd)
-{
-	POINT p;
-	GetCursorPos(&p);
-	ScreenToClient(hwnd, &p);
-	RECT r;
-	GetClientRect(hwnd, &r);
-	if(p.x >= 0 && p.y >= 0 && p.x <= r.right && p.y <= r.bottom)
-		return true;
-	else
-		return false;
+	}	
+	is_init_done = true;
 }
 
 // called by windows
 void UpdateInput(LPARAM lParam)
 {
-	if(rawinput_active) add_to_raw_mouse_x_and_y((HRAWINPUT)lParam);
+	if(is_init_done) add_to_raw_mouse_x_and_y((HRAWINPUT)lParam);
 }
 
 Mouse::~Mouse() {
 	unregister_raw_mouse(hwnd);
 	bHasBeenInitialized = 0;
-	rawinput_active = false;
+	is_init = false; is_init_done = false;
 }
 Mouse::Mouse(int _hid, char _guid[512])
 {
 	hid = _hid;
-	mouse_x = 0; mouse_y = 0;
 	ZeroMemory(&m_state_in, sizeof(m_state_in));
 	strcpy(guid, _guid);
 	
@@ -195,7 +199,7 @@ Mouse::Mouse(int _hid, char _guid[512])
 		AddInput(new Button(i, m_state_in.button[i], this));
 	// cursor
 	for (unsigned int i=0; i<4; ++i)
-		AddInput(new Cursor(!!(i&2), (&m_state_in.cursor.x)[i/2], (&m_state_in.cursor.x_d)[i/2], !!(i&1)));
+		AddInput(new Cursor(!!(i&2), (&m_state_in.cursor.x)[i/2], !!(i&1), !is_raw_mouse_absolute(hid)));
 }
 void Mouse::DetectDevice() {
 	int done;
@@ -223,23 +227,15 @@ std::string Mouse::GetName() const { return "Mouse"; }
 int Mouse::GetId() const { return hid; }
 std::string Mouse::GetSource() const { return "RInput"; }
 
-ControlState Mouse::Button::GetState(bool relative) const
-{
-	return (m_button != 0);
-}
-ControlState Mouse::Cursor::GetState(bool relative) const
-{
-	//SERROR_LOG(CONSOLE, "RI::Cursor::GetState: index %d %d, positive %d, state %f", m_i, m_index, m_positive, ControlState(m_axis));
-	if (relative)
-		return ControlState(m_axis_d);
-	else
-		return std::max(0.0f, ControlState(m_axis) / (m_positive ? 1.0f : -1.0f));
-}
-
 std::string Mouse::Button::GetName() const
 {
 	return std::string("Click ") + char('0' + m_index);
 }
+ControlState Mouse::Button::GetState() const
+{
+	return (m_button != 0);
+}
+
 std::string Mouse::Cursor::GetName() const
 {
 	static char tmpstr[] = "Cursor ..";
@@ -247,67 +243,20 @@ std::string Mouse::Cursor::GetName() const
 	tmpstr[8] = (m_positive ? '+' : '-');
 	return tmpstr;
 }
+ControlState Mouse::Cursor::GetState() const
+{
+	return ControlState(m_axis);
+}
 
 bool Mouse::UpdateInput()
 {
-	//if(!MouseOver(hwnd) && !capture) return false;
-
-	BOOL data_absolute;
-
-	// retriev raw data
-	mouse_x_d = get_raw_mouse_x_delta(hid);
-	mouse_y_d = get_raw_mouse_y_delta(hid);	
+	// retriev data
+	m_state_in.cursor.x = (int)get_raw_mouse_x_delta(hid);
+	m_state_in.cursor.y = (int)get_raw_mouse_y_delta(hid);	
 	for(int i = 0; i < MAX_RAW_MOUSE_BUTTONS; i++) {
 		m_state_in.button[i] = is_raw_mouse_button_pressed(hid,i);
 	}
-	data_absolute = is_raw_mouse_absolute(hid);
 
-	//mouse_x_d = ceil(mouse_x_d * mouse_sensitivity / 100.0 - 0.5);
-	//mouse_y_d = ceil(mouse_y_d * mouse_sensitivity / 100.0 - 0.5);
-
-	// relative mouse
-	if(!data_absolute) {
-		mouse_x += mouse_x_d;
-		mouse_y += mouse_y_d;
-	} else {
-		mouse_x = mouse_x_d;
-		mouse_y = mouse_y_d;
-	}
-	// containing box
-	RECT r;
-	GetWindowRect(hwnd, &r);
-	if(mouse_x < 0) mouse_x = 0;
-	if(mouse_y < 0) mouse_y = 0;
-	if(mouse_x > r.right-r.left) mouse_x = r.right-r.left;
-	if(mouse_y > r.bottom-r.top) mouse_y = r.bottom-r.top;
-
-	// save
-	m_state_in.cursor.x = ((float)mouse_x-((float)(r.right-r.left)/2.0)) / ((float)(r.right-r.left)/2.0);
-	m_state_in.cursor.y = ((float)mouse_y-((float)(r.bottom-r.top)/2.0)) / ((float)(r.bottom-r.top)/2.0);
-	m_state_in.cursor.x_d = mouse_x_d;
-	m_state_in.cursor.y_d = mouse_y_d;
-
-	/*
-	// sync cursor
-	//if(!(mouse_x == last_mouse_x && mouse_y == last_mouse_y)) {
-		// force default cursor
-		ShowCursor(1);
-		// windowed mode adjustments
-		if(r.top != 0 && !SConfig::GetInstance().m_LocalCoreStartupParameter.bRenderToMain) {
-			r.top += 32;
-			r.top += 0;
-			r.left += 4;
-			r.right -= 4;
-			r.bottom -= 4;
-		}
-			SetCursorPos(r.left + mouse_x,r.top + mouse_y);
-		}
-	//}
-	//last_mouse_x = mouse_x; last_mouse_y = mouse_y;
-	*/
-
-	//SWARN_LOG(CONSOLE, "UpdateOutput %d %d %d %d | %d %d | %d %d | %0.2f %0.2f\n", r.top, r.left, r.right, r.bottom, mouse_x_d, mouse_y_d, mouse_x, mouse_y,
-	//	m_state_in.cursor.x, m_state_in.cursor.y);
 	return true;
 }
 

@@ -51,8 +51,7 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 				dc.DrawText(wxString::FromAscii((*g)->control_group->name).Upper(), 4, 2);
 
 			switch ( (*g)->control_group->type )
-			{
-			case GROUP_TYPE_TILT :
+			{			
 			case GROUP_TYPE_STICK :
 			case GROUP_TYPE_CURSOR :
 				{
@@ -66,25 +65,17 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 					case GROUP_TYPE_STICK :
 						((ControllerEmu::AnalogStick*)(*g)->control_group)->GetState( &x, &y, 32.0, 32-1.5 );
 						break;
-					case GROUP_TYPE_TILT :
-						((ControllerEmu::Rotate*)(*g)->control_group)->GetState( &x, &y, &z, 32.0, 32-1.5 );
-						break;
 					case GROUP_TYPE_CURSOR :
-						((ControllerEmu::Cursor*)(*g)->control_group)->GetState( &x, &y, &z, true, current_page->control_groups.back()->control_group->settings[SETTING_RELATIVE_CURSOR]->value != 0 );
+						((ControllerEmu::Cursor*)(*g)->control_group)->GetState( &x, &y, &z, ((ControllerEmu::Cursor*)(*g)->control_group)->settings[C_IR_SENSITIVITY]->value );
 						x *= (32-1.5); x+= 32;
 						y *= (32-1.5); y+= 32;
-						// ui enable/disable			
-						std::vector<PadSetting*>::const_iterator si = (*g)->options.begin()
-							, se = (*g)->options.end(); int n = 0;
-						for (; si!=se; ++si, ++n)
-							if(n == C_IR_SENSITIVITY) if (current_page->control_groups.back()->control_group->settings[SETTING_RELATIVE_CURSOR]->value == 0) (*si)->wxcontrol->Disable(); else (*si)->wxcontrol->Enable();
 						break;
 					}
 
-					xx = (*g)->control_group->controls[3]->control_ref->State();
-					xx -= (*g)->control_group->controls[2]->control_ref->State();
-					yy = (*g)->control_group->controls[1]->control_ref->State();
-					yy -= (*g)->control_group->controls[0]->control_ref->State();
+					xx = (*g)->control_group->controls[AS_DOWN]->control_ref->State();
+					xx -= (*g)->control_group->controls[AS_UP]->control_ref->State();
+					yy = (*g)->control_group->controls[AS_RIGHT]->control_ref->State();
+					yy -= (*g)->control_group->controls[AS_LEFT]->control_ref->State();
 					xx *= 32 - 1; xx += 32;
 					yy *= 32 - 1; yy += 32;
 
@@ -138,13 +129,11 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 					else
 						dc.DrawRectangle( 16, 16, 32, 32 );
 
-					if ((*g)->control_group->type == GROUP_TYPE_CURSOR && current_page->control_groups.back()->control_group->settings[SETTING_IR_HIDE]->value != 0) break;	
-
 					if ( GROUP_TYPE_CURSOR != (*g)->control_group->type )
 					{
 						// deadzone circle
 						dc.SetBrush(*wxLIGHT_GREY_BRUSH);
-						dc.DrawCircle( 32, 32, ((*g)->control_group)->settings[(*g)->control_group->type == GROUP_TYPE_TILT ? T_DEADZONE:AS_DEADZONE]->value * 32 );
+						dc.DrawCircle( 32, 32, ((*g)->control_group)->settings[(*g)->control_group->type == GROUP_TYPE_TILT ? R_DEADZONE:AS_DEADZONE]->value * 32 );
 					}
 
 					// raw dot
@@ -154,6 +143,8 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 					dc.DrawRectangle( xx - 2, yy - 2, 4, 4 );
 					//dc.DrawRectangle( xx-1, 64-yy-4, 2, 8 );
 					//dc.DrawRectangle( xx-4, 64-yy-1, 8, 2 );
+
+					if (current_page->control_groups.back()->control_group->settings.size() > SETTING_IR_HIDE) if ((*g)->control_group->type == GROUP_TYPE_CURSOR && current_page->control_groups.back()->control_group->settings[SETTING_IR_HIDE]->value != 0) break;	
 
 					// adjusted dot
 					if (x!=32 || y!=32)
@@ -168,20 +159,41 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 				}
 				break;
 			case GROUP_TYPE_FORCE :
+			case GROUP_TYPE_TILT :
 				{
 					float raw_dot[3];
 					float adj_dot[3];
-					const float deadzone = 32 * ((*g)->control_group)->settings[F_DEADZONE]->value;
+					float deadzone;
 
 					// adjusted
-					((ControllerEmu::Force*)(*g)->control_group)->GetState( adj_dot, 32.0, 32-1.5 );
+					switch ((*g)->control_group->type)
+					{
+					case GROUP_TYPE_FORCE :
+						deadzone = 32 * ((*g)->control_group)->settings[F_DEADZONE]->value;
+						((ControllerEmu::Force*)(*g)->control_group)->GetState( adj_dot, 32.0, 32-1.5 );
+						break;
+					case GROUP_TYPE_TILT :
+						deadzone = 32 * ((*g)->control_group)->settings[R_DEADZONE]->value;
+						((ControllerEmu::Rotate*)(*g)->control_group)->GetState( &(*adj_dot)+1, &(*adj_dot), &(*adj_dot)+2, 32.0, 32-1.5 );
+						break;
+					}					
 
 					// raw
 					for ( unsigned int i=0; i<3; ++i )
 					{
-						raw_dot[i] = (*g)->control_group->controls[i*2 + 1]->control_ref->State()
-							- (*g)->control_group->controls[i*2]->control_ref->State();
-						raw_dot[i] *= 32 - 1; raw_dot[i] += 32;
+						switch ((*g)->control_group->type)
+						{
+						case GROUP_TYPE_FORCE :		
+							raw_dot[i] = (*g)->control_group->controls[i == 0 ? F_BACKWARD : (i == 1 ? F_RIGHT : F_DOWN)]->control_ref->State()
+								- (*g)->control_group->controls[i == 0 ? R_FORWARD : (i == 1 ? F_LEFT : F_UP)]->control_ref->State();
+							raw_dot[i] *= 32 - 1; raw_dot[i] += 32;
+							break;
+						case GROUP_TYPE_TILT :
+							raw_dot[i] = (*g)->control_group->controls[i == 0 ? R_FORWARD : (i == 1 ? R_RIGHT : R_DOWN)]->control_ref->State()
+								- (*g)->control_group->controls[i == 0 ? R_BACKWARD : (i == 1 ? R_LEFT : R_UP)]->control_ref->State();
+							raw_dot[i] *= 32 - 1; raw_dot[i] += 32;
+							break;
+						}
 					}
 
 					// deadzone rect for forward/backward visual

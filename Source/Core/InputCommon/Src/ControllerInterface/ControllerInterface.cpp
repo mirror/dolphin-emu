@@ -18,6 +18,7 @@
 	#include "SDL/SDL.h"
 #endif
 
+#include "MathUtil.h"
 #include "Thread.h"
 
 #define INPUT_DETECT_THRESHOLD			0.85f
@@ -31,8 +32,8 @@ ControllerInterface g_controller_interface;
 //
 void ControllerInterface::Initialize()
 {
-	if (m_is_init)
-		return;
+	if (m_is_init) return;
+	m_is_init = true;
 
 #ifdef CIFACE_USE_DINPUT
 	ciface::DInput::Init(m_devices, (HWND)m_hwnd);
@@ -52,8 +53,7 @@ void ControllerInterface::Initialize()
 #ifdef CIFACE_USE_SDL
 	ciface::SDL::Init(m_devices);
 #endif
-
-	m_is_init = true;
+	m_is_init_done = true;
 }
 
 //
@@ -103,7 +103,7 @@ void ControllerInterface::Shutdown()
 	SDL_Quit();
 #endif
 
-	m_is_init = false;
+	m_is_init = false; m_is_init_done = false;
 }
 
 //
@@ -114,7 +114,9 @@ void ControllerInterface::Shutdown()
 void ControllerInterface::SetHwnd( void* const hwnd )
 {
 	m_hwnd = hwnd;
+#ifdef CIFACE_USE_RINPUT
 	ciface::RInput::SetHWND((HWND)m_hwnd);
+#endif
 }
 
 //
@@ -124,7 +126,7 @@ void ControllerInterface::SetHwnd( void* const hwnd )
 //
 bool ControllerInterface::UpdateInput(const bool force)
 {
-	if (!m_is_init) return false;
+	if (!m_is_init_done) return false;
 
 	std::unique_lock<std::recursive_mutex> lk(update_lock, std::defer_lock);
 
@@ -231,13 +233,10 @@ void ControllerInterface::Device::ClearInputState()
 // get the state of an input reference
 // override function for ControlReference::State ...
 //
-ControlState ControllerInterface::InputReference::State( const ControlState ignore, bool relative )
+ControlState ControllerInterface::InputReference::State( const ControlState ignore )
 {
 	//if (NULL == device)
 		//return 0;
-
-	if(relative && m_controls.size()>0)
-		return m_controls[0].control->ToInput()->GetState(true) * range;
 
 	ControlState state = 0;
 
@@ -252,21 +251,22 @@ ControlState ControllerInterface::InputReference::State( const ControlState igno
 
 	for (; ci!=ce; ++ci)
 	{
-		const ControlState istate = ci->control->ToInput()->GetState();		
+		const ControlState istate = ci->control->ToInput()->GetState();
+		is_relative = ci->control->ToInput()->IsRelative();
 
 		switch (ci->mode)
 		{
 		// OR
 		case 0 :
-			state = std::max(state, istate);
+			state = MathUtil::MaxAbs(state, istate);
 			break;
 		// AND
 		case 1 :
-			state = std::min(state, istate);
+			state = MathUtil::MinAbs(state, istate);
 			break;
 		// NOT
 		case 2 :
-			state = std::max(std::min(state, 1.0f - istate), 0.0f);
+			state = abs(istate) ? 0 : state;
 			break;
 		// ADD
 		case 3 :
@@ -274,7 +274,7 @@ ControlState ControllerInterface::InputReference::State( const ControlState igno
 			break;
 		}
 	}
-	return std::min(1.0f, state * range);
+	return state * range;
 }
 
 //
@@ -284,7 +284,7 @@ ControlState ControllerInterface::InputReference::State( const ControlState igno
 // overrides ControlReference::State .. combined them so i could make the gui simple / inputs == same as outputs one list
 // i was lazy and it works so watever
 //
-ControlState ControllerInterface::OutputReference::State(const ControlState state, bool relative)
+ControlState ControllerInterface::OutputReference::State(const ControlState state)
 {
 	const ControlState tmp_state = std::min(1.0f, state * range);
 

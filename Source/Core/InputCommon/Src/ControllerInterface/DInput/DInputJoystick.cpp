@@ -507,17 +507,17 @@ std::string Joystick::Force<P>::GetName() const
 
 // get / set state
 
-ControlState Joystick::Axis::GetState(bool relative) const
+ControlState Joystick::Axis::GetState() const
 {
 	return std::max(0.0f, ControlState(m_axis - m_base) / m_range);
 }
 
-ControlState Joystick::Button::GetState(bool relative) const
+ControlState Joystick::Button::GetState() const
 {
 	return ControlState(m_button > 0);
 }
 
-ControlState Joystick::Hat::GetState(bool relative) const
+ControlState Joystick::Hat::GetState() const
 {
 	// can this func be simplified ?
 	// hat centered code from msdn

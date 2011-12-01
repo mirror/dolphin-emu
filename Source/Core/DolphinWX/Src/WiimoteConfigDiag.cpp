@@ -183,6 +183,7 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* parent, InputPlugin& plugin, cons
 
 	SetSizerAndFit(main_sizer);
 	Center();
+	UpdateGUI();
 }
 void WiimoteConfigDiag::OnClose(wxCloseEvent& event)
 {
@@ -203,8 +204,8 @@ void WiimoteConfigDiag::UpdateGUI()
 {
 	connected_wiimotes_txt->SetLabel(ConnectedWiimotesString());
 
-	SetTitle(_("Dolphin Wiimote Configuration%s") +	(Core::IsRunning() ? _(" - ") + SConfig::GetInstance().m_LocalCoreStartupParameter.m_strName
-		+ " (" + SConfig::GetInstance().m_LocalCoreStartupParameter.m_strRegion + ")" : _("")));
+	SetTitle(wxString(std::string("Dolphin Wiimote Configuration" + (Core::IsRunning() ? " - " + SConfig::GetInstance().m_LocalCoreStartupParameter.m_strName
+		+ " (" + SConfig::GetInstance().m_LocalCoreStartupParameter.m_strRegion + ")" : "")).c_str(), wxConvUTF8));
 
 	if(m_emu_config_diag) m_emu_config_diag->UpdateGUI();
 }

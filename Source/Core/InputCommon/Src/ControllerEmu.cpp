@@ -128,7 +128,7 @@ void ControllerEmu::ControlGroup::LoadConfig(IniFile::Section *sec, const std::s
 	for (; si!=se; ++si)
 	{
 		if(sec->Get((group+(*si)->name).c_str(), &cTmp, (*si)->default_value))
-			(*si)->value = cTmp/100;
+			(*si)->value = cTmp*0.01;
 	}
 
 	// controls
@@ -142,8 +142,7 @@ void ControllerEmu::ControlGroup::LoadConfig(IniFile::Section *sec, const std::s
 			(*ci)->control_ref->expression = sTmp;
 		// range
 		if(sec->Get((group+(*ci)->name+"/Range").c_str(), &cTmp, 100.0f))
-			(*ci)->control_ref->range = cTmp/100;
-
+			(*ci)->control_ref->range = cTmp*0.01;
 	}
 
 	// extensions
@@ -291,7 +290,7 @@ ControllerEmu::Rotate::Rotate(const char* const _name, bool gyro)
 	: m_gyro(gyro)
 	, ControlGroup(_name, GROUP_TYPE_TILT)
 {
-	memset(m_tilt, 0, sizeof(m_tilt));
+	memset(m_rotate, 0, sizeof(m_rotate));
 
 	controls.push_back(new Input("Pitch Forward"));
 	controls.push_back(new Input("Pitch Backward"));
@@ -300,7 +299,9 @@ ControllerEmu::Rotate::Rotate(const char* const _name, bool gyro)
 	controls.push_back(new Input("Yaw Left"));
 	controls.push_back(new Input("Yaw Right"));
 
-	controls.push_back(new Input(_trans("Modifier")));
+	controls.push_back(new Input(_trans("Base")));
+	controls.push_back(new Input(_trans("Range")));
+
 	if (gyro) {
 		settings.push_back(new Setting(_trans("Acc Range"), 1.0f, 0, 500));
 		settings.push_back(new Setting(_trans("Gyro Range"), 1.0f, 0, 500));
@@ -312,14 +313,19 @@ ControllerEmu::Rotate::Rotate(const char* const _name, bool gyro)
 
 ControllerEmu::Cursor::Cursor(const char* const _name)
 	: ControlGroup(_name, GROUP_TYPE_CURSOR)
-	, m_z(0)
-{
+{	
+	memset(m_state, 0, sizeof(m_state));
+	memset(m_absolute, 0, sizeof(m_state));
+	memset(m_last, 0, sizeof(m_absolute));
+	m_list.resize(3);
+
 	for (unsigned int i = 0; i < 4; ++i)
 		controls.push_back(new Input(named_directions[i]));
 	controls.push_back(new Input("Forward"));
 	controls.push_back(new Input("Backward"));
-	controls.push_back(new Input(_trans("Modifier")));
+	controls.push_back(new Input(_trans("Range")));
 	controls.push_back(new Input(_trans("Hide")));
+	controls.push_back(new Input(_trans("Show")));
 
 	settings.push_back(new Setting(_trans("IR Sensitivity"), 1.0f, 0, 500));
 	settings.push_back(new Setting(_trans("Gyro Sensitivity"), 1.0f, 0, 500));

@@ -53,7 +53,7 @@ private:
 	public:
 		std::string GetName() const;
 		Button(u8 index, SDL_Joystick* js) : m_js(js), m_index(index) {}
-		ControlState GetState(bool relative = false) const;
+		ControlState GetState() const;
 	private:
 		 SDL_Joystick* const m_js;
 		 const u8 m_index;
@@ -64,7 +64,7 @@ private:
 	public:
 		std::string GetName() const;
 		Axis(u8 index, SDL_Joystick* js, Sint16 range) : m_js(js), m_range(range), m_index(index) {}
-		ControlState GetState(bool relative = false) const;
+		ControlState GetState() const;
 	private:
 		SDL_Joystick* const m_js;
 		const Sint16 m_range;
@@ -76,7 +76,7 @@ private:
 	public:
 		std::string GetName() const;
 		Hat(u8 index, SDL_Joystick* js, u8 direction) : m_js(js), m_direction(direction), m_index(index) {}
-		ControlState GetState(bool relative = false) const;
+		ControlState GetState() const;
 	private:
 		SDL_Joystick* const m_js;
 		const u8 m_direction;

@@ -84,7 +84,9 @@ public:
 			// things like absolute axes/ absolute mouse position will override this
 			virtual bool IsDetectable() { return true; }
 
-			virtual ControlState GetState(bool relative = false) const = 0;
+			virtual bool IsRelative() { return false; }
+
+			virtual ControlState GetState() const = 0;
 
 			Input* ToInput() { return this; }
 		};
@@ -169,16 +171,17 @@ public:
 	public:
 		virtual ~ControlReference() {}
 
-		virtual ControlState State(const ControlState state = 0, bool relative = false) = 0;
+		virtual ControlState State(const ControlState state = 0) = 0;
+		virtual ControlState IsRelative() { return is_relative; }
 		virtual Device::Control* Detect(const unsigned int ms, Device* const device) = 0;
 		size_t BoundCount() const { return m_controls.size(); }
 
 		ControlState		range;
 		std::string			expression;
-		const bool			is_input;
+		const bool			is_input;		
 
 	protected:
-		ControlReference(const bool _is_input) : range(1), is_input(_is_input) {}
+		ControlReference(const bool _is_input) : range(1), is_input(_is_input), is_relative(false) {}
 
 		struct DeviceControl
 		{
@@ -188,6 +191,7 @@ public:
 			int		mode;
 		};
 
+		bool				is_relative;
 		std::vector<DeviceControl>	m_controls;
 	};
 
@@ -200,7 +204,7 @@ public:
 	{
 	public:
 		InputReference() : ControlReference(true) {}
-		ControlState State(const ControlState state, bool relative = false);
+		ControlState State(const ControlState state);
 		Device::Control* Detect(const unsigned int ms, Device* const device);
 	};
 
@@ -213,11 +217,11 @@ public:
 	{
 	public:
 		OutputReference() : ControlReference(false) {}
-		ControlState State(const ControlState state, bool relative = false);
+		ControlState State(const ControlState state);
 		Device::Control* Detect(const unsigned int ms, Device* const device);
 	};
 
-	ControllerInterface() : m_is_init(false), m_hwnd(NULL) {}
+	ControllerInterface() : m_is_init(false), m_is_init_done(false), m_hwnd(NULL) {}
 	
 	void SetHwnd(void* const hwnd);
 	void Initialize();
@@ -237,7 +241,7 @@ public:
 	std::recursive_mutex update_lock;
 
 private:
-	bool					m_is_init;
+	bool					m_is_init, m_is_init_done;
 	std::vector<Device*>	m_devices;
 	void*					m_hwnd;
 };
