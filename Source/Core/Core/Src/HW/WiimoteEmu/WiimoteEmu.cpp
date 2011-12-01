@@ -96,7 +96,8 @@ void EmulateShake(AccelData* const accel
 
 void EmulateTilt(AccelData* const accel
 	, ControllerEmu::Tilt* const tilt_group
-	, const bool focus, const bool sideways, const bool upright)
+	, const bool focus, const bool sideways, const bool upright
+	, const bool fast)
 {
 	float roll, pitch;
 	// 180 degrees
@@ -125,6 +126,19 @@ void EmulateTilt(AccelData* const accel
 	(&accel->x)[ud] = (sin((PI / 2) - std::max(fabsf(roll), fabsf(pitch))))*sgn[ud];
 	(&accel->x)[lr] = -sin(roll)*sgn[lr];
 	(&accel->x)[fb] = sin(pitch)*sgn[fb];
+
+	// rotation g-force
+	if (tilt_group->HasGyro()
+		&& (tilt_group->controls[T_FAST]->control_ref->State() != 0
+		|| fast))
+	{
+		tilt_group->GetState( &pitch, &roll, &yaw, true, 0.0, focus ? 1.0 : 0, false );
+		if (abs(yaw) > 0 || abs(pitch) > 0)		accel->y += 5;
+		if (yaw > 0)							accel->x += 5;
+		if (yaw < 0)							accel->x -= 5;
+		if (pitch > 0)							accel->z += 5;
+		if (pitch < 0)							accel->z -= 5;
+	}
 }
 
 #define SWING_INTENSITY		2.5f//-uncalibrated(aprox) 0x40-calibrated
