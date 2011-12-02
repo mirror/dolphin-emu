@@ -216,23 +216,38 @@ private:
 
 class InputConfigDialog : public wxDialog
 {
+	struct ext
+	{
+		ControllerEmu::Extension*	object;
+		int							type;
+		wxDialog*					dlg;
+		std::size_t					size;
+	};
+
 public:
 	InputConfigDialog(wxWindow* const parent, InputPlugin& plugin, const std::string& name, const int tab_num = 0);
 	//~InputConfigDialog();
 
-	bool Destroy();
+	void OnClose(wxCloseEvent& event);
+	void OnCloseExt(wxCloseEvent& event);
 
-	void ClickSave(wxCommandEvent& event);
+	void Save(wxCommandEvent& event);
+	void Apply(wxCommandEvent& event);
+	void Cancel(wxCommandEvent& event);
 
 	void UpdateDeviceComboBox();
 	void UpdateProfileComboBox(std::string fname = "");
 
 	void UpdateControlReferences();
 	void UpdateBitmaps(wxTimerEvent&);
+	void UpdateGUI();
+
+	wxNotebook*					m_pad_notebook;
+	ext							m_ext;
 
 private:
 
-	wxNotebook*					m_pad_notebook;
+	wxWindow*					m_parent;
 	std::vector<GamepadPage*>	m_padpages;
 	InputPlugin&				m_plugin;
 	wxTimer*					m_update_timer;

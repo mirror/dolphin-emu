@@ -22,7 +22,7 @@
 class WiimoteConfigDiag : public wxDialog
 {
 public:
-	WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin);
+	WiimoteConfigDiag(wxWindow* parent, InputPlugin& plugin, const wxString& title = _("Dolphin Wiimote Configuration"));
 
 	void RefreshRealWiimotes(wxCommandEvent& event);
 
@@ -31,6 +31,8 @@ public:
 
 	void ConfigEmulatedWiimote(wxCommandEvent& event);
 	void Save(wxCommandEvent& event);
+	void UpdateGUI();
+	void Update();
 
 	void OnSensorBarPos(wxCommandEvent& event)
 	{
@@ -71,9 +73,12 @@ public:
 
 private:
 	void Cancel(wxCommandEvent& event);
+	void OnClose(wxCloseEvent& event);
 
-	InputPlugin&	m_plugin;
-	wxNotebook*		m_pad_notebook;
+	wxWindow*			m_parent;
+	InputConfigDialog*	m_emu_config_diag;
+	InputPlugin&		m_plugin;
+	wxNotebook*			m_pad_notebook;
 
 	std::map<wxWindowID, unsigned int> m_wiimote_index_from_ctrl_id;
 	unsigned int m_orig_wiimote_sources[MAX_BBMOTES];

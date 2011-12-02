@@ -22,24 +22,41 @@ void GamepadPage::ConfigExtension(wxCommandEvent& event)
 	// show config diag, if "none" isn't selected
 	if (ex->switch_extension)
 	{
-		wxDialog dlg(this, -1,
+		if (m_config_dialog->m_ext.object)
+		{
+			if (ex->switch_extension == m_config_dialog->m_ext.type)
+			{
+				m_config_dialog->m_ext.dlg->Show();
+				m_config_dialog->m_ext.dlg->SetFocus();
+				return;
+			}
+			else
+			{
+				// remove the new groups that were just added, now that the window closed
+				control_groups.resize(m_config_dialog->m_ext.size);
+				m_config_dialog->m_ext.dlg->Destroy();
+			}
+		}
+
+		m_config_dialog->m_ext.object = ex;
+		m_config_dialog->m_ext.type = ex->switch_extension;
+
+		wxDialog *dlg = m_config_dialog->m_ext.dlg = new wxDialog(this, -1,
 			wxGetTranslation(StrToWxStr(ex->attachments[ex->switch_extension]->GetName())),
-			wxDefaultPosition, wxDefaultSize);
+			wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE|wxMINIMIZE_BOX|wxDIALOG_NO_PARENT);
 
 		wxBoxSizer* const main_szr = new wxBoxSizer(wxVERTICAL);
-		const std::size_t orig_size = control_groups.size();
+		m_config_dialog->m_ext.size = control_groups.size();
 
 		ControlGroupsSizer* const szr =
-			new ControlGroupsSizer(ex->attachments[ex->switch_extension], &dlg, this, &control_groups);
+			new ControlGroupsSizer(ex->attachments[ex->switch_extension], dlg, this, &control_groups);
 		main_szr->Add(szr, 0, wxLEFT, 5);
-		main_szr->Add(dlg.CreateButtonSizer(wxOK), 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 5);
-		dlg.SetSizerAndFit(main_szr);
-		dlg.Center();
-
-		dlg.ShowModal();
-
-		// remove the new groups that were just added, now that the window closed
-		control_groups.resize(orig_size);
+		main_szr->Add(dlg->CreateButtonSizer(wxOK), 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 5);
+		dlg->SetSizerAndFit(main_szr);
+		dlg->Center();
+		UpdateGUI();
+		dlg->Bind(wxEVT_CLOSE_WINDOW, &InputConfigDialog::OnCloseExt, m_config_dialog);
+		dlg->Show();
 	}
 }
 
@@ -176,9 +193,30 @@ void InputConfigDialog::UpdateControlReferences()
 		(*i)->controller->UpdateReferences(g_controller_interface);
 }
 
-void InputConfigDialog::ClickSave(wxCommandEvent& event)
+void InputConfigDialog::UpdateGUI()
+{
+	std::vector< GamepadPage* >::iterator i = m_padpages.begin(),
+		e = m_padpages.end();
+	for (; i != e; ++i)
+		(*i)->UpdateGUI();
+}
+
+void InputConfigDialog::Save(wxCommandEvent& event)
 {
 	m_plugin.SaveConfig();
+	Close();
+	event.Skip();
+}
+
+void InputConfigDialog::Apply(wxCommandEvent& event)
+{
+	m_plugin.SaveConfig();
+	event.Skip();
+}
+
+void InputConfigDialog::Cancel(wxCommandEvent& event)
+{
+	Close();
 	event.Skip();
 }
 
@@ -636,8 +674,7 @@ void GamepadPage::RefreshDevices(wxCommandEvent&)
 	std::lock_guard<std::recursive_mutex> lk(m_plugin.controls_lock);
 
 	// refresh devices
-	g_controller_interface.Shutdown();
-	g_controller_interface.Initialize();
+	g_controller_interface.ReInit();
 
 	// update all control references
 	m_config_dialog->UpdateControlReferences();
@@ -948,11 +985,13 @@ GamepadPage::GamepadPage(wxWindow* parent, InputPlugin& plugin, const unsigned i
 	Layout();
 };
 
-
 InputConfigDialog::InputConfigDialog(wxWindow* const parent, InputPlugin& plugin, const std::string& name, const int tab_num)
-	: wxDialog(parent, wxID_ANY, wxGetTranslation(StrToWxStr(name)), wxPoint(128,-1), wxDefaultSize)
+	: wxDialog(parent, wxID_ANY, wxGetTranslation(StrToWxStr(name)), wxPoint(128,-1), wxDefaultSize, wxDEFAULT_DIALOG_STYLE|wxMINIMIZE_BOX|wxDIALOG_NO_PARENT)
+	, m_parent(parent)
 	, m_plugin(plugin)
 {
+	m_ext.object = 0;
+
 	m_pad_notebook = new wxNotebook(this, -1, wxDefaultPosition, wxDefaultSize, wxNB_DEFAULT);
 	for (unsigned int i = 0; i < std::min(plugin.controllers.size(), (size_t)MAX_WIIMOTES); ++i)
 	{
@@ -966,14 +1005,18 @@ InputConfigDialog::InputConfigDialog(wxWindow* const parent, InputPlugin& plugin
 	UpdateDeviceComboBox();
 	UpdateProfileComboBox();
 
-	Bind(wxEVT_COMMAND_BUTTON_CLICKED, &InputConfigDialog::ClickSave, this, wxID_OK);
+	Bind(wxEVT_COMMAND_BUTTON_CLICKED, &InputConfigDialog::Save, this, wxID_OK);
+	Bind(wxEVT_COMMAND_BUTTON_CLICKED, &InputConfigDialog::Apply, this, wxID_APPLY);
+	Bind(wxEVT_COMMAND_BUTTON_CLICKED, &InputConfigDialog::Cancel, this, wxID_CANCEL);
+	Bind(wxEVT_CLOSE_WINDOW, &InputConfigDialog::OnClose, this, wxID_ANY);
 
 	wxBoxSizer* const szr = new wxBoxSizer(wxVERTICAL);
 	szr->Add(m_pad_notebook, 0, wxEXPAND|wxTOP|wxLEFT|wxRIGHT, 5);
-	szr->Add(CreateButtonSizer(wxOK | wxCANCEL | wxNO_DEFAULT), 0, wxEXPAND|wxALL, 5);
+	szr->Add(CreateButtonSizer(wxOK | wxAPPLY | wxCANCEL | wxNO_DEFAULT), 0, wxEXPAND|wxALL, 5);
 
 	SetSizerAndFit(szr);
 	Center();
+	UpdateGUI();
 
 	// live preview update timer
 	m_update_timer = new wxTimer(this, -1);
@@ -981,8 +1024,18 @@ InputConfigDialog::InputConfigDialog(wxWindow* const parent, InputPlugin& plugin
 	m_update_timer->Start(PREVIEW_UPDATE_TIME, wxTIMER_CONTINUOUS);
 }
 
-bool InputConfigDialog::Destroy()
+void InputConfigDialog::OnCloseExt(wxCloseEvent& event)
 {
+	m_ext.dlg->Hide();
+	event.Skip();
+}
+
+void InputConfigDialog::OnClose(wxCloseEvent& event)
+{
+	if (m_ext.object)
+		m_ext.dlg->Destroy();
 	m_update_timer->Stop();
-	return true;
+	Hide();
+	m_parent->Update();
+	event.Skip();
 }

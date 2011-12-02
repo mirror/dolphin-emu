@@ -3,11 +3,16 @@
 #include "HW/Wiimote.h"
 #include "HW/WiimoteReal/WiimoteReal.h"
 #include "Frame.h"
+#include "WxUtils.h"
 
-WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin)
-	: wxDialog(parent, -1, _("Dolphin Wiimote Configuration"), wxDefaultPosition, wxDefaultSize)
+WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* parent, InputPlugin& plugin, const wxString& title)
+	: wxDialog(NULL, -1, _("Dolphin Wiimote Configuration"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE|wxMINIMIZE_BOX|wxDIALOG_NO_PARENT)
+	, m_parent(parent)
+	, m_emu_config_diag(NULL)
 	, m_plugin(plugin)
 {
+	WiimoteReal::LoadSettings();
+
 	wxBoxSizer* const main_sizer = new wxBoxSizer(wxVERTICAL);
 
 
@@ -42,7 +47,6 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin
 		if (m_orig_wiimote_sources[i] != WIIMOTE_SRC_EMU && m_orig_wiimote_sources[i] != WIIMOTE_SRC_HYBRID)
 			wiimote_configure_bt[i]->Disable();
 	}
-
 
 	// "Wiimotes" layout
 	wxStaticBoxSizer* const wiimote_group = new wxStaticBoxSizer(wxHORIZONTAL, this, _("Wiimotes"));
@@ -190,17 +194,48 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin
 
 	Bind(wxEVT_COMMAND_BUTTON_CLICKED, &WiimoteConfigDiag::Save, this, wxID_OK);
 	Bind(wxEVT_COMMAND_BUTTON_CLICKED, &WiimoteConfigDiag::Cancel, this, wxID_CANCEL);
+	Bind(wxEVT_CLOSE_WINDOW, &WiimoteConfigDiag::OnClose, this, wxID_ANY);
 
 	SetSizerAndFit(main_sizer);
 	Center();
+	UpdateGUI();
 }
-
+void WiimoteConfigDiag::OnClose(wxCloseEvent& event)
+{
+	// close open dialogs
+	if (m_emu_config_diag)
+		m_emu_config_diag->Close();
+	Hide();
+	m_parent->Update();
+	event.Skip();
+}
 
 void WiimoteConfigDiag::ConfigEmulatedWiimote(wxCommandEvent& ev)
 {
-	InputConfigDialog* const m_emu_config_diag = new InputConfigDialog(this, m_plugin, _trans("Dolphin Emulated Wiimote Configuration"), m_wiimote_index_from_conf_bt_id[ev.GetId()]);
-	m_emu_config_diag->ShowModal();
-	m_emu_config_diag->Destroy();
+	if (m_emu_config_diag)
+	{
+		m_emu_config_diag->m_pad_notebook->SetSelection(m_wiimote_index_from_conf_bt_id[ev.GetId()]);
+		m_emu_config_diag->SetFocus();
+		return;
+	}
+
+	m_emu_config_diag = new InputConfigDialog(this, m_plugin, _trans("Dolphin Emulated Wiimote Configuration"), m_wiimote_index_from_conf_bt_id[ev.GetId()]);
+	m_emu_config_diag->Show();
+}
+
+void WiimoteConfigDiag::UpdateGUI()
+{
+	if (m_emu_config_diag)
+		m_emu_config_diag->UpdateGUI();
+}
+
+void WiimoteConfigDiag::Update()
+{
+	if (m_emu_config_diag && !m_emu_config_diag->IsShown())
+	{
+		m_emu_config_diag->Destroy();
+		m_emu_config_diag = NULL;
+	}
 }
 
 void WiimoteConfigDiag::RefreshRealWiimotes(wxCommandEvent&)
@@ -256,11 +291,14 @@ void WiimoteConfigDiag::Save(wxCommandEvent& event)
 
 	inifile.Save(ini_filename);
 
+	Close();
+
 	event.Skip();
 }
 
 void WiimoteConfigDiag::Cancel(wxCommandEvent& event)
 {
 	RevertSource();
+	Close();
 	event.Skip();
 }
