@@ -142,7 +142,7 @@ LCleanup:
 }
 #endif
 
-void InitJoystick(IDirectInput8* const idi8, std::vector<ControllerInterface::Device*>& devices, HWND hwnd)
+void InitJoystick(IDirectInput8* const idi8, std::vector<ControllerInterface::Device*>& devices)
 {
 	std::list<DIDEVICEINSTANCE> joysticks;
 	idi8->EnumDevices( DI8DEVCLASS_GAMECTRL, DIEnumDevicesCallback, (LPVOID)&joysticks, DIEDFL_ATTACHEDONLY );

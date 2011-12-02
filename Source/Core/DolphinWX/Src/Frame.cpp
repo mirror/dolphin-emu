@@ -257,7 +257,7 @@ CFrame::CFrame(wxFrame* parent,
 	, m_GameListCtrl(NULL), m_Panel(NULL)
 	, m_RenderFrame(NULL), m_RenderParent(NULL)
 	, m_LogWindow(NULL), m_LogConfigWindow(NULL)
-	, m_FifoPlayerDlg(NULL), UseDebugger(_UseDebugger)
+	, m_FifoPlayerDlg(NULL), m_PadConfigDiag(NULL), m_WiimoteConfigDiag(NULL), UseDebugger(_UseDebugger)
 	, m_bBatchMode(_BatchMode), m_bEdit(false), m_bTabSplit(false), m_bNoDocking(false)
 	, m_bGameLoading(false)
 {
@@ -385,6 +385,29 @@ CFrame::~CFrame()
 	delete m_Mgr;
 }
 
+void CFrame::Update()
+{
+	if (m_PadConfigDiag)
+		if (!m_PadConfigDiag->IsShown())
+		{
+			m_PadConfigDiag->Destroy(); m_PadConfigDiag = NULL;
+			if (!Core::IsRunning()) Pad::Shutdown();
+		}
+
+	if (m_WiimoteConfigDiag)
+		if (!m_WiimoteConfigDiag->IsShown())
+		{
+			m_WiimoteConfigDiag->Destroy(); m_WiimoteConfigDiag = NULL;
+			if (!Core::IsRunning())
+				Wiimote::Shutdown();
+		}
+}
+
+void CFrame::OnQuit(wxCommandEvent& WXUNUSED (event))
+{
+	Close(true);
+}
+
 bool CFrame::RendererIsFullscreen()
 {
 	bool fullscreen = false;
@@ -407,37 +430,7 @@ bool CFrame::RendererIsFullscreen()
 	return fullscreen;
 }
 
-void CFrame::OnQuit(wxCommandEvent& WXUNUSED (event))
-{
-	Close(true);
-}
-
-// --------
 // Events
-void CFrame::OnActive(wxActivateEvent& event)
-{
-	if (Core::GetState() == Core::CORE_RUN || Core::GetState() == Core::CORE_PAUSE)
-	{
-		if (event.GetActive() && event.GetEventObject() == m_RenderFrame)
-		{
-#ifdef __WXMSW__
-			::SetFocus((HWND)m_RenderParent->GetHandle());
-#else
-			m_RenderParent->SetFocus();
-#endif
-			
-			if (SConfig::GetInstance().m_LocalCoreStartupParameter.bHideCursor &&
-					Core::GetState() == Core::CORE_RUN)
-				m_RenderParent->SetCursor(wxCURSOR_BLANK);
-		}
-		else
-		{
-			if (SConfig::GetInstance().m_LocalCoreStartupParameter.bHideCursor)
-				m_RenderParent->SetCursor(wxNullCursor);
-		}
-	}
-	event.Skip();
-}
 
 void CFrame::OnClose(wxCloseEvent& event)
 {
@@ -453,9 +446,6 @@ void CFrame::OnClose(wxCloseEvent& event)
 	if(main_frame->IsIconized())
 		main_frame->Iconize(false);
 
-	// Don't forget the skip or the window won't be destroyed
-	event.Skip();
-
 	// Save GUI settings
 	if (g_pCodeWindow)
 	{
@@ -467,10 +457,41 @@ void CFrame::OnClose(wxCloseEvent& event)
 		m_LogWindow->Close();
 		m_LogWindow = NULL;
 	}
-
+	// Close open dialogs
+	if (m_PadConfigDiag)
+		m_PadConfigDiag->Close();
+	if (m_WiimoteConfigDiag)
+		m_WiimoteConfigDiag->Close();
 
 	// Uninit
 	m_Mgr->UnInit();
+
+	// Don't forget the skip or the window won't be destroyed
+	event.Skip();
+}
+
+void CFrame::OnActive(wxActivateEvent& event)
+{
+	if (Core::GetState() == Core::CORE_RUN || Core::GetState() == Core::CORE_PAUSE)
+	{
+		if (event.GetActive() && event.GetEventObject() == m_RenderFrame)
+		{
+#ifdef __WXMSW__
+			::SetFocus((HWND)m_RenderParent->GetHandle());
+#else
+			m_RenderParent->SetFocus();
+#endif
+			if (SConfig::GetInstance().m_LocalCoreStartupParameter.bHideCursor &&
+					Core::GetState() == Core::CORE_RUN)
+				m_RenderParent->SetCursor(wxCURSOR_BLANK);
+		}
+		else
+		{
+			if (SConfig::GetInstance().m_LocalCoreStartupParameter.bHideCursor)
+				m_RenderParent->SetCursor(wxNullCursor);
+		}
+	}
+	event.Skip();
 }
 
 // Post events

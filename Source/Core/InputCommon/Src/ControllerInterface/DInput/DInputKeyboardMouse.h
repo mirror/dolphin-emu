@@ -14,7 +14,7 @@ namespace ciface
 namespace DInput
 {
 
-void InitKeyboardMouse(IDirectInput8* const idi8, std::vector<ControllerInterface::Device*>& devices, HWND _hwnd);
+void InitKeyboardMouse(IDirectInput8* const idi8, std::vector<ControllerInterface::Device*>& devices);
 
 class KeyboardMouse : public ControllerInterface::Device
 {

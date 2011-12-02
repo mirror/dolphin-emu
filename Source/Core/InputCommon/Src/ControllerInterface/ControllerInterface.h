@@ -253,8 +253,9 @@ public:
 	
 	void SetHwnd(void* const hwnd);
 	void Initialize();
-	void Shutdown();
+	void Shutdown(bool force = false);
 	bool IsInit() const { return m_is_init; }
+	void ReInit();
 
 	void UpdateReference(ControlReference* control, const DeviceQualifier& default_device) const;
 	bool UpdateInput(const bool force = false);

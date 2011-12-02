@@ -666,6 +666,16 @@ bool Host_RendererHasFocus()
 	return main_frame->RendererHasFocus();
 }
 
+bool Host_PadConfigOpen()
+{
+	return main_frame->m_PadConfigDiag ? true : false;
+}
+
+bool Host_WiimoteConfigOpen()
+{
+	return main_frame->m_WiimoteConfigDiag ? true : false;
+}
+
 void Host_ConnectWiimote(int wm_idx, bool connect)
 {
 	CFrame::ConnectWiimote(wm_idx, connect);

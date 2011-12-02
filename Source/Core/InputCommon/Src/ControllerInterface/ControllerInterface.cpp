@@ -20,6 +20,7 @@
 #endif
 
 #include "Thread.h"
+#include "../../Core/Src/Host.h"
 
 namespace
 {
@@ -35,6 +36,8 @@ ControllerInterface g_controller_interface;
 //
 void ControllerInterface::Initialize()
 {
+	std::unique_lock<std::recursive_mutex> lk(update_lock);
+
 	if (m_is_init)
 		return;
 
@@ -65,9 +68,14 @@ void ControllerInterface::Initialize()
 //
 // remove all devices/ call library cleanup functions
 //
-void ControllerInterface::Shutdown()
+void ControllerInterface::Shutdown(bool force)
 {
+	std::unique_lock<std::recursive_mutex> lk(update_lock);
+
 	if (false == m_is_init)
+		return;
+
+	if ((Host_PadConfigOpen() || Host_WiimoteConfigOpen()) && !force)
 		return;
 
 	std::vector<Device*>::const_iterator
@@ -93,8 +101,11 @@ void ControllerInterface::Shutdown()
 #ifdef CIFACE_USE_XINPUT
 	// nothing needed
 #endif
+#ifdef CIFACE_USE_RINPUT
+	ciface::RInput::Shutdown();
+#endif
 #ifdef CIFACE_USE_DINPUT
-	// nothing needed
+	ciface::DInput::Shutdown();
 #endif
 #ifdef CIFACE_USE_XLIB
 	// nothing needed
@@ -114,6 +125,17 @@ void ControllerInterface::Shutdown()
 }
 
 //
+//		ReInit
+//
+// shutdown and initialize
+//
+void ControllerInterface::ReInit()
+{
+	g_controller_interface.Shutdown(true);
+	g_controller_interface.Initialize();
+}
+
+//
 //		SetHwnd
 //
 // sets the hwnd used for some crap when initializing, use before calling Init
@@ -121,6 +143,9 @@ void ControllerInterface::Shutdown()
 void ControllerInterface::SetHwnd( void* const hwnd )
 {
 	m_hwnd = hwnd;
+#ifdef CIFACE_USE_DINPUT
+	ciface::DInput::SetHWND((HWND)m_hwnd);
+#endif
 }
 
 //

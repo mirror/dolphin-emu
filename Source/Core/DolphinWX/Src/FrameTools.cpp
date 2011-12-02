@@ -1040,6 +1040,7 @@ void CFrame::DoStop()
 		X11Utils::InhibitScreensaver(X11Utils::XDisplayFromHandle(GetHandle()),
 				X11Utils::XWindowFromHandle(GetHandle()), false);
 #endif
+
 		m_RenderFrame->SetTitle(StrToWxStr(scm_rev_str));
 
 		// Destroy the renderer frame when not rendering to main
@@ -1158,58 +1159,43 @@ void CFrame::OnConfigDSP(wxCommandEvent& WXUNUSED (event))
 
 void CFrame::OnConfigPAD(wxCommandEvent& WXUNUSED (event))
 {
+	if (m_PadConfigDiag)
+	{
+		m_PadConfigDiag->SetFocus();
+		return;
+	}
 	InputPlugin *const pad_plugin = Pad::GetPlugin();
-	bool was_init = false;
-	if (g_controller_interface.IsInit())	// check if game is running
-	{
-		was_init = true;
-	}
-	else
-	{
 #if defined(HAVE_X11) && HAVE_X11
-		Window win = X11Utils::XWindowFromHandle(GetHandle());
-		Pad::Initialize((void *)win);
+	Window win = X11Utils::XWindowFromHandle(GetHandle());
+	Pad::Initialize((void *)win);
 #elif defined(__APPLE__)
-		Pad::Initialize((void *)this);
+	Pad::Initialize((void *)this);
 #else
-		Pad::Initialize(GetHandle());
+	Pad::Initialize(m_RenderParent ? m_RenderParent->GetHandle() : GetHandle());
 #endif
-	}
-	InputConfigDialog m_ConfigFrame(this, *pad_plugin, _trans("Dolphin GCPad Configuration"));
-	m_ConfigFrame.ShowModal();
-	m_ConfigFrame.Destroy();
-	if (!was_init)				// if game isn't running
-	{
-		Pad::Shutdown();
-	}
+	m_PadConfigDiag = new InputConfigDialog(this, *pad_plugin, _trans("Dolphin GCPad Configuration"));
+	m_PadConfigDiag->Show();
 }
 
 void CFrame::OnConfigWiimote(wxCommandEvent& WXUNUSED (event))
 {
-	InputPlugin *const wiimote_plugin = Wiimote::GetPlugin();
-	bool was_init = false;
-	if (g_controller_interface.IsInit())	// check if game is running
+	if (m_WiimoteConfigDiag)
 	{
-		was_init = true;
+		m_WiimoteConfigDiag->SetFocus();
+		return;
 	}
-	else
-	{
+	InputPlugin *const wiimote_plugin = Wiimote::GetPlugin();
+
 #if defined(HAVE_X11) && HAVE_X11
 		Window win = X11Utils::XWindowFromHandle(GetHandle());
 		Wiimote::Initialize((void *)win);
 #elif defined(__APPLE__)
 		Wiimote::Initialize((void *)this);
 #else
-		Wiimote::Initialize(GetHandle());
+	Wiimote::Initialize(m_RenderParent ? m_RenderParent->GetHandle() : GetHandle());
 #endif
-	}
-	WiimoteConfigDiag m_ConfigFrame(this, *wiimote_plugin);
-	m_ConfigFrame.ShowModal();
-	m_ConfigFrame.Destroy();
-	if (!was_init)				// if game isn't running
-	{
-		Wiimote::Shutdown();
-	}
+	m_WiimoteConfigDiag = new WiimoteConfigDiag(this, *wiimote_plugin);
+	m_WiimoteConfigDiag->Show();
 }
 
 void CFrame::OnConfigHotkey(wxCommandEvent& WXUNUSED (event))
@@ -1683,6 +1669,11 @@ void CFrame::UpdateGUI()
 	{
 		m_ToolBar->Refresh();
 	}
+
+	if (m_PadConfigDiag)
+		m_PadConfigDiag->UpdateGUI();
+	if (m_WiimoteConfigDiag)
+		m_WiimoteConfigDiag->UpdateGUI();
 
 	// Commit changes to manager
 	m_Mgr->Update();

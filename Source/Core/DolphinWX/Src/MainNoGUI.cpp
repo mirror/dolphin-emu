@@ -97,6 +97,10 @@ bool Host_RendererHasFocus()
 	return rendererHasFocus;
 }
 
+bool Host_PadConfigOpen() { return false; }
+
+bool Host_WiimoteConfigOpen() { return false; }
+
 void Host_ConnectWiimote(int wm_idx, bool connect) {}
 
 void Host_SetWaitCursor(bool enable){}
