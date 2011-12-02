@@ -91,6 +91,7 @@ void ControllerInterface::Shutdown()
 #endif
 #ifdef CIFACE_USE_DINPUT
 	// nothing needed
+	ciface::DInput::is_init = false; ciface::DInput::is_init_done = false;
 #endif
 #ifdef CIFACE_USE_XLIB
 	// nothing needed

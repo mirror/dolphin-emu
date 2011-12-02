@@ -32,6 +32,7 @@
 #include "ControllerInterface/ControllerInterface.h"
 #include "IniFile.h"
 #include "MathUtil.h"
+#include "Timer.h"
 
 #define sign(x) ((x)?(x)<0?-1:1:0)
 
@@ -102,21 +103,28 @@ enum
 	R_RIGHT,
 	R_UP,
 	R_DOWN,
-	R_BASE_MODIFIER,
-	R_RANGE_MODIFIER,
 };
 enum
 {
-	R_ACC_RANGE,
-	R_GYRO_RANGE,
+	R_RANGE_MODIFIER = 6,
+};
+enum
+{
+	R_RANGE,
 	R_DEADZONE,
 	R_CIRCLESTICK,
 };
 enum
 {
-	R_NG_RANGE,
-	R_NG_DEADZONE,
-	R_NG_CIRCLESTICK,
+	R_G_FAST_MODIFIER = 6,
+	R_G_RANGE_MODIFIER,
+};
+enum
+{
+	R_G_ACC_RANGE,
+	R_G_GYRO_RANGE,
+	R_G_DEADZONE,
+	R_G_CIRCLESTICK,
 };
 enum
 {
@@ -126,7 +134,8 @@ enum
 	C_RIGHT,
 	C_FORWARD,
 	C_BACKWARD,
-	C_MODIFIER,
+	C_FAST_MODIFIER,
+	C_RANGE_MODIFIER,
 	C_HIDE,
 	C_SHOW,
 };
@@ -400,17 +409,27 @@ public:
 	public:
 		Rotate(const char* const _name, bool gyro = false);
 
+		bool HasGyro() { return m_gyro; }
+
+		template <typename C>
+		void GetState(C* const x, C* const y, C* const z) { GetState(x, y, z, false, 0.0, 1.0, true); }
 		template <typename C, typename R>
-		void GetState(C* const x, C* const y, C* const z, const unsigned int base, const R range, const bool step = true)
+		void GetState(C* const x, C* const y, C* const z, const R range) { bool f; GetState(x, y, z, &f, 0.0, range, true); }
+		template <typename C, typename R>
+		void GetState(C* const x, C* const y, C* const z, const unsigned int base, const R range) { bool f; GetState(x, y, z, &f, base, range, true); }
+		template <typename C, typename R>
+		void GetState(C* const x, C* const y, C* const z, const unsigned int base, const R range, const bool step) { bool f; GetState(x, y, z, &f, base, range, step); }
+		template <typename C, typename R>
+		void GetState(C* const x, C* const y, C* const z, bool* const fast, const unsigned int base, const R range, const bool step)
 		{
 			ControlState xx = controls[R_RIGHT]->control_ref->State() - controls[R_LEFT]->control_ref->State();
 			ControlState yy = controls[R_FORWARD]->control_ref->State() - controls[R_BACKWARD]->control_ref->State();			
 			ControlState zz = controls[R_DOWN]->control_ref->State() - controls[R_UP]->control_ref->State();
+			if (m_gyro) *fast = controls[R_G_FAST_MODIFIER]->control_ref->State() ? true : false;
 
-			ControlState deadzone = settings[m_gyro?R_DEADZONE:R_NG_DEADZONE]->value;
-			ControlState circle = settings[m_gyro?R_CIRCLESTICK:R_NG_CIRCLESTICK]->value;
-			ControlState b = controls[R_BASE_MODIFIER]->control_ref->State();
-			ControlState r = controls[R_RANGE_MODIFIER]->control_ref->State();
+			ControlState deadzone = settings[m_gyro ? R_G_DEADZONE : R_DEADZONE]->value;
+			ControlState circle = settings[m_gyro ? R_G_CIRCLESTICK : R_CIRCLESTICK]->value;			
+			ControlState r = controls[m_gyro ? R_G_RANGE_MODIFIER : R_RANGE_MODIFIER]->control_ref->State();
 			//SWARN_LOG(CONSOLE, "1 | %5.2f %5.2f %5.2f", xx, yy, zz);
 			// deadzone
 			xx *= fabsf(xx)>deadzone ? 1.0 : 0.0;
@@ -465,9 +484,9 @@ public:
 			}
 
 			//SWARN_LOG(CONSOLE, "4 | %5.2f %5.2f %5.2f | %5.2f %5.2f %5.2f", xx, yy, zz, b, r, range);
-			*x = C(m_rotate[0] * range * (r ? r : 1.0) + base + sign(m_rotate[0])*b);
-			*y = C(m_rotate[1] * range * (r ? r : 1.0) + base + sign(m_rotate[1])*b);
-			*z = C(m_rotate[2] * range * (r ? r : 1.0) + base + sign(m_rotate[2])*b);
+			*x = C(m_rotate[0] * range * (r ? r : 1.0) + base);
+			*y = C(m_rotate[1] * range * (r ? r : 1.0) + base);
+			*z = C(m_rotate[2] * range * (r ? r : 1.0) + base);
 			//SWARN_LOG(CONSOLE, "5 | %5.2f %5.2f %5.2f | %5.2f %5.2f %5.2f\n", *x, *y, *z, b, r, range);
 		}
 	private:
@@ -480,11 +499,18 @@ public:
 	public:
 		Cursor(const char* const _name);
 
+		template <typename C>
+		void GetState(C* const x, C* const y, C* const z) { bool f; GetState(x, y, z, &f, 1.0, true, false, false); }
 		template <typename C, typename R>
-		void GetState(C* const x, C* const y, C* const z, const R range = 1.0, const bool adjusted = true, const bool relative = false, const bool step = false)
+		void GetState(C* const x, C* const y, C* const z, const R range) { bool f; GetState(x, y, z, &f, range, true, false, false); }
+		template <typename C, typename R>
+		void GetState(C* const x, C* const y, C* const z, const R range, const bool adjusted, const bool relative, const bool step) { bool f; GetState(x, y, z, &f, range, adjusted, relative, step); }
+		template <typename C, typename R>
+		void GetState(C* const x, C* const y, C* const z, bool* const fast, const R range, const bool adjusted, const bool relative, const bool step)
 		{
 			C* axis;
-			ControlState m = controls[C_MODIFIER]->control_ref->State();
+			*fast = controls[C_FAST_MODIFIER]->control_ref->State() ? true : false;
+			ControlState r = controls[C_RANGE_MODIFIER]->control_ref->State();
 			for (unsigned int i=0; i<6; i+=2)
 			{
 				ControlState state = controls[i == 0 ? C_UP : (i == 2 ? C_LEFT : C_FORWARD)]->control_ref->State();
@@ -511,9 +537,21 @@ public:
 					
 					// create absolut data
 					if (!relative)
-					{
-						if (!step) { m_state[i>>1] = m_absolute[i>>1]; continue; }
-						state *= range * 0.005 * (m ? m : 1.0);
+					{						
+						if (!step)
+						{
+							// absolute position not stepped anymore, reset
+							if (m_absolute[i>>1] != 0 && m_timer.GetTimeDifference() > 1000)
+							{
+								if (m_absolute[i>>1] == m_absolute_last[i>>1]) m_absolute[i>>1] = 0;
+								m_absolute_last[i>>1] = m_absolute[i>>1];
+								m_timer.Update();
+							}
+							m_state[i>>1] = m_absolute[i>>1];
+							continue;
+						}
+						// update absolute
+						state *= range * 0.005 * (r ? r : 1.0);
 						m_absolute[i>>1] += (i == 0 ? -state : state);
 						m_absolute[i>>1] = MathUtil::Trim(m_absolute[i>>1], -1, 1);
 						m_state[i>>1] = m_absolute[i>>1];
@@ -540,7 +578,7 @@ public:
 					// return raw input
 					else
 					{
-						state *= range * 0.005 * (m ? m : 1.0);
+						state *= range * 0.005 * (r ? r : 1.0);
 						m_state[i>>1] = state;
 						//if (relative) SWARN_LOG(CONSOLE, "%d %d | %d %5.2f %5.2f", i, is_relative, relative, state, m_state[i>>1]);
 					}
@@ -575,8 +613,9 @@ public:
 			}
 		}
 
-		float							m_state[3], m_absolute[3], m_last[3];
+		float							m_state[3], m_absolute[3], m_absolute_last[3], m_last[3];
 		std::vector<std::list<float> >	m_list;
+		Common::Timer					m_timer;
 	};
 
 	class Extension : public ControlGroup

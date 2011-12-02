@@ -21,6 +21,8 @@ namespace ciface
 namespace DInput
 {
 
+bool is_init = false, is_init_done = false;
+
 //BOOL CALLBACK DIEnumEffectsCallback(LPCDIEFFECTINFO pdei, LPVOID pvRef)
 //{
 //	((std::list<DIEFFECTINFO>*)pvRef)->push_back(*pdei);
@@ -63,9 +65,14 @@ std::string GetDeviceName(const LPDIRECTINPUTDEVICE8 device)
 
 void Init(std::vector<ControllerInterface::Device*>& devices, HWND hwnd)
 {
+	if (is_init) return;
+	is_init = true;
 	IDirectInput8* idi8;
 	if (FAILED(DirectInput8Create(GetModuleHandle(NULL), DIRECTINPUT_VERSION, IID_IDirectInput8, (LPVOID*)&idi8, NULL)))
+	{
+		is_init = false;
 		return;
+	}
 
 #ifdef CIFACE_USE_DINPUT_KBM
 	InitKeyboardMouse(idi8, devices, hwnd);
@@ -75,7 +82,7 @@ void Init(std::vector<ControllerInterface::Device*>& devices, HWND hwnd)
 #endif
 
 	idi8->Release();
-
+	is_init_done = true;
 }
 
 }

@@ -123,7 +123,7 @@ void EmulateShake(AccelData* const accel_data
 void EmulateTilt(AccelData* const accel
 	 , ControllerEmu::Rotate* const tilt_group
 	 , const bool focus, const bool sideways = false, const bool upright = false
-	 , ControllerEmu::Cursor* const ir_group = NULL, const bool mp = false);
+	 , ControllerEmu::Cursor* const ir_group = NULL, const bool mp = false, const bool ir_step = false);
 
 void EmulateSwing(AccelData* const accel
 	 , ControllerEmu::Force* const tilt_group
@@ -224,8 +224,8 @@ public:
 	// control groups
 	Buttons		*m_buttons, *m_dpad, *m_shake;
 	Cursor*			m_ir;
-	Rotate*			m_tilt;
-	Force*			m_swing;
+	Rotate*			m_rotate;
+	Force*			m_thrust;
 	ControlGroup*	m_rumble;
 	Extension*		m_extension;
 	ControlGroup*	m_options;

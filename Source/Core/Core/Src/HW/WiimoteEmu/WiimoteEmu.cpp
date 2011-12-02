@@ -88,17 +88,17 @@ void EmulateShake( AccelData* const accel
 }
 
 void EmulateTilt(AccelData* const accel
-	, ControllerEmu::Rotate* const tilt_group
+	, ControllerEmu::Rotate* const rotate_group
 	, const bool focus, const bool sideways, const bool upright
-	, ControllerEmu::Cursor* const ir_group, const bool mp)
+	, ControllerEmu::Cursor* const ir_group, const bool mp, const bool ir_step)
 {
 	float roll, pitch, yaw;
-	tilt_group->GetState( &roll, &pitch, &yaw, 0, focus ? (PI/2.0) * tilt_group->settings[R_ACC_RANGE]->value : 0 ); // 90 degrees
+	rotate_group->GetState( &roll, &pitch, &yaw, focus ? (PI/2.0) * rotate_group->settings[R_G_ACC_RANGE]->value : 0 ); // 90 degrees
 
-	// add ir implied pitch
+	// ir implied pitch
 	if (ir_group && mp) {
 		float x, y, z;
-		ir_group->GetState(&x, &y, &z, ir_group->settings[C_IR_SENSITIVITY]->value);
+		ir_group->GetState(&x, &y, &z, ir_group->settings[C_IR_SENSITIVITY]->value, false, false, ir_step);
 		//SWARN_LOG(CONSOLE, "pitch: %5.2f %5.2f", y, pitch);
 		pitch -= y * (PI/4.0);
 		//SWARN_LOG(CONSOLE, "pitch: %5.2f %5.2f", y, pitch);
@@ -260,10 +260,10 @@ Wiimote::Wiimote( const unsigned int index )
 	groups.push_back(m_ir = new Cursor(_trans("IR")));
 
 	// swing
-	groups.push_back(m_swing = new Force(_trans("Thrust")));
+	groups.push_back(m_thrust = new Force(_trans("Thrust")));
 
 	// tilt
-	groups.push_back(m_tilt = new Rotate(_trans("Rotate"), true));
+	groups.push_back(m_rotate = new Rotate(_trans("Rotate"), true));
 
 	// udp 
 	groups.push_back(m_udp = new UDPWrapper(m_index, _trans("UDP Wiimote")));
@@ -392,13 +392,13 @@ void Wiimote::GetAccelData(u8* const data, u8* const buttons)
 	const bool is_upright = m_options->settings[SETTING_UPRIGHT_WIIMOTE]->value != 0;
 
 	// ----TILT----
-	EmulateTilt(&m_accel, m_tilt, has_focus, is_sideways, is_upright, m_ir, GetMotionPlusActive() && m_options->settings[SETTING_IR_HIDE]->value != 0);
+	EmulateTilt(&m_accel, m_rotate, has_focus, is_sideways, is_upright, m_ir, GetMotionPlusActive(), m_options->settings[SETTING_IR_HIDE]->value != 0);
 
 	// ----SWING----
 	// ----SHAKE----
 	if (has_focus)
 	{
-		EmulateSwing(&m_accel, m_swing, is_sideways, is_upright);
+		EmulateSwing(&m_accel, m_thrust, is_sideways, is_upright);
 		EmulateShake(&m_accel, m_shake, m_shake_step);
 		UDPTLayer::GetAcceleration(m_udp, &m_accel);
 	}
@@ -639,6 +639,7 @@ void Wiimote::GetExtData(u8* const data)
 			static float dx = 0, dy = 0, dz = 0;
 			static float p, r, y;
 			static u16 _p, _r, _y;
+			static bool r_fast, c_fast;
 			u8 y1,y2, p1,p2, r1,r2;
 			if (HAS_FOCUS)
 			{
@@ -646,11 +647,11 @@ void Wiimote::GetExtData(u8* const data)
 				EmulateShake(&sh, m_shake, m_shake_step_mp);				
 				for (unsigned int i=0; i<3; ++i)
 					(&(sh.x))[i] *= m_shake->settings[B_RANGE]->value;
-				// tilt
-				m_tilt->GetState(&rr, &rp, &ry, 0, m_tilt->settings[R_GYRO_RANGE]->value, false);
+				// rotate
+				m_rotate->GetState(&rr, &rp, &ry, &r_fast, 0, m_rotate->settings[R_G_GYRO_RANGE]->value, false);
 				rr = MathUtil::Trim(rr, -1, 1); rp = MathUtil::Trim(rp, -1, 1); ry = MathUtil::Trim(ry, -1, 1);
 				// cursor
-				m_ir->GetState(&dx, &dy, &dz, m_ir->settings[C_GYRO_SENSITIVITY]->value, false, true);
+				m_ir->GetState(&dx, &dy, &dz, &c_fast, m_ir->settings[C_GYRO_SENSITIVITY]->value, false, true, false);
 			}
 			// TODO: use m+ calibration?
 			//accel_cal* calib = (accel_cal*)&m_eeprom[0x16];
@@ -666,9 +667,9 @@ void Wiimote::GetExtData(u8* const data)
 
 			//SWARN_LOG(CONSOLE, "1 %5.2f %5.2f %5.2f", p, r, y);
 			// fast or slow
-			if (abs(p) < 0.5) { p *= 2.0; ((wm_motionplus*)data)->pitch_slow = 1; } else p = MathUtil::Sign(p) * (abs(abs(p)-0.5)) * 2.0;
-			if (abs(r) < 0.5) { r *= 2.0; ((wm_motionplus*)data)->roll_slow = 1; } else r = MathUtil::Sign(r) * (abs(abs(r)-0.5)) * 2.0;
-			if (abs(y) < 0.5) { y *= 2.0; ((wm_motionplus*)data)->yaw_slow = 1; } else y = MathUtil::Sign(y) * (abs(abs(y)-0.5)) * 2.0;
+			if (!(r_fast || c_fast)) ((wm_motionplus*)data)->pitch_slow = 1;
+			if (!(r_fast || c_fast)) ((wm_motionplus*)data)->roll_slow = 1;
+			if (!(r_fast || c_fast)) ((wm_motionplus*)data)->yaw_slow = 1;
 			//SWARN_LOG(CONSOLE, "2 %5.2f %5.2f %5.2f", p, r, y);
 
 			// report	
@@ -684,7 +685,7 @@ void Wiimote::GetExtData(u8* const data)
 
 			// logging
 			float mx = 0, my = 0, mz = 0;
-			m_ir->GetState(&mx, &my, &mz, m_ir->settings[C_IR_SENSITIVITY]->value);
+			m_ir->GetState(&mx, &my, &mz, 0, false, false, false);
 			accel_cal* calib = (accel_cal*)&m_eeprom[0x16];
 			AccelData n_accel;
 			memset(&n_accel, 0, sizeof(n_accel));
@@ -692,19 +693,19 @@ void Wiimote::GetExtData(u8* const data)
 			accel_cal* n_calib = (accel_cal*)&((WiimoteEmu::Nunchuk*)m_extension->attachments[m_extension->active_extension])->reg[0x20];			
 			SNOTICE_LOG(CONSOLE, ""
 			"%5.2f %5.2f%s"
-			" | %02x %02x %02x"
-			" | %02x %02x %02x"
+			" | %5.2f %5.2f"
 			" | %5.2f %5.2f %5.2f"
-			//" | %5.2f %5.2f %5.2f"
+			" | %02x %02x %02x"
+			" | %02x %02x %02x"
 			" | %5.2f %5.2f %5.2f"
 			//" | %4x %4x %4x"
 			" %s%s%s"
 			//" (%02x %02x %02x %02x %02x %02x)",
 				,mx, my, (m_options->settings[SETTING_IR_OFF]->value != 0 ? "*" : " ")
+				,dx, dy
+				,rp, rr, ry
 				,(u8)trim(m_accel.x*(calib->one_g.x-calib->zero_g.x)+calib->zero_g.x), (u8)trim(m_accel.y*(calib->one_g.y-calib->zero_g.y)+calib->zero_g.y), (u8)trim(m_accel.z*(calib->one_g.z-calib->zero_g.z)+calib->zero_g.z)
 				,(u8)trim(n_accel.x*(n_calib->one_g.x-n_calib->zero_g.x)+n_calib->zero_g.x), (u8)trim(n_accel.y*(n_calib->one_g.y-n_calib->zero_g.y)+n_calib->zero_g.y), (u8)trim(n_accel.z*(n_calib->one_g.z-n_calib->zero_g.z)+n_calib->zero_g.z)
-				,dx, dy, dz
-				//rp, rr, ry
 				//sh.y, sh.z, sh.x
 				,p, r, y
 				//,_p, _r, _y

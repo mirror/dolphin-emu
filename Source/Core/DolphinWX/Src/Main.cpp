@@ -376,8 +376,6 @@ void DolphinApp::OnFatalException()
 	WiimoteReal::Shutdown();
 }
 
-
-// ------------
 // Talk to GUI
 
 void Host_SysMessage(const char *fmt, ...) 
@@ -606,6 +604,11 @@ void Host_SetWiiMoteConnectionState(int _State)
 bool Host_RendererHasFocus()
 {
 	return main_frame->RendererHasFocus();
+}
+
+bool Host_WiimoteConfigOpen()
+{
+	return main_frame->m_WiimoteConfigDiag ? true : false;
 }
 
 void Host_ConnectWiimote(int wm_idx, bool connect)

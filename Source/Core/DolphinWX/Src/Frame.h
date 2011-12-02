@@ -122,6 +122,7 @@ public:
 	NetPlaySetupDiag* g_NetPlaySetupDiag;
 	wxCheatsWindow* g_CheatsWindow;
 	TASInputDlg* g_TASInputDlg;	
+	WiimoteConfigDiag* m_WiimoteConfigDiag;
 
 	void InitBitmaps();
 	void DoPause();
@@ -182,8 +183,7 @@ private:
 	wxPanel* m_RenderParent;
 	CLogWindow* m_LogWindow;
 	LogConfigWindow* m_LogConfigWindow;
-	FifoPlayerDlg* m_FifoPlayerDlg;
-	WiimoteConfigDiag* m_WiimoteConfigDiag;
+	FifoPlayerDlg* m_FifoPlayerDlg;	
 	bool UseDebugger;
 	bool m_bBatchMode;
 	bool m_bEdit;

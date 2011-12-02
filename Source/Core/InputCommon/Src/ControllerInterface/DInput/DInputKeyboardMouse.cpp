@@ -152,6 +152,8 @@ void GetMousePos(float* const x, float* const y)
 
 bool KeyboardMouse::UpdateInput()
 {
+	if(!is_init_done) return false;
+
 	DIMOUSESTATE2 tmp_mouse;
 
 	// if mouse position hasn't been updated in a short while, skip a dev state

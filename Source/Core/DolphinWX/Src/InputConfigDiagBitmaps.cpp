@@ -69,6 +69,15 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 						((ControllerEmu::Cursor*)(*g)->control_group)->GetState( &x, &y, &z, ((ControllerEmu::Cursor*)(*g)->control_group)->settings[C_IR_SENSITIVITY]->value );
 						x *= (32-1.5); x+= 32;
 						y *= (32-1.5); y+= 32;
+						// ui enable/disable					
+						std::vector<ControlButton*>::const_iterator bi = (*g)->control_buttons.begin()
+							, be = (*g)->control_buttons.end();
+						for (int n = 0; bi!=be; ++bi, ++n)
+							if(n == C_FAST_MODIFIER && current_page->control_groups.back()->control_group->settings.size() > SETTING_MOTIONPLUS) if (current_page->control_groups.back()->control_group->settings[SETTING_MOTIONPLUS]->value == 0) (*bi)->Disable(); else (*bi)->Enable();
+						std::vector<PadSetting*>::const_iterator si = (*g)->options.begin()
+							, se = (*g)->options.end();
+						for (int n = 0; si!=se; ++si, ++n)
+							if(n == C_GYRO_SENSITIVITY && current_page->control_groups.back()->control_group->settings.size() > SETTING_MOTIONPLUS) if (current_page->control_groups.back()->control_group->settings[SETTING_MOTIONPLUS]->value == 0) (*si)->wxcontrol->Disable(); else (*si)->wxcontrol->Enable();
 						break;
 					}
 
@@ -108,8 +117,8 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 						dc.SetBrush(LightGrayBrush);
 						dc.SetPen(LightGrayPen);
 						// polygon offset
-						float max = (*g)->control_group->name == "Main Stick"?(87.0/127.0)*100:(74.0/127.0)*100,
-							diagonal = (*g)->control_group->name == "Main Stick"?(55.0/127.0)*100.0:(46.0/127.0)*100,
+						float max = (*g)->control_group->name == "Main Stick" ? (87.0/127.0)*100 : ((*g)->control_group->name == "C-Stick" ? (74.0/127.0)*100 : (82.0/127.0)*100),
+							diagonal = (*g)->control_group->name == "Main Stick" ? (55.0/127.0)*100.0 : ((*g)->control_group->name == "C-Stick" ? (46.0/127.0)*100 : (58.0/127.0)*100),
 							box = 64,
 							d_of = box/256.0,
 							x_of = box/2.0;
@@ -175,6 +184,15 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 					case GROUP_TYPE_TILT :
 						deadzone = 32 * ((*g)->control_group)->settings[R_DEADZONE]->value;
 						((ControllerEmu::Rotate*)(*g)->control_group)->GetState( &(*adj_dot)+1, &(*adj_dot), &(*adj_dot)+2, 32.0, 32-1.5 );
+						// ui enable/disable					
+						std::vector<ControlButton*>::const_iterator bi = (*g)->control_buttons.begin()
+							, be = (*g)->control_buttons.end();
+						for (int n = 0; bi!=be; ++bi, ++n)
+							if(n == R_G_FAST_MODIFIER && ((ControllerEmu::Rotate*)(*g)->control_group)->HasGyro() && current_page->control_groups.back()->control_group->settings.size() > SETTING_MOTIONPLUS) if (current_page->control_groups.back()->control_group->settings[SETTING_MOTIONPLUS]->value == 0) (*bi)->Disable(); else (*bi)->Enable();
+						std::vector<PadSetting*>::const_iterator si = (*g)->options.begin()
+							, se = (*g)->options.end();
+						for (int n = 0; si!=se; ++si, ++n)
+							if(n == R_G_GYRO_RANGE && ((ControllerEmu::Rotate*)(*g)->control_group)->HasGyro() && current_page->control_groups.back()->control_group->settings.size() > SETTING_MOTIONPLUS) if (current_page->control_groups.back()->control_group->settings[SETTING_MOTIONPLUS]->value == 0) (*si)->wxcontrol->Disable(); else (*si)->wxcontrol->Enable();
 						break;
 					}					
 

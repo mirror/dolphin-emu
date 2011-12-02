@@ -299,14 +299,18 @@ ControllerEmu::Rotate::Rotate(const char* const _name, bool gyro)
 	controls.push_back(new Input("Yaw Left"));
 	controls.push_back(new Input("Yaw Right"));
 
-	controls.push_back(new Input(_trans("Base")));
-	controls.push_back(new Input(_trans("Range")));
-
-	if (gyro) {
+	if (gyro)
+	{
+		controls.push_back(new Input(_trans("Fast")));
+		controls.push_back(new Input(_trans("Range")));
 		settings.push_back(new Setting(_trans("Acc Range"), 1.0f, 0, 500));
 		settings.push_back(new Setting(_trans("Gyro Range"), 1.0f, 0, 500));
-	} else
+	}
+	else
+	{
+		controls.push_back(new Input(_trans("Range")));
 		settings.push_back(new Setting(_trans("Range"), 1.0f, 0, 500));
+	}
 	settings.push_back(new Setting(_trans("Dead Zone"), 0, 0, 50));
 	settings.push_back(new Setting(_trans("Circle Stick"), 0));
 }
@@ -315,14 +319,17 @@ ControllerEmu::Cursor::Cursor(const char* const _name)
 	: ControlGroup(_name, GROUP_TYPE_CURSOR)
 {	
 	memset(m_state, 0, sizeof(m_state));
-	memset(m_absolute, 0, sizeof(m_state));
-	memset(m_last, 0, sizeof(m_absolute));
+	memset(m_absolute, 0, sizeof(m_absolute));
+	memset(m_absolute_last, 0, sizeof(m_absolute_last));
+	memset(m_last, 0, sizeof(m_last));
 	m_list.resize(3);
+
 
 	for (unsigned int i = 0; i < 4; ++i)
 		controls.push_back(new Input(named_directions[i]));
 	controls.push_back(new Input("Forward"));
-	controls.push_back(new Input("Backward"));
+	controls.push_back(new Input("Backward"));	
+	controls.push_back(new Input(_trans("Fast")));
 	controls.push_back(new Input(_trans("Range")));
 	controls.push_back(new Input(_trans("Hide")));
 	controls.push_back(new Input(_trans("Show")));
