@@ -17,6 +17,7 @@ class VideoBackend : public VideoBackendHardware
 	void Video_Prepare();
 
 	void ShowConfig(void* parent);
+	void InitBackendInfo();
 
 	void UpdateFPSDisplay(const char*);
 	unsigned int PeekMessages();

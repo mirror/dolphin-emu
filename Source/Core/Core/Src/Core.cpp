@@ -390,6 +390,7 @@ void EmuThread()
 
 	HW::Init();	
 
+	VideoBackend::ActivateBackend(SConfig::GetInstance().m_LocalCoreStartupParameter.m_strVideoBackend);
 	if (!g_video_backend->Initialize(g_pWindowHandle))
 	{
 		PanicAlert("Failed to initialize video backend!");

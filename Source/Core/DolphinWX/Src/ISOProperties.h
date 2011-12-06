@@ -36,6 +36,10 @@
 #include "PatchEngine.h"
 #include "ActionReplay.h"
 #include "GeckoCodeDiag.h"
+#include "VideoBackendBase.h"
+#include "VideoConfig.h"
+
+extern VideoConfig g_Config;
 
 struct PHackData
 {
@@ -68,7 +72,9 @@ public:
 private:
 	DECLARE_EVENT_TABLE();
 
+	wxNotebook* m_Notebook;
 	// Core
+	wxChoice *choice_backend, *choice_aa, *choice_af;
 	wxCheckBox *CPUThread, *SkipIdle, *MMU, *MMUBAT, *TLBHack;
 	wxCheckBox *VBeam, *FastDiscSpeed, *BlockMerging, *DSPHLE;
 	// Wii
@@ -207,6 +213,7 @@ private:
 	IniFile GameIni;
 	std::string GameIniFile;
 
+	void UpdateUIGameConfig(wxCommandEvent& event); void UpdateUIGameConfig();
 	void LoadGameConfig();
 	void PatchList_Load();
 	void PatchList_Save();
