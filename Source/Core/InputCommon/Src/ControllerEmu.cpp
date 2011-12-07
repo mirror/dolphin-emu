@@ -274,6 +274,7 @@ ControllerEmu::Slider::Slider(const char* const _name) : ControlGroup(_name, GRO
 ControllerEmu::Force::Force(const char* const _name) : ControlGroup(_name, GROUP_TYPE_FORCE)
 {
 	memset(m_thrust, 0, sizeof(m_thrust));
+	memset(m_state, 0, sizeof(m_state));	
 
 	controls.push_back(new Input(_trans("Forward")));
 	controls.push_back(new Input(_trans("Backward")));
@@ -287,10 +288,12 @@ ControllerEmu::Force::Force(const char* const _name) : ControlGroup(_name, GROUP
 }
 
 ControllerEmu::Rotate::Rotate(const char* const _name, bool gyro)
-	: m_gyro(gyro)
-	, ControlGroup(_name, GROUP_TYPE_TILT)
+	: m_has_gyro(gyro)
+	, ControlGroup(_name, GROUP_TYPE_ROTATE)
 {
-	memset(m_rotate, 0, sizeof(m_rotate));
+	memset(m_acc, 0, sizeof(m_acc));
+	memset(m_gyro, 0, sizeof(m_gyro));
+	memset(m_settle, 0, sizeof(m_settle));	
 
 	controls.push_back(new Input("Pitch Forward"));
 	controls.push_back(new Input("Pitch Backward"));
@@ -302,9 +305,12 @@ ControllerEmu::Rotate::Rotate(const char* const _name, bool gyro)
 	if (gyro)
 	{
 		controls.push_back(new Input(_trans("Fast")));
-		controls.push_back(new Input(_trans("Range")));
+		controls.push_back(new Input(_trans("Acc Range")));
+		controls.push_back(new Input(_trans("Gyro Range 1")));
+		controls.push_back(new Input(_trans("Gyro Range 2")));
 		settings.push_back(new Setting(_trans("Acc Range"), 1.0f, 0, 500));
 		settings.push_back(new Setting(_trans("Gyro Range"), 1.0f, 0, 500));
+		settings.push_back(new Setting(_trans("Gyro Settle"), 0.25f, 0, 9999));
 	}
 	else
 	{
@@ -322,8 +328,6 @@ ControllerEmu::Cursor::Cursor(const char* const _name)
 	memset(m_absolute, 0, sizeof(m_absolute));
 	memset(m_absolute_last, 0, sizeof(m_absolute_last));
 	memset(m_last, 0, sizeof(m_last));
-	m_list.resize(3);
-
 
 	for (unsigned int i = 0; i < 4; ++i)
 		controls.push_back(new Input(named_directions[i]));

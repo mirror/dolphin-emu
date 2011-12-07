@@ -142,7 +142,7 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 					{
 						// deadzone circle
 						dc.SetBrush(*wxLIGHT_GREY_BRUSH);
-						dc.DrawCircle( 32, 32, ((*g)->control_group)->settings[(*g)->control_group->type == GROUP_TYPE_TILT ? R_DEADZONE:AS_DEADZONE]->value * 32 );
+						dc.DrawCircle( 32, 32, ((*g)->control_group)->settings[AS_DEADZONE]->value * 32 );
 					}
 
 					// raw dot
@@ -168,10 +168,10 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 				}
 				break;
 			case GROUP_TYPE_FORCE :
-			case GROUP_TYPE_TILT :
+			case GROUP_TYPE_ROTATE :
 				{
 					float raw_dot[3];
-					float adj_dot[3];
+					float adj_dot[3], gyro_dot[3];
 					float deadzone;
 
 					// adjusted
@@ -181,18 +181,26 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 						deadzone = 32 * ((*g)->control_group)->settings[F_DEADZONE]->value;
 						((ControllerEmu::Force*)(*g)->control_group)->GetState( adj_dot, 32.0, 32-1.5 );
 						break;
-					case GROUP_TYPE_TILT :
-						deadzone = 32 * ((*g)->control_group)->settings[R_DEADZONE]->value;
-						((ControllerEmu::Rotate*)(*g)->control_group)->GetState( &(*adj_dot)+1, &(*adj_dot), &(*adj_dot)+2, 32.0, 32-1.5 );
+					case GROUP_TYPE_ROTATE :
+						deadzone = 32 * ((*g)->control_group)->settings[((ControllerEmu::Rotate*)(*g)->control_group)->HasGyro() ? R_G_DEADZONE : R_DEADZONE]->value;
+						((ControllerEmu::Rotate*)(*g)->control_group)->GetState( &(*adj_dot), &(*adj_dot)+1, &(*adj_dot)+2, false, 32.0, 32-1.5, !Core::IsRunning() );
+						((ControllerEmu::Rotate*)(*g)->control_group)->GetState( &(*gyro_dot), &(*gyro_dot)+1, &(*gyro_dot)+2, true, 32.0, 32-1.5, !Core::IsRunning() );
 						// ui enable/disable					
 						std::vector<ControlButton*>::const_iterator bi = (*g)->control_buttons.begin()
 							, be = (*g)->control_buttons.end();
 						for (int n = 0; bi!=be; ++bi, ++n)
+						{
 							if(n == R_G_FAST_MODIFIER && ((ControllerEmu::Rotate*)(*g)->control_group)->HasGyro() && current_page->control_groups.back()->control_group->settings.size() > SETTING_MOTIONPLUS) if (current_page->control_groups.back()->control_group->settings[SETTING_MOTIONPLUS]->value == 0) (*bi)->Disable(); else (*bi)->Enable();
+							if(n == R_G_GYRO_RANGE_MODIFIER_1 && ((ControllerEmu::Rotate*)(*g)->control_group)->HasGyro() && current_page->control_groups.back()->control_group->settings.size() > SETTING_MOTIONPLUS) if (current_page->control_groups.back()->control_group->settings[SETTING_MOTIONPLUS]->value == 0) (*bi)->Disable(); else (*bi)->Enable();
+							if(n == R_G_GYRO_RANGE_MODIFIER_2 && ((ControllerEmu::Rotate*)(*g)->control_group)->HasGyro() && current_page->control_groups.back()->control_group->settings.size() > SETTING_MOTIONPLUS) if (current_page->control_groups.back()->control_group->settings[SETTING_MOTIONPLUS]->value == 0) (*bi)->Disable(); else (*bi)->Enable();
+						}
 						std::vector<PadSetting*>::const_iterator si = (*g)->options.begin()
 							, se = (*g)->options.end();
 						for (int n = 0; si!=se; ++si, ++n)
+						{
 							if(n == R_G_GYRO_RANGE && ((ControllerEmu::Rotate*)(*g)->control_group)->HasGyro() && current_page->control_groups.back()->control_group->settings.size() > SETTING_MOTIONPLUS) if (current_page->control_groups.back()->control_group->settings[SETTING_MOTIONPLUS]->value == 0) (*si)->wxcontrol->Disable(); else (*si)->wxcontrol->Enable();
+							if(n == R_G_GYRO_SETTLE && ((ControllerEmu::Rotate*)(*g)->control_group)->HasGyro() && current_page->control_groups.back()->control_group->settings.size() > SETTING_MOTIONPLUS) if (current_page->control_groups.back()->control_group->settings[SETTING_MOTIONPLUS]->value == 0) (*si)->wxcontrol->Disable(); else (*si)->wxcontrol->Enable();
+						}
 						break;
 					}					
 
@@ -206,7 +214,7 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 								- (*g)->control_group->controls[i == 0 ? R_FORWARD : (i == 1 ? F_LEFT : F_UP)]->control_ref->State();
 							raw_dot[i] *= 32 - 1; raw_dot[i] += 32;
 							break;
-						case GROUP_TYPE_TILT :
+						case GROUP_TYPE_ROTATE :
 							raw_dot[i] = (*g)->control_group->controls[i == 0 ? R_FORWARD : (i == 1 ? R_RIGHT : R_DOWN)]->control_ref->State()
 								- (*g)->control_group->controls[i == 0 ? R_BACKWARD : (i == 1 ? R_LEFT : R_UP)]->control_ref->State();
 							raw_dot[i] *= 32 - 1; raw_dot[i] += 32;
@@ -231,6 +239,22 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 						dc.SetBrush(*wxRED_BRUSH);
 						dc.DrawRectangle( 0, adj_dot[2] - 1, 64, 2 );
 					}
+					if ( (*g)->control_group->type == GROUP_TYPE_ROTATE )
+					{
+						if ( ((ControllerEmu::Rotate*)(*g)->control_group)->HasGyro() )
+						{
+							if ( gyro_dot[2]!=32 )
+							{
+#if wxCHECK_VERSION(2, 9, 0)
+								dc.SetPen(*wxBLUE_PEN);
+#else
+								dc.SetPen(*wxCYAN_PEN);
+#endif
+								dc.SetBrush(*wxBLUE_BRUSH);
+								dc.DrawRectangle( 0, gyro_dot[2] - 0, 64, 1 );
+							}
+						}
+					}
 
 					// a rectangle, for looks i guess
 					dc.SetBrush(*wxWHITE_BRUSH);
@@ -252,6 +276,22 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 						dc.SetPen(*wxRED_PEN);
 						dc.SetBrush(*wxRED_BRUSH);
 						dc.DrawRectangle( adj_dot[1]-2, adj_dot[0]-2, 4, 4 );
+					}	
+					if ( (*g)->control_group->type == GROUP_TYPE_ROTATE )
+					{
+						if ( ((ControllerEmu::Rotate*)(*g)->control_group)->HasGyro() )
+						{
+							if ( gyro_dot[1]!=32 || gyro_dot[0]!=32 )
+							{
+#if wxCHECK_VERSION(2, 9, 0)
+								dc.SetPen(*wxBLUE_PEN);
+#else
+								dc.SetPen(*wxCYAN_PEN);
+#endif
+								dc.SetBrush(*wxBLUE_BRUSH);
+								dc.DrawRectangle( gyro_dot[1]-1, gyro_dot[0]-1, 2, 2 );
+							}
+						}
 					}
 
 				}

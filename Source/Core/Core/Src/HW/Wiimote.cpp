@@ -29,7 +29,7 @@ bool g_DebugSoundData = false;
 
 void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 {
-	/*
+/*
 	std::string Name, TmpData;
 	int size = Size;
 	static int c;
@@ -41,20 +41,23 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 	static u8 dataReply[3] = {0};
 	static bool keyDown[0xff] = {false};
 	static bool keep_still = true;
+	static int modify = 0;
 	bool Emu = wm;
 	if(!wm) wm = (WiimoteEmu::Wiimote*)GetPlugin()->controllers[0];
 
 	// debugging controls
+	if(!keyDown[VK_PRIOR] && GetAsyncKeyState(VK_PRIOR)) { g_DebugData = !g_DebugData; keyDown[VK_PRIOR] = true;
+		WARN_LOG(CONSOLE, "g_DebugData: %d", g_DebugData); } if(!GetAsyncKeyState(VK_PRIOR)) keyDown[VK_PRIOR] = false;
+	if(!keyDown[VK_NEXT] && GetAsyncKeyState(VK_NEXT)) { g_DebugMP = !g_DebugMP; keyDown[VK_NEXT] = true;
+		WARN_LOG(CONSOLE, "g_DebugMP: %d", g_DebugMP); } if(!GetAsyncKeyState(VK_NEXT)) keyDown[VK_NEXT] = false;
+	if(!keyDown[VK_INSERT] && GetAsyncKeyState(VK_INSERT)) { modify++; if (modify > 2) modify = 0; keyDown[VK_INSERT] = true;
+		WARN_LOG(CONSOLE, "Modify: %d", modify); } if(!GetAsyncKeyState(VK_INSERT)) keyDown[VK_INSERT] = false;
 	if(!keyDown[VK_HOME] && GetAsyncKeyState(VK_HOME)) { wm->m_options->settings[3]->value = !wm->GetMotionPlusAttached(); keyDown[VK_HOME] = true;
 		WARN_LOG(CONSOLE, "M+: %f", wm->m_options->settings[3]->value); } if(!GetAsyncKeyState(VK_HOME)) keyDown[VK_HOME] = false;
 	if(!keyDown[VK_END] && GetAsyncKeyState(VK_END)) { wm->m_extension->switch_extension = wm->m_extension->active_extension != 1 ? 1 : 0; keyDown[VK_END] = true;
 		WARN_LOG(CONSOLE, "NC: %d (%d)", wm->m_extension->switch_extension, wm->m_extension->active_extension); } if(!GetAsyncKeyState(VK_END)) keyDown[VK_END] = false;
 	if(!keyDown[VK_DELETE] && GetAsyncKeyState(VK_DELETE)) { wm->m_options->settings[SETTING_IR_HIDE]->value = wm->m_options->settings[SETTING_IR_HIDE]->value != 1 ? 1 : 0; keyDown[VK_DELETE] = true;
 		WARN_LOG(CONSOLE, "IR: %d", wm->m_options->settings[SETTING_IR_HIDE]->value); } if(!GetAsyncKeyState(VK_DELETE)) keyDown[VK_DELETE] = false;
-	if(!keyDown[VK_PRIOR] && GetAsyncKeyState(VK_PRIOR)) { g_DebugData = !g_DebugData; keyDown[VK_PRIOR] = true;
-		WARN_LOG(CONSOLE, "g_DebugData: %d", g_DebugData); } if(!GetAsyncKeyState(VK_PRIOR)) keyDown[VK_PRIOR] = false;
-	if(!keyDown[VK_NEXT] && GetAsyncKeyState(VK_NEXT)) { g_DebugMP = !g_DebugMP; keyDown[VK_NEXT] = true;
-		WARN_LOG(CONSOLE, "g_DebugMP: %d", g_DebugMP); } if(!GetAsyncKeyState(VK_NEXT)) keyDown[VK_NEXT] = false;
 
 	//INFO_LOG(CONSOLE, "Data: %s", ArrayToString((const u8*)_pData, Size, 0, 30).c_str()); 
 
@@ -68,6 +71,28 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 
 	const hid_packet* const hidp = (hid_packet*)_pData;
 	const wm_report* const sr = (wm_report*)hidp->data;
+
+	// Modify report
+	if (modify)
+	{
+		if (sr->wm >= 0x30 && sr->wm <= 0x37) {
+			if (sr->wm == 0x37 && ((wm_motionplus*)&sr->data[15])->is_mp_data) {
+				//SERROR_LOG(CONSOLE, "1 | %s", ArrayToString(sr->data, size).c_str());
+				accel_cal* calib = (accel_cal*)&wm->m_eeprom[0x16];
+				if (modify == 1) {
+					((wm_accel*)&sr->data[2])->x = calib->zero_g.x; ((wm_core*)&sr->data[0])->xL = calib->zero_g.xL;
+					((wm_accel*)&sr->data[2])->y = calib->zero_g.y; ((wm_core*)&sr->data[0])->yL = calib->zero_g.yL;
+					((wm_accel*)&sr->data[2])->z = calib->one_g.z; ((wm_core*)&sr->data[0])->zL = calib->one_g.zL;
+				}
+				if (modify == 2) {
+					((wm_motionplus*)&sr->data[15])->yaw2 = 0x1f; ((wm_motionplus*)&sr->data[15])->yaw1 = 0x7f;
+					((wm_motionplus*)&sr->data[15])->roll2 = 0x1f; ((wm_motionplus*)&sr->data[15])->roll1 = 0x7f;
+					((wm_motionplus*)&sr->data[15])->pitch2 = 0x1f; ((wm_motionplus*)&sr->data[15])->pitch1 = 0x7f;
+				}
+				//SERROR_LOG(CONSOLE, "2 | %s", ArrayToString(sr->data, size).c_str());
+			}
+		}
+	}
 
 	// Work with a copy from now on
 	u8 data[32];
@@ -313,6 +338,22 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 		{
 		case WM_SPACE_EEPROM:
 			if (g_DebugComm) Name.append(" REG_EEPROM");
+			// Wiimote calibration
+			if(data[4] == 0xf0 && data[5] == 0x00 && data[6] == 0x10) {
+				if(data[6] == 0x10) {
+					accel_cal* calib = (accel_cal*)&rdr->data[6];
+					SERROR_LOG(CONSOLE, "Wiimote calibration:");
+					//SERROR_LOG(CONSOLE, "%s", ArrayToString(rdr->data, rdr->size).c_str());
+					SERROR_LOG(CONSOLE, "Cal_zero.x: %i", calib->zero_g.x);
+					SERROR_LOG(CONSOLE, "Cal_zero.y: %i", calib->zero_g.y);
+					SERROR_LOG(CONSOLE, "Cal_zero.z: %i", calib->zero_g.z);
+					SERROR_LOG(CONSOLE, "Cal_g.x: %i", calib->one_g.x);
+					SERROR_LOG(CONSOLE, "Cal_g.y: %i", calib->one_g.y);
+					SERROR_LOG(CONSOLE, "Cal_g.z: %i", calib->one_g.z);
+					// Save
+					if (!Emu) memcpy(wm->m_eeprom + 0x16, rdr->data + 6, rdr->size);
+				}
+			}
 			break;
 		case WM_SPACE_REGS1:
 		case WM_SPACE_REGS2:
@@ -365,27 +406,12 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 		{
 			//INFO_LOG(CONSOLE, "Extension ID: %s", ArrayToString(rdr->data, rdr->size+1).c_str());
 		}
-		// Show Wiimote neutral values
-		// The only difference between the Nunchuck and Wiimote that we go
-		//  after is calibration here is the offset in memory. If needed we can
-		//  check the preceding 0x17 request to.
-		if(data[4] == 0xf0 && data[5] == 0x00 && data[6] == 0x10) {
-			if(data[6] == 0x10) {
-				//INFO_LOG(CONSOLE, "Wiimote calibration:");
-				//INFO_LOG(CONSOLE, "Cal_zero.x: %i", data[7 + 6]);
-				//INFO_LOG(CONSOLE, "Cal_zero.y: %i", data[7 + 7]);
-				//INFO_LOG(CONSOLE, "Cal_zero.z: %i",  data[7 + 8]);
-				//INFO_LOG(CONSOLE, "Cal_g.x: %i", data[7 + 10]);
-				//INFO_LOG(CONSOLE, "Cal_g.y: %i",  data[7 + 11]);
-				//INFO_LOG(CONSOLE, "Cal_g.z: %i",  data[7 +12]);
-			}
-		}
-		// Show Nunchuck neutral values
+		// Nunchuck calibration
 		if(data[4] == 0xf0 && data[5] == 0x00 && (data[6] == 0x20 || data[6] == 0x30)) {
-			// Save the encrypted data
-			//TmpData = StringFromFormat("Read[%s] (enc): %s", (Emu ? "Emu" : "Real"), ArrayToString(data, size + 2, 0, 30).c_str()); 
+			// log
+			//TmpData = StringFromFormat("Read[%s] (enc): %s", (Emu ? "Emu" : "Real"), ArrayToString(data, size + 2).c_str()); 
 
-			// We have already sent the data report so we can safely decrypt it now
+			// decrypt
 			//if(((u8*)&wm->m_reg_ext)[0xf0] == 0xaa) {
 			//	wiimote_decrypt(&wm->m_ext_key, &data[0x07], 0x00, (data[4] >> 0x04) + 1);
 
@@ -424,7 +450,7 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 
 			// Save values
 			if (!Emu) {
-				// Save the values from the Nunchuck
+				// Save to registry
 				if(data[7 + 0] != 0xff)
 				{					
 					//memcpy((u8*)&wm->m_reg_ext.calibration, &data[7], 0x10);
@@ -522,87 +548,108 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 		//if (data[1] == 0x35)
 		//	wiimote_decrypt(&wm->m_ext_key, &data[7], 0x00, 0x06);
 		
-		if(!g_DebugMP && ((wm_motionplus*)&data[17])->is_mp_data) return;
-		if(!g_DebugData && !((wm_motionplus*)&data[17])->is_mp_data) return;
-
-		std::string SData = "", SCore = "", SExt = "";
-
-		if (data[1] == 0x30) {
-			SData = StringFromFormat("Data[%s][%d] %s| %s",
-			(Emu ? "E" : "R"),
-			wm->m_extension->active_extension,
-			ArrayToString(data, 2, 0).c_str(),
-			ArrayToString(&data[2], 2, 0).c_str());
-		}
-		if (data[1] == 0x33) // WM_REPORT_CORE_ACCEL_IR12
+		if (data[1] == 0x35 || data[1] == 0x37)
 		{
-			SData = StringFromFormat("Data[%s][%d] %s| %s| %s| %s",
-			(Emu ? "E" : "R"),
-			wm->m_extension->active_extension,
-			ArrayToString(data, 2, 0).c_str(),
-			ArrayToString(&data[2], 2, 0).c_str(),
-			ArrayToString(&data[4], 3, 0).c_str(),
-			ArrayToString(&data[7], 12, 0).c_str());
+			if(!g_DebugMP && ((wm_motionplus*)&data[17])->is_mp_data) return;
+			if(!g_DebugData && !((wm_motionplus*)&data[17])->is_mp_data) return;
 		}
-		if (data[1] == 0x35) // WM_REPORT_CORE_ACCEL_EXT16
+
+		std::string SData = "", SCore = "", SAcc = "", SIR = "", SExt = "", SExtID = "";
 		{
-			SData = StringFromFormat(
+			accel_cal* calib = (accel_cal*)&wm->m_eeprom[0x16];
+			SCore = StringFromFormat(	
+				"%d %d %d %d ",				
+				((wm_core*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->xL,
+				((wm_core*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->yL,
+				((wm_core*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->zL,
+				((wm_core*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown);
+			SAcc = StringFromFormat(
+				//"%3d %3d %3d"
+				//" | %3d %3d %3d"
+				//" | %3d %3d %3d | "
+				"%5.2f %5.2f %5.2f"
+				//,calib->zero_g.x, calib->zero_g.y, calib->zero_g.z
+				//,(calib->zero_g.x<<2) + calib->zero_g.xL, (calib->zero_g.y<<2) + calib->zero_g.yL, (calib->zero_g.z<<2) + calib->zero_g.zL
+				//,calib->one_g.x, calib->one_g.y, calib->one_g.z
+				//,(calib->one_g.x<<2) + calib->one_g.xL, (calib->one_g.y<<2) + calib->one_g.yL, (calib->one_g.z<<2) + calib->one_g.zL
+				//,((wm_accel*)&data[4])->x, ((wm_accel*)&data[4])->y, ((wm_accel*)&data[4])->z
+				//,(((wm_accel*)&data[4])->x<<2) + ((wm_core*)sr->data)->xL, (((wm_accel*)&data[4])->y<<2) + ((wm_core*)sr->data)->yL, (((wm_accel*)&data[4])->z<<2) + ((wm_core*)sr->data)->zL
+				,(((wm_accel*)&data[4])->x - calib->zero_g.x) / float(calib->one_g.x-calib->zero_g.x), (((wm_accel*)&data[4])->y - calib->zero_g.y) / float(calib->one_g.y-calib->zero_g.y), (((wm_accel*)&data[4])->z - calib->zero_g.z) / float(calib->one_g.z-calib->zero_g.z));
+		}
+		if (data[1] == 0x33) { // WM_REPORT_CORE_ACCEL_IR12
+			SIR = StringFromFormat(
+				"%s"
+				,ArrayToString(&data[7], 12, 0).c_str());
+		}
+		if (data[1] == 0x35) { // WM_REPORT_CORE_ACCEL_EXT16
+			SExt = StringFromFormat(
 				"%02x %02x %02x %02x %02x %02x",
 			data[7], data[8], // Nunchuck stick
 			data[9], data[10], data[11], // Nunchuck Accelerometer
 			data[12]>>6); //  Nunchuck buttons
 		}
-		if (data[1] == 0x37) // WM_REPORT_CORE_ACCEL_IR10_EXT6
-		{
-			SCore = StringFromFormat(	
-					"%02x %02x %02x %02x %02x",
-					((wm_core*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown1,
-					((wm_core*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown2,
-					((wm_core*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown3,
-					((wm_core*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown4,
-					((wm_core*)&((wm_report_core_accel_ir10_ext6*)sr->data)->c)->unknown5);
+		if (data[1] == 0x37) { // WM_REPORT_CORE_ACCEL_IR10_EXT6
+			SIR = StringFromFormat(
+				"%s"
+				,ArrayToString(&data[7], 10, 0).c_str());
 			if (((wm_motionplus*)&data[17])->is_mp_data) {
 				SExt = StringFromFormat(""
-				"%02x %02x %02x %02x %02x %02x | "
-				"%04x %04x %04x %s%s%s",					
-					((wm_motionplus*)&data[17])->roll1, ((wm_motionplus*)&data[17])->roll2,
-					((wm_motionplus*)&data[17])->pitch1, ((wm_motionplus*)&data[17])->pitch2,
-					((wm_motionplus*)&data[17])->yaw1, ((wm_motionplus*)&data[17])->yaw2,
-					((wm_motionplus*)&data[17])->pitch2<<8 | ((wm_motionplus*)&data[17])->pitch1,
-					((wm_motionplus*)&data[17])->roll2<<8 | ((wm_motionplus*)&data[17])->roll1,					
-					((wm_motionplus*)&data[17])->yaw2<<8 | ((wm_motionplus*)&data[17])->yaw1,
-					((wm_motionplus*)&data[17])->pitch_slow?"*":" ", ((wm_motionplus*)&data[17])->roll_slow?"*":" ", ((wm_motionplus*)&data[17])->yaw_slow?"*":" ");
+					//"%02x %02x %02x %02x %02x %02x"
+					//"| %04x %04x %04x
+					" %5.2f %5.2f %5.2f"
+					" %s%s%s"
+					//,((wm_motionplus*)&data[17])->roll1, ((wm_motionplus*)&data[17])->roll2
+					//,((wm_motionplus*)&data[17])->pitch1, ((wm_motionplus*)&data[17])->pitch2
+					//,((wm_motionplus*)&data[17])->yaw1, ((wm_motionplus*)&data[17])->yaw2
+					//,((wm_motionplus*)&data[17])->pitch2<<8 | ((wm_motionplus*)&data[17])->pitch1
+					//,((wm_motionplus*)&data[17])->roll2<<8 | ((wm_motionplus*)&data[17])->roll1					
+					//,((wm_motionplus*)&data[17])->yaw2<<8 | ((wm_motionplus*)&data[17])->yaw1
+					//,((wm_motionplus*)&data[17])->pitch2<<8 | ((wm_motionplus*)&data[17])->pitch1
+					//,((wm_motionplus*)&data[17])->roll2<<8 | ((wm_motionplus*)&data[17])->roll1					
+					//,((wm_motionplus*)&data[17])->yaw2<<8 | ((wm_motionplus*)&data[17])->yaw1
+					,float((((wm_motionplus*)&data[17])->pitch2<<8 | ((wm_motionplus*)&data[17])->pitch1) - 0x1f7f) / float(0x1fff)
+					,float((((wm_motionplus*)&data[17])->roll2<<8 | ((wm_motionplus*)&data[17])->roll1) - 0x1f7f) / float(0x1fff)
+					,float((((wm_motionplus*)&data[17])->yaw2<<8 | ((wm_motionplus*)&data[17])->yaw1) - 0x1f7f) / float(0x1fff)
+					,((wm_motionplus*)&data[17])->pitch_slow?"*":" ", ((wm_motionplus*)&data[17])->roll_slow?"*":" ", ((wm_motionplus*)&data[17])->yaw_slow?"*":" ");
 			} else {
 				SExt = StringFromFormat(
 					"%02x %02x | %02x %02x | %02x %02x %02x | %02x %02x %02x",
 					((wm_nc_mp*)&data[17])->bz, ((wm_nc_mp*)&data[17])->bc, //  Nunchuck buttons
 					((wm_nc_mp*)&data[17])->jx, ((wm_nc_mp*)&data[17])->jy, // Nunchuck stick
-					((wm_nc_mp*)&data[17])->ax+((wm_nc_mp*)&data[17])->axL, ((wm_nc_mp*)&data[17])->ay+((wm_nc_mp*)&data[17])->ayL, ((wm_nc_mp*)&data[17])->az<<1+((wm_nc_mp*)&data[17])->azL); // Nunchuck Accelerometer					
+					((wm_nc_mp*)&data[17])->ax+((wm_nc_mp*)&data[17])->axL, ((wm_nc_mp*)&data[17])->ay+((wm_nc_mp*)&data[17])->ayL, (((wm_nc_mp*)&data[17])->az<<1)+((wm_nc_mp*)&data[17])->azL); // Nunchuck Accelerometer					
 			}
-			SData = StringFromFormat("Data[%s][%s][%d|%d] %s| %s"
-			"| %s"
-			//"| %s"
-			//"| %s"
-			//" (%s)"
-			" (%s)",
-			(Emu ? "E" : "R"),
-			((wm_motionplus*)&data[17])->is_mp_data ? "+" : "e",
-			((wm_motionplus*)&data[17])->is_mp_data ? ((wm_motionplus*)&data[17])->extension_connected : ((wm_nc_mp*)&data[17])->extension_connected,
-			wm->m_extension->active_extension,
-			ArrayToString(data, 2, 0).c_str(),
-			ArrayToString(&data[2], 2, 0).c_str(),
-			ArrayToString(&data[4], 3, 0).c_str(),
-			//ArrayToString(&data[7], 10, 0).c_str(),
-			//ArrayToString(&data[17], 6, 0).c_str(),
-			//SCore.c_str(),
-			SExt.c_str());
+			SExtID = StringFromFormat(
+				"[%s|%d|%d]"
+				,((wm_motionplus*)&data[17])->is_mp_data ? "+" : "e"
+				,((wm_motionplus*)&data[17])->is_mp_data ? ((wm_motionplus*)&data[17])->extension_connected : ((wm_nc_mp*)&data[17])->extension_connected
+				,wm->m_extension->active_extension);
 		//DEBUG_LOG(CONSOLE, "M+ %d Extension %d %d %s", ((wm_motionplus*)&data[17])->is_mp_data, ((wm_motionplus*)&data[17])->is_mp_data ?
 		//		((wm_motionplus*)&data[17])->extension_connected : ((wm_motionplus_nc*)&data[17])->extension_connected, wm->m_extension->active_extension,
 		//		ArrayToString(((u8*)&wm->m_reg_motion_plus.ext_identifier), sizeof(wm->m_reg_motion_plus.ext_identifier), 0).c_str());
 		}
 
-		// Accelerometer only
-		//INFO_LOG(CONSOLE, "Accel x, y, z: %03u %03u %03u\n", data[4], data[5], data[6]);
+		SData = StringFromFormat("Data"
+			"[%s]"
+			"%s"
+			" %s"
+			"| %s"
+			//"| %s"
+			"| %s"
+			//"| %s"
+			//"| %s"
+			//" (%s)"
+			" (%s)"
+			,(Emu ? "E" : "R")
+			,SExtID.c_str()
+			,ArrayToString(data, 2, 0).c_str()
+			,ArrayToString(&data[2], 2, 0).c_str()
+			//,SCore.c_str()
+			//,ArrayToString(&data[4], 3, 0).c_str()
+			//,(((wm_accel*)&data[4])->x - 0x7f) / float(0xff), (((wm_accel*)&data[4])->y - 0x7f) / float(0xff), (((wm_accel*)&data[4])->z - 0x7f) / float(0xff)
+			,SAcc.c_str()
+			//,ArrayToString(&data[17], 6, 0).c_str(),
+			//,SCore.c_str(),
+			,SExt.c_str());
 
 		// Calculate the Wiimote roll and pitch in degrees
 		//int Roll, Pitch, RollAdj, PitchAdj;
@@ -620,16 +667,6 @@ void Eavesdrop(WiimoteEmu::Wiimote* wm, const void* _pData, int Size)
 		//u8 x, y, z;
 		//WiimoteEmu::Rotate(x, y, z);
 		//WiimoteEmu::TiltTest(x, y, z);
-
-		// Show the number of g forces on the axes
-		//float Gx = WiimoteEmu::AccelerometerToG((float)data[4], (float)g_wm.cal_zero.x, (float)g_wm.cal_g.x);
-		//float Gy = WiimoteEmu::AccelerometerToG((float)data[5], (float)g_wm.cal_zero.y, (float)g_wm.cal_g.y);
-		//float Gz = WiimoteEmu::AccelerometerToG((float)data[6], (float)g_wm.cal_zero.z, (float)g_wm.cal_g.z);
-		//std::string GForce = StringFromFormat("%s %s %s",
-		//	((int)Gx >= 0) ? StringFromFormat(" %i", (int)Gx).c_str() : StringFromFormat("%i", (int)Gx).c_str(),
-		//	((int)Gy >= 0) ? StringFromFormat(" %i", (int)Gy).c_str() : StringFromFormat("%i", (int)Gy).c_str(),
-		//	((int)Gz >= 0) ? StringFromFormat(" %i", (int)Gz).c_str() : StringFromFormat("%i", (int)Gz).c_str());
-
 
 		// Calculate IR data
 		//if (data[1] == WM_REPORT_CORE_ACCEL_IR10_EXT6) WiimoteEmu::IRData2DotsBasic(&data[7]); else WiimoteEmu::IRData2Dots(&data[7]);
@@ -681,6 +718,7 @@ void Initialize(void* const hwnd)
 	if(!IsInit)
 		for (unsigned int i = 0; i<4; ++i)
 			g_plugin.controllers.push_back(new WiimoteEmu::Wiimote(i));
+	IsInit = true;
 
 	g_controller_interface.SetHwnd(hwnd);
 	g_controller_interface.Initialize();
@@ -691,8 +729,6 @@ void Initialize(void* const hwnd)
 	
 	if (Movie::IsPlayingInput()) // reload Wiimotes with our settings
 		Movie::ChangeWiiPads();
-
-	IsInit = true;
 }
 
 // __________________________________________________________________________________________________

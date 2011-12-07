@@ -120,12 +120,12 @@ void EmulateShake(AccelData* const accel_data
 	  , ControllerEmu::Buttons* const buttons_group
 	  , u8* const shake_step);
 
-void EmulateTilt(AccelData* const accel
+void EmulateRotate(AccelData* const accel
 	 , ControllerEmu::Rotate* const tilt_group
 	 , const bool focus, const bool sideways = false, const bool upright = false
 	 , ControllerEmu::Cursor* const ir_group = NULL, const bool mp = false, const bool ir_step = false);
 
-void EmulateSwing(AccelData* const accel
+void EmulateThrust(AccelData* const accel
 	 , ControllerEmu::Force* const tilt_group
 	 , const bool sideways = false, const bool upright = false);
 

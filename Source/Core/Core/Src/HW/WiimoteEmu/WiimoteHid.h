@@ -51,16 +51,15 @@ struct wm_core {
 	u8 down : 1;
 	u8 up : 1;
 	u8 plus : 1;
-	u8 unknown1: 1;
-	u8 unknown2: 1;
-	u8 unknown3: 1;
+	u8 xL: 2;
+	u8 unknown: 1;
 	u8 two : 1;
 	u8 one : 1;
 	u8 b : 1;
 	u8 a : 1;
 	u8 minus : 1;
-	u8 unknown4: 1;
-	u8 unknown5: 1;
+	u8 yL: 1;
+	u8 zL: 1;
 	u8 home : 1;
 };
 
@@ -433,17 +432,17 @@ struct accel_cal
 	struct
 	{
 		u8 x, y, z;
-		u8 xlo : 2;
-		u8 ylo : 2;
-		u8 zlo : 2;
+		u8 xL : 2;
+		u8 yL : 2;
+		u8 zL : 2;
 	} zero_g;
 
 	struct
 	{
 		u8 x, y, z;
-		u8 xlo : 2;
-		u8 ylo : 2;
-		u8 zlo : 2;
+		u8 xL : 2;
+		u8 yL : 2;
+		u8 zL : 2;
 	} one_g;
 };
 

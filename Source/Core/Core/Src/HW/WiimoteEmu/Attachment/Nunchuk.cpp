@@ -58,12 +58,12 @@ void Nunchuk::GetState(u8* const data, const bool focus)
 	m_stick->GetState(&ncdata->jx, &ncdata->jy, 0x80, focus ? 127 : 0);
 
 	// tilt
-	EmulateTilt(&m_accel, m_tilt, focus);
+	EmulateRotate(&m_accel, m_tilt, focus);
 
 	if (focus)
 	{
-		// swing
-		EmulateSwing(&m_accel, m_swing);
+		// thrust
+		EmulateThrust(&m_accel, m_swing);
 		// shake
 		EmulateShake(&m_accel, m_shake, m_shake_step);
 		// buttons

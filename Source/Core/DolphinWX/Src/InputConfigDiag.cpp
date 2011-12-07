@@ -277,8 +277,6 @@ void ControlDialog::UpdateGUI()
 void GamepadPage::UpdateGUI()
 {
 	device_cbox->SetValue(WXSTR_FROM_STR(controller->default_device.ToString()));
-	// device not avaliable
-	if (device_cbox->GetValue() != WXSTR_FROM_STR(controller->default_device.ToString())) device_cbox->SetSelection(0);
 
 	std::vector< ControlGroupBox* >::const_iterator g = control_groups.begin(),
 		ge = control_groups.end();
@@ -747,7 +745,7 @@ ControlGroupBox::ControlGroupBox(ControllerEmu::ControlGroup* const group, wxWin
 	switch (group->type)
 	{
 	case GROUP_TYPE_STICK:
-	case GROUP_TYPE_TILT:
+	case GROUP_TYPE_ROTATE:
 	case GROUP_TYPE_CURSOR:
 	case GROUP_TYPE_FORCE:
 		{
