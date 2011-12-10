@@ -117,22 +117,20 @@ void PadSettingSpin::UpdateValue()
 	value = 0.01 * float(((wxSpinCtrl*)wxcontrol)->GetValue());
 }
 
-ControlDialog::ControlDialog(GamepadPage* const parent, InputPlugin& plugin, ControllerInterface::ControlReference* const ref)
+ControlDialog::ControlDialog(wxWindow* const parent, InputPlugin& plugin, const ControllerInterface::DeviceQualifier& default_device, ControllerInterface::ControlReference* const ref)
 	: wxDialog(parent, -1, _("Configure Control"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER)
 	, control_reference(ref)
 	, m_plugin(plugin)
+	, m_devq(default_device)
+	, m_default_device(default_device)
 	, m_parent(parent)
 {
-	m_devq = m_parent->controller->default_device;
-
-	// GetStrings() sounds slow :/
-	//device_cbox = new wxComboBox(this, -1, WXSTR_FROM_STR(ref->device_qualifier.ToString()), wxDefaultPosition, wxSize(256,-1), parent->device_cbox->GetStrings(), wxTE_PROCESS_ENTER);
-	device_cbox = new wxComboBox(this, -1, WXSTR_FROM_STR(m_devq.ToString()), wxDefaultPosition, wxSize(256,-1), parent->device_cbox->GetStrings(), wxTE_PROCESS_ENTER);
+	device_cbox = new wxComboBox(this, -1, WXSTR_FROM_STR(m_devq.ToString()), wxDefaultPosition, wxSize(256,-1), wxArrayString(), wxCB_SORT|wxCB_READONLY);
 
 	_connect_macro_(device_cbox, ControlDialog::SetDevice, wxEVT_COMMAND_COMBOBOX_SELECTED, this);
 	_connect_macro_(device_cbox, ControlDialog::SetDevice, wxEVT_COMMAND_TEXT_ENTER, this);
 
-	wxStaticBoxSizer* const control_chooser = CreateControlChooser(this, parent);
+	wxStaticBoxSizer* const control_chooser = CreateControlChooser(this);
 
 	wxStaticBoxSizer* const d_szr = new wxStaticBoxSizer(wxVERTICAL, this, _("Device"));
 	d_szr->Add(device_cbox, 0, wxEXPAND|wxALL, 5);
@@ -143,8 +141,24 @@ ControlDialog::ControlDialog(GamepadPage* const parent, InputPlugin& plugin, Con
 
 	SetSizerAndFit(szr);	// needed
 
+	UpdateDeviceComboBox();
 	UpdateGUI();
 	SetFocus();
+}
+
+void ControlDialog::UpdateDeviceComboBox()
+{
+	device_cbox->Clear();
+	ControllerInterface::DeviceQualifier dq;
+	std::vector<ControllerInterface::Device*>::const_iterator
+		di = g_controller_interface.Devices().begin(),
+		de = g_controller_interface.Devices().end();
+	for (; di!=de; ++di)
+	{
+		dq.FromDevice(*di);
+		device_cbox->Append(WXSTR_FROM_STR(dq.ToString()));
+	}
+	device_cbox->SetSelection(0);
 }
 
 ControlButton::ControlButton(wxWindow* const parent, ControllerInterface::ControlReference* const _ref, const unsigned int width, const std::string& label)
@@ -155,6 +169,7 @@ ControlButton::ControlButton(wxWindow* const parent, ControllerInterface::Contro
 		SetLabel(WXSTR_FROM_STR(_ref->expression));
 	else
 		SetLabel(WXSTR_FROM_STR(label));
+	SetFont(wxFont(7, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL));
 }
 
 void InputConfigDialog::UpdateProfileComboBox(std::string fname)
@@ -329,7 +344,7 @@ void ControlDialog::SetControl(wxCommandEvent&)
 	control_reference->expression = STR_FROM_WXSTR(textctrl->GetValue());
 
 	std::lock_guard<std::recursive_mutex> lk(m_plugin.controls_lock);
-	g_controller_interface.UpdateReference(control_reference, m_parent->controller->default_device);
+	g_controller_interface.UpdateReference(control_reference, m_default_device);
 
 	UpdateGUI();
 }
@@ -354,7 +369,7 @@ void ControlDialog::SetDevice(wxCommandEvent&)
 	m_devq.FromString(STR_FROM_WXSTR(device_cbox->GetValue()));
 	
 	// show user what it was validated as
-	device_cbox->SetValue(WXSTR_FROM_STR(m_devq.ToString()));
+	//device_cbox->SetValue(WXSTR_FROM_STR(m_devq.ToString()));
 
 	// update gui
 	UpdateListContents();
@@ -365,7 +380,7 @@ void ControlDialog::ClearControl(wxCommandEvent&)
 	control_reference->expression.clear();
 
 	std::lock_guard<std::recursive_mutex> lk(m_plugin.controls_lock);
-	g_controller_interface.UpdateReference(control_reference, m_parent->controller->default_device);
+	g_controller_interface.UpdateReference(control_reference, m_default_device);
 
 	UpdateGUI();
 }
@@ -380,7 +395,7 @@ void ControlDialog::SetSelectedControl(wxCommandEvent&)
 	wxString expr;
 
 	// non-default device
-	if (false == (m_devq == m_parent->controller->default_device))
+	if (false == (m_devq == m_default_device))
 		expr.append(wxT('`')).append(WXSTR_FROM_STR(m_devq.ToString())).append(wxT('`'));
 
 	// append the control name
@@ -389,7 +404,7 @@ void ControlDialog::SetSelectedControl(wxCommandEvent&)
 	control_reference->expression = STR_FROM_WXSTR(expr);
 
 	std::lock_guard<std::recursive_mutex> lk(m_plugin.controls_lock);
-	g_controller_interface.UpdateReference(control_reference, m_parent->controller->default_device);
+	g_controller_interface.UpdateReference(control_reference, m_default_device);
 
 	UpdateGUI();
 }
@@ -411,7 +426,7 @@ void ControlDialog::AppendControl(wxCommandEvent& event)
 		expr += lbl[0];
 
 	// non-default device
-	if (false == (m_devq == m_parent->controller->default_device))
+	if (false == (m_devq == m_default_device))
 		expr.append(wxT('`')).append(WXSTR_FROM_STR(m_devq.ToString())).append(wxT('`'));
 
 	// append the control name
@@ -420,7 +435,7 @@ void ControlDialog::AppendControl(wxCommandEvent& event)
 	control_reference->expression = STR_FROM_WXSTR(expr);
 
 	std::lock_guard<std::recursive_mutex> lk(m_plugin.controls_lock);
-	g_controller_interface.UpdateReference(control_reference, m_parent->controller->default_device);
+	g_controller_interface.UpdateReference(control_reference, m_default_device);
 
 	UpdateGUI();
 }
@@ -431,15 +446,15 @@ void GamepadPage::AdjustSetting(wxCommandEvent& event)
 	((PadSetting*)((wxControl*)event.GetEventObject())->GetClientData())->UpdateValue();
 }
 
-void GamepadPage::AdjustControlOption(wxCommandEvent&)
+void ControlDialog::AdjustControlOption(wxCommandEvent&)
 {
 	std::lock_guard<std::recursive_mutex> lk(m_plugin.controls_lock);
-	m_control_dialog->control_reference->range = (ControlState)(m_control_dialog->range_slider->GetValue()) / SLIDER_TICK_COUNT;
+	control_reference->range = ControlState(range_slider->GetValue()) / SLIDER_TICK_COUNT;
 }
 
 void GamepadPage::ConfigControl(wxCommandEvent& event)
 {
-	m_control_dialog = new ControlDialog(this, m_plugin, ((ControlButton*)event.GetEventObject())->control_reference);
+	m_control_dialog = new ControlDialog(this, m_plugin, controller->default_device, ((ControlButton*)event.GetEventObject())->control_reference);
 	m_control_dialog->ShowModal();
 	m_control_dialog->Destroy();
 
@@ -511,7 +526,7 @@ void GamepadPage::DetectControl(wxCommandEvent& event)
 	}
 }
 
-wxStaticBoxSizer* ControlDialog::CreateControlChooser(wxWindow* const parent, wxWindow* const eventsink)
+wxStaticBoxSizer* ControlDialog::CreateControlChooser(wxWindow* const parent)
 {
 	wxStaticBoxSizer* const main_szr = new wxStaticBoxSizer(wxVERTICAL, parent, control_reference->is_input ? _("Input") : _("Output"));
 
@@ -551,19 +566,16 @@ wxStaticBoxSizer* ControlDialog::CreateControlChooser(wxWindow* const parent, wx
 		button_sizer->Add(add_button, 1, 0, 5);
 	}
 
-	range_slider = new wxSlider(parent, -1, SLIDER_TICK_COUNT, 0, SLIDER_TICK_COUNT * 10, wxDefaultPosition, wxDefaultSize, wxSL_TOP | wxSL_LABELS /*| wxSL_AUTOTICKS*/);
-	range_slider->SetValue((int)(control_reference->range * SLIDER_TICK_COUNT));
-
 	_connect_macro_(detect_button, ControlDialog::DetectControl, wxEVT_COMMAND_BUTTON_CLICKED, parent);
 	_connect_macro_(clear_button, ControlDialog::ClearControl, wxEVT_COMMAND_BUTTON_CLICKED, parent);
 	_connect_macro_(set_button, ControlDialog::SetControl, wxEVT_COMMAND_BUTTON_CLICKED, parent);
 
-	_connect_macro_(range_slider, GamepadPage::AdjustControlOption, wxEVT_SCROLL_CHANGED, eventsink);
-	m_bound_label = new wxStaticText(parent, -1, wxT(""));
-
+	range_slider = new wxSlider(parent, wxID_ANY, SLIDER_TICK_COUNT, 0, SLIDER_TICK_COUNT * 10, wxDefaultPosition, wxDefaultSize, wxSL_TOP|wxSL_LABELS/*| wxSL_AUTOTICKS*/);
+	range_slider->SetValue((int)(control_reference->range * SLIDER_TICK_COUNT));
+	_connect_macro_(range_slider, ControlDialog::AdjustControlOption, wxEVT_SCROLL_CHANGED, parent);
 	wxBoxSizer* const range_sizer = new wxBoxSizer(wxHORIZONTAL);
-	range_sizer->Add(new wxStaticText(parent, -1, _("Range")), 0, wxTOP|wxLEFT, 5);
-	range_sizer->Add(range_slider, 1, wxEXPAND|wxLEFT, 5);
+	range_sizer->Add(new wxStaticText(parent, wxID_ANY, _("Range")), 0, wxALIGN_CENTER_VERTICAL);
+	range_sizer->Add(range_slider, 1, wxLEFT, 5);
 
 	wxBoxSizer* const ctrls_sizer = new wxBoxSizer(wxHORIZONTAL);
 	ctrls_sizer->Add(control_lbox, 1, wxEXPAND, 0);
@@ -573,10 +585,12 @@ wxStaticBoxSizer* ControlDialog::CreateControlChooser(wxWindow* const parent, wx
 	bottom_btns_sizer->Prepend(set_button, 0, wxRIGHT, 5);
 	bottom_btns_sizer->Prepend(clear_button, 0, wxLEFT, 5);
 
+	m_bound_label = new wxStaticText(parent, -1, wxT(""));
+
 	main_szr->Add(range_sizer, 0, wxEXPAND|wxLEFT|wxRIGHT, 5);
 	main_szr->Add(ctrls_sizer, 0, wxEXPAND|wxLEFT|wxRIGHT|wxBOTTOM, 5);
 	main_szr->Add(textctrl, 1, wxEXPAND|wxLEFT|wxRIGHT|wxBOTTOM, 5);
-	main_szr->Add(bottom_btns_sizer, 0, wxEXPAND|wxBOTTOM|wxRIGHT, 5);
+	main_szr->Add(bottom_btns_sizer, 0, wxEXPAND|wxBOTTOM, 5);
 	main_szr->Add(m_bound_label, 0, wxCENTER, 0);
 
 	UpdateListContents();
@@ -703,7 +717,6 @@ ControlGroupBox::ControlGroupBox(ControllerEmu::ControlGroup* const group, wxWin
 {
 	static_bitmap = NULL;
 
-	wxFont m_SmallFont(7, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
 	std::vector<ControllerEmu::ControlGroup::Control*>::iterator
 		ci = group->controls.begin(),
 		ce = group->controls.end();
@@ -713,7 +726,6 @@ ControlGroupBox::ControlGroupBox(ControllerEmu::ControlGroup* const group, wxWin
 		wxStaticText* const label = new wxStaticText(parent, -1, WXTSTR_FROM_CSTR((*ci)->name));
 		
 		ControlButton* const control_button = new ControlButton(parent, (*ci)->control_ref, 80);
-		control_button->SetFont(m_SmallFont);
 
 		control_buttons.push_back(control_button);
 

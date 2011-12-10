@@ -27,6 +27,7 @@
 
 #include "Common.h"
 #include "VideoCommon.h"
+#include "ControllerEmu.h"
 
 #include <vector>
 #include <string>
@@ -61,6 +62,20 @@ class IniFile;
 // NEVER inherit from this class.
 struct VideoConfig
 {
+	enum
+	{
+		INPUT_AR,
+		INPUT_FPS,
+		INPUT_EFB_ACCESS,
+		INPUT_EFB_COPY,
+		INPUT_EFB_SCALE,
+		INPUT_XFB,
+		INPUT_FOG,
+		INPUT_LIGHTING,
+		INPUT_WIREFRAME,
+		INPUT_SIZE,
+	};
+
 	VideoConfig();
 	void Load(const char *ini_file);
 	void GameIniLoad(const char *ini_file);
@@ -70,6 +85,7 @@ struct VideoConfig
 	void UpdateProjectionHack();
 
 	// General
+	std::vector<ControllerEmu::ControlGroup::Control*> controls;
 	bool bVSync;
 
 	bool bRunning;
@@ -126,7 +142,7 @@ struct VideoConfig
 	bool bEFBCopyEnable;
 	bool bEFBCopyCacheEnable;
 	bool bEFBEmulateFormatChanges;
-	bool bOSDHotKey;
+	bool bHotKey;
 	bool bCopyEFBToTexture;	
 	bool bCopyEFBScaled;
 	bool bSafeTextureCache;

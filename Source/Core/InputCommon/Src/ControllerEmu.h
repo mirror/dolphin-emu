@@ -34,8 +34,6 @@
 #include "MathUtil.h"
 #include "Timer.h"
 
-#define sign(x) ((x)?(x)<0?-1:1:0)
-
 enum
 {
 	GROUP_TYPE_OTHER,
@@ -250,8 +248,8 @@ public:
 			// modifier code
 			if (m)
 			{
-				yy = (fabsf(yy)>deadzone) * sign(yy) * (m + deadzone/2);
-				xx = (fabsf(xx)>deadzone) * sign(xx) * (m + deadzone/2);
+				yy = (fabsf(yy)>deadzone) * MathUtil::Sign(yy) * (m + deadzone/2);
+				xx = (fabsf(xx)>deadzone) * MathUtil::Sign(xx) * (m + deadzone/2);
 			}
 
 			// deadzone / square stick code
@@ -365,7 +363,7 @@ public:
 			const float state = controls[1]->control_ref->State() - controls[0]->control_ref->State();
 
 			if (fabsf(state) > deadzone)
-				*slider = (S)((state - (deadzone * sign(state))) / (1 - deadzone) * range + base);
+				*slider = (S)((state - (deadzone * MathUtil::Sign(state))) / (1 - deadzone) * range + base);
 			else
 				*slider = 0;
 		}
@@ -391,7 +389,7 @@ public:
 				ControlState state = controls[i == 0 ? F_FORWARD : (i == 2 ? F_LEFT : F_UP)]->control_ref->State() - controls[i == 0 ? F_BACKWARD : (i == 2 ? F_RIGHT : F_DOWN)]->control_ref->State();				
 
 				if (fabsf(state) > deadzone)
-					dz = ((state - (deadzone * sign(state))) / (1 - deadzone));
+					dz = ((state - (deadzone * MathUtil::Sign(state))) / (1 - deadzone));
 
 				if (step)
 				{
@@ -402,7 +400,7 @@ public:
 				}
 
 				// deceleration switch
-				m_state[i>>1] = (abs(m_thrust[i>>1]) >= 0.7 ? -2*sign(state)+m_thrust[i>>1]*2 : m_thrust[i>>1])*sign(state);
+				m_state[i>>1] = (abs(m_thrust[i>>1]) >= 0.7 ? -2*MathUtil::Sign(state)+m_thrust[i>>1]*2 : m_thrust[i>>1])*MathUtil::Sign(state);
 				//m_state[i>>1] = m_thrust[i>>1];
 
 				*axis++ = (C)(m_state[i>>1] * range * master_range + base);

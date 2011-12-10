@@ -52,25 +52,6 @@ HWND GetParentWnd()
 	return m_hParent;
 }
 
-// ---------------------------------------------------------------------
-// KeyDown events
-// -------------
-void OnKeyDown(WPARAM wParam)
-{
-	switch (LOWORD( wParam ))
-	{
-	case '3': // OSD keys
-	case '4':
-	case '5':
-	case '6':
-	case '7':
-		if (g_Config.bOSDHotKey)
-			OSDMenu(wParam);
-		break;
-	}
-}
-// ---------------------------------------------------------------------
-
 void FreeLookInput( UINT iMsg, WPARAM wParam )
 {
 	static float debugSpeed = 1.0f;
@@ -199,7 +180,6 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam )
 	case WM_USER:
 		if (wParam == WM_USER_KEYDOWN)
 		{
-			OnKeyDown(lParam);
 			FreeLookInput((u32)wParam, lParam);
 		}
 		else if (wParam == WIIMOTE_DISCONNECT)
@@ -229,56 +209,6 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam )
 		return DefWindowProc(hWnd, iMsg, wParam, lParam);
 	}
 	return 0;
-}
-
-// ---------------------------------------------------------------------
-// OSD Menu
-// -------------
-// Let's begin with 3 since 1 and 2 are default Wii keys
-// -------------
-void OSDMenu(WPARAM wParam)
-{
-	switch( LOWORD( wParam ))
-	{
-	case '3':
-		OSDChoice = 1;
-		// Toggle native resolution
-		g_Config.iEFBScale = g_Config.iEFBScale + 1;
-		if (g_Config.iEFBScale > 4) g_Config.iEFBScale = 0;
-		break;
-	case '4':
-		OSDChoice = 2;
-		// Toggle aspect ratio
-		g_Config.iAspectRatio = (g_Config.iAspectRatio + 1) & 3;
-		break;
-	case '5':
-		OSDChoice = 3;
-		// Toggle EFB copy
-		if (!g_Config.bEFBCopyEnable)
-		{
-			g_Config.bEFBCopyEnable = true;
-			g_Config.bCopyEFBToTexture = false;
-		}
-		else if (!g_Config.bCopyEFBToTexture)
-		{
-			g_Config.bCopyEFBToTexture = true;
-		}
-		else
-		{
-			g_Config.bEFBCopyEnable = false;
-			g_Config.bCopyEFBToTexture = false;
-		}
-		break;
-	case '6':
-		OSDChoice = 4;
-		g_Config.bDisableFog = !g_Config.bDisableFog;
-		break;
-	case '7':
-		// TODO: Not implemented in the D3D backends, yet
-		OSDChoice = 5;
-		g_Config.bDisableLighting = !g_Config.bDisableLighting;
-		break;
-	}
 }
 
 HWND OpenWindow(HWND parent, HINSTANCE hInstance, int width, int height, const TCHAR *title)

@@ -34,6 +34,16 @@ void UpdateActiveConfig()
 VideoConfig::VideoConfig()
 {
 	bRunning = false;
+	
+	controls.push_back(new ControllerEmu::ControlGroup::Input("Aspect Ratio"));
+	controls.push_back(new ControllerEmu::ControlGroup::Input("Show FPS"));
+	controls.push_back(new ControllerEmu::ControlGroup::Input("EFB Access"));
+	controls.push_back(new ControllerEmu::ControlGroup::Input("EFB Copy"));
+	controls.push_back(new ControllerEmu::ControlGroup::Input("EFB Scale"));	
+	controls.push_back(new ControllerEmu::ControlGroup::Input("XFB"));
+	controls.push_back(new ControllerEmu::ControlGroup::Input("Fog"));
+	controls.push_back(new ControllerEmu::ControlGroup::Input("Lighting"));
+	controls.push_back(new ControllerEmu::ControlGroup::Input("Wireframe"));
 
 	// Needed for the first frame, I think
 	fAspectRatioHackW = 1;
@@ -50,7 +60,19 @@ void VideoConfig::Load(const char *ini_file)
 	std::string temp;
 	IniFile iniFile;
 	iniFile.Load(ini_file);
-	
+
+	g_controller_interface.Initialize();
+	if (g_controller_interface.Devices().size() > 0)
+	{
+		ControllerInterface::DeviceQualifier default_device;
+		default_device.FromDevice(g_controller_interface.Devices()[0]);
+		for (int i = 0; i < INPUT_SIZE; ++i)
+		{
+			iniFile.Get("Input", controls[i]->name, &controls[i]->control_ref->expression, "");	
+			g_controller_interface.UpdateReference(controls[i]->control_ref, default_device);
+		}
+	}
+
 	iniFile.Get("Hardware", "VSync", &bVSync, 0); // Hardware
 	iniFile.Get("Settings", "wideScreenHack", &bWidescreenHack, false);
 	iniFile.Get("Settings", "AspectRatio", &iAspectRatio, (int)ASPECT_AUTO);
@@ -63,7 +85,8 @@ void VideoConfig::Load(const char *ini_file)
 	//Safe texture cache params
 	iniFile.Get("Settings", "SafeTextureCacheColorSamples", &iSafeTextureCache_ColorSamples,128);
 
-	iniFile.Get("Settings", "ShowFPS", &bShowFPS, false); // Settings
+	iniFile.Get("Settings", "EnableHotKey", &bHotKey, true); // Settings
+	iniFile.Get("Settings", "ShowFPS", &bShowFPS, false);
 	iniFile.Get("Settings", "ShowInputDisplay", &bShowInputDisplay, false);
 	iniFile.Get("Settings", "OverlayStats", &bOverlayStats, false);
 	iniFile.Get("Settings", "OverlayProjStats", &bOverlayProjStats, false);
@@ -106,7 +129,6 @@ void VideoConfig::Load(const char *ini_file)
 	iniFile.Get("Hacks", "EFBAccessEnable", &bEFBAccessEnable, true);
 	iniFile.Get("Hacks", "DlistCachingEnable", &bDlistCachingEnable,false);
 	iniFile.Get("Hacks", "EFBCopyEnable", &bEFBCopyEnable, true);
-	iniFile.Get("Hacks", "EFBCopyDisableHotKey", &bOSDHotKey, 0);
 	iniFile.Get("Hacks", "EFBToTextureEnable", &bCopyEFBToTexture, true);
 	iniFile.Get("Hacks", "EFBScaledCopy", &bCopyEFBScaled, true);
 	iniFile.Get("Hacks", "EFBCopyCacheEnable", &bEFBCopyCacheEnable, false);
@@ -189,6 +211,9 @@ void VideoConfig::Save(const char *ini_file)
 {
 	IniFile iniFile;
 	iniFile.Load(ini_file);
+
+	for (int i = 0; i < INPUT_SIZE; ++i) iniFile.Set("Input", controls[i]->name, controls[i]->control_ref->expression);	
+
 	iniFile.Set("Hardware", "VSync", bVSync);
 	iniFile.Set("Settings", "AspectRatio", iAspectRatio);
 	iniFile.Set("Settings", "Crop", bCrop);
@@ -201,6 +226,7 @@ void VideoConfig::Save(const char *ini_file)
 	//safe texture cache params
 	iniFile.Set("Settings", "SafeTextureCacheColorSamples", iSafeTextureCache_ColorSamples);
 
+	iniFile.Set("Settings", "EnableHotKey", bHotKey);
 	iniFile.Set("Settings", "ShowFPS", bShowFPS);
 	iniFile.Set("Settings", "ShowInputDisplay", bShowInputDisplay);
 	iniFile.Set("Settings", "OverlayStats", bOverlayStats);
@@ -217,8 +243,7 @@ void VideoConfig::Save(const char *ini_file)
 	iniFile.Set("Settings", "AnaglyphStereoSeparation", iAnaglyphStereoSeparation);
 	iniFile.Set("Settings", "AnaglyphFocalAngle", iAnaglyphFocalAngle);
 	iniFile.Set("Settings", "EnablePixelLighting", bEnablePixelLighting);
-	iniFile.Set("Settings", "EnablePerPixelDepth", bEnablePerPixelDepth);
-	
+	iniFile.Set("Settings", "EnablePerPixelDepth", bEnablePerPixelDepth);	
 
 	iniFile.Set("Settings", "ShowEFBCopyRegions", bShowEFBCopyRegions);
 	iniFile.Set("Settings", "MSAA", iMultisampleMode);
@@ -244,7 +269,7 @@ void VideoConfig::Save(const char *ini_file)
 	iniFile.Set("Hacks", "EFBAccessEnable", bEFBAccessEnable);
 	iniFile.Set("Hacks", "DlistCachingEnable", bDlistCachingEnable);
 	iniFile.Set("Hacks", "EFBCopyEnable", bEFBCopyEnable);
-	iniFile.Set("Hacks", "EFBCopyDisableHotKey", bOSDHotKey);
+	iniFile.Set("Hacks", "EFBCopyDisableHotKey", bHotKey);
 	iniFile.Set("Hacks", "EFBToTextureEnable", bCopyEFBToTexture);	
 	iniFile.Set("Hacks", "EFBScaledCopy", bCopyEFBScaled);
 	iniFile.Set("Hacks", "EFBCopyCacheEnable", bEFBCopyCacheEnable);

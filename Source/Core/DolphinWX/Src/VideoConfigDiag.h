@@ -6,6 +6,7 @@
 #include <string>
 #include <map>
 
+#include "InputConfigDiag.h"
 #include "ConfigManager.h"
 #include "VideoConfig.h"
 
@@ -20,6 +21,17 @@
 #include <wx/spinctrl.h>
 
 #include "MsgHandler.h"
+
+#define _connect_macro_(b, f, c, s)	(b)->Connect(wxID_ANY, (c), wxCommandEventHandler( f ), (wxObject*)0, (wxEvtHandler*)s)
+#if wxCHECK_VERSION(2, 9, 0)
+	#define WXSTR_FROM_STR(s)	(wxString(s))
+	#define WXTSTR_FROM_CSTR(s)	(wxGetTranslation(wxString(s)))
+	#define STR_FROM_WXSTR(w)	((w).ToStdString())
+#else
+	#define WXSTR_FROM_STR(s)	(wxString::FromUTF8((s).c_str()))
+	#define WXTSTR_FROM_CSTR(s)	(wxGetTranslation(wxString::FromUTF8(s)))
+	#define STR_FROM_WXSTR(w)	(std::string((w).ToUTF8()))
+#endif
 
 template <typename W>
 class BoolSetting : public W
@@ -141,10 +153,17 @@ protected:
 		ev.Skip();
 	}
 
+	void Event_ControlDialog(wxCommandEvent &ev);
 	void Event_ClickClose(wxCommandEvent&);
 	void Event_Close(wxCloseEvent&);
 
 	// Enables/disables UI elements depending on current config
+	void UpdateUI()
+	{
+		// Input controls
+		for (int i = 0; i < g_ActiveConfig.INPUT_SIZE; ++i)		
+			control_buttons[i]->SetLabel(WXSTR_FROM_STR(vconfig.controls[i]->control_ref->expression));
+	}
 	void OnUpdateUI(wxUpdateUIEvent& ev)
 	{
 		// Anti-aliasing
@@ -184,6 +203,8 @@ protected:
 	void Evt_EnterControl(wxMouseEvent& ev);
 	void Evt_LeaveControl(wxMouseEvent& ev);
 	void CreateDescriptionArea(wxPanel* const page, wxBoxSizer* const sizer);
+
+	std::vector<ControlButton*>	control_buttons;
 
 	wxChoice* choice_backend;
 	wxChoice* choice_display_resolution;

@@ -98,9 +98,9 @@ class GamepadPage;
 class ControlDialog : public wxDialog
 {
 public:
-	ControlDialog(GamepadPage* const parent, InputPlugin& plugin, ControllerInterface::ControlReference* const ref);
+	ControlDialog(wxWindow* const parent, InputPlugin& plugin, const ControllerInterface::DeviceQualifier& default_device, ControllerInterface::ControlReference* const ref);
 	
-	wxStaticBoxSizer* CreateControlChooser(wxWindow* const parent, wxWindow* const eventsink);
+	wxStaticBoxSizer* CreateControlChooser(wxWindow* const parent);
 
 	void DetectControl(wxCommandEvent& event);
 	void ClearControl(wxCommandEvent& event);
@@ -109,13 +109,15 @@ public:
 
 	void UpdateGUI();
 	void UpdateListContents();
+	void UpdateDeviceComboBox();
 	void SelectControl(const std::string& name);
 
 	void SetSelectedControl(wxCommandEvent& event);
 	void AppendControl(wxCommandEvent& event);
+	void AdjustControlOption(wxCommandEvent& event);
 
 	ControllerInterface::ControlReference* const		control_reference;
-	InputPlugin&				m_plugin;
+	InputPlugin&			m_plugin;
 	wxComboBox*				device_cbox;
 
 	wxTextCtrl*		textctrl;
@@ -123,8 +125,9 @@ public:
 	wxSlider*		range_slider;
 
 private:
-	GamepadPage* const		m_parent;
+	wxWindow* const		m_parent;
 	wxStaticText*		m_bound_label;
+	ControllerInterface::DeviceQualifier	m_default_device;
 	ControllerInterface::DeviceQualifier	m_devq;
 };
 
@@ -206,7 +209,6 @@ public:
 	void ClearAll(wxCommandEvent& event);
 	void LoadDefaults(wxCommandEvent& event);
 
-	void AdjustControlOption(wxCommandEvent& event);
 	void AdjustSetting(wxCommandEvent& event);
 
 	void GetProfilePath(std::string& path);

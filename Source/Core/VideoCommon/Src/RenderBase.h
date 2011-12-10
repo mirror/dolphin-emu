@@ -39,7 +39,7 @@
 
 // TODO: Move these out of here.
 extern int frameCount;
-extern int OSDChoice, OSDTime;
+extern int HotkeyChoice, HotkeyTime;
 
 extern bool bLastFrameDumped;
 
@@ -96,6 +96,7 @@ public:
 	// Random utilities
 	static void SetScreenshot(const char *filename);
 	static void DrawDebugText();
+	static void UpdateInput();
 
 	virtual void RenderText(const char* pstr, int left, int top, u32 color) = 0;
 

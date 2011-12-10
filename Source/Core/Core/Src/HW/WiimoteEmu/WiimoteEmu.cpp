@@ -703,6 +703,7 @@ void Wiimote::GetExtData(u8* const data)
 			((wm_motionplus*)data)->extension_connected = (m_extension->active_extension != EXT_NONE) ? 1 : 0;
 			((wm_motionplus*)data)->dummy = 0;
 
+#if 0
 			// logging
 			float mx = 0, my = 0, mz = 0;
 			m_ir->GetState(&mx, &my, &mz, 0, false, false, false);
@@ -736,6 +737,7 @@ void Wiimote::GetExtData(u8* const data)
 				//,((wm_motionplus*)data)->yaw1, ((wm_motionplus*)data)->yaw2, ((wm_motionplus*)data)->pitch1, ((wm_motionplus*)data)->pitch2, ((wm_motionplus*)data)->roll1, ((wm_motionplus*)data)->roll2
 				,((wm_motionplus*)data)->pitch_slow?"*":" ", ((wm_motionplus*)data)->roll_slow?"*":" ", ((wm_motionplus*)data)->yaw_slow?"*":" "
 				);
+#endif
 		}
 		mp_passthrough = !mp_passthrough;
 	}
