@@ -408,8 +408,6 @@ bool IniFile::Load(const char* filename)
 		}
 #endif
 
-		if (in.eof()) break;
-
 		if (line.size() > 0)
 		{
 			if (line[0] == '[')
