@@ -245,6 +245,17 @@ bool IniFile::Section::Delete(const char *key)
 	return false;
 }
 
+void IniFile::Section::Copy(IniFile::Section* section)
+{
+	for (std::vector<std::string>::const_iterator iter = section->lines.begin(); iter != section->lines.end(); ++iter)
+	{
+		std::string lineKey;
+		ParseLine(*iter, &lineKey, NULL, NULL);
+		// copy new lines
+		if (!Exists(lineKey.c_str())) lines.push_back(*iter);
+	}
+}
+
 // IniFile
 
 const IniFile::Section* IniFile::GetSection(const char* sectionName) const
