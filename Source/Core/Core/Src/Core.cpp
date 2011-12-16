@@ -111,7 +111,7 @@ bool PanicAlertToVideo(const char* text, bool yes_no)
 	return true;
 }
 
-void DisplayMessage(const char *message, int time_in_ms)
+void DisplayMessage(const char *message, int time_in_ms, u32 color)
 {
 	SCoreStartupParameter& _CoreParameter =
 		SConfig::GetInstance().m_LocalCoreStartupParameter;
@@ -121,8 +121,8 @@ void DisplayMessage(const char *message, int time_in_ms)
 		if (*c < ' ')
 			return;
 
-	g_video_backend->Video_AddMessage(message, time_in_ms);
-	
+	g_video_backend->Video_AddMessage(message, time_in_ms, color);
+
 	if (_CoreParameter.bRenderToMain &&
 		SConfig::GetInstance().m_InterfaceStatusbar)
 	{
