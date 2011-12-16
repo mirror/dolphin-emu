@@ -29,7 +29,7 @@ class VideoSoftware : public VideoBackend
 	void Video_EndField();
 	u32 Video_AccessEFB(EFBAccessType, u32, u32, u32);
 
-	void Video_AddMessage(const char* pstr, unsigned int milliseconds);
+	void Video_AddMessage(const char* pstr, unsigned int milliseconds, u32 color);
 	void Video_ClearMessages();
 	bool Video_Screenshot(const char* filename);
 

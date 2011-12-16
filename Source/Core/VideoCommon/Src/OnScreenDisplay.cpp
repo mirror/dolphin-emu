@@ -22,6 +22,7 @@
 #include "OnScreenDisplay.h"
 #include "RenderBase.h"
 #include "Timer.h"
+#include "VideoConfig.h"
 
 namespace OSD
 {
@@ -29,27 +30,29 @@ namespace OSD
 struct MESSAGE
 {
 	MESSAGE() {}
-	MESSAGE(const char* p, u32 dw) {
+	MESSAGE(const char* p, u32 dw, u32 _color) {
 		strncpy(str, p, 255);
 		str[255] = '\0';
 		dwTimeStamp = dw;
+		color = _color;
 	}
 	char str[256];
 	u32 dwTimeStamp;
+	u32 color;
 };
 
 static std::list<MESSAGE> s_listMsgs;
 
-void AddMessage(const char* pstr, u32 ms)
+void AddMessage(const char* pstr, u32 ms, u32 color)
 {
-	s_listMsgs.push_back(MESSAGE(pstr, Common::Timer::GetTimeMs() + ms));
+	s_listMsgs.push_back(MESSAGE(pstr, Common::Timer::GetTimeMs() + ms, color));
 }
 
 void DrawMessages()
 {
 	if (s_listMsgs.size() > 0)
 	{
-		int left = 25, top = 15;
+		int left = 0, top = 0;
 		std::list<MESSAGE>::iterator it = s_listMsgs.begin();
 		while (it != s_listMsgs.end()) 
 		{
@@ -63,9 +66,9 @@ void DrawMessages()
 			}
 
 			alpha <<= 24;
-
-			g_renderer->RenderText(it->str, left+1, top+1, 0x000000|alpha);
-			g_renderer->RenderText(it->str, left, top, 0xffff30|alpha);
+			std::string str = (g_ActiveConfig.bShowFPS ? "\n" : "") + std::string(it->str);
+			g_renderer->RenderText(str.c_str(), left+1, top+1, 0x000000|alpha);
+			g_renderer->RenderText(str.c_str(), left, top, it->color|alpha);
 			top += 15;
 
 			if (time_left <= 0)

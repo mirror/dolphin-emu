@@ -116,9 +116,9 @@ void VideoBackendHardware::Video_EndField()
 	}
 }
 
-void VideoBackendHardware::Video_AddMessage(const char* pstr, u32 milliseconds)
+void VideoBackendHardware::Video_AddMessage(const char* pstr, u32 milliseconds, u32 color)
 {
-	OSD::AddMessage(pstr, milliseconds);
+	OSD::AddMessage(pstr, milliseconds, color);
 }
 
 void VideoBackendHardware::Video_ClearMessages()

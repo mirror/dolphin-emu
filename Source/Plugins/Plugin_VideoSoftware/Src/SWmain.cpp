@@ -193,7 +193,7 @@ void VideoSoftware::Video_ExitLoop()
 
 // TODO : could use the OSD class in video common, we would need to implement the Renderer class
 //        however most of it is useless for the SW backend so we could as well move it to its own class
-void VideoSoftware::Video_AddMessage(const char* pstr, u32 milliseconds)
+void VideoSoftware::Video_AddMessage(const char* pstr, u32 milliseconds, u32 color)
 {
 }
 void VideoSoftware::Video_ClearMessages()
