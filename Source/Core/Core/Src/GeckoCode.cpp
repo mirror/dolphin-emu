@@ -1,17 +1,3 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
 #include "GeckoCode.h"
 
 #include "Thread.h"
@@ -118,7 +104,6 @@ void SetActiveCodes(const std::vector<GeckoCode>& gcodes)
 
 bool InstallCodeHandler()
 {
-	u32 codelist_location = 0x800028B8; // Debugger on location (0x800022A8 = Debugger off, using codehandleronly.bin)
 	std::string data;
 	std::string _rCodeHandlerFilename = File::GetSysDirectory() + GECKO_CODE_HANDLER;
 	if (!File::ReadFileToString(false, _rCodeHandlerFilename.c_str(), data))
@@ -128,14 +113,14 @@ bool InstallCodeHandler()
 	Memory::WriteBigEData((const u8*)data.data(), 0x80001800, data.length());
 
 	// Turn off Pause on start
-	Memory::Write_U32(0, 0x80002774);
+	Memory::Write_U32(0, 0x80001808);
 
 	// Write the Game ID into the location expected by WiiRD
 	Memory::WriteBigEData(Memory::GetPointer(0x80000000), 0x80001800, 6);
 
 	// Create GCT in memory
-	Memory::Write_U32(0x00d0c0de, codelist_location);
-	Memory::Write_U32(0x00d0c0de, codelist_location + 4);
+	Memory::Write_U32(0x00d0c0de, 0x800027d0);
+	Memory::Write_U32(0x00d0c0de, 0x800027d4);
 
 	std::lock_guard<std::mutex> lk(active_codes_lock);
 
@@ -152,20 +137,15 @@ bool InstallCodeHandler()
 			for (; current_code < codes_end; ++current_code)
 			{
 				const GeckoCode::Code& code = *current_code;
-
-				// Make sure we have enough memory to hold the code list
-				if ((codelist_location + 24 + i) < 0x80003000)
-				{
-					Memory::Write_U32(code.address, codelist_location + 8 + i);
-					Memory::Write_U32(code.data, codelist_location + 12 + i);
-					i += 8;
-				}
+				Memory::Write_U32(code.address, 0x800027d8 + i);
+				Memory::Write_U32(code.data, 0x800027d8 + i + 4);
+				i += 8;
 			}
 		}
 	}
 
-	Memory::Write_U32(0xff000000, codelist_location + 8 + i);
-	Memory::Write_U32(0x00000000, codelist_location + 12 + i);
+	Memory::Write_U32(0xff000000, 0x800027d8 + i);
+	Memory::Write_U32(0x00000000, 0x800027d8 + i + 4);
 
 	// Turn on codes
 	Memory::Write_U8(1, 0x80001807);
@@ -220,7 +200,7 @@ bool RunGeckoCode(GeckoCode& gecko_code)
 			gecko_code.enabled = false;
 
 			PanicAlertT("GeckoCode failed to run (CT%i CST%i) (%s)"
-				"\n(either a bad code or the code type is not yet supported. Try using the native code handler by placing the codehandler.bin file into the Sys directory and restarting Dolphin.)"
+				"\n(either a bad code or the code type is not yet supported.)"
 				, code.type, code.subtype, gecko_code.name.c_str());
 			return false;
 		}
