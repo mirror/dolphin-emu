@@ -133,6 +133,7 @@ void VideoBackend::ShowConfig(void* parent)
 
 bool VideoBackend::Initialize(void *&window_handle)
 {
+	InitializeShared();
 	InitBackendInfo();
 
 	frameCount = 0;
