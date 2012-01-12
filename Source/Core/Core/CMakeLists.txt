@@ -152,6 +152,7 @@ set(SRCS	Src/ActionReplay.cpp
 			Src/PowerPC/PPCTables.cpp
 			Src/PowerPC/Profiler.cpp
 			Src/PowerPC/SignatureDB.cpp
+			Src/PowerPC/JitInterface.cpp
 			Src/PowerPC/Interpreter/Interpreter_Branch.cpp
 			Src/PowerPC/Interpreter/Interpreter.cpp
 			Src/PowerPC/Interpreter/Interpreter_FloatingPoint.cpp
