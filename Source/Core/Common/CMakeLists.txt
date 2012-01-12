@@ -33,6 +33,13 @@ set(SRCS	Src/ABI.cpp
 			Src/Crypto/md5.cpp
 			Src/Crypto/sha1.cpp)
 
+if(NOT _M_GENERIC)
+	set(SRCS	${SRCS}
+				Src/FPURoundModeX86.cpp)
+else()
+	set(SRCS	${SRCS}
+				Src/FPURoundModeGeneric.cpp)
+endif()
 if(WIN32)
 	set(SRCS ${SRCS} Src/ExtendedTrace.cpp)
 endif(WIN32)

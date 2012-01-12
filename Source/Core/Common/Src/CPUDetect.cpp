@@ -30,7 +30,9 @@
 #else
 
 //#include <config/i386/cpuid.h>
+#ifndef _M_GENERIC
 #include <xmmintrin.h>
+#endif
 
 #if defined __FreeBSD__
 #include <sys/types.h>
@@ -39,7 +41,12 @@
 static inline void do_cpuid(unsigned int *eax, unsigned int *ebx,
 						    unsigned int *ecx, unsigned int *edx)
 {
-#ifdef _LP64
+#ifdef _M_ARM
+	// ARMTODO: Write a CPUDetect Function for ARM hosts
+	(*eax) = (*ebx) = (*ecx) = (*edx) = 0;
+#elif defined _M_GENERIC
+	(*eax) = (*ebx) = (*ecx) = (*edx) = 0;
+#elif defined _LP64
 	// Note: EBX is reserved on Mac OS X and in PIC on Linux, so it has to
 	// restored at the end of the asm block.
 	__asm__ (
