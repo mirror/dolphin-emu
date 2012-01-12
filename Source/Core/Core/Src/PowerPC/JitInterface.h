@@ -15,17 +15,19 @@
 // Official SVN repository and contact information can be found at
 // http://code.google.com/p/dolphin-emu/
 
-#include "JitInterface.h"
+#include "ChunkFile.h"
+#include "CPUCoreBase.h"
 
-namespace Profiler
+namespace JitInterface
 {
+	void DoState(PointerWrap &p);
+	
+	CPUCoreBase *InitJitCore(int core);
+	void InitTables(int core);
+	CPUCoreBase *GetCore();
 
-bool g_ProfileBlocks;
-bool g_ProfileInstructions;
-
-void WriteProfileResults(const char *filename)
-{
-	JitInterface::WriteProfileResults(filename);
+	// Debugging
+	void WriteProfileResults(const char *filename);
+	
+	void Shutdown();
 }
-
-}  // namespace

@@ -162,6 +162,16 @@ set(SRCS	Src/ActionReplay.cpp
 			Src/PowerPC/Interpreter/Interpreter_Paired.cpp
 			Src/PowerPC/Interpreter/Interpreter_SystemRegisters.cpp
 			Src/PowerPC/Interpreter/Interpreter_Tables.cpp
+			Src/PowerPC/JitCommon/JitAsmCommon.cpp
+			Src/PowerPC/JitCommon/JitBackpatch.cpp
+			Src/PowerPC/JitCommon/JitBase.cpp
+			Src/PowerPC/JitCommon/JitCache.cpp
+			Src/PowerPC/JitCommon/Jit_Util.cpp)
+
+set(LIBS bdisasm inputcommon videoogl videosoftware sfml-network)
+
+if(NOT _M_GENERIC)
+	set(SRCS ${SRCS}
 			Src/PowerPC/Jit64IL/IR.cpp
 			Src/PowerPC/Jit64IL/IR_X86.cpp
 			Src/PowerPC/Jit64IL/JitILAsm.cpp
@@ -186,14 +196,8 @@ set(SRCS	Src/ActionReplay.cpp
 			Src/PowerPC/Jit64/Jit_LoadStorePaired.cpp
 			Src/PowerPC/Jit64/Jit_Paired.cpp
 			Src/PowerPC/Jit64/JitRegCache.cpp
-			Src/PowerPC/Jit64/Jit_SystemRegisters.cpp
-			Src/PowerPC/JitCommon/JitAsmCommon.cpp
-			Src/PowerPC/JitCommon/JitBackpatch.cpp
-			Src/PowerPC/JitCommon/JitBase.cpp
-			Src/PowerPC/JitCommon/JitCache.cpp
-			Src/PowerPC/JitCommon/Jit_Util.cpp)
-
-set(LIBS bdisasm inputcommon videoogl videosoftware sfml-network)
+			Src/PowerPC/Jit64/Jit_SystemRegisters.cpp)
+endif()
 
 if(WIN32)
 	set(SRCS ${SRCS} Src/HW/BBA-TAP/TAP_Win32.cpp Src/stdafx.cpp

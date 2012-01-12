@@ -81,9 +81,20 @@ if(DOLPHIN_IS_STABLE)
 else()
 	set(DOLPHIN_VERSION_PATCH ${DOLPHIN_WC_REVISION})
 endif()
+if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "armv7l")
+	set(_M_GENERIC 1)
+	set(_M_ARM 1)
+	add_definitions(-D_M_ARM=1)
+	add_definitions(-D_M_GENERIC=1)
+endif()
 
+# Set these next two lines to test generic
+#set(_M_GENERIC 1)
+#add_definitions(-D_M_GENERIC=1)
 # Various compile flags
-add_definitions(-msse2)
+if(NOT _M_GENERIC)
+	add_definitions(-msse2)
+endif()
 
 # Enabling all warnings in MSVC spams too much
 if(NOT MSVC)
