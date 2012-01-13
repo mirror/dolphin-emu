@@ -28,8 +28,6 @@
 #undef _interlockedbittestandreset
 #undef _interlockedbittestandset64
 #undef _interlockedbittestandreset64
-#else
-#include <xmmintrin.h>
 #endif
 
 #include "../../Core.h"
@@ -39,8 +37,6 @@
 #include "../LUT_frsqrtex.h"
 
 using namespace MathUtil;
-
-void UpdateSSEState();
 
 #ifdef _MSC_VER
 #pragma float_control(precise, on, push)
