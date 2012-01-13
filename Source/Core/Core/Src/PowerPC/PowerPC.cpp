@@ -128,28 +128,7 @@ void ResetRegisters()
 
 void Init(int cpu_core)
 {
-	enum {
-		FPU_PREC_24 = 0 << 8,
-		FPU_PREC_53 = 2 << 8,
-		FPU_PREC_64 = 3 << 8,
-		FPU_PREC_MASK = 3 << 8,
-	};
-#ifdef _M_IX86
-	// sets the floating-point lib to 53-bit
-	// PowerPC has a 53bit floating pipeline only
-	// eg: sscanf is very sensitive
-#ifdef _WIN32
-	_control87(_PC_53, MCW_PC);
-#else
-	unsigned short _mode;
-	asm ("fstcw %0" : : "m" (_mode));
-	_mode = (_mode & ~FPU_PREC_MASK) | FPU_PREC_53;
-	asm ("fldcw %0" : : "m" (_mode));
-#endif
-#else
-	//x64 doesn't need this - fpu is done with SSE
-	//but still - set any useful sse options here
-#endif
+	FPURoundMode::SetPrecisionMode(FPURoundMode::PREC_53);
 
 	memset(ppcState.mojs, 0, sizeof(ppcState.mojs));
 	memset(ppcState.sr, 0, sizeof(ppcState.sr));

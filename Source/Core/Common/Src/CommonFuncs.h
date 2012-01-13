@@ -60,7 +60,7 @@ _mm_shuffle_epi8(__m128i a, __m128i mask)
 	#ifdef GEKKO
 		#define Crash()
 	#elif defined _M_GENERIC
-		#define Crash { exit(1); }
+		#define Crash() { exit(1); }
 	#else
 		#define Crash() {asm ("int $3");}
 	#endif

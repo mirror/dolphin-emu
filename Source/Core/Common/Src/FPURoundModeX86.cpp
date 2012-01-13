@@ -66,6 +66,32 @@ namespace FPURoundMode
 		#endif
 		#endif
 	}
+
+	void SetPrecisionMode(u32 mode)
+	{
+		const char table[4] {
+			0 << 8, // FPU_PREC_24
+			2 << 8, // FPU_PREC_53
+			3 << 8, // FPU_PREC_64
+			3 << 8, // FPU_PREC_MASK
+		};
+		#ifdef _M_IX86
+			// sets the floating-point lib to 53-bit
+			// PowerPC has a 53bit floating pipeline only
+			// eg: sscanf is very sensitive
+		#ifdef _WIN32
+			_control87(_PC_53, MCW_PC);
+		#else
+			unsigned short _mode;
+			asm ("fstcw %0" : : "m" (_mode));
+			_mode = (_mode & ~table[4]) | table[mode];
+			asm ("fldcw %0" : : "m" (_mode));
+		#endif
+		#else
+			//x64 doesn't need this - fpu is done with SSE
+			//but still - set any useful sse options here
+		#endif
+	}
 	void SetSIMDMode(u32 mode)
 	{
 		static const u32 ssetable[4] = 

@@ -27,7 +27,14 @@ namespace FPURoundMode
 		ROUND_UP,
 		ROUND_DOWN
 	};
+	enum PrecisionModes {
+		PREC_24 = 0,
+		PREC_53,
+		PREC_64
+	};
 	void SetRoundMode(u32 mode);
+
+	void SetPrecisionMode(u32 mode);
 	
 	void SetSIMDMode(u32 mode);
 

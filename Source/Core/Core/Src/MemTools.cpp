@@ -182,6 +182,7 @@ void print_trace(const char * msg)
 
 void sigsegv_handler(int signal, siginfo_t *info, void *raw_context)
 {
+#ifndef _M_GENERIC
 	if (signal != SIGSEGV)
 	{
 		// We are not interested in other signals - handle it as usual.
@@ -240,6 +241,7 @@ void sigsegv_handler(int signal, siginfo_t *info, void *raw_context)
 		CREG_EIP(ctx) = fake_ctx.Eip;
 #endif
 	}
+#endif
 }
 
 void InstallExceptionHandler()

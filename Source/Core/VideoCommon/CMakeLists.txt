@@ -23,7 +23,6 @@ set(SRCS	Src/BPFunctions.cpp
 			Src/Statistics.cpp
 			Src/TextureCacheBase.cpp
 			Src/TextureConversionShader.cpp
-			Src/TextureDecoder.cpp
 			Src/VertexLoader.cpp
 			Src/VertexLoaderManager.cpp
 			Src/VertexLoader_Color.cpp
@@ -40,6 +39,12 @@ set(SRCS	Src/BPFunctions.cpp
 			Src/memcpy_amd.cpp)
 
 set(LIBS core)
+
+if(NOT _M_GENERIC)
+	set(SRCS ${SRCS} Src/TextureDecoderX86.cpp)
+else()
+	set(SRCS ${SRCS} Src/TextureDecoderGeneric.cpp)
+endif()
 if(NOT ${CL} STREQUAL CL-NOTFOUND)
 	list(APPEND LIBS ${CL})
 endif()
