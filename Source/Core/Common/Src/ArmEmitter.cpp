@@ -26,7 +26,7 @@ namespace Gen
 // TODO(ector): Add EAX special casing, for ever so slightly smaller code.
 struct NormalOpDef
 {
-	u8 toRm8, toRm32, fromRm8, fromRm32, imm8, imm32, simm8, ext;
+	u8 toRm8, toReg32, fromimm8, fromReg32, imm8, imm32, simm8, ext;
 };
 
 static const NormalOpDef nops[11] = 
@@ -37,11 +37,11 @@ static const NormalOpDef nops[11] =
 	{0x28, 0x29, 0x2A, 0x2B, 0x80, 0x81, 0x83, 5}, //SUB
 	{0x18, 0x19, 0x1A, 0x1B, 0x80, 0x81, 0x83, 3}, //SBB
 
-	{0x20, 0x21, 0x22, 0x23, 0x80, 0x81, 0x83, 4}, //AND
+	{0x20, 0xE0 /* ARM */, 0xE2 /* ARM */, 0x00 /* ARM */, 0x00 /* ARM */, 0x81, 0x83, 4}, //AND
 	{0x08, 0x09, 0x0A, 0x0B, 0x80, 0x81, 0x83, 1}, //OR
 
 	{0x30, 0x31, 0x32, 0x33, 0x80, 0x81, 0x83, 6}, //XOR
-	{0x88, 0x89, 0x8A, 0x8B, 0xC6, 0xC7, 0xCC, 0}, //MOV
+	{0x88, 0xE1 /* ARM */, 0xE3 /* ARM */, 0xA0 /* ARM */, 0xA0 /* ARM */, 0xC7, 0xCC, 0}, //MOV
 
 	{0x84, 0x85, 0x84, 0x85, 0xF6, 0xF7, 0xCC, 0}, //TEST (to == from)
 	{0x38, 0x39, 0x3A, 0x3B, 0x80, 0x81, 0x83, 7}, //CMP
@@ -164,18 +164,21 @@ void OpArg::WriteNormalOp(XEmitter *emit, bool toRM, NormalOp op, const OpArg &o
 
 	if (operand.IsImm())
 	{
-
+		emit->Write8(nops[op].fromimm8);
 		if (operand.scale == SCALE_IMM8 && bits == 8) 
 		{
 			// Writing an eight bit value
-			emit->Write16(0xE3A0);
+			emit->Write8(nops[op].imm8); // AND would be 0xE200
 			emit->Write8(GetSimpleReg() << 4);
 			emit->Write8((u8)operand.offset);
 			
 		}
 		else if ((operand.scale == SCALE_IMM16 && bits == 16))
 		{
-			emit->Write8(0xE3);
+			/* ARMTODO:
+			 * Sixteen bit and 32bit only supported on
+			 * MOV instruction currently
+			 */
 			emit->Write8((u16)operand.offset >> 12);
 			emit->Write16((u16)operand.offset | GetSimpleReg() << 12);
 		}
@@ -183,7 +186,6 @@ void OpArg::WriteNormalOp(XEmitter *emit, bool toRM, NormalOp op, const OpArg &o
 		{
 			// Must do two moves to get the full 32bits in the register
 			// First do the regular 16bit move
-			emit->Write8(0xE3);
 			emit->Write8((u16)(operand.offset >> 12));
 			emit->Write16(GetSimpleReg() << 12 | (u16)operand.offset);
 
@@ -200,7 +202,8 @@ void OpArg::WriteNormalOp(XEmitter *emit, bool toRM, NormalOp op, const OpArg &o
 	else
 	{
 		// Register to Register
-		emit->Write16(0xE1A0);
+		emit->Write8(nops[op].toReg32);
+		emit->Write8(nops[op].fromReg32); 
 		emit->Write8(GetSimpleReg() << 4);
 		emit->Write8(operand.GetSimpleReg());
 	}
@@ -222,7 +225,13 @@ void XEmitter::ADD (int bits, const OpArg &a1, const OpArg &a2) {}
 void XEmitter::ADC (int bits, const OpArg &a1, const OpArg &a2) {}
 void XEmitter::SUB (int bits, const OpArg &a1, const OpArg &a2) {}
 void XEmitter::SBB (int bits, const OpArg &a1, const OpArg &a2) {}
-void XEmitter::AND (int bits, const OpArg &a1, const OpArg &a2) {}
+void XEmitter::AND (int bits, const OpArg &a1, const OpArg &a2)
+{
+	#ifdef _DEBUG
+	_assert_msg_(DYNA_REC, !(a2.IsImm() && a2.GetImmBits() != SCALE_IMM8), "AND - A2 can't be larger than 8 bits, move to register first");
+	#endif
+	WriteNormalOp(this, bits, nrmAND, a1, a2);
+}
 void XEmitter::OR  (int bits, const OpArg &a1, const OpArg &a2) {}
 void XEmitter::XOR (int bits, const OpArg &a1, const OpArg &a2) {}
 void XEmitter::MOV (int bits, const OpArg &a1, const OpArg &a2) 

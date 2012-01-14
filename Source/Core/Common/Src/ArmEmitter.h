@@ -284,6 +284,7 @@ public:
 	void CALL(const void *fnptr);
 	
 	// Bit operations
+	void AND (int bits, const OpArg &a1, const OpArg &a2);
 	void MOV (int bits, const OpArg &a1, const OpArg &a2);
 
 
@@ -401,7 +402,6 @@ public:
 	void ADC (int bits, const OpArg &a1, const OpArg &a2);
 	void SUB (int bits, const OpArg &a1, const OpArg &a2);
 	void SBB (int bits, const OpArg &a1, const OpArg &a2);
-	void AND (int bits, const OpArg &a1, const OpArg &a2);
 	void CMP (int bits, const OpArg &a1, const OpArg &a2);
 
 	// Bit operations
