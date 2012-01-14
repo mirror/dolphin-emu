@@ -152,10 +152,87 @@ void XEmitter::CALL(const void *fnptr)
 	Write8(0xCB);
 	Write24(s32(distance));
 }
+//operand can either be immediate or register
+void OpArg::WriteNormalOp(XEmitter *emit, bool toRM, NormalOp op, const OpArg &operand, int bits) const
+{
+	if (IsImm())
+	{
+		_assert_msg_(DYNA_REC, 0, "WriteNormalOp - Imm argument, wrong order");
+	}
+	if(bits == 64)
+		_assert_msg_(DYNA_REC, 0, "WriteNormalOp - Can't handle 64bit on ARM platform");
 
+	if (operand.IsImm())
+	{
 
+		if (operand.scale == SCALE_IMM8 && bits == 8) 
+		{
+			// Writing an eight bit value
+			emit->Write16(0xE3A0);
+			emit->Write8(GetSimpleReg() << 4);
+			emit->Write8((u8)operand.offset);
+			
+		}
+		else if ((operand.scale == SCALE_IMM16 && bits == 16))
+		{
+			emit->Write8(0xE3);
+			emit->Write8((u16)operand.offset >> 12);
+			emit->Write16((u16)operand.offset | GetSimpleReg() << 12);
+		}
+		else if (operand.scale == SCALE_IMM32 && bits == 32)
+		{
+			// Must do two moves to get the full 32bits in the register
+			// First do the regular 16bit move
+			emit->Write8(0xE3);
+			emit->Write8((u16)(operand.offset >> 12));
+			emit->Write16(GetSimpleReg() << 12 | (u16)operand.offset);
 
+			// Now do a MOVT to get the top bits in
+			emit->Write8(0xE3);
+			emit->Write8(0x40 | operand.offset >> 20);
+			emit->Write16((operand.offset >> 16 & 0xF000) | GetSimpleReg() << 12);
+		}
+		else
+		{
+			_assert_msg_(DYNA_REC, 0, "WriteNormalOp - Unhandled case");
+		}
+	}
+	else
+	{
+		// Register to Register
+		emit->Write16(0xE1A0);
+		emit->Write8(GetSimpleReg() << 4);
+		emit->Write8(operand.GetSimpleReg());
+	}
+}
 
+void XEmitter::WriteNormalOp(XEmitter *emit, int bits, NormalOp op, const OpArg &a1, const OpArg &a2)
+{
+	if (a1.IsImm())
+	{
+		//Booh! Can't write to an imm
+		_assert_msg_(DYNA_REC, 0, "WriteNormalOp - a1 cannot be imm");
+		return;
+	}
+
+	a1.WriteNormalOp(emit, true, op, a2, bits);
+}
+// Bit Operations
+void XEmitter::ADD (int bits, const OpArg &a1, const OpArg &a2) {}
+void XEmitter::ADC (int bits, const OpArg &a1, const OpArg &a2) {}
+void XEmitter::SUB (int bits, const OpArg &a1, const OpArg &a2) {}
+void XEmitter::SBB (int bits, const OpArg &a1, const OpArg &a2) {}
+void XEmitter::AND (int bits, const OpArg &a1, const OpArg &a2) {}
+void XEmitter::OR  (int bits, const OpArg &a1, const OpArg &a2) {}
+void XEmitter::XOR (int bits, const OpArg &a1, const OpArg &a2) {}
+void XEmitter::MOV (int bits, const OpArg &a1, const OpArg &a2) 
+{
+	#ifdef _DEBUG
+	_assert_msg_(DYNA_REC, !a1.IsSimpleReg() || !a2.IsSimpleReg() || a1.GetSimpleReg() != a2.GetSimpleReg(), "Redundant MOV @ %p - bug in JIT?", 
+				 code); 
+	#endif
+	WriteNormalOp(this, bits, nrmMOV, a1, a2);
+}
 
 // Bunch of X86 BS down here
 
@@ -320,18 +397,6 @@ void XEmitter::SHLD(int bits, OpArg dest, OpArg src, OpArg shift)
 {
 }
 
-
-
-void XEmitter::ADD (int bits, const OpArg &a1, const OpArg &a2) {}
-void XEmitter::ADC (int bits, const OpArg &a1, const OpArg &a2) {}
-void XEmitter::SUB (int bits, const OpArg &a1, const OpArg &a2) {}
-void XEmitter::SBB (int bits, const OpArg &a1, const OpArg &a2) {}
-void XEmitter::AND (int bits, const OpArg &a1, const OpArg &a2) {}
-void XEmitter::OR  (int bits, const OpArg &a1, const OpArg &a2) {}
-void XEmitter::XOR (int bits, const OpArg &a1, const OpArg &a2) {}
-void XEmitter::MOV (int bits, const OpArg &a1, const OpArg &a2) 
-{
-}
 void XEmitter::TEST(int bits, const OpArg &a1, const OpArg &a2) {}
 void XEmitter::CMP (int bits, const OpArg &a1, const OpArg &a2) {}
 void XEmitter::XCHG(int bits, const OpArg &a1, const OpArg &a2) {}

@@ -68,7 +68,7 @@ enum CCFlags
 	CC_LT, // Signed less than
 	CC_GT, // Signed greater than
 	CC_LE, // Signed less than or equal
-	CC_AL, // Always (unconditional)
+	CC_AL, // Always (unconditional) 14
 	
 };
 
@@ -245,6 +245,8 @@ class XEmitter
 private:
 	u8 *code;
 
+	void WriteNormalOp(XEmitter *emit, int bits, NormalOp op, const OpArg &a1, const OpArg &a2);
+
 protected:
 	inline void Write8(u8 value)   {*code++ = value;}
 	inline void Write16(u16 value) {*(u16*)code = (value); code += 2;}
@@ -280,6 +282,9 @@ public:
 #endif
 
 	void CALL(const void *fnptr);
+	
+	// Bit operations
+	void MOV (int bits, const OpArg &a1, const OpArg &a2);
 
 
 
@@ -403,7 +408,6 @@ public:
 	void NOT (int bits, OpArg src);
 	void OR  (int bits, const OpArg &a1, const OpArg &a2);
 	void XOR (int bits, const OpArg &a1, const OpArg &a2);
-	void MOV (int bits, const OpArg &a1, const OpArg &a2);
 	void TEST(int bits, const OpArg &a1, const OpArg &a2);
 
 	// Are these useful at all? Consider removing.
