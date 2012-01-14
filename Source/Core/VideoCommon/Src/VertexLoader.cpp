@@ -43,8 +43,9 @@
 //BBox
 #include "XFMemory.h"
 extern float GC_ALIGNED16(g_fProjectionMatrix[16]);
-
+#ifndef _M_GENERIC
 #define USE_JIT
+#endif
 
 #define COMPILED_CODE_SIZE 4096
 
