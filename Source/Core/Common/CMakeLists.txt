@@ -1,5 +1,4 @@
-set(SRCS	Src/ABI.cpp
-			Src/BreakPoints.cpp
+set(SRCS	Src/BreakPoints.cpp
 			Src/CDUtils.cpp
 			Src/ColorUtil.cpp
 			Src/ConsoleListener.cpp
@@ -25,7 +24,6 @@ set(SRCS	Src/ABI.cpp
 			Src/Version.cpp
 			Src/VideoBackendBase.cpp
 			Src/x64Analyzer.cpp
-			Src/x64Emitter.cpp
 			Src/Crypto/aes_cbc.cpp
 			Src/Crypto/aes_core.cpp
 			Src/Crypto/bn.cpp
@@ -33,11 +31,20 @@ set(SRCS	Src/ABI.cpp
 			Src/Crypto/md5.cpp
 			Src/Crypto/sha1.cpp)
 
-if(NOT _M_GENERIC)
+if(_M_ARM) #ARM
 	set(SRCS	${SRCS}
-				Src/FPURoundModeX86.cpp)
+				Src/ArmEmitter.cpp)
 else()
+	if(NOT _M_GENERIC) #X86
+		set(SRCS	${SRCS}
+					Src/X86ABI.cpp
+					Src/FPURoundModeX86.cpp
+					Src/x64Emitter.cpp)
+	endif()
+endif()
+if(_M_GENERIC) #Generic
 	set(SRCS	${SRCS}
+				Src/X86ABI.cpp #TODO, make this not needed :/
 				Src/FPURoundModeGeneric.cpp)
 endif()
 if(WIN32)
