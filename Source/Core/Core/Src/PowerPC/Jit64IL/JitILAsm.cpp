@@ -16,7 +16,7 @@
 // http://code.google.com/p/dolphin-emu/
 
 #include "ABI.h"
-#include "x64Emitter.h"
+#include "Emitter.h"
 
 #include "../../HW/Memmap.h"
 

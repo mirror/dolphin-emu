@@ -18,7 +18,6 @@
 #include <map>
 
 #include "Common.h"
-#include "x64Emitter.h"
 #include "MemoryUtil.h"
 #include "ABI.h"
 #include "Thunk.h"

@@ -19,7 +19,6 @@ set(SRCS	Src/BreakPoints.cpp
 			Src/SymbolDB.cpp
 			Src/SysConf.cpp
 			Src/Thread.cpp
-			Src/Thunk.cpp
 			Src/Timer.cpp
 			Src/Version.cpp
 			Src/VideoBackendBase.cpp
@@ -37,14 +36,15 @@ if(_M_ARM) #ARM
 else()
 	if(NOT _M_GENERIC) #X86
 		set(SRCS	${SRCS}
-					Src/X86ABI.cpp
+					Src/x64ABI.cpp
 					Src/FPURoundModeX86.cpp
-					Src/x64Emitter.cpp)
+					Src/x64Emitter.cpp
+					Src/Thunk.cpp
+					)
 	endif()
 endif()
 if(_M_GENERIC) #Generic
 	set(SRCS	${SRCS}
-				Src/X86ABI.cpp #TODO, make this not needed :/
 				Src/FPURoundModeGeneric.cpp)
 endif()
 if(WIN32)

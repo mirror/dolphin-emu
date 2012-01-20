@@ -20,7 +20,7 @@
 #include "../DSPStacks.h"
 #include "../DSPAnalyzer.h"
 #include "DSPJitUtil.h"
-#include "x64Emitter.h"
+#include "Emitter.h"
 #include "ABI.h"
 
 using namespace Gen;

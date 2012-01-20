@@ -32,13 +32,14 @@
 #include "MemoryUtil.h"
 
 #include "../../HW/Memmap.h"
+#include "../JitInterface.h"
 #include "../../CoreTiming.h"
 
 #include "../PowerPC.h"
 #include "../PPCTables.h"
 #include "../PPCAnalyst.h"
 
-#include "x64Emitter.h"
+#include "Emitter.h"
 #include "x64Analyzer.h"
 
 #include "JitCache.h"
@@ -206,8 +207,8 @@ bool JitBlock::ContainsAddress(u32 em_address)
 	{
 		blockCodePointers[block_num] = code_ptr;
 		JitBlock &b = blocks[block_num];
-		b.originalFirstOpcode = Memory::Read_Opcode_JIT(b.originalAddress);
-		Memory::Write_Opcode_JIT(b.originalAddress, (JIT_OPCODE << 26) | block_num);
+		b.originalFirstOpcode = JitInterface::Read_Opcode_JIT(b.originalAddress);
+		JitInterface::Write_Opcode_JIT(b.originalAddress, (JIT_OPCODE << 26) | block_num);
 		block_map[std::make_pair(b.originalAddress + 4 * b.originalSize - 1, b.originalAddress)] = block_num;
 		if (block_link)
 		{
@@ -369,7 +370,7 @@ bool JitBlock::ContainsAddress(u32 em_address)
 		}
 		b.invalid = true;
 #ifdef JIT_UNLIMITED_ICACHE
-		Memory::Write_Opcode_JIT(b.originalAddress, b.originalFirstOpcode?b.originalFirstOpcode:JIT_ICACHE_INVALID_WORD);
+		JitInterface::Write_Opcode_JIT(b.originalAddress, b.originalFirstOpcode?b.originalFirstOpcode:JIT_ICACHE_INVALID_WORD);
 #else
 		if (Memory::ReadFast32(b.originalAddress) == block_num)
 			Memory::WriteUnchecked_U32(b.originalFirstOpcode, b.originalAddress);

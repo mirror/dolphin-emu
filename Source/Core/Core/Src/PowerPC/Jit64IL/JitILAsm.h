@@ -18,7 +18,7 @@
 #ifndef _JITASM_H
 #define _JITASM_H
 
-#include "x64Emitter.h"
+#include "Emitter.h"
 #include "../JitCommon/JitAsmCommon.h"
 
 // In Dolphin, we don't use inline assembly. Instead, we generate all machine-near

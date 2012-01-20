@@ -21,6 +21,7 @@
 #include "StringUtil.h"
 #include "Interpreter/Interpreter.h"
 #include "../HW/Memmap.h"
+#include "JitInterface.h"
 #include "PPCTables.h"
 #include "PPCSymbolDB.h"
 #include "SignatureDB.h"
@@ -372,7 +373,7 @@ u32 Flatten(u32 address, int *realsize, BlockStats *st, BlockRegStats *gpa,
 			}
 			else
 			{
-				inst = Memory::Read_Opcode_JIT(address);
+				inst = JitInterface::Read_Opcode_JIT(address);
 			}
 		}
 		

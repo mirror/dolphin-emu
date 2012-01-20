@@ -45,8 +45,7 @@
 #include "PowerPC/PPCSymbolDB.h"
 #include "PowerPC/SignatureDB.h"
 #include "PowerPC/PPCTables.h"
-#include "PowerPC/JitCommon/JitBase.h"
-#include "PowerPC/JitCommon/JitCache.h" // for ClearCache()
+#include "PowerPC/JitInterface.h"
 
 #include "ConfigManager.h"
 
@@ -493,10 +492,8 @@ void CCodeWindow::OnCPUMode(wxCommandEvent& event)
 	}
 
 	// Clear the JIT cache to enable these changes
-	if (jit)
-	{
-		jit->ClearCache();
-	}
+	JitInterface::ClearCache();
+	
 	// Update
 	UpdateButtonStates();
 }
@@ -510,7 +507,7 @@ void CCodeWindow::OnJitMenu(wxCommandEvent& event)
 		   	break;
 
 		case IDM_CLEARCODECACHE:
-			jit->ClearCache();
+			JitInterface::ClearCache();
 		   	break;
 
 		case IDM_SEARCHINSTRUCTION:

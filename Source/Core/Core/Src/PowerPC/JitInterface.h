@@ -28,6 +28,21 @@ namespace JitInterface
 
 	// Debugging
 	void WriteProfileResults(const char *filename);
+
+	// Memory Utilities
+	bool IsInCodeSpace(u8 *ptr);
+	const u8 *BackPatch(u8 *codePtr, int accessType, u32 em_address, void *ctx);
+
+	// used by JIT to read instructions
+	u32 Read_Opcode_JIT(const u32 _Address);
+	// used by JIT. uses iCacheJIT. Reads in the "Locked cache" mode
+	u32 Read_Opcode_JIT_LC(const u32 _Address);
+	void Write_Opcode_JIT(const u32 _Address, const u32 _Value);
+
+	// Clearing CodeCache
+	void ClearCache();
+
+	void InvalidateICache(u32 address);
 	
 	void Shutdown();
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2003 Dolphin Project.
+// Copyright (C) 2003-2009 Dolphin Project.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,8 +15,42 @@
 // Official SVN repository and contact information can be found at
 // http://code.google.com/p/dolphin-emu/
 
-#ifdef _M_ARM
-// ARMTODO: Nothing here yet.
-#elif !defined _M_GENERIC
-#include "x64ABI.h"
-#endif
+// TODO: Handle cache-is-full condition :p
+
+
+#include "Common.h"
+#include "DLCache.h"
+
+namespace DLCache
+{
+	
+void Init()
+{
+}
+
+void Shutdown()
+{
+}
+
+void Clear() 
+{	
+}
+
+void ProgressiveCleanup()
+{
+}
+
+static size_t GetSpaceLeft()
+{
+}
+
+}  // namespace
+
+// NOTE - outside the namespace on purpose.
+bool HandleDisplayList(u32 address, u32 size)
+{
+}
+
+void IncrementCheckContextId()
+{
+}

@@ -18,7 +18,7 @@
 #ifndef _DSPJITREGCACHE_H
 #define _DSPJITREGCACHE_H
 
-#include "x64Emitter.h"
+#include "Emitter.h"
 
 class DSPEmitter;
 

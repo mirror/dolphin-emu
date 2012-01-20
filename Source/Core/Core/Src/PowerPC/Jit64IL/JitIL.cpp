@@ -18,7 +18,7 @@
 #include <map>
 
 #include "Common.h"
-#include "x64Emitter.h"
+#include "Emitter.h"
 #include "ABI.h"
 #include "Thunk.h"
 #include "../../HLE/HLE.h"

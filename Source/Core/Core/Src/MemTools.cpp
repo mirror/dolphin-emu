@@ -52,8 +52,7 @@
 #include "MemTools.h"
 #include "HW/Memmap.h"
 #include "PowerPC/PowerPC.h"
-#include "PowerPC/JitCommon/JitBase.h"
-#include "PowerPC/JitCommon/JitBackpatch.h"
+#include "PowerPC/JitInterface.cpp"
 #include "x64Analyzer.h"
 
 namespace EMM
@@ -77,7 +76,7 @@ LONG NTAPI Handler(PEXCEPTION_POINTERS pPtrs)
 			PVOID codeAddr = pPtrs->ExceptionRecord->ExceptionAddress;
 			unsigned char *codePtr = (unsigned char*)codeAddr;
 			
-			if (!jit->IsInCodeSpace(codePtr)) {
+			if (!JitInterface::IsInCodeSpace(codePtr)) {
 				// Let's not prevent debugging.
 				return (DWORD)EXCEPTION_CONTINUE_SEARCH;
 			}
@@ -107,7 +106,7 @@ LONG NTAPI Handler(PEXCEPTION_POINTERS pPtrs)
 
 			//We could emulate the memory accesses here, but then they would still be around to take up
 			//execution resources. Instead, we backpatch into a generic memory call and retry.
-			const u8 *new_rip = jit->BackPatch(codePtr, accessType, emAddress, ctx);
+			const u8 *new_rip = JitInterface::BackPatch(codePtr, accessType, emAddress, ctx);
 
 			// Rip/Eip needs to be updated.
 			if (new_rip)
@@ -204,7 +203,7 @@ void sigsegv_handler(int signal, siginfo_t *info, void *raw_context)
 #else
 	u8 *fault_instruction_ptr = (u8 *)CREG_EIP(ctx);
 #endif
-	if (!jit->IsInCodeSpace(fault_instruction_ptr)) {
+	if (!JitInterface::IsInCodeSpace(fault_instruction_ptr)) {
 		// Let's not prevent debugging.
 		return;
 	}

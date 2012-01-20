@@ -53,7 +53,6 @@
 #include "IPC_HLE/WII_IPC_HLE_Device_usb.h"
 
 #include "PowerPC/PowerPC.h"
-#include "PowerPC/JitCommon/JitBase.h"
 
 #include "DSPEmulator.h"
 #include "ConfigManager.h"

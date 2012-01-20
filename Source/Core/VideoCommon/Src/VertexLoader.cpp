@@ -22,7 +22,7 @@
 #include "VideoConfig.h"
 #include "MemoryUtil.h"
 #include "StringUtil.h"
-#include "x64Emitter.h"
+#include "Emitter.h"
 #include "ABI.h"
 #include "PixelEngine.h"
 #include "Host.h"
@@ -83,8 +83,9 @@ static const float fractionTable[32] = {
 	1.0f / (1U << 24), 1.0f / (1U << 25), 1.0f / (1U << 26), 1.0f / (1U << 27),
 	1.0f / (1U << 28), 1.0f / (1U << 29), 1.0f / (1U << 30), 1.0f / (1U << 31),
 };
-
+#ifndef _M_GENERIC
 using namespace Gen;
+#endif
 
 void LOADERDECL PosMtx_ReadDirect_UByte()
 {
@@ -183,14 +184,18 @@ VertexLoader::VertexLoader(const TVtxDesc &vtx_desc, const VAT &vtx_attr)
 	m_VtxDesc = vtx_desc;
 	SetVAT(vtx_attr.g0.Hex, vtx_attr.g1.Hex, vtx_attr.g2.Hex);
 
+	#ifndef _M_GENERIC
 	AllocCodeSpace(COMPILED_CODE_SIZE);
 	CompileVertexTranslator();
 	WriteProtect();
+	#endif
 }
 
 VertexLoader::~VertexLoader() 
 {
+	#ifndef _M_GENERIC
 	FreeCodeSpace();
+	#endif
 	delete m_NativeFmt;
 }
 
@@ -475,7 +480,8 @@ void VertexLoader::WriteCall(TPipelineFunction func)
 	m_PipelineStages[m_numPipelineStages++] = func;
 #endif
 }
-
+// ARMTODO: This should be done in a better way
+#ifndef _M_GENERIC
 void VertexLoader::WriteGetVariable(int bits, OpArg dest, void *address)
 {
 #ifdef USE_JIT
@@ -499,7 +505,7 @@ void VertexLoader::WriteSetVariable(int bits, void *address, OpArg value)
 #endif
 #endif
 }
-
+#endif
 void VertexLoader::RunVertices(int vtx_attr_group, int primitive, int count)
 {
 	m_numLoadedVertices += count;

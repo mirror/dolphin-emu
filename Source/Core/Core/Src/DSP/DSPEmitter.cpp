@@ -24,7 +24,7 @@
 #include "DSPInterpreter.h"
 #include "DSPAnalyzer.h"
 #include "Jit/DSPJitUtil.h"
-#include "x64Emitter.h"
+#include "Emitter.h"
 #include "ABI.h"
 
 #define MAX_BLOCK_SIZE 250

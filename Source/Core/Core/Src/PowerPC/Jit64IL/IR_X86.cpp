@@ -46,7 +46,7 @@ The register allocation is linear scan allocation.
 #include "JitIL.h"
 #include "../../HW/GPFifo.h"
 #include "../../ConfigManager.h"
-#include "x64Emitter.h"
+#include "Emitter.h"
 #include "../../../../Common/Src/CPUDetect.h"
 #include "MathUtil.h"
 #include "../../Core.h"

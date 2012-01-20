@@ -27,7 +27,7 @@
 #include "../../HW/GPFifo.h"
 #include "../../HW/Memmap.h"
 #include "../PPCTables.h"
-#include "x64Emitter.h"
+#include "Emitter.h"
 #include "ABI.h"
 
 #include "Jit.h"

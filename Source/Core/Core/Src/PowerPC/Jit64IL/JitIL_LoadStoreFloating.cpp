@@ -26,7 +26,7 @@
 #include "../../HW/Memmap.h"
 #include "../PPCTables.h"
 #include "CPUDetect.h"
-#include "x64Emitter.h"
+#include "Emitter.h"
 #include "ABI.h"
 
 #include "JitIL.h"

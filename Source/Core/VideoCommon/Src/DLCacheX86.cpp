@@ -34,7 +34,7 @@
 
 #include "VertexLoaderManager.h"
 #include "VertexManagerBase.h"
-#include "x64Emitter.h"
+#include "Emitter.h"
 #include "ABI.h"
 
 #include "DLCache.h"

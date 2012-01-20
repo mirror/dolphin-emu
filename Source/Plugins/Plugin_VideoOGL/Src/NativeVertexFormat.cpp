@@ -16,7 +16,7 @@
 // http://code.google.com/p/dolphin-emu/
 
 #include "GLUtil.h"
-#include "x64Emitter.h"
+#include "Emitter.h"
 #include "ABI.h"
 #include "MemoryUtil.h"
 #include "ProgramShaderCache.h"
@@ -108,13 +108,14 @@ void GLVertexFormat::Initialize(const PortableVertexDeclaration &_vtx_decl)
 	s_prevcomponents = 0;
 
 	vertex_stride = _vtx_decl.stride;
-	using namespace Gen;
 
 	// We will not allow vertex components causing uneven strides.
 	if (_vtx_decl.stride & 3) 
 		PanicAlert("Uneven vertex stride: %i", _vtx_decl.stride);
 
+// ARMTODO: Breakout in to different file?
 #ifdef USE_JIT
+	using namespace Gen;
 	Gen::XEmitter emit(m_compiledCode);
 	// Alright, we have our vertex declaration. Compile some crazy code to set it quickly using GL.
 	emit.ABI_EmitPrologue(6);

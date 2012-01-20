@@ -21,7 +21,7 @@
 #include "../PowerPC.h"
 #include "../../CoreTiming.h"
 #include "../PPCTables.h"
-#include "x64Emitter.h"
+#include "Emitter.h"
 
 #include "Jit.h"
 #include "JitRegCache.h"

@@ -25,7 +25,6 @@
 #include "PowerPC/PPCTables.h"
 #include "CoreTiming.h"
 #include "Core.h"
-#include "PowerPC/JitCommon/JitBase.h"
 #include "PowerPC/PPCSymbolDB.h"
 #include "PowerPCDisasm.h"
 #include "Console.h"

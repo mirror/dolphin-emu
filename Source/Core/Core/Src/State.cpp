@@ -27,7 +27,7 @@
 #include "HW/DSP.h"
 #include "HW/HW.h"
 #include "HW/CPU.h"
-#include "PowerPC/JitCommon/JitBase.h"
+#include "PowerPC/PowerPC.h"
 #include "VideoBackendBase.h"
 
 #include <lzo/lzo1x.h>

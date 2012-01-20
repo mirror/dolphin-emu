@@ -25,7 +25,6 @@
 #include "../HW/DSP.h"
 #include "../HW/Memmap.h"
 #include "../PowerPC/PowerPC.h"
-#include "../PowerPC/JitCommon/JitBase.h"
 #include "../PowerPC/PPCSymbolDB.h"
 
 void PPCDebugInterface::disasm(unsigned int address, char *dest, int max_size) 

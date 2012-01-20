@@ -24,7 +24,7 @@
 
 #include "../../HW/Memmap.h"
 
-#include "x64Emitter.h"
+#include "Emitter.h"
 #include "ABI.h"
 #include "Thunk.h"
 #include "x64Analyzer.h"

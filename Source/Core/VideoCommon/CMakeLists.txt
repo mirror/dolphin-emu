@@ -3,7 +3,6 @@ set(SRCS	Src/BPFunctions.cpp
 			Src/BPStructs.cpp
 			Src/CPMemory.cpp
 			Src/CommandProcessor.cpp
-			Src/DLCache.cpp
 			Src/Debugger.cpp
 			Src/Fifo.cpp
 			Src/FramebufferManagerBase.cpp
@@ -41,9 +40,11 @@ set(SRCS	Src/BPFunctions.cpp
 set(LIBS core)
 
 if(NOT _M_GENERIC)
-	set(SRCS ${SRCS} Src/TextureDecoderX86.cpp)
+	set(SRCS ${SRCS}	Src/TextureDecoderX86.cpp
+						Src/DLCacheX86.cpp)
 else()
-	set(SRCS ${SRCS} Src/TextureDecoderGeneric.cpp)
+	set(SRCS ${SRCS}	Src/TextureDecoderGeneric.cpp
+						Src/DLCacheGeneric.cpp)
 endif()
 if(NOT ${CL} STREQUAL CL-NOTFOUND)
 	list(APPEND LIBS ${CL})

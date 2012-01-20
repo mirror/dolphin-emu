@@ -18,7 +18,7 @@
 #ifndef IR_H
 #define IR_H
 
-#include "x64Emitter.h"
+#include "Emitter.h"
 #include <vector>
 
 namespace IREmitter {

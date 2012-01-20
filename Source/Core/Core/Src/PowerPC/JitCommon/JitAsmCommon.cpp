@@ -18,7 +18,7 @@
 #include "ABI.h"
 #include "Thunk.h"
 #include "CPUDetect.h"
-#include "x64Emitter.h"
+#include "Emitter.h"
 
 #include "../../HW/Memmap.h"
 
