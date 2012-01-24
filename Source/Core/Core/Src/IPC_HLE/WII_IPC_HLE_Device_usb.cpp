@@ -25,8 +25,22 @@
 #include "WII_IPC_HLE_Device_usb.h"
 #include "../ConfigManager.h"
 #include "CoreTiming.h"
+inline bdaddr_t swap_bdaddr_t(bdaddr_t &bdaddr)
+{
+	bdaddr_t tmpBD;
+
+	tmpBD.b[5] = bdaddr.b[0];
+	tmpBD.b[4] = bdaddr.b[1];
+	tmpBD.b[3] = bdaddr.b[2];
+	tmpBD.b[2] = bdaddr.b[3];
+	tmpBD.b[1] = bdaddr.b[4];
+	tmpBD.b[0] = bdaddr.b[5];
+
+	return tmpBD;
+}
 
 // The device class
+
 CWII_IPC_HLE_Device_usb_oh1_57e_305::CWII_IPC_HLE_Device_usb_oh1_57e_305(u32 _DeviceID, const std::string& _rDeviceName)
 	: IWII_IPC_HLE_Device(_DeviceID, _rDeviceName)
 	, m_ScanEnable(0)
@@ -45,36 +59,47 @@ CWII_IPC_HLE_Device_usb_oh1_57e_305::CWII_IPC_HLE_Device_usb_oh1_57e_305(u32 _De
 	else
 	{
 		u8 maxWM = min<u8>(BT_DINF.num_registered, CONF_PAD_MAX_ACTIVE);
-		bdaddr_t tmpBD = BDADDR_ANY;
 		u8 i = 0;
+		u8 BalanceBoardSlot = SConfig::GetInstance().m_BalanceBoardSlot;
 		while (i < maxWM)
 		{
-			tmpBD.b[5] = BT_DINF.active[i].bdaddr[0] = BT_DINF.registered[i].bdaddr[0];
-			tmpBD.b[4] = BT_DINF.active[i].bdaddr[1] = BT_DINF.registered[i].bdaddr[1];
-			tmpBD.b[3] = BT_DINF.active[i].bdaddr[2] = BT_DINF.registered[i].bdaddr[2];
-			tmpBD.b[2] = BT_DINF.active[i].bdaddr[3] = BT_DINF.registered[i].bdaddr[3];
-			tmpBD.b[1] = BT_DINF.active[i].bdaddr[4] = BT_DINF.registered[i].bdaddr[4];
-			tmpBD.b[0] = BT_DINF.active[i].bdaddr[5] = BT_DINF.registered[i].bdaddr[5];
+			bool balanceboard  = (BalanceBoardSlot == i);
+			BT_DINF.active[i].bdaddr = BT_DINF.registered[i].bdaddr;
+			bdaddr_t tmpBD = swap_bdaddr_t(BT_DINF.active[i].bdaddr);
+			if (!balanceboard)
+			{
+				//Ensures that WBC name is not left if balance board was used in this slot previously
+				memcpy(BT_DINF.registered[i].name, "Nintendo RVL-CNT-01", 20);
+			}
 
-			INFO_LOG(WII_IPC_WIIMOTE, "Wiimote %d BT ID %x,%x,%x,%x,%x,%x", i, tmpBD.b[0], tmpBD.b[1], tmpBD.b[2], tmpBD.b[3], tmpBD.b[4], tmpBD.b[5]);
-			m_WiiMotes.push_back(CWII_IPC_HLE_WiiMote(this, i, tmpBD, false));
+			INFO_LOG(WII_IPC_WIIMOTE, "%s %d BT ID %x,%x,%x,%x,%x,%x",  balanceboard ? "BalanceBoard Slot" : "Wiimote ", i, tmpBD.b[0], tmpBD.b[1], tmpBD.b[2], tmpBD.b[3], tmpBD.b[4], tmpBD.b[5]);
+			m_WiiMotes.push_back(CWII_IPC_HLE_WiiMote(this, i, tmpBD, balanceboard));
 			i++;
 		}
+
 		while (i < CONF_PAD_MAX_ACTIVE)
 		{
-			const char * wmName = "Nintendo RVL-CNT-01";
 			++BT_DINF.num_registered;
-			BT_DINF.active[i].bdaddr[0] = BT_DINF.registered[i].bdaddr[0] = tmpBD.b[5] = i;
-			BT_DINF.active[i].bdaddr[1] = BT_DINF.registered[i].bdaddr[1] = tmpBD.b[4] = 0;
-			BT_DINF.active[i].bdaddr[2] = BT_DINF.registered[i].bdaddr[2] = tmpBD.b[3] = 0x79;
-			BT_DINF.active[i].bdaddr[3] = BT_DINF.registered[i].bdaddr[3] = tmpBD.b[2] = 0x19;
-			BT_DINF.active[i].bdaddr[4] = BT_DINF.registered[i].bdaddr[4] = tmpBD.b[1] = 2;
-			BT_DINF.active[i].bdaddr[5] = BT_DINF.registered[i].bdaddr[5] = tmpBD.b[0] = 0x11;
-			memcpy(BT_DINF.registered[i].name, wmName, 20);
+			bdaddr_t tmpBD = { { 0x11, 2, 0x19, 0x79, 0, i } };
+			BT_DINF.active[i].bdaddr = BT_DINF.registered[i].bdaddr = swap_bdaddr_t(tmpBD);
+			
+			bool balanceboard  = (BalanceBoardSlot == i);
+			memcpy(BT_DINF.registered[i].name, balanceboard ? "Nintendo RVL-WBC-01" : "Nintendo RVL-CNT-01", 20);
 
-			INFO_LOG(WII_IPC_WIIMOTE, "Adding to SYSConf Wiimote %d BT ID %x,%x,%x,%x,%x,%x", i, tmpBD.b[0], tmpBD.b[1], tmpBD.b[2], tmpBD.b[3], tmpBD.b[4], tmpBD.b[5]);
-			m_WiiMotes.push_back(CWII_IPC_HLE_WiiMote(this, i, tmpBD, false));
+			INFO_LOG(WII_IPC_WIIMOTE, "Adding to SYSConf %s %d BT ID %x,%x,%x,%x,%x,%x", balanceboard ? "BalanceBoard Slot" : "Wiimote ", i, tmpBD.b[0], tmpBD.b[1], tmpBD.b[2], tmpBD.b[3], tmpBD.b[4], tmpBD.b[5]);
+			m_WiiMotes.push_back(CWII_IPC_HLE_WiiMote(this, i, tmpBD, balanceboard));
 			i++;
+		}
+		if (BalanceBoardSlot >= 0 && BalanceBoardSlot < CONF_PAD_MAX_ACTIVE)
+		{
+			BT_DINF.balance_board = BT_DINF.registered[BalanceBoardSlot];
+			
+		}
+		else
+		{
+			memset(&BT_DINF.balance_board, 0, sizeof(_conf_pad_device));
+			INFO_LOG(WII_IPC_WIIMOTE, "Clearing BalanceBoard in SYSCONF");
+			
 		}
 
 		// save now so that when games load sysconf file it includes the new wiimotes

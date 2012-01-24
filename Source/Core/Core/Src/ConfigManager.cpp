@@ -208,6 +208,8 @@ void SConfig::SaveSettings()
 	ini.Set("GameList", "ListTaiwan",	m_ListTaiwan);
 	ini.Set("GameList", "ListUnknown",	m_ListUnknown);
 
+	ini.Set("Core", "BalanceBoardSlot",	m_BalanceBoardSlot);
+
 	// Core
 	ini.Set("Core", "HLE_BS2",			m_LocalCoreStartupParameter.bHLE_BS2);
 	ini.Set("Core", "CPUCore",			m_LocalCoreStartupParameter.iCPUCore);
@@ -337,6 +339,9 @@ void SConfig::LoadSettings()
 		ini.Get("GameList", "ListKorea",		&m_ListKorea, true);
 		ini.Get("GameList", "ListTaiwan",		&m_ListTaiwan, true);
 		ini.Get("GameList", "ListUnknown",		&m_ListUnknown, true);
+
+		
+		ini.Get("Core", "BalanceBoardSlot",	&m_BalanceBoardSlot, 3);
 
 		// Core
 		ini.Get("Core", "HLE_BS2",		&m_LocalCoreStartupParameter.bHLE_BS2,		false);

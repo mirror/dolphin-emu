@@ -34,7 +34,7 @@ CWII_IPC_HLE_Device_usb_oh1_57e_305* GetUsbPointer()
 	return s_Usb;
 }
 
-CWII_IPC_HLE_WiiMote::CWII_IPC_HLE_WiiMote(CWII_IPC_HLE_Device_usb_oh1_57e_305* _pHost, int _Number, bdaddr_t _BD, bool ready)
+CWII_IPC_HLE_WiiMote::CWII_IPC_HLE_WiiMote(CWII_IPC_HLE_Device_usb_oh1_57e_305* _pHost, int _Number, bdaddr_t _BD, bool balanceBoard)
 	: m_HIDControlChannel_Connected(false)
 	, m_HIDControlChannel_ConnectedWait(false)
 	, m_HIDControlChannel_Config(false)
@@ -44,14 +44,14 @@ CWII_IPC_HLE_WiiMote::CWII_IPC_HLE_WiiMote(CWII_IPC_HLE_Device_usb_oh1_57e_305* 
 	, m_HIDInterruptChannel_Config(false)
 	, m_HIDInterruptChannel_ConfigWait(false)
 	, m_BD(_BD)
-	, m_Name("Nintendo RVL-CNT-01")
+	, m_Name(balanceBoard ? "Nintendo RVL-WBC-01" : "Nintendo RVL-CNT-01")
 	, m_pHost(_pHost)
 {
 	DEBUG_LOG(WII_IPC_WIIMOTE, "Wiimote: #%i Constructed", _Number);
 
 	s_Usb = _pHost;
 
-	m_ConnectionState = (ready) ? CONN_READY : CONN_INACTIVE;
+	m_ConnectionState = CONN_INACTIVE;
 	m_ConnectionHandle = 0x100 + _Number;
 	memset(m_LinkKey, 0xA0 + _Number, 16);
 

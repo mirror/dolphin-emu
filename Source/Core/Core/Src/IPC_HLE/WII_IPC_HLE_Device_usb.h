@@ -311,10 +311,10 @@ private:
 #pragma pack(push,1)
 #define CONF_PAD_MAX_REGISTERED 10
 #define CONF_PAD_MAX_ACTIVE 4
-	
+
 	struct _conf_pad_device
 	{
-		u8 bdaddr[6];
+		bdaddr_t bdaddr;
 		char name[0x40];
 	};
 

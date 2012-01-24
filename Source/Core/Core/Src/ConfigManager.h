@@ -76,6 +76,9 @@ struct SConfig : NonCopyable
 	bool m_ListTaiwan;
 	bool m_ListUnknown;
 
+	
+	int m_BalanceBoardSlot;
+
 	SysConf* m_SYSCONF;
 
 	// save settings
