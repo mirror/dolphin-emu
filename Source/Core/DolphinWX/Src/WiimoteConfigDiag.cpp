@@ -62,6 +62,17 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin
 		wiimote_sizer->Add(wiimote_source_ch[i], 0, wxALIGN_CENTER_VERTICAL);
 		wiimote_sizer->Add(wiimote_configure_bt[i]);
 	}
+	const wxString balanceboard_choices[] = { _("1"), _("2"), _("3"), _("4") };
+	int balanceboard_id = wxWindow::NewControlId();
+	wxStaticText *balanceboard_text = new wxStaticText(this, wxID_ANY, wxT("BalanceBoardSlot"));
+
+	wxChoice * balanceboard_choicebox = new wxChoice(this, balanceboard_id, wxDefaultPosition, wxDefaultSize, sizeof(balanceboard_choices)/sizeof(*balanceboard_choices), balanceboard_choices);
+	balanceboard_choicebox->Select(SConfig::GetInstance().m_BalanceBoardSlot);
+	_connect_macro_(balanceboard_choicebox, WiimoteConfigDiag::BalanceBoard, wxEVT_COMMAND_CHOICE_SELECTED, this);
+
+	wiimote_sizer->Add(balanceboard_text, 0, wxALIGN_CENTER_VERTICAL);
+	wiimote_sizer->Add(balanceboard_choicebox, 0, wxALIGN_CENTER_VERTICAL);
+
 	wiimote_group->Add(wiimote_sizer, 1, wxEXPAND, 5 );
 
 
@@ -123,6 +134,7 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin
 		WiimoteSpkVolumeText->Disable();
 		WiimoteSpkVolumeMinText->Disable();
 		WiimoteSpkVolumeMaxText->Disable();
+		balanceboard_choicebox->Disable();
 	}
 
 

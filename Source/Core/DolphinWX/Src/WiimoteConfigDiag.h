@@ -34,6 +34,10 @@ public:
 	void UpdateWiimoteStatus();
 	void RevertSource();
 
+	void BalanceBoard(wxCommandEvent& event)
+	{
+		SConfig::GetInstance().m_BalanceBoardSlot = event.GetInt();
+	}
 
 	void ConfigEmulatedWiimote(wxCommandEvent& event);
 	void Save(wxCommandEvent& event);
