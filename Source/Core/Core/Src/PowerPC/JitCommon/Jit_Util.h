@@ -18,7 +18,7 @@
 #ifndef _JITUTIL_H
 #define _JITUTIL_H
 
-#include "Emitter.h"
+#include "x64Emitter.h"
 #include "Thunk.h"
 
 // Like XCodeBlock but has some utilities for memory access.

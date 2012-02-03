@@ -17,7 +17,6 @@
 
 #include "Common.h"
 #include "ArmEmitter.h"
-#include "ABI.h"
 #include "CPUDetect.h"
 
 namespace Gen

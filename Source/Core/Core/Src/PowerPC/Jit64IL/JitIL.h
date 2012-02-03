@@ -35,7 +35,7 @@
 #include "../JitCommon/JitCache.h"
 #include "../JitCommon/JitBackpatch.h"
 #include "../JitCommon/Jit_Util.h"
-#include "Emitter.h"
+#include "x64Emitter.h"
 #include "x64Analyzer.h"
 #include "IR.h"
 #include "../JitCommon/JitBase.h"

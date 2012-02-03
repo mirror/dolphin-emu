@@ -39,7 +39,7 @@
 #include "../PPCTables.h"
 #include "../PPCAnalyst.h"
 
-#include "Emitter.h"
+#include "x64Emitter.h"
 #include "x64Analyzer.h"
 
 #include "JitCache.h"

@@ -21,7 +21,7 @@
 #include <list>
 
 #include "DSPCommon.h"
-#include "Emitter.h"
+#include "x64Emitter.h"
 #include "Jit/DSPJitRegCache.h"
 
 #define COMPILED_CODE_SIZE 2097152

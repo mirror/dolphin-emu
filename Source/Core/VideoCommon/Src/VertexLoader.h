@@ -30,7 +30,7 @@
 #include "DataReader.h"
 #include "NativeVertexFormat.h"
 
-#include "Emitter.h"
+#include "x64Emitter.h"
 
 class VertexLoaderUID
 {

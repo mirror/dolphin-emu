@@ -18,7 +18,7 @@
 #ifndef _JIT64REGCACHE_H
 #define _JIT64REGCACHE_H
 
-#include "Emitter.h"
+#include "x64Emitter.h"
 
 using namespace Gen;
 enum FlushMode

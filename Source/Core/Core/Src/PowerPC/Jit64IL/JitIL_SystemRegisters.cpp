@@ -22,8 +22,8 @@
 #include "../../HW/SystemTimers.h"
 #include "../PowerPC.h"
 #include "../PPCTables.h"
-#include "Emitter.h"
-#include "ABI.h"
+#include "x64Emitter.h"
+#include "x64ABI.h"
 #include "Thunk.h"
 
 #include "JitIL.h"

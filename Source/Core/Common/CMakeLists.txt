@@ -22,7 +22,9 @@ set(SRCS	Src/BreakPoints.cpp
 			Src/Timer.cpp
 			Src/Version.cpp
 			Src/VideoBackendBase.cpp
+			Src/x64ABI.cpp
 			Src/x64Analyzer.cpp
+			Src/x64Emitter.cpp
 			Src/Crypto/aes_cbc.cpp
 			Src/Crypto/aes_core.cpp
 			Src/Crypto/bn.cpp
@@ -36,9 +38,7 @@ if(_M_ARM) #ARM
 else()
 	if(NOT _M_GENERIC) #X86
 		set(SRCS	${SRCS}
-					Src/x64ABI.cpp
 					Src/FPURoundModeX86.cpp
-					Src/x64Emitter.cpp
 					Src/Thunk.cpp
 					)
 	endif()

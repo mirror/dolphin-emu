@@ -19,7 +19,7 @@
 #define _JITBACKPATCH_H
 
 #include "Common.h"
-#include "Emitter.h"
+#include "x64Emitter.h"
 #include "x64Analyzer.h"
 #include "Thunk.h"
 

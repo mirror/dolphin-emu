@@ -15,8 +15,8 @@
 // Official SVN repository and contact information can be found at
 // http://code.google.com/p/dolphin-emu/
 
-#include "ABI.h"
-#include "Emitter.h"
+#include "x64ABI.h"
+#include "x64Emitter.h"
 
 #include "../../HW/Memmap.h"
 
@@ -24,7 +24,7 @@
 #include "../../CoreTiming.h"
 #include "MemoryUtil.h"
 
-#include "ABI.h"
+#include "x64ABI.h"
 #include "Jit.h"
 #include "../JitCommon/JitCache.h"
 

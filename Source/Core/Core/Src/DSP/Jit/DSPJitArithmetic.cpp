@@ -24,8 +24,8 @@
 #ifdef _M_X64
 #include "DSPJitUtil.h"
 #endif
-#include "Emitter.h"
-#include "ABI.h"
+#include "x64Emitter.h"
+#include "x64ABI.h"
 using namespace Gen;
 
 // CLR $acR

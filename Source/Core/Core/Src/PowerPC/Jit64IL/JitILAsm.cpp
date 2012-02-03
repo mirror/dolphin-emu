@@ -15,8 +15,8 @@
 // Official SVN repository and contact information can be found at
 // http://code.google.com/p/dolphin-emu/
 
-#include "ABI.h"
-#include "Emitter.h"
+#include "x64ABI.h"
+#include "x64Emitter.h"
 
 #include "../../HW/Memmap.h"
 
@@ -25,7 +25,7 @@
 #include "MemoryUtil.h"
 #include "CPUDetect.h"
 
-#include "ABI.h"
+#include "x64ABI.h"
 #include "Thunk.h"
 
 #include "../../HW/GPFifo.h"

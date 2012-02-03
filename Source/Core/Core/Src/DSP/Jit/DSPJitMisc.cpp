@@ -19,8 +19,8 @@
 #include "../DSPIntUtil.h"
 #include "../DSPEmitter.h"
 #include "DSPJitUtil.h"
-#include "Emitter.h"
-#include "ABI.h"
+#include "x64Emitter.h"
+#include "x64ABI.h"
 using namespace Gen;
 
 //clobbers:

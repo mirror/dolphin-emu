@@ -16,8 +16,8 @@
 // http://code.google.com/p/dolphin-emu/
 
 #include "Common.h"
-#include "Emitter.h"
-#include "ABI.h"
+#include "x64Emitter.h"
+#include "x64ABI.h"
 
 using namespace Gen;
 

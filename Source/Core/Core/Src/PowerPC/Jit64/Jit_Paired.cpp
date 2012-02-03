@@ -20,7 +20,7 @@
 #include "../../Core.h"
 #include "../PowerPC.h"
 #include "../PPCTables.h"
-#include "Emitter.h"
+#include "x64Emitter.h"
 #include "../../HW/GPFifo.h"
 
 #include "Jit.h"
