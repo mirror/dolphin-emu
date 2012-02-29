@@ -37,6 +37,9 @@
 #include "Host.h"
 #include "CPUDetect.h"
 #include "Thread.h"
+#include "ArmEmitter.h"
+#define COMPILED_CODE_SIZE 4096
+
 #include "PowerPC/PowerPC.h"
 #include "HW/Wiimote.h"
 
@@ -268,9 +271,36 @@ void X11_MainLoop()
 	Core::Stop();
 }
 #endif
-
 int main(int argc, char* argv[])
 {
+#ifdef _M_ARM
+	// Temporary testing zone
+	u32 *m_compiledCode = (u32 *)AllocateExecutableMemory(COMPILED_CODE_SIZE, false);
+	if (m_compiledCode)
+		memset(m_compiledCode, 0, COMPILED_CODE_SIZE);
+
+	using namespace Gen;
+	Gen::ARMXEmitter emit(m_compiledCode);
+	static u32 value = 0;
+	static u32 pointer = (u32)&value;
+	Operand2 tmp(pointer);
+	Operand2 tmp2(pointer >> 16);
+	Operand2 tmp8(0x256);
+	emit.MOVW(R10, tmp);
+	emit.MOVT(R10, tmp2);
+	emit.MOVW(R9, tmp8);
+	emit.STR(R10, R9, 0);
+
+	emit.PUSH(2, _IP, _LR);
+	emit.POP(2, _LR, _IP);
+	
+	emit.MOV(_PC, _LR);
+
+	emit.Flush();
+	((void (*)())(void*)m_compiledCode)();
+	printf("Value: %d\n", value);
+#endif
+
 #ifdef __APPLE__
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NSEvent *event = [[NSEvent alloc] init];	

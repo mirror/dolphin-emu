@@ -26,20 +26,17 @@
 namespace Gen
 {
 
-// Shut up compiler warnings for now
-#define X64Reg ARMReg
-
 enum ARMReg
 {
 	// GPRs
 	R0 = 0, R1, R2, R3, R4, R5,
-	R6, R7, R8, R9, R10, R11, R12,
+	R6, R7, R8, R9, R10, R11,
 
 	// SPRs
 	// R13 - R15 are SP, LR, and PC.
 	// Almost always referred to by name instead of register number
-	R13 = 13, R14 = 14, R15 = 15,
-	SP = 13, LR = 14, PC = 15,
+	R12 = 12, R13 = 13, R14 = 14, R15 = 15,
+	_IP = 12, _SP = 13, _LR = 14, _PC = 15,
 
 
 	// VFP single precision registers
@@ -92,16 +89,23 @@ enum
 	NUMGPRs = 13,
 };
 
-class XEmitter;
+class ARMXEmitter;
 
 struct Operand2
 {
 	u32 encoding;
+	u8 size;
 	Operand2() {}
 	Operand2(u8 imm, u8 rotation)
 	{
 		_assert_msg_(DYNA_REC, (rotation & 0xE1) != 0, "Invalid Operand2: immediate rotation %u", rotation);
 		encoding = (1 << 25) | (rotation << 7) | imm;
+		size = 8;
+	}
+	Operand2(u16 imm)
+	{
+		encoding = ( (imm & 0xF000) << 4) | (imm & 0x0FFF);
+		size = 16;
 	}
 	Operand2(ARMReg base, ShiftType type = LSL, u8 shift = 0)
 	{
@@ -151,28 +155,31 @@ struct Operand2
 typedef const u32* FixupBranch;
 typedef const u32* JumpTarget;
 
-class XEmitter
+class ARMXEmitter
 {
 	friend struct OpArg;  // for Write8 etc
 private:
-	u32 *code;
+	u32 *code, *startcode;
 	u32 condition;
 
 	void WriteDataOp(u32 op, ARMReg dest, ARMReg src, Operand2 const &op2);
+	void WriteDataOp(u32 op, ARMReg dest, ARMReg src);
+	void WriteStoreOp(u32 op, ARMReg dest, Operand2 const &op2);
 
 protected:
 	inline void Write32(u32 value) {*code++ = value;}
 
 public:
-	XEmitter() { code = NULL; }
-	XEmitter(u32 *code_ptr) { code = code_ptr; }
-	virtual ~XEmitter() {}
+	ARMXEmitter() { code = NULL; startcode = NULL; condition = CC_AL << 28;}
+	ARMXEmitter(u32 *code_ptr) { code = code_ptr; startcode = code_ptr; condition = CC_AL << 28;}
+	virtual ~ARMXEmitter() {}
 
 	void SetCodePtr(u32 *ptr);
 	void ReserveCodeSpace(int bytes);
 	const u32 *AlignCode16();
 	const u32 *AlignCodePage();
 	const u32 *GetCodePtr() const;
+	void Flush();
 	u32 *GetWritableCodePtr();
 
 	void SetCC(CCFlags cond = CC_AL);
@@ -191,6 +198,8 @@ public:
 #endif
 
 	void BL(const void *fnptr);
+	void PUSH(const int num, ...);
+	void POP(const int num, ...);
 	
 	// Data operations
 	void AND (ARMReg dest, ARMReg src, Operand2 const &op2);
@@ -216,11 +225,19 @@ public:
 	void ORR (ARMReg dest, ARMReg src, Operand2 const &op2);
 	void ORRS(ARMReg dest, ARMReg src, Operand2 const &op2);
 	void MOV (ARMReg dest,             Operand2 const &op2);
+	void MOV (ARMReg dest, ARMReg src					  );
+	void MOVS(ARMReg dest, ARMReg src					  );
 	void MOVS(ARMReg dest,             Operand2 const &op2);
 	void BIC (ARMReg dest, ARMReg src, Operand2 const &op2);
 	void BICS(ARMReg dest, ARMReg src, Operand2 const &op2);
 	void MVN (ARMReg dest,             Operand2 const &op2);
 	void MVNS(ARMReg dest,             Operand2 const &op2);
+
+	// Memory load/store operations
+	void MOVT(ARMReg dest, 			   Operand2 const &op2);
+	void MOVW(ARMReg dest, 			   Operand2 const &op2);
+	void STR (ARMReg dest, ARMReg src, Operand2 const &op2);
+	void STRB(ARMReg dest, ARMReg src, Operand2 const &op2);
 
 	
 	// Strange call wrappers.
@@ -235,13 +252,13 @@ public:
 
 	#define DECLARE_IMPORT(x)
 
-};  // class XEmitter
+};  // class ARMXEmitter
 
 
 // Everything that needs to generate X86 code should inherit from this.
 // You get memory management for free, plus, you can use all the MOV etc functions without
 // having to prefix them with gen-> or something similar.
-class XCodeBlock : public XEmitter
+class XCodeBlock : public ARMXEmitter
 {
 protected:
 	u32 *region;
