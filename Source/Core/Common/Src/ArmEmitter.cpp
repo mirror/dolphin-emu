@@ -58,10 +58,10 @@ const u32 *ARMXEmitter::AlignCodePage()
 	ReserveCodeSpace((-(s32)code) & 4095);
 	return code;
 }
+
 void ARMXEmitter::Flush()
 {
-	// Actual flush function doesn't work.
-	SLEEP(1);
+	__clear_cache (startcode, code);
 }
 void ARMXEmitter::SetCC(CCFlags cond)
 {
@@ -86,7 +86,10 @@ void ARMXEmitter::YIELD()
 
 void ARMXEmitter::BL(const void *fnptr)
 {
-	u32 distance = (u32)fnptr - (u32(code) + 4);
+	s32 distance = (s32)fnptr - (s32(code) + 8);
+        _assert_msg_(DYNA_REC, distance < -33554432
+                     || distance >=  33554432,
+                     "BL out of range (%p calls %p)", code, fnptr);
 	Write32(condition | 0x0B000000 | (distance >> 2 & 0x00FFFFFF));
 }
 
