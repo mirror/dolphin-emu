@@ -104,8 +104,8 @@ struct Operand2
 	}
 	Operand2(u16 imm)
 	{
-		encoding = ( (imm & 0xF000) << 4) | (imm & 0x0FFF);
-		size = 16;
+			encoding = ( (imm & 0xF000) << 4) | (imm & 0x0FFF);
+			size = 16;
 	}
 	Operand2(ARMReg base, ShiftType type = LSL, u8 shift = 0)
 	{
@@ -164,7 +164,8 @@ private:
 
 	void WriteDataOp(u32 op, ARMReg dest, ARMReg src, Operand2 const &op2);
 	void WriteDataOp(u32 op, ARMReg dest, ARMReg src);
-	void WriteStoreOp(u32 op, ARMReg dest, Operand2 const &op2);
+	void WriteMoveOp(u32 op, ARMReg dest, Operand2 const &op2);
+	void WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 const &op2);
 
 protected:
 	inline void Write32(u32 value) {*code++ = value;}
@@ -198,6 +199,7 @@ public:
 #endif
 
 	void BL(const void *fnptr);
+	void BLX(ARMReg src);
 	void PUSH(const int num, ...);
 	void POP(const int num, ...);
 	
@@ -236,6 +238,8 @@ public:
 	// Memory load/store operations
 	void MOVT(ARMReg dest, 			   Operand2 const &op2);
 	void MOVW(ARMReg dest, 			   Operand2 const &op2);
+	void LDR (ARMReg dest, ARMReg src, Operand2 const &op2);
+	void LDRB(ARMReg dest, ARMReg src, Operand2 const &op2);
 	void STR (ARMReg dest, ARMReg src, Operand2 const &op2);
 	void STRB(ARMReg dest, ARMReg src, Operand2 const &op2);
 

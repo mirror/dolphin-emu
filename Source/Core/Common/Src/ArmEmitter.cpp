@@ -62,6 +62,7 @@ const u32 *ARMXEmitter::AlignCodePage()
 void ARMXEmitter::Flush()
 {
 	__clear_cache (startcode, code);
+	SLEEP(0);
 }
 void ARMXEmitter::SetCC(CCFlags cond)
 {
@@ -91,6 +92,10 @@ void ARMXEmitter::BL(const void *fnptr)
                      || distance >=  33554432,
                      "BL out of range (%p calls %p)", code, fnptr);
 	Write32(condition | 0x0B000000 | (distance >> 2 & 0x00FFFFFF));
+}
+void ARMXEmitter::BLX(ARMReg src)
+{
+	Write32(condition | 0x12FFF3 | src);
 }
 
 void ARMXEmitter::PUSH(const int num, ...)
@@ -168,21 +173,22 @@ void ARMXEmitter::MVN (ARMReg dest,             Operand2 const &op2) { WriteData
 void ARMXEmitter::MVNS(ARMReg dest,             Operand2 const &op2) { WriteDataOp(31, dest, R0 , op2);}
 
 // Memory Load/Store operations
-void ARMXEmitter::WriteStoreOp(u32 op, ARMReg dest, Operand2 const &op2)
+void ARMXEmitter::WriteMoveOp(u32 op, ARMReg dest, Operand2 const &op2)
 {
 	assert(op2.size == 16);
 	Write32(condition | (op << 20) | (dest << 12) | op2.encoding);
 }
-void ARMXEmitter::MOVT(ARMReg dest, 			Operand2 const &op2) { WriteStoreOp( 52, dest, op2);}
-void ARMXEmitter::MOVW(ARMReg dest, 			Operand2 const &op2) { WriteStoreOp( 48, dest, op2);}
-void ARMXEmitter::STR (ARMReg dest, ARMReg src, Operand2 const &op2)
+void ARMXEmitter::MOVT(ARMReg dest, 			Operand2 const &op2) { WriteMoveOp( 52, dest, op2);}
+void ARMXEmitter::MOVW(ARMReg dest, 			Operand2 const &op2) { WriteMoveOp( 48, dest, op2);}
+
+void ARMXEmitter::WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 const &op2)
 {
-	Write32(condition | (64 << 20) | (dest << 16) | (src << 12) | (op2.encoding & 0x00000FFF));
+	Write32(condition | (op << 20) | (dest << 16) | (src << 12) | (op2.encoding & 0x00000FFF));
 }
-void ARMXEmitter::STRB (ARMReg dest, ARMReg src, Operand2 const &op2)
-{
-	Write32(condition | (68 << 20) | (dest << 16) | (src << 12) | (op2.encoding & 0x00000FFF));
-}
+void ARMXEmitter::STR (ARMReg dest, ARMReg src, Operand2 const &op) { WriteStoreOp(0x40, dest, src, op);}
+void ARMXEmitter::STRB(ARMReg dest, ARMReg src, Operand2 const &op) { WriteStoreOp(0x44, dest, src, op);}
+void ARMXEmitter::LDR (ARMReg dest, ARMReg src, Operand2 const &op) { WriteStoreOp(0x41, dest, src, op);}
+void ARMXEmitter::LDRB(ARMReg dest, ARMReg src, Operand2 const &op) { WriteStoreOp(0x45, dest, src, op);}
 // helper routines for setting pointers
 void ARMXEmitter::CallCdeclFunction3(void* fnptr, u32 arg0, u32 arg1, u32 arg2)
 {
