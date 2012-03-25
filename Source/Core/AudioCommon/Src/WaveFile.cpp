@@ -15,28 +15,27 @@
 // Official SVN repository and contact information can be found at
 // http://code.google.com/p/dolphin-emu/
 
+#include <algorithm>
+
 #include "Common.h"
 #include "WaveFile.h"
 #include "../../Core/Src/ConfigManager.h"
 
-enum {BUF_SIZE = 32*1024};
+u32 const BUF_SIZE = 32 * 1024;
 
 WaveFileWriter::WaveFileWriter()
 {
-	conv_buffer = 0;
 	skip_silence = false;
 }
 
 WaveFileWriter::~WaveFileWriter()
 {
-	delete [] conv_buffer;
 	Stop();
 }
 
 bool WaveFileWriter::Start(const char *filename, unsigned int HLESampleRate)
 {
-	if (!conv_buffer)
-		conv_buffer = new short[BUF_SIZE];
+	conv_buffer.resize(BUF_SIZE);
 
 	// Check if the file is already open
 	if (file)
@@ -119,7 +118,7 @@ void WaveFileWriter::AddStereoSamplesBE(const short *sample_data, int count)
 	if (!file)
 		PanicAlertT("WaveFileWriter - file not open.");
 
-	if (count > BUF_SIZE * 2)
+	if (count * 2 > BUF_SIZE)
 		PanicAlert("WaveFileWriter - buffer too small (count = %i).", count);
 
 	if (skip_silence) 
@@ -132,9 +131,9 @@ void WaveFileWriter::AddStereoSamplesBE(const short *sample_data, int count)
 			return;
 	}
 
-	for (int i = 0; i < count * 2; i++)
-		conv_buffer[i] = Common::swap16((u16)sample_data[i]);
+	// gah, stupid overloads
+	std::transform(sample_data, sample_data + (count * 2), conv_buffer.begin(), (u16(&)(u16))Common::swap16);
 
-	file.WriteBytes(conv_buffer, count * 4);
+	file.WriteArray(conv_buffer.data(), count * 2);
 	audio_size += count * 4;
 }

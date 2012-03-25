@@ -28,6 +28,8 @@
 #ifndef _WAVEFILE_H_
 #define _WAVEFILE_H_
 
+#include <vector>
+
 #include "FileUtil.h"
 
 class WaveFileWriter
@@ -35,7 +37,7 @@ class WaveFileWriter
 	File::IOFile file;
 	bool skip_silence;
 	u32 audio_size;
-	short *conv_buffer;
+	std::vector<short> conv_buffer;
 	void Write(u32 value);
 	void Write4(const char *ptr);
 
