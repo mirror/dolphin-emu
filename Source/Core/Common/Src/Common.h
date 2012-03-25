@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <memory>
 
 // SVN version number
 extern const char *scm_rev_str;
@@ -171,5 +172,22 @@ enum EMUSTATE_CHANGE
 	EMUSTATE_CHANGE_PAUSE,
 	EMUSTATE_CHANGE_STOP
 };
+
+// Bochs includes Common.h, this can be removed if that is fixed
+#if defined(_WIN32) || defined(__GXX_EXPERIMENTAL_CXX0X__)
+
+template<typename T>
+std::unique_ptr<T> make_unique()
+{
+	return std::unique_ptr<T>(new T());
+}
+
+template<typename T, typename Arg>
+std::unique_ptr<T> make_unique(Arg&& arg)
+{
+	return std::unique_ptr<T>(new T(std::forward<Arg>(arg)));
+}
+
+#endif
 
 #endif // _COMMON_H_
