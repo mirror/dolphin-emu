@@ -1226,7 +1226,7 @@ void CConfigMain::NANDRootChanged(wxFileDirPickerEvent& WXUNUSED (event))
 // GFX backend selection
 void CConfigMain::OnSelectionChanged(wxCommandEvent& ev)
 {
-	g_video_backend = g_available_video_backends[ev.GetInt()];
+	g_video_backend = g_available_video_backends[ev.GetInt()].get();
 	SConfig::GetInstance().m_LocalCoreStartupParameter.m_strVideoBackend = g_video_backend->GetName();
 }
 

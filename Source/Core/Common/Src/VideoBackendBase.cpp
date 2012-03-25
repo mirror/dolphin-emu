@@ -25,7 +25,7 @@
 #include "../../../Plugins/Plugin_VideoOGL/Src/VideoBackend.h"
 #include "../../../Plugins/Plugin_VideoSoftware/Src/VideoBackend.h"
 
-std::vector<VideoBackend*> g_available_video_backends;
+std::vector<std::unique_ptr<VideoBackend>> g_available_video_backends;
 VideoBackend* g_video_backend = NULL;
 
 #ifdef _WIN32
@@ -48,28 +48,24 @@ static bool IsGteVista()
 void VideoBackend::PopulateList()
 {
 #ifdef _WIN32
-	g_available_video_backends.push_back(new DX9::VideoBackend);
+	g_available_video_backends.push_back(make_unique<DX9::VideoBackend>());
 	if (IsGteVista())
-		g_available_video_backends.push_back(new DX11::VideoBackend);
+		g_available_video_backends.push_back(make_unique<DX11::VideoBackend>());
 #endif
-	g_available_video_backends.push_back(new OGL::VideoBackend);
-	g_available_video_backends.push_back(new SW::VideoSoftware);
+	g_available_video_backends.push_back(make_unique<OGL::VideoBackend>());
+	g_available_video_backends.push_back(make_unique<SW::VideoSoftware>());
 
-	g_video_backend = g_available_video_backends.front();
+	g_video_backend = g_available_video_backends.front().get();
 }
 
 void VideoBackend::ClearList()
 {
-	while (!g_available_video_backends.empty())
-	{
-		delete g_available_video_backends.back();
-		g_available_video_backends.pop_back();
-	}
+	g_available_video_backends.clear();
 }
 
 void VideoBackend::ActivateBackend(const std::string& name)
 {
-	for (std::vector<VideoBackend*>::const_iterator it = g_available_video_backends.begin(); it != g_available_video_backends.end(); ++it)
+	for (auto it = g_available_video_backends.begin(); it != g_available_video_backends.end(); ++it)
 		if (name == (*it)->GetName())
-			g_video_backend = *it;
+			g_video_backend = (*it).get();
 }

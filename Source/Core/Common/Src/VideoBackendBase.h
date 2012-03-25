@@ -133,7 +133,7 @@ public:
 	static void ActivateBackend(const std::string& name);
 };
 
-extern std::vector<VideoBackend*> g_available_video_backends;
+extern std::vector<std::unique_ptr<VideoBackend>> g_available_video_backends;
 extern VideoBackend* g_video_backend;
 
 // inherited by dx9/dx11/ogl backends
