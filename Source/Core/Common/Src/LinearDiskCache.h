@@ -87,7 +87,7 @@ public:
 			// good header, read some key/value pairs
 			K key;
 
-			V *value = NULL;
+			std::vector<V> value;
 			u32 value_size;
 			u32 entry_number;
 
@@ -99,16 +99,15 @@ public:
 				if (next_extent > file_size)
 					break;
 
-				delete[] value;
-				value = new V[value_size];
+				value.resize(value_size);
 
 				// read key/value and pass to reader
 				if (Read(&key) &&
-					Read(value, value_size) && 
+					Read(value.data(), value_size) && 
 					Read(&entry_number) &&
 					entry_number == m_num_entries+1)
  				{
-					reader.Read(key, value, value_size);
+					reader.Read(key, value.data(), value_size);
 				}
 				else
 				{
@@ -121,7 +120,6 @@ public:
 			m_file.seekp(last_pos);
 			m_file.clear();
 
-			delete[] value;
 			return m_num_entries;
 		}
 
