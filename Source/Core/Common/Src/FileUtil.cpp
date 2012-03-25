@@ -727,12 +727,13 @@ bool ReadFileToString(bool text_file, const char *filename, std::string &str)
 	FILE *f = fopen(filename, text_file ? "r" : "rb");
 	if (!f)
 		return false;
-	size_t len = (size_t)GetSize(f);
-	char *buf = new char[len + 1];
-	buf[fread(buf, 1, len, f)] = 0;
-	str = std::string(buf, len);
+
+	std::size_t const len = (size_t)GetSize(f);
+	std::vector<char> buf(len);
+	fread(buf.data(), 1, len, f);
 	fclose(f);
-	delete [] buf;
+
+	str.assign(buf.begin(), buf.end());
 	return true;
 }
 
