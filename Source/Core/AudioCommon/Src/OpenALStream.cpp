@@ -27,45 +27,35 @@
 //
 bool OpenALStream::Start()
 {
-	ALDeviceList *pDeviceList = NULL;
-	ALCcontext *pContext = NULL;
-	ALCdevice *pDevice = NULL;
-	bool bReturn = false;
-
-	pDeviceList = new ALDeviceList();
-	if ((pDeviceList) && (pDeviceList->GetNumDevices()))
+	ALDeviceList pDeviceList;
+	if (pDeviceList.GetNumDevices())
 	{
-		char *defDevName = pDeviceList-> \
-			GetDeviceName(pDeviceList->GetDefaultDevice());
-		pDevice = alcOpenDevice(defDevName);
-		if (pDevice)
+		const char* const defDevName = pDeviceList.GetDeviceName(pDeviceList.GetDefaultDevice());
+		if (ALCdevice* const pDevice = alcOpenDevice(defDevName))
 		{
-			pContext = alcCreateContext(pDevice, NULL);
-			if (pContext)
+			if (ALCcontext* const pContext = alcCreateContext(pDevice, NULL))
 			{
 				alcMakeContextCurrent(pContext);
 				thread = std::thread(std::mem_fun(&OpenALStream::SoundLoop), this);
-				bReturn = true;
+				return true;
 			}
 			else
 			{
 				alcCloseDevice(pDevice);
-				PanicAlertT("OpenAL: can't create context "
-					"for device %s", defDevName);
+				PanicAlertT("OpenAL: can't create context for device %s", defDevName);
 			}
 		}
 		else
 		{
 			PanicAlertT("OpenAL: can't open device %s", defDevName);
 		}
-		delete pDeviceList;
 	}
 	else
 	{
 		PanicAlertT("OpenAL: can't find sound devices");
 	}
 
-	return bReturn;
+	return false;
 }
 
 void OpenALStream::Stop()
