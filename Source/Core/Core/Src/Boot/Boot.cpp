@@ -15,6 +15,7 @@
 // Official SVN repository and contact information can be found at
 // http://code.google.com/p/dolphin-emu/
 
+#include <array>
 
 #include "Common.h" // Common
 #include "StringUtil.h"
@@ -233,15 +234,15 @@ bool CBoot::BootUp()
 
 		DVDInterface::SetDiscInside(VolumeHandler::IsValid());
 
+		{
 		u32 _TMDsz = 0x208;
-		u8* _pTMD = new u8[_TMDsz];
-		pVolume->GetTMD(_pTMD, &_TMDsz);
+		std::array<u8, 0x208> _pTMD;
+		pVolume->GetTMD(_pTMD.data(), &_TMDsz);
 		if (_TMDsz)
 		{
-			WII_IPC_HLE_Interface::ES_DIVerify(_pTMD, _TMDsz);
+			WII_IPC_HLE_Interface::ES_DIVerify(_pTMD.data(), _TMDsz);
 		}
-		delete []_pTMD;
-
+		}
 
 		_StartupPara.bWii = VolumeHandler::IsWii();
 

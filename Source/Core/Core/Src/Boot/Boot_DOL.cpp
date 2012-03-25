@@ -15,6 +15,8 @@
 // Official SVN repository and contact information can be found at
 // http://code.google.com/p/dolphin-emu/
 
+#include <algorithm>
+
 #include "Boot_DOL.h"
 #include "FileUtil.h"
 #include "../HW/Memmap.h"
@@ -30,30 +32,14 @@ CDolLoader::CDolLoader(const char* _szFilename)
 	: m_isWii(false)
 {
 	const u64 size = File::GetSize(_szFilename);
-	u8* const tmpBuffer = new u8[(size_t)size];
+	std::vector<u8> tmpBuffer((size_t)size);
 
 	{
 	File::IOFile pStream(_szFilename, "rb");	
-	pStream.ReadBytes(tmpBuffer, (size_t)size);
+	pStream.ReadBytes(tmpBuffer.data(), (size_t)size);
 	}
 
-	Initialize(tmpBuffer, (u32)size);
-	delete[] tmpBuffer;
-}
-
-CDolLoader::~CDolLoader()
-{
-	for (int i = 0; i < DOL_NUM_TEXT; i++)
-	{
-		delete [] text_section[i];
-		text_section[i] = NULL;
-	}
-
-	for (int i = 0; i < DOL_NUM_DATA; i++)
-	{
-		delete [] data_section[i];
-		data_section[i] = NULL;
-	}
+	Initialize(tmpBuffer.data(), (u32)size);
 }
 
 void CDolLoader::Initialize(u8* _pBuffer, u32 _Size)
@@ -64,11 +50,6 @@ void CDolLoader::Initialize(u8* _pBuffer, u32 _Size)
 	u32* p = (u32*)&m_dolheader;
 	for (size_t i = 0; i < (sizeof(SDolHeader)/sizeof(u32)); i++)	
 		p[i] = Common::swap32(p[i]);
-
-	for (int i = 0; i < DOL_NUM_TEXT; i++)
-		text_section[i] = NULL;
-	for (int i = 0; i < DOL_NUM_DATA; i++)
-		data_section[i] = NULL;
 	
 	u32 HID4_pattern = 0x7c13fba6;
 	u32 HID4_mask = 0xfc1fffff;
@@ -77,11 +58,12 @@ void CDolLoader::Initialize(u8* _pBuffer, u32 _Size)
 	{
 		if (m_dolheader.textOffset[i] != 0)
 		{
-			text_section[i] = new u8[m_dolheader.textSize[i]];
-			memcpy(text_section[i], _pBuffer + m_dolheader.textOffset[i], m_dolheader.textSize[i]);
+			auto const data = _pBuffer + m_dolheader.textOffset[i];
+			text_section[i].assign(data, data + m_dolheader.textSize[i]);
+			
 			for (unsigned int j = 0; j < (m_dolheader.textSize[i]/sizeof(u32)); j++)
 			{
-				u32 word = Common::swap32(((u32*)text_section[i])[j]);
+				u32 word = Common::swap32(((u32*)text_section[i].data())[j]);
 				if ((word & HID4_mask) == HID4_pattern)
 				{
 					m_isWii = true;
@@ -95,8 +77,8 @@ void CDolLoader::Initialize(u8* _pBuffer, u32 _Size)
 	{
 		if (m_dolheader.dataOffset[i] != 0)
 		{
-			data_section[i] = new u8[m_dolheader.dataSize[i]];
-			memcpy(data_section[i], _pBuffer + m_dolheader.dataOffset[i], m_dolheader.dataSize[i]);
+			auto const data = _pBuffer + m_dolheader.dataOffset[i];
+			data_section[i].assign(data, data + m_dolheader.dataSize[i]);
 		}
 	}
 }

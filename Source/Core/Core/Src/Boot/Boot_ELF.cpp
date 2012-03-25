@@ -28,17 +28,16 @@ bool CBoot::IsElfWii(const char *filename)
 	   there is no need for another check, just read the file right away */
 
 	const u64 filesize = File::GetSize(filename);
-	u8 *const mem = new u8[(size_t)filesize];
+	std::vector<u8> mem((size_t)filesize);
 
 	{
 	File::IOFile f(filename, "rb");
-	f.ReadBytes(mem, (size_t)filesize);
+	f.ReadBytes(mem.data(), (size_t)filesize);
 	}
 
-	ElfReader reader(mem);
+	ElfReader reader(mem.data());
 	// TODO: Find a more reliable way to distinguish.
 	bool isWii = reader.GetEntryPoint() >= 0x80004000;
-	delete[] mem;
 	
     return isWii;
 }
@@ -47,14 +46,14 @@ bool CBoot::IsElfWii(const char *filename)
 bool CBoot::Boot_ELF(const char *filename)
 {
 	const u64 filesize = File::GetSize(filename);
-	u8 *mem = new u8[(size_t)filesize];
+	std::vector<u8> mem((size_t)filesize);
 
 	{
 	File::IOFile f(filename, "rb");
-	f.ReadBytes(mem, (size_t)filesize);
+	f.ReadBytes(mem.data(), (size_t)filesize);
 	}
 	
-	ElfReader reader(mem);
+	ElfReader reader(mem.data());
 	reader.LoadInto(0x80000000);
 	if (!reader.LoadSymbols())
 	{
@@ -67,7 +66,6 @@ bool CBoot::Boot_ELF(const char *filename)
 	}
 	
 	PC = reader.GetEntryPoint();
-	delete[] mem;
 
     return true;
 }

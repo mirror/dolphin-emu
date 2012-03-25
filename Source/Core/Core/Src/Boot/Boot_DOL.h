@@ -18,6 +18,8 @@
 #ifndef _BOOT_DOL_H
 #define _BOOT_DOL_H
 
+#include <vector>
+
 #include "Common.h"
 
 class CDolLoader
@@ -25,7 +27,6 @@ class CDolLoader
 public:
 	CDolLoader(const char* _szFilename);
 	CDolLoader(u8* _pBuffer, u32 _Size);
-	~CDolLoader();
 
 	bool IsWii()		{ return m_isWii; }
 	u32 GetEntryPoint()	{ return m_dolheader.entryPoint; }
@@ -58,8 +59,8 @@ private:
 	};
 	SDolHeader m_dolheader;
 
-	u8 *data_section[DOL_NUM_DATA];
-	u8 *text_section[DOL_NUM_TEXT];
+	std::vector<u8> data_section[DOL_NUM_DATA];
+	std::vector<u8> text_section[DOL_NUM_TEXT];
 
 	bool m_isWii;
 
