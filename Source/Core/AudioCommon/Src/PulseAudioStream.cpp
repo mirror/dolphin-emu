@@ -22,20 +22,14 @@
 
 #include "PulseAudioStream.h"
 
-#define BUFFER_SIZE 4096
-#define BUFFER_SIZE_BYTES (BUFFER_SIZE * 4)
+u32 const BUFFER_SIZE = 4096;
+u32 const BUFFER_SIZE_BYTES = BUFFER_SIZE * 4;
+u32 const BUFFER_SIZE_SHORT = BUFFER_SIZE_BYTES / sizeof(s16);
 
 PulseAudio::PulseAudio(CMixer *mixer)
-	: SoundStream(mixer), thread_running(false), mainloop(NULL)
+	: SoundStream(mixer), mix_buffer(BUFFER_SIZE_SHORT), thread_running(false), mainloop(NULL)
 	, context(NULL), stream(NULL), iVolume(100)
-{
-	mix_buffer = new u8[BUFFER_SIZE_BYTES];
-}
-
-PulseAudio::~PulseAudio()
-{
-	delete [] mix_buffer;
-}
+{}
 
 bool PulseAudio::Start()
 {
@@ -65,8 +59,8 @@ void PulseAudio::SoundLoop()
 	while (thread_running)
 	{
 		int frames_to_deliver = 512;
-		m_mixer->Mix((short *)mix_buffer, frames_to_deliver);
-		if (!Write(mix_buffer, frames_to_deliver * 4))
+		m_mixer->Mix(mix_buffer.data(), frames_to_deliver);
+		if (!Write(mix_buffer.data(), frames_to_deliver * 4))
 			ERROR_LOG(AUDIO, "PulseAudio failure writing data");
 	}
 	PulseShutdown();

@@ -28,12 +28,11 @@ const u32 BUFFER_SIZE_SHORT = BUFFER_SIZE_BYTES / sizeof(u16);
 
 AlsaSound::AlsaSound(CMixer *mixer)
 	: SoundStream(mixer)
+	, mix_buffer(BUFFER_SIZE_SHORT)
 	, thread_data(0)
 	, handle(NULL)
 	, frames_to_deliver(FRAME_COUNT_MIN)
-{
-	mix_buffer.resize(BUFFER_SIZE_SHORT);
-}
+{}
 
 bool AlsaSound::Start()
 {

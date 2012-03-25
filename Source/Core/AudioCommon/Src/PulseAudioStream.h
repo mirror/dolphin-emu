@@ -32,7 +32,6 @@ class PulseAudio : public SoundStream
 #if defined(HAVE_PULSEAUDIO) && HAVE_PULSEAUDIO
 public:
 	PulseAudio(CMixer *mixer);
-	virtual ~PulseAudio();
 
 	virtual bool Start();
 	virtual void Stop(); 
@@ -54,7 +53,7 @@ private:
 	static void StreamStateCB(pa_stream *s, void * userdata);
 	static void StreamWriteCB(pa_stream *s, size_t length, void *userdata);
 
-	u8 *mix_buffer;
+	std::vector<s16> mix_buffer;
 	std::thread thread;
 	volatile bool thread_running;
 
