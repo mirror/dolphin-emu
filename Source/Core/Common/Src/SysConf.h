@@ -51,15 +51,15 @@ struct SSysConfEntry
 	u8 nameLength;
 	char name[32];
 	u16 dataLength;
-	u8* data;
+	std::vector<u8> data;
 
 	template<class T>
-	T GetData() { return *(T*)data; }
+	T GetData() { return *(T*)data.data(); }
 	bool GetArrayData(u8* dest, u16 destSize)
 	{
 		if (dest && destSize >= dataLength)
 		{
-			memcpy(dest, data, dataLength);
+			std::copy(data.begin(), data.end(), dest);
 			return true;
 		}
 		return false;
@@ -68,7 +68,7 @@ struct SSysConfEntry
 	{
 		if (buffer)
 		{
-			memcpy(data, buffer, min<u16>(bufferSize, dataLength));
+			std::copy(buffer, buffer + min<u16>(bufferSize, data.size()), data.begin());
 			return true;
 		}
 		return false;
@@ -168,7 +168,7 @@ public:
 			return false;
 		}
 
-		*(T*)index->data = newValue;
+		*(T*)index->data.data() = newValue;
 		return true;
 	}
 
