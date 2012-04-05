@@ -88,10 +88,10 @@ void ARMXEmitter::YIELD()
 void ARMXEmitter::BL(const void *fnptr)
 {
 	s32 distance = (s32)fnptr - (s32(code) + 8);
-        _assert_msg_(DYNA_REC, distance < -33554432
-                     || distance >=  33554432,
+        _assert_msg_(DYNA_REC, distance > -33554432
+                     && distance <=  33554432,
                      "BL out of range (%p calls %p)", code, fnptr);
-	Write32(condition | 0x0B000000 | (distance >> 2 & 0x00FFFFFF));
+	Write32(condition | 0x0B000000 | ((distance >> 2) & 0x00FFFFFF));
 }
 void ARMXEmitter::BLX(ARMReg src)
 {
