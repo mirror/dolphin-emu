@@ -95,7 +95,7 @@ void ARMXEmitter::BL(const void *fnptr)
 }
 void ARMXEmitter::BLX(ARMReg src)
 {
-	Write32(condition | 0x12FFF3 | src);
+	Write32(condition | 0x12FFF30 | src);
 }
 
 void ARMXEmitter::PUSH(const int num, ...)

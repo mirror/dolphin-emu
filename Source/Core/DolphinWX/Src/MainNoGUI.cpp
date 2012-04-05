@@ -271,6 +271,13 @@ void X11_MainLoop()
 	Core::Stop();
 }
 #endif
+extern "C"
+{
+	void Test()
+	{
+		printf("Test\n");
+	}
+}
 int main(int argc, char* argv[])
 {
 #ifdef _M_ARM
@@ -281,24 +288,19 @@ int main(int argc, char* argv[])
 
 	using namespace Gen;
 	Gen::ARMXEmitter emit(m_compiledCode);
-	static u32 value = 0;
-	static u32 pointer = (u32)&value;
-	Operand2 tmp(pointer);
-	Operand2 tmp2(pointer >> 16);
-	Operand2 tmp8(0x256);
-	emit.MOVW(R10, tmp);
-	emit.MOVT(R10, tmp2);
-	emit.MOVW(R9, tmp8);
-	emit.STR(R10, R9, 0);
-
-	emit.PUSH(2, _IP, _LR);
-	emit.POP(2, _LR, _IP);
+	static u32 pointer = (u32)Test;
+	Operand2 LowPointer(pointer);
+	Operand2 HighPointer((u16)(pointer >> 16));
+	
+	emit.MOVW(R8, LowPointer); emit.MOVT(R8, HighPointer);
+	
+	emit.BLX(R8);
 	
 	emit.MOV(_PC, _LR);
 
 	emit.Flush();
 	((void (*)())(void*)m_compiledCode)();
-	printf("Value: %d\n", value);
+	
 #endif
 
 #ifdef __APPLE__
