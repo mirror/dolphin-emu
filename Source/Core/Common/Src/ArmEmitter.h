@@ -242,7 +242,8 @@ public:
 	void LDRB(ARMReg dest, ARMReg src, Operand2 const &op2);
 	void STR (ARMReg dest, ARMReg src, Operand2 const &op2);
 	void STRB(ARMReg dest, ARMReg src, Operand2 const &op2);
-
+    void STMFD(ARMReg dest, bool WriteBack, const int Regnum, ...);
+    void LDMFD(ARMReg dest, bool WriteBack, const int Regnum, ...);
 	
 	// Strange call wrappers.
 	void CallCdeclFunction3(void* fnptr, u32 arg0, u32 arg1, u32 arg2);
