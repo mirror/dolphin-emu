@@ -192,11 +192,11 @@ void ARMXEmitter::LDRB(ARMReg dest, ARMReg src, Operand2 const &op) { WriteStore
 
 void ArmXEmitter::WriteRegStoreOp(u32 op, ARMReg dest, bool WriteBack, u16 RegList);
 {
-    Write32(condition | (op << 20) | (WriteBack << 21) | (dest << 16) | RegList);
+	Write32(condition | (op << 20) | (WriteBack << 21) | (dest << 16) | RegList);
 }
 void ARMXEmitter::STMFD(ARMReg dest, bool WriteBack, const int Regnum, ...)
 {
-    _assert_msg_(DYNA_REC, Regnum > 1, "Doesn't support only one register");
+	_assert_msg_(DYNA_REC, Regnum > 1, "Doesn't support only one register");
 	u16 RegList = 0;
 	u8 Reg;
 	int i;
@@ -208,11 +208,11 @@ void ARMXEmitter::STMFD(ARMReg dest, bool WriteBack, const int Regnum, ...)
 		RegList |= (1 << Reg);
 	}
 	va_end(vl);
-    WriteRegStoreOp(0x90, dest, Writeback, RegList);
+	WriteRegStoreOp(0x90, dest, Writeback, RegList);
 }
 void ARMXEmitter::LDMFD(ARMReg dest, bool WriteBack, const int Regnum, ...)
 {
-    _assert_msg_(DYNA_REC, Regnum > 1, "Doesn't support only one register");
+	_assert_msg_(DYNA_REC, Regnum > 1, "Doesn't support only one register");
 	u16 RegList = 0;
 	u8 Reg;
 	int i;
@@ -224,7 +224,7 @@ void ARMXEmitter::LDMFD(ARMReg dest, bool WriteBack, const int Regnum, ...)
 		RegList |= (1 << Reg);
 	}
 	va_end(vl);
-    WriteRegStoreOp(0x89, dest, Writeback, RegList);
+	WriteRegStoreOp(0x89, dest, Writeback, RegList);
 }
 // helper routines for setting pointers
 void ARMXEmitter::CallCdeclFunction3(void* fnptr, u32 arg0, u32 arg1, u32 arg2)
