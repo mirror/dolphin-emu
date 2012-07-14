@@ -34,12 +34,14 @@ set(SRCS	Src/BreakPoints.cpp
 
 if(_M_ARM) #ARM
 	set(SRCS	${SRCS}
-				Src/ArmEmitter.cpp)
+				Src/ArmEmitter.cpp
+				Src/ArmABI.cpp
+				Src/ThunkArm.cpp)
 else()
 	if(NOT _M_GENERIC) #X86
 		set(SRCS	${SRCS}
 					Src/FPURoundModeX86.cpp
-					Src/Thunk.cpp
+					Src/ThunkX86.cpp
 					)
 	endif()
 endif()

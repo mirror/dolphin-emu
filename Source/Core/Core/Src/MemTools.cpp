@@ -52,7 +52,7 @@
 #include "MemTools.h"
 #include "HW/Memmap.h"
 #include "PowerPC/PowerPC.h"
-#include "PowerPC/JitInterface.cpp"
+#include "PowerPC/JitInterface.h"
 #include "x64Analyzer.h"
 
 namespace EMM

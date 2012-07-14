@@ -17,13 +17,13 @@
 
 // WARNING - THIS LIBRARY IS NOT THREAD SAFE!!!
 
-#ifndef _DOLPHIN_INTEL_CODEGEN_
-#define _DOLPHIN_INTEL_CODEGEN_
+#ifndef _DOLPHIN_ARM_CODEGEN_
+#define _DOLPHIN_ARM_CODEGEN_
 
 #include "Common.h"
 #include "MemoryUtil.h"
 
-namespace Gen
+namespace ArmGen
 {
 
 enum ARMReg
@@ -166,6 +166,8 @@ private:
 	void WriteDataOp(u32 op, ARMReg dest, ARMReg src);
 	void WriteMoveOp(u32 op, ARMReg dest, Operand2 const &op2);
 	void WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 const &op2);
+	void WriteRegStoreOp(u32 op, ARMReg dest, bool WriteBack, u16 RegList);
+
 
 protected:
 	inline void Write32(u32 value) {*code++ = value;}
@@ -245,6 +247,15 @@ public:
 	void STMFD(ARMReg dest, bool WriteBack, const int Regnum, ...);
 	void LDMFD(ARMReg dest, bool WriteBack, const int Regnum, ...);
 	
+	// Utility functions
+	// The difference between this and CALL is that this aligns the stack
+	// where appropriate.
+	void ARMABI_CallFunction(void *func);
+	void ARMABI_PushAllCalleeSavedRegsAndAdjustStack(); 
+	void ARMABI_PopAllCalleeSavedRegsAndAdjustStack(); 
+	void ARMABI_MOVIMM32(ARMReg reg, u32 val);
+
+
 	// Strange call wrappers.
 	void CallCdeclFunction3(void* fnptr, u32 arg0, u32 arg1, u32 arg2);
 	void CallCdeclFunction4(void* fnptr, u32 arg0, u32 arg1, u32 arg2, u32 arg3);
@@ -263,15 +274,15 @@ public:
 // Everything that needs to generate X86 code should inherit from this.
 // You get memory management for free, plus, you can use all the MOV etc functions without
 // having to prefix them with gen-> or something similar.
-class XCodeBlock : public ARMXEmitter
+class ARMXCodeBlock : public ARMXEmitter
 {
 protected:
 	u32 *region;
 	size_t region_size;
 
 public:
-	XCodeBlock() : region(NULL), region_size(0) {}
-	virtual ~XCodeBlock() { if (region) FreeCodeSpace(); }
+	ARMXCodeBlock() : region(NULL), region_size(0) {}
+	virtual ~ARMXCodeBlock() { if (region) FreeCodeSpace(); }
 
 	// Call this before you generate any code.
 	void AllocCodeSpace(int size)

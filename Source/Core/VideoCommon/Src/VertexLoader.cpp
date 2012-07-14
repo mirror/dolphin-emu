@@ -184,9 +184,10 @@ VertexLoader::VertexLoader(const TVtxDesc &vtx_desc, const VAT &vtx_attr)
 	m_VtxDesc = vtx_desc;
 	SetVAT(vtx_attr.g0.Hex, vtx_attr.g1.Hex, vtx_attr.g2.Hex);
 
+
+	CompileVertexTranslator();
 	#ifndef _M_GENERIC
 	AllocCodeSpace(COMPILED_CODE_SIZE);
-	CompileVertexTranslator();
 	WriteProtect();
 	#endif
 }

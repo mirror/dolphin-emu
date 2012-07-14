@@ -271,13 +271,10 @@ void X11_MainLoop()
 	Core::Stop();
 }
 #endif
-extern "C"
-{
-	void Test()
+	void Test2()
 	{
 		printf("Test\n");
 	}
-}
 int main(int argc, char* argv[])
 {
 #ifdef _M_ARM
@@ -287,18 +284,12 @@ int main(int argc, char* argv[])
 		memset(m_compiledCode, 0, COMPILED_CODE_SIZE);
 
 	printf("Start of compiled code: %08x\n", m_compiledCode);
-	using namespace Gen;
-	Gen::ARMXEmitter emit(m_compiledCode);
-	static u32 pointer = (u32)Test;
-	Operand2 LowPointer(pointer);
-	Operand2 HighPointer((u16)(pointer >> 16));
-	printf("Low pointer: %04x, High Pointer: %04x\n", (u16)(pointer & 0x0000FFFF), (u16)(pointer >> 16));
-	emit.MOVW(R8, LowPointer); emit.MOVT(R8, HighPointer);
+	using namespace ArmGen;
+	ARMXEmitter emit(m_compiledCode);
 
-	emit.PUSH(1, _LR);
-	emit.BLX(R8);
-	emit.POP(1, _PC);
-
+	emit.ARMABI_CallFunction((void*)&Test2);
+	emit.ARMABI_CallFunction((void*)&Test2);
+	emit.MOV(_PC, _LR);
 	emit.Flush();
 	((void (*)())(void*)m_compiledCode)();
 #endif

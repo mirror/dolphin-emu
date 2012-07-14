@@ -31,6 +31,11 @@
 #include "Jit64IL/JitIL_Tables.h"
 #endif
 
+#ifdef _M_ARM
+#include "JitArm32/Jit.h"
+#include "JitArm32/JitArm_Tables.h"
+#endif
+
 #include "Profiler.h"
 #include "PPCSymbolDB.h"
 #include "HW/Memmap.h"
@@ -66,6 +71,13 @@ namespace JitInterface
 				break;
 			}
 			#endif
+			#ifdef _M_ARM
+			case 3:
+			{
+				ptr = new JitArm();
+				break;
+			}
+			#endif
 			default:
 			{
 				PanicAlert("Unrecognizable cpu_core: %d", core);
@@ -90,6 +102,13 @@ namespace JitInterface
 			case 2:
 			{
 				JitILTables::InitTables();
+				break;
+			}
+			#endif
+			#ifdef _M_ARM
+			case 3:
+			{
+				JitArmTables::InitTables();
 				break;
 			}
 			#endif

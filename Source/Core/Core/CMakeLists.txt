@@ -198,7 +198,12 @@ if(NOT _M_GENERIC)
 			Src/PowerPC/Jit64/JitRegCache.cpp
 			Src/PowerPC/Jit64/Jit_SystemRegisters.cpp)
 endif()
-
+if(_M_ARM)
+	set(SRCS ${SRCS}
+			Src/PowerPC/JitArm32/Jit.cpp
+			Src/PowerPC/JitArm32/JitAsm.cpp
+			Src/PowerPC/JitArm32/JitArm_Tables.cpp)
+endif()
 if(WIN32)
 	set(SRCS ${SRCS} Src/HW/BBA-TAP/TAP_Win32.cpp Src/stdafx.cpp
 		Src/HW/WiimoteReal/IOWin.cpp)

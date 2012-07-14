@@ -22,7 +22,7 @@
 #include <assert.h>
 #include <stdarg.h>
 
-namespace Gen
+namespace ArmGen
 {
 
 void ARMXEmitter::SetCodePtr(u32 *ptr)
@@ -190,7 +190,7 @@ void ARMXEmitter::STRB(ARMReg dest, ARMReg src, Operand2 const &op) { WriteStore
 void ARMXEmitter::LDR (ARMReg dest, ARMReg src, Operand2 const &op) { WriteStoreOp(0x41, dest, src, op);}
 void ARMXEmitter::LDRB(ARMReg dest, ARMReg src, Operand2 const &op) { WriteStoreOp(0x45, dest, src, op);}
 
-void ArmXEmitter::WriteRegStoreOp(u32 op, ARMReg dest, bool WriteBack, u16 RegList);
+void ARMXEmitter::WriteRegStoreOp(u32 op, ARMReg dest, bool WriteBack, u16 RegList)
 {
 	Write32(condition | (op << 20) | (WriteBack << 21) | (dest << 16) | RegList);
 }
@@ -208,7 +208,7 @@ void ARMXEmitter::STMFD(ARMReg dest, bool WriteBack, const int Regnum, ...)
 		RegList |= (1 << Reg);
 	}
 	va_end(vl);
-	WriteRegStoreOp(0x90, dest, Writeback, RegList);
+	WriteRegStoreOp(0x90, dest, WriteBack, RegList);
 }
 void ARMXEmitter::LDMFD(ARMReg dest, bool WriteBack, const int Regnum, ...)
 {
@@ -224,7 +224,7 @@ void ARMXEmitter::LDMFD(ARMReg dest, bool WriteBack, const int Regnum, ...)
 		RegList |= (1 << Reg);
 	}
 	va_end(vl);
-	WriteRegStoreOp(0x89, dest, Writeback, RegList);
+	WriteRegStoreOp(0x89, dest, WriteBack, RegList);
 }
 // helper routines for setting pointers
 void ARMXEmitter::CallCdeclFunction3(void* fnptr, u32 arg0, u32 arg1, u32 arg2)
