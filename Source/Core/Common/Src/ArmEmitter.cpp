@@ -189,7 +189,10 @@ void ARMXEmitter::STR (ARMReg dest, ARMReg src, Operand2 const &op) { WriteStore
 void ARMXEmitter::STRB(ARMReg dest, ARMReg src, Operand2 const &op) { WriteStoreOp(0x44, dest, src, op);}
 void ARMXEmitter::LDR (ARMReg dest, ARMReg src, Operand2 const &op) { WriteStoreOp(0x41, dest, src, op);}
 void ARMXEmitter::LDRB(ARMReg dest, ARMReg src, Operand2 const &op) { WriteStoreOp(0x45, dest, src, op);}
-
+void ARMXEmitter::LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index)
+{
+	Write32(condition | (0x61 << 20) | (Index << 24) | (base << 16) | (dest << 12) | offset);
+}
 void ARMXEmitter::WriteRegStoreOp(u32 op, ARMReg dest, bool WriteBack, u16 RegList)
 {
 	Write32(condition | (op << 20) | (WriteBack << 21) | (dest << 16) | RegList);

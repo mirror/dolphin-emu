@@ -60,11 +60,14 @@ JitArmAsmRoutineManager asm_routines;
 
 void JitArmAsmRoutineManager::Generate()
 {
-	printf("Generating at: %08x\n", PowerPC::ppcState.pc);
 	enterCode = AlignCode16();
+	
 	ARMABI_CallFunction((void*)&CoreTiming::Advance);
-	ARMABI_MOVIMM32(ARM_PARAM1, PowerPC::ppcState.pc);
+	
+	ARMABI_MOVIMM32(ARM_PARAM1, (u32)&PowerPC::ppcState.pc);
+	LDR(ARM_PARAM1, ARM_PARAM1, R0, false); 
 	ARMABI_CallFunction((void*)&Jit);
+	
 	MOV(_PC, _LR);
 	Flush();
 }

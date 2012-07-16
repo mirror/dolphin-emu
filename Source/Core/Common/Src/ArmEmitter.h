@@ -241,6 +241,7 @@ public:
 	void MOVT(ARMReg dest, 			   Operand2 const &op2);
 	void MOVW(ARMReg dest, 			   Operand2 const &op2);
 	void LDR (ARMReg dest, ARMReg src, Operand2 const &op2);
+	void LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index);
 	void LDRB(ARMReg dest, ARMReg src, Operand2 const &op2);
 	void STR (ARMReg dest, ARMReg src, Operand2 const &op2);
 	void STRB(ARMReg dest, ARMReg src, Operand2 const &op2);

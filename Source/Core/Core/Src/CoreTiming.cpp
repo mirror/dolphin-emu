@@ -457,7 +457,6 @@ void MoveEvents()
 
 void Advance()
 {	
-
 	MoveEvents();		
 
 	int cyclesExecuted = slicelength - downcount;
