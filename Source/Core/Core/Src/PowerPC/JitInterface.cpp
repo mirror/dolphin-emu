@@ -34,6 +34,8 @@
 #ifdef _M_ARM
 #include "JitArm32/Jit.h"
 #include "JitArm32/JitArm_Tables.h"
+#include "JitArm32/ArmInterface.h"
+JitArm* jitarm;
 #endif
 
 #include "Profiler.h"
@@ -50,6 +52,10 @@ namespace JitInterface
 	{
 		if (jit && p.GetMode() == PointerWrap::MODE_READ)
 			jit->GetBlockCache()->ClearSafe();
+		#ifdef _M_ARM
+		if(jitarm && p.GetMode() == PointerWrap::MODE_READ)
+			jitarm->GetBlockCache()->ClearSafe();
+		#endif
 	}
 	CPUCoreBase *InitJitCore(int core)
 	{
@@ -75,6 +81,9 @@ namespace JitInterface
 			case 3:
 			{
 				ptr = new JitArm();
+				jitarm = static_cast<JitArm*>(ptr);
+				ptr->Init();
+				return ptr;
 				break;
 			}
 			#endif
@@ -121,7 +130,11 @@ namespace JitInterface
 	}
 	CPUCoreBase *GetCore()
 	{
+		#ifdef _M_ARM
+		return jitarm;
+		#else
 		return jit;
+		#endif
 	}
 
 	void WriteProfileResults(const char *filename)
@@ -220,6 +233,10 @@ namespace JitInterface
 	// Memory functions
 	u32 Read_Opcode_JIT_Uncached(const u32 _Address)
 	{
+	
+#ifdef _M_ARM
+		return ArmInterface::Read_Opcode_JIT_Uncached(_Address);
+#endif
 		u8* iCache;
 		u32 addr;
 		if (_Address & JIT_ICACHE_VMEM_BIT)
@@ -258,6 +275,9 @@ namespace JitInterface
 
 	u32 Read_Opcode_JIT(u32 _Address)
 	{
+#ifdef _M_ARM
+		return ArmInterface::Read_Opcode_JIT(_Address);
+#endif
 	#ifdef FAST_ICACHE	
 		if (bMMU && !bFakeVMEM && (_Address & Memory::ADDR_MASK_MEM1))
 		{
@@ -283,6 +303,9 @@ namespace JitInterface
 	// The following function is deprecated in favour of FAST_ICACHE
 	u32 Read_Opcode_JIT_LC(const u32 _Address)
 	{
+#ifdef _M_ARM
+		return ArmInterface::Read_Opcode_JIT_LC(_Address);
+#endif
 	#ifdef JIT_UNLIMITED_ICACHE	
 		if ((_Address & ~JIT_ICACHE_MASK) != 0x80000000 && (_Address & ~JIT_ICACHE_MASK) != 0x00000000 &&
 			(_Address & ~JIT_ICACHE_MASK) != 0x7e000000 && // TLB area
@@ -328,6 +351,9 @@ namespace JitInterface
 	// We assume that _Address is cached
 	void Write_Opcode_JIT(const u32 _Address, const u32 _Value)
 	{
+#ifdef _M_ARM
+		return ArmInterface::Write_Opcode_JIT(_Address, _Value);
+#endif
 	#ifdef JIT_UNLIMITED_ICACHE
 		if (_Address & JIT_ICACHE_VMEM_BIT)
 		{
@@ -353,5 +379,13 @@ namespace JitInterface
 			delete jit;
 			jit = NULL;
 		}
+		#ifdef _M_ARM
+		if(jitarm)
+		{
+			jitarm->Shutdown();
+			delete jitarm;
+			jitarm = NULL;
+		}
+#endif
 	}
 }

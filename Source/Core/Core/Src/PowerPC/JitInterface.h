@@ -46,3 +46,10 @@ namespace JitInterface
 	
 	void Shutdown();
 }
+extern bool bFakeVMEM;
+extern bool bMMU;
+
+#ifdef _M_ARM
+#include "JitArm32/Jit.h"
+extern JitArm* jitarm;
+#endif

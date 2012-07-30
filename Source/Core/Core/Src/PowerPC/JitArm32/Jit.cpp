@@ -31,6 +31,8 @@
 #include "../../HW/GPFifo.h"
 #include "Jit.h"
 #include "JitArm_Tables.h"
+#include "ArmEmitter.h"
+#include "../JitInterface.h"
 
 using namespace ArmGen;
 using namespace PowerPC;
@@ -44,10 +46,11 @@ namespace CPUCompare
 
 void JitArm::Init()
 {
-//	gpr.SetEmitter(this);
+	gpr.SetEmitter(this);
 //	fpr.SetEmitter(this);
 
 	AllocCodeSpace(CODE_SIZE);
+	gpr.Start();
 	blocks.Init();
 	asm_routines.Init();
 }
@@ -68,7 +71,7 @@ void JitArm::Shutdown()
 // This is only called by Default() in this file. It will execute an instruction with the interpreter functions.
 void JitArm::WriteCallInterpreter(UGeckoInstruction inst)
 {
-//	gpr.Flush(FLUSH_ALL);
+	gpr.Flush();
 //	fpr.Flush(FLUSH_ALL);
 
 	printf("Trying to write interpreter call. This does nothing.\n");
@@ -105,11 +108,7 @@ static void ImHere()
 	{
 		if (!f)
 		{
-#ifdef _M_X64
-			f.Open("log64.txt", "w");
-#else
 			f.Open("log32.txt", "w");
-#endif
 		}
 		fprintf(f.GetHandle(), "%08x\n", PC);
 	}
@@ -182,7 +181,16 @@ void STACKALIGN JitArm::Jit(u32 em_address)
 
 	int block_num = blocks.AllocateBlock(em_address);
 	JitBlock *b = blocks.GetBlock(block_num);
-	blocks.FinalizeBlock(block_num, jo.enableBlocklink, DoJit(em_address, &code_buffer, b));
+	blocks.FinalizeBlock(block_num, false, DoJit(em_address, &code_buffer, b));
+	static bool did = false;
+	if(!did)
+	{
+		did = true;
+		printf("Mask: %08x Memory: %08x, em_address: %08x. Result: %08x\n",
+		JIT_ICACHE_MASK, jitarm->GetBlockCache()->GetICache(), em_address,
+		jitarm->GetBlockCache()->GetICache()[(em_address &
+		JIT_ICACHE_MASK)]);
+	}
 
 }
 const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlock *b)
@@ -208,7 +216,10 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		Core::SetState(Core::CORE_PAUSE);
 		PanicAlert("ERROR: Compiling at 0. LR=%08x CTR=%08x", LR, CTR);
 	}
-
+	ARMABI_CallFunction((void *)&ImHere); //Used to get a trace of the last few blocks before a crash, sometimes VERY useful
 }
 
-
+void ArmJit(u32 em_address)
+{
+	jitarm->Jit(em_address);
+}

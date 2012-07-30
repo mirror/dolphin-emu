@@ -47,3 +47,33 @@ void ARMXEmitter::ARMABI_MOVIMM32(ARMReg reg, u32 val)
 	Operand2 HighVal((u16)(val >> 16));
 	MOVW(reg, LowVal); MOVT(reg, HighVal);
 }
+// NZCVQ is stored in the lower five bits of the Flags variable
+// GE values are in the lower four bits of the GEval variable
+
+void ARMXEmitter::UpdateAPSR(bool NZCVQ, u8 Flags, bool GE, u8 GEval)
+{
+	if(NZCVQ && GE)
+	{
+		// Can't update GE with the other ones with a immediate
+		// Got to use a scratch register
+		u32 IMM = (Flags << 27) | ((GEval & 0xF) << 16);
+		ARMABI_MOVIMM32(R8, IMM);
+		_MSR(true, true, R8);
+	}
+	else
+	{
+		if(NZCVQ)
+		{
+			Operand2 value(Flags << 1, 3);
+			_MSR(true, false, value);
+		}
+		else if(GE)
+		{
+			Operand2 value(GEval << 2, 9);
+			_MSR(false, true, value);
+		}
+		else
+			; // Okay?
+
+	}
+}

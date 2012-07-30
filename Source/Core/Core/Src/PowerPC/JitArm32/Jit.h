@@ -31,8 +31,10 @@
 // ----------
 #ifndef _JITARM_H
 #define _JITARM_H
+#include "../CPUCoreBase.h"
 #include "../PPCAnalyst.h"
-#include "../JitCommon/JitBase.h"
+#include "JitArmCache.h"
+#include "JitRegCache.h"
 #include "JitAsm.h"
 
 
@@ -42,16 +44,18 @@
 #define INSTRUCTION_START
 
 
-class JitArm : public JitBase
+class JitArm : public CPUCoreBase, public ArmGen::ARMXCodeBlock 
 {
 private:
+	JitArmBlockCache blocks;
+
 	JitArmAsmRoutineManager asm_routines;
 
 	// TODO: Make arm specific versions of these, shouldn't be too hard to
 	// make it so we allocate some space at the start(?) of code generation
 	// and keep the registers in a cache. Will burn this bridge when we get to
 	// it.
-	//GPRRegCache gpr;
+	ArmRegCache gpr;
 	//FPURegCache fpr;
 
 	PPCAnalyst::CodeBuffer code_buffer;
@@ -67,7 +71,7 @@ public:
 
 	void Jit(u32 em_address);
 	const u8* DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlock *b);
-	JitBlockCache *GetBlockCache() { return &blocks; }
+	JitArmBlockCache *GetBlockCache() { return &blocks; }
 
 
 	void Trace();
@@ -77,7 +81,7 @@ public:
 	const u8 *GetDispatcher() {
 		return 0; 
 	}
-	const CommonAsmRoutines *GetAsmRoutines() {
+	const void *GetAsmRoutines() {
 		return 0; 
 	}
 
@@ -105,6 +109,7 @@ public:
 	void HLEFunction(UGeckoInstruction _inst);
 
 };
+void ArmJit(u32 em_address);
 
 
 #endif // _JIT64_H

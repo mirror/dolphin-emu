@@ -23,6 +23,7 @@
 #include "MemoryUtil.h"
 
 #include "Jit.h"
+#include "ArmInterface.h"
 #include "../JitCommon/JitCache.h"
 
 #include "../../HW/GPFifo.h"
@@ -63,10 +64,20 @@ void JitArmAsmRoutineManager::Generate()
 	enterCode = AlignCode16();
 	
 	ARMABI_CallFunction((void*)&CoreTiming::Advance);
+	ARMABI_MOVIMM32(R9, (u32)&PowerPC::ppcState.pc);
+	LDR(R9, R9, R0, false);// Load the current PC into R9
+	ARMABI_MOVIMM32(R10, JIT_ICACHE_MASK);
+	AND(R9, R10, 0);
+	ARMABI_MOVIMM32(R10, (u32)jitarm->GetBlockCache()->GetICache());
+	ADD(R9, R10, 0);
+	LDR(R9, R9, R0, false);
+	TST(R9, 0xFC);
+	UpdateAPSR(true, 0, true, 0);
+	
 	
 	ARMABI_MOVIMM32(ARM_PARAM1, (u32)&PowerPC::ppcState.pc);
 	LDR(ARM_PARAM1, ARM_PARAM1, R0, false); 
-	ARMABI_CallFunction((void*)&Jit);
+	ARMABI_CallFunction((void*)&ArmJit);
 	
 	MOV(_PC, _LR);
 	Flush();

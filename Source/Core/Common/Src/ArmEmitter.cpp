@@ -129,10 +129,9 @@ void ARMXEmitter::POP(const int num, ...)
 	Write32(condition | (2237 << 16) | RegList);
 }
 
-void ARMXEmitter::WriteDataOp(u32 op, ARMReg dest, ARMReg src, Operand2 const &op2)
+void ARMXEmitter::WriteDataOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2)
 {
-	assert(op2.size == 8);
-	Write32(condition | (op << 20) | (src << 16) | (dest << 12) | op2.encoding);
+	Write32(condition | (op << 20) | (src << 16) | (dest << 12) | op2.Imm12()); // Should this be using op2.Imm12Mod?
 }
 void ARMXEmitter::WriteDataOp(u32 op, ARMReg dest, ARMReg src)
 {
@@ -141,54 +140,60 @@ void ARMXEmitter::WriteDataOp(u32 op, ARMReg dest, ARMReg src)
 
 
 // Data Operations
-void ARMXEmitter::AND (ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp( 0, dest, src, op2);}
-void ARMXEmitter::ANDS(ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp( 1, dest, src, op2);}
-void ARMXEmitter::EOR (ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp( 2, dest, src, op2);}
-void ARMXEmitter::EORS(ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp( 3, dest, src, op2);}
-void ARMXEmitter::SUB (ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp( 4, dest, src, op2);}
-void ARMXEmitter::SUBS(ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp( 5, dest, src, op2);}
-void ARMXEmitter::RSB (ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp( 6, dest, src, op2);}
-void ARMXEmitter::RSBS(ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp( 7, dest, src, op2);}
-void ARMXEmitter::ADD (ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp( 8, dest, src, op2);}
-void ARMXEmitter::ADDS(ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp( 9, dest, src, op2);}
-void ARMXEmitter::ADC (ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp(10, dest, src, op2);}
-void ARMXEmitter::ADCS(ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp(11, dest, src, op2);}
-void ARMXEmitter::SBC (ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp(12, dest, src, op2);}
-void ARMXEmitter::SBCS(ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp(13, dest, src, op2);}
-void ARMXEmitter::RSC (ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp(14, dest, src, op2);}
-void ARMXEmitter::RSCS(ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp(15, dest, src, op2);}
-void ARMXEmitter::TST (             ARMReg src, Operand2 const &op2) { WriteDataOp(17, R0  , src, op2);}
-void ARMXEmitter::TEQ (             ARMReg src, Operand2 const &op2) { WriteDataOp(19, R0  , src, op2);}
-void ARMXEmitter::CMP (             ARMReg src, Operand2 const &op2) { WriteDataOp(21, R0  , src, op2);}
-void ARMXEmitter::CMN (             ARMReg src, Operand2 const &op2) { WriteDataOp(23, R0  , src, op2);}
-void ARMXEmitter::ORR (ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp(24, dest, src, op2);}
-void ARMXEmitter::ORRS(ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp(25, dest, src, op2);}
-void ARMXEmitter::MOV (ARMReg dest,             Operand2 const &op2) { WriteDataOp(26, dest, R0 , op2);}
-void ARMXEmitter::MOVS(ARMReg dest,             Operand2 const &op2) { WriteDataOp(27, dest, R0 , op2);}
+void ARMXEmitter::AND (ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp( 0, dest, src, op2);}
+void ARMXEmitter::ANDS(ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp( 1, dest, src, op2);}
+void ARMXEmitter::EOR (ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp( 2, dest, src, op2);}
+void ARMXEmitter::EORS(ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp( 3, dest, src, op2);}
+void ARMXEmitter::SUB (ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp( 4, dest, src, op2);}
+void ARMXEmitter::SUBS(ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp( 5, dest, src, op2);}
+void ARMXEmitter::RSB (ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp( 6, dest, src, op2);}
+void ARMXEmitter::RSBS(ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp( 7, dest, src, op2);}
+void ARMXEmitter::ADD (ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp( 8, dest, src, op2);}
+void ARMXEmitter::ADDS(ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp( 9, dest, src, op2);}
+void ARMXEmitter::ADC (ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(10, dest, src, op2);}
+void ARMXEmitter::ADCS(ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(11, dest, src, op2);}
+void ARMXEmitter::SBC (ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(12, dest, src, op2);}
+void ARMXEmitter::SBCS(ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(13, dest, src, op2);}
+void ARMXEmitter::RSC (ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(14, dest, src, op2);}
+void ARMXEmitter::RSCS(ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(15, dest, src, op2);}
+void ARMXEmitter::TST (             ARMReg src, Operand2 op2) { WriteDataOp(49, R0  , src, op2);}
+void ARMXEmitter::TEQ (             ARMReg src, Operand2 op2) { WriteDataOp(19, R0  , src, op2);}
+void ARMXEmitter::CMP (             ARMReg src, Operand2 op2) { WriteDataOp(21, R0  , src, op2);}
+void ARMXEmitter::CMN (             ARMReg src, Operand2 op2) { WriteDataOp(23, R0  , src, op2);}
+void ARMXEmitter::ORR (ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(24, dest, src, op2);}
+void ARMXEmitter::ORRS(ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(25, dest, src, op2);}
+void ARMXEmitter::MOV (ARMReg dest,             Operand2 op2) { WriteDataOp(26, dest, R0 , op2);}
+void ARMXEmitter::MOVS(ARMReg dest,             Operand2 op2) { WriteDataOp(27, dest, R0 , op2);}
 void ARMXEmitter::MOV (ARMReg dest, ARMReg src					   ) { WriteDataOp(26, dest, src); }
 void ARMXEmitter::MOVS (ARMReg dest, ARMReg src					   ) { WriteDataOp(27, dest, src); }
-void ARMXEmitter::BIC (ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp(28, dest, src, op2);}
-void ARMXEmitter::BICS(ARMReg dest, ARMReg src, Operand2 const &op2) { WriteDataOp(29, dest, src, op2);}
-void ARMXEmitter::MVN (ARMReg dest,             Operand2 const &op2) { WriteDataOp(30, dest, R0 , op2);}
-void ARMXEmitter::MVNS(ARMReg dest,             Operand2 const &op2) { WriteDataOp(31, dest, R0 , op2);}
-
+void ARMXEmitter::BIC (ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(28, dest, src, op2);}
+void ARMXEmitter::BICS(ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(29, dest, src, op2);}
+void ARMXEmitter::MVN (ARMReg dest,             Operand2 op2) { WriteDataOp(30, dest, R0 , op2);} // Wrong?
+void ARMXEmitter::MVNS(ARMReg dest,             Operand2 op2) { WriteDataOp(31, dest, R0 , op2);} // Wrong?
+void ARMXEmitter::_MSR (bool nzcvq, bool g,		Operand2 op2)
+{
+	Write32(condition | (0x320F << 12) | (nzcvq << 19) | (g << 18) | op2.Imm12Mod());
+}
+void ARMXEmitter::_MSR (bool nzcvq, bool g,		ARMReg src)
+{
+	Write32(condition | (0x120F << 12) | (nzcvq << 19) | (g << 18) | src);
+}
 // Memory Load/Store operations
-void ARMXEmitter::WriteMoveOp(u32 op, ARMReg dest, Operand2 const &op2)
+void ARMXEmitter::WriteMoveOp(u32 op, ARMReg dest, Operand2 op2)
 {
-	assert(op2.size == 16);
-	Write32(condition | (op << 20) | (dest << 12) | op2.encoding);
+	Write32(condition | (op << 20) | (dest << 12) | op2.Imm16());
 }
-void ARMXEmitter::MOVT(ARMReg dest, 			Operand2 const &op2) { WriteMoveOp( 52, dest, op2);}
-void ARMXEmitter::MOVW(ARMReg dest, 			Operand2 const &op2) { WriteMoveOp( 48, dest, op2);}
+void ARMXEmitter::MOVT(ARMReg dest, 			Operand2 op2) { WriteMoveOp( 52, dest, op2);}
+void ARMXEmitter::MOVW(ARMReg dest, 			Operand2 op2) { WriteMoveOp( 48, dest, op2);}
 
-void ARMXEmitter::WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 const &op2)
+void ARMXEmitter::WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2)
 {
-	Write32(condition | (op << 20) | (dest << 16) | (src << 12) | (op2.encoding & 0x00000FFF));
+	Write32(condition | (op << 20) | (dest << 16) | (src << 12) | op2.Imm12());
 }
-void ARMXEmitter::STR (ARMReg dest, ARMReg src, Operand2 const &op) { WriteStoreOp(0x40, dest, src, op);}
-void ARMXEmitter::STRB(ARMReg dest, ARMReg src, Operand2 const &op) { WriteStoreOp(0x44, dest, src, op);}
-void ARMXEmitter::LDR (ARMReg dest, ARMReg src, Operand2 const &op) { WriteStoreOp(0x41, dest, src, op);}
-void ARMXEmitter::LDRB(ARMReg dest, ARMReg src, Operand2 const &op) { WriteStoreOp(0x45, dest, src, op);}
+void ARMXEmitter::STR (ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x40, dest, src, op);}
+void ARMXEmitter::STRB(ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x44, dest, src, op);}
+void ARMXEmitter::LDR (ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x41, dest, src, op);}
+void ARMXEmitter::LDRB(ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x45, dest, src, op);}
 void ARMXEmitter::LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index)
 {
 	Write32(condition | (0x61 << 20) | (Index << 24) | (base << 16) | (dest << 12) | offset);
