@@ -271,29 +271,9 @@ void X11_MainLoop()
 	Core::Stop();
 }
 #endif
-	void Test2()
-	{
-		printf("Test\n");
-	}
+
 int main(int argc, char* argv[])
 {
-#ifdef _M_ARM
-	// Temporary testing zone
-	u32 *m_compiledCode = (u32 *)AllocateExecutableMemory(COMPILED_CODE_SIZE, false);
-	if (m_compiledCode)
-		memset(m_compiledCode, 0, COMPILED_CODE_SIZE);
-
-	printf("Start of compiled code: %08x\n", m_compiledCode);
-	using namespace ArmGen;
-	ARMXEmitter emit(m_compiledCode);
-
-	emit.ARMABI_CallFunction((void*)&Test2);
-	emit.ARMABI_CallFunction((void*)&Test2);
-	emit.MOV(_PC, _LR);
-	emit.Flush();
-	((void (*)())(void*)m_compiledCode)();
-#endif
-
 
 #ifdef __APPLE__
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];

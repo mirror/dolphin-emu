@@ -182,16 +182,6 @@ void STACKALIGN JitArm::Jit(u32 em_address)
 	int block_num = blocks.AllocateBlock(em_address);
 	JitBlock *b = blocks.GetBlock(block_num);
 	blocks.FinalizeBlock(block_num, false, DoJit(em_address, &code_buffer, b));
-	static bool did = false;
-	if(!did)
-	{
-		did = true;
-		printf("Mask: %08x Memory: %08x, em_address: %08x. Result: %08x\n",
-		JIT_ICACHE_MASK, jitarm->GetBlockCache()->GetICache(), em_address,
-		jitarm->GetBlockCache()->GetICache()[(em_address &
-		JIT_ICACHE_MASK)]);
-	}
-
 }
 const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlock *b)
 {
@@ -216,10 +206,19 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		Core::SetState(Core::CORE_PAUSE);
 		PanicAlert("ERROR: Compiling at 0. LR=%08x CTR=%08x", LR, CTR);
 	}
+
+	PPCAnalyst::CodeOp *ops = code_buf->codebuffer;
+
+	const u8 *start = GetCodePtr(); // TODO: Test if this or AlignCode16 make a difference from GetCodePtr
+	b->checkedEntry = start;
+	b->runCount = 0;
+
 	ARMABI_CallFunction((void *)&ImHere); //Used to get a trace of the last few blocks before a crash, sometimes VERY useful
+	MOV(_PC, _LR);
+	return start;
 }
 
 void ArmJit(u32 em_address)
-{
+{	
 	jitarm->Jit(em_address);
 }

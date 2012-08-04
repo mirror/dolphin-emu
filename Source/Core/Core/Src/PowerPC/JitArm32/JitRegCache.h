@@ -24,13 +24,13 @@
 using namespace ArmGen;
 struct PPCCachedReg
 {
-	const u32 *location;
+	const u8 *location;
 };
 
 class ArmRegCache
 {
 private:
-	const u32 *StartLocation;
+	const u8 *StartLocation;
 	PPCCachedReg regs[32];
 
 protected:
@@ -47,7 +47,7 @@ public:
 	void SetEmitter(ARMXEmitter *emitter) {emit = emitter;}
 
 	void Flush();
-	const u32* R(int preg) const {return regs[preg].location;}
+	const u8* R(int preg) const {return regs[preg].location;}
 };
 
 

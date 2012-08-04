@@ -40,7 +40,7 @@ private:
 	void GenerateCommon();
 
 public:
-	const u32 *enterCode;
+	const u8 *enterCode;
 
 	const u8 *dispatcher;
 	const u8 *dispatcherNoCheck;

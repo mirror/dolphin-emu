@@ -201,13 +201,6 @@ using namespace ArmGen;
 		blockCodePointers[block_num] = code_ptr;
 		JitBlock &b = blocks[block_num];
 		b.originalFirstOpcode = JitInterface::Read_Opcode_JIT(b.originalAddress);
-		static bool did = false;
-		if(!did)
-		{
-			did = true;
-			printf("Finishing block as %08x. Original Opcode: %08x\n",
-			(JIT_OPCODE << 26) | block_num, b.originalFirstOpcode);
-		}
 		JitInterface::Write_Opcode_JIT(b.originalAddress, (JIT_OPCODE << 26) |
 		block_num);
 		block_map[std::make_pair(b.originalAddress + 4 * b.originalSize - 1, b.originalAddress)] = block_num;

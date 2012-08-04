@@ -198,17 +198,18 @@ public:
 //usage: struct {int e;} s; STRUCT_OFFSET(s,e)
 #define STRUCT_OFFSET(str,elem) ((u32)((u64)&(str).elem-(u64)&(str)))
 
-typedef const u32* FixupBranch;
-typedef const u32* JumpTarget;
+typedef const u8* FixupBranch;
+typedef const u8* JumpTarget;
 
 class ARMXEmitter
 {
 	friend struct OpArg;  // for Write8 etc
 private:
-	u32 *code, *startcode;
+	u8 *code, *startcode;
 	u32 condition;
 
 	void WriteDataOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2);
+	void WriteDataOp(u32 op, ARMReg dest, ARMReg src, ARMReg op2);
 	void WriteDataOp(u32 op, ARMReg dest, ARMReg src);
 	void WriteMoveOp(u32 op, ARMReg dest, Operand2 op2);
 	void WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2);
@@ -216,20 +217,20 @@ private:
 
 
 protected:
-	inline void Write32(u32 value) {*code++ = value;}
+	inline void Write32(u32 value) {*(u32*)code = value; code+=4;}
 
 public:
 	ARMXEmitter() { code = NULL; startcode = NULL; condition = CC_AL << 28;}
-	ARMXEmitter(u32 *code_ptr) { code = code_ptr; startcode = code_ptr; condition = CC_AL << 28;}
+	ARMXEmitter(u8 *code_ptr) { code = code_ptr; startcode = code_ptr; condition = CC_AL << 28;}
 	virtual ~ARMXEmitter() {}
 
-	void SetCodePtr(u32 *ptr);
+	void SetCodePtr(u8 *ptr);
 	void ReserveCodeSpace(int bytes);
-	const u32 *AlignCode16();
-	const u32 *AlignCodePage();
-	const u32 *GetCodePtr() const;
+	const u8 *AlignCode16();
+	const u8 *AlignCodePage();
+	const u8 *GetCodePtr() const;
 	void Flush();
-	u32 *GetWritableCodePtr();
+	u8 *GetWritableCodePtr();
 
 	void SetCC(CCFlags cond = CC_AL);
 
@@ -254,35 +255,63 @@ public:
 	// Data operations
 	void AND (ARMReg dest, ARMReg src, Operand2 op2);
 	void ANDS(ARMReg dest, ARMReg src, Operand2 op2);
+	void AND (ARMReg dest, ARMReg src, ARMReg op2);
+	void ANDS(ARMReg dest, ARMReg src, ARMReg op2);
 	void EOR (ARMReg dest, ARMReg src, Operand2 op2);
 	void EORS(ARMReg dest, ARMReg src, Operand2 op2);
+	void EOR (ARMReg dest, ARMReg src, ARMReg op2);
+	void EORS(ARMReg dest, ARMReg src, ARMReg op2);
 	void SUB (ARMReg dest, ARMReg src, Operand2 op2);
 	void SUBS(ARMReg dest, ARMReg src, Operand2 op2);
+	void SUB (ARMReg dest, ARMReg src, ARMReg op2);
+	void SUBS(ARMReg dest, ARMReg src, ARMReg op2);
 	void RSB (ARMReg dest, ARMReg src, Operand2 op2);
 	void RSBS(ARMReg dest, ARMReg src, Operand2 op2);
+	void RSB (ARMReg dest, ARMReg src, ARMReg op2);
+	void RSBS(ARMReg dest, ARMReg src, ARMReg op2);
 	void ADD (ARMReg dest, ARMReg src, Operand2 op2);
 	void ADDS(ARMReg dest, ARMReg src, Operand2 op2);
+	void ADD (ARMReg dest, ARMReg src, ARMReg op2);
+	void ADDS(ARMReg dest, ARMReg src, ARMReg op2);
 	void ADC (ARMReg dest, ARMReg src, Operand2 op2);
 	void ADCS(ARMReg dest, ARMReg src, Operand2 op2);
+	void ADC (ARMReg dest, ARMReg src, ARMReg op2);
+	void ADCS(ARMReg dest, ARMReg src, ARMReg op2);
 	void SBC (ARMReg dest, ARMReg src, Operand2 op2);
 	void SBCS(ARMReg dest, ARMReg src, Operand2 op2);
+	void SBC (ARMReg dest, ARMReg src, ARMReg op2);
+	void SBCS(ARMReg dest, ARMReg src, ARMReg op2);
+	
+	void REV (ARMReg dest, ARMReg src			   );
 	void RSC (ARMReg dest, ARMReg src, Operand2 op2);
 	void RSCS(ARMReg dest, ARMReg src, Operand2 op2);
+	void RSC (ARMReg dest, ARMReg src, ARMReg op2);
+	void RSCS(ARMReg dest, ARMReg src, ARMReg op2);
 	void TST (             ARMReg src, Operand2 op2);
+	void TST (             ARMReg src, ARMReg op2);
 	void TEQ (             ARMReg src, Operand2 op2);
+	void TEQ (             ARMReg src, ARMReg op2);
 	void CMP (             ARMReg src, Operand2 op2);
+	void CMP (             ARMReg src, ARMReg op2);
 	void CMN (             ARMReg src, Operand2 op2);
+	void CMN (             ARMReg src, ARMReg op2);
 	void ORR (ARMReg dest, ARMReg src, Operand2 op2);
 	void ORRS(ARMReg dest, ARMReg src, Operand2 op2);
+	void ORR (ARMReg dest, ARMReg src, ARMReg op2);
+	void ORRS(ARMReg dest, ARMReg src, ARMReg op2);
 	void MOV (ARMReg dest,             Operand2 op2);
+	void MOVS(ARMReg dest,             Operand2 op2);
 	void MOV (ARMReg dest, ARMReg src			   );
 	void MOVS(ARMReg dest, ARMReg src			   );
-	void MOVS(ARMReg dest,             Operand2 op2);
 	void BIC (ARMReg dest, ARMReg src, Operand2 op2);
 	void BICS(ARMReg dest, ARMReg src, Operand2 op2);
+	void BIC (ARMReg dest, ARMReg src, ARMReg op2);
+	void BICS(ARMReg dest, ARMReg src, ARMReg op2);
 	void MVN (ARMReg dest,             Operand2 op2);
 	void MVNS(ARMReg dest,             Operand2 op2);
-	// Using just MSR here messes with our defines on the PPC side of stuff
+	void MVN (ARMReg dest,             ARMReg op2);
+	void MVNS(ARMReg dest,             ARMReg op2);
+// Using just MSR here messes with our defines on the PPC side of stuff
 	// Just need to put an underscore here, bit annoying.
 	void _MSR (bool nzcvq, bool g,	   Operand2 op2);
 	void _MSR (bool nzcvq, bool g, ARMReg src	   );
@@ -291,7 +320,8 @@ public:
 	void MOVT(ARMReg dest, 			   Operand2 op2);
 	void MOVW(ARMReg dest, 			   Operand2 op2);
 	void LDR (ARMReg dest, ARMReg src, Operand2 op2);
-	void LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index);
+	void LDR (ARMReg dest, ARMReg base, ARMReg offset = R0, bool Index = false,
+	bool Add = false);
 	void LDRB(ARMReg dest, ARMReg src, Operand2 op2);
 	void STR (ARMReg dest, ARMReg src, Operand2 op2);
 	void STRB(ARMReg dest, ARMReg src, Operand2 op2);
@@ -329,7 +359,7 @@ public:
 class ARMXCodeBlock : public ARMXEmitter
 {
 protected:
-	u32 *region;
+	u8 *region;
 	size_t region_size;
 
 public:
@@ -340,7 +370,7 @@ public:
 	void AllocCodeSpace(int size)
 	{
 		region_size = size;
-		region = (u32*)AllocateExecutableMemory(region_size);
+		region = (u8*)AllocateExecutableMemory(region_size);
 		SetCodePtr(region);
 	}
 
@@ -361,7 +391,7 @@ public:
 		region_size = 0;
 	}
 
-	bool IsInCodeSpace(u32 *ptr)
+	bool IsInCodeSpace(u8 *ptr)
 	{
 		return ptr >= region && ptr < region + region_size;
 	}
