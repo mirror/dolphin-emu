@@ -38,7 +38,6 @@ using namespace ArmGen;
 using namespace PowerPC;
 
 static int CODE_SIZE = 1024*1024*32;
-
 namespace CPUCompare
 {
 	extern u32 m_BlockStart;
@@ -48,7 +47,6 @@ void JitArm::Init()
 {
 	gpr.SetEmitter(this);
 //	fpr.SetEmitter(this);
-
 	AllocCodeSpace(CODE_SIZE);
 	gpr.Start();
 	blocks.Init();
@@ -71,12 +69,12 @@ void JitArm::Shutdown()
 // This is only called by Default() in this file. It will execute an instruction with the interpreter functions.
 void JitArm::WriteCallInterpreter(UGeckoInstruction inst)
 {
-	gpr.Flush();
+//	gpr.Flush();
 //	fpr.Flush(FLUSH_ALL);
-
-	printf("Trying to write interpreter call. This does nothing.\n");
+	Interpreter::_interpreterInstruction instr = GetInterpreterOp(inst);
+	ARMABI_MOVIMM32(ARM_PARAM1, inst.hex);
+	ARMABI_CallFunction((void*)instr);
 }
-
 void JitArm::unknown_instruction(UGeckoInstruction inst)
 {
 	PanicAlert("unknown_instruction %08x - Fix me ;)", inst.hex);
@@ -97,8 +95,8 @@ void JitArm::DoNothing(UGeckoInstruction _inst)
 	// Yup, just don't do anything.
 }
 
-static const bool ImHereDebug = false;
-static const bool ImHereLog = false;
+static const bool ImHereDebug = true;
+static const bool ImHereLog = true;
 static std::map<u32, int> been_here;
 
 static void ImHere()
@@ -134,7 +132,7 @@ void STACKALIGN JitArm::Run()
 {
 	CompiledCode pExecAddr = (CompiledCode)asm_routines.enterCode;
 	pExecAddr();
-
+	return;
 }
 
 void JitArm::SingleStep()
@@ -183,6 +181,10 @@ void STACKALIGN JitArm::Jit(u32 em_address)
 	JitBlock *b = blocks.GetBlock(block_num);
 	blocks.FinalizeBlock(block_num, false, DoJit(em_address, &code_buffer, b));
 }
+void Test3(unsigned int Stuff)
+{
+	printf("Stuff: %08x\n", Stuff);
+}
 const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlock *b)
 {
 	int blockSize = code_buf->GetSize();
@@ -207,14 +209,125 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		PanicAlert("ERROR: Compiling at 0. LR=%08x CTR=%08x", LR, CTR);
 	}
 
+	if (Core::g_CoreStartupParameter.bMMU && (em_address & JIT_ICACHE_VMEM_BIT))
+	{
+		if (!Memory::TranslateAddress(em_address, Memory::FLAG_OPCODE))
+		{
+			// Memory exception occurred during instruction fetch
+			memory_exception = true;
+		}
+	}
+
+
+	int size = 0;
+	js.isLastInstruction = false;
+	js.blockStart = em_address;
+	js.fifoBytesThisBlock = 0;
+	js.curBlock = b;
+	js.block_flags = 0;
+	js.cancel = false;
+
+	// Analyze the block, collect all instructions it is made of (including inlining,
+	// if that is enabled), reorder instructions for optimal performance, and join joinable instructions.
+	u32 nextPC = em_address;
+	u32 merged_addresses[32];
+	const int capacity_of_merged_addresses = sizeof(merged_addresses) / sizeof(merged_addresses[0]);
+	int size_of_merged_addresses = 0;
+	if (!memory_exception)
+	{
+		// If there is a memory exception inside a block (broken_block==true), compile up to that instruction.
+		nextPC = PPCAnalyst::Flatten(em_address, &size, &js.st, &js.gpa, &js.fpa, broken_block, code_buf, blockSize, merged_addresses, capacity_of_merged_addresses, size_of_merged_addresses);
+	}
 	PPCAnalyst::CodeOp *ops = code_buf->codebuffer;
 
 	const u8 *start = GetCodePtr(); // TODO: Test if this or AlignCode16 make a difference from GetCodePtr
 	b->checkedEntry = start;
 	b->runCount = 0;
 
-	ARMABI_CallFunction((void *)&ImHere); //Used to get a trace of the last few blocks before a crash, sometimes VERY useful
+	// JIT64 has a downcount check here.
+
+	const u8 *normalEntry = GetCodePtr();
+	b->normalEntry = normalEntry;
+	if(ImHereDebug)
+		ARMABI_CallFunction((void *)&ImHere); //Used to get a trace of the last few blocks before a crash, sometimes VERY useful
+	if (js.fpa.any)
+	{
+		//TODO: Need a FP exception bailout here since this will use FPU
+	}
+	// Conditionally add profiling code.
+	if (Profiler::g_ProfileBlocks) {
+		ARMABI_MOVIMM32(R10, (u32)&b->runCount); // Load in to register
+		LDR(R11, R10); // Load the actual value in to R11.
+		ADD(R11, R11, 1); // Add one to the value
+		STR(R10, R11, 0); // Now store it back in the memory location 
+		// get start tic
+		PROFILER_QUERY_PERFORMANCE_COUNTER(&b->ticStart);
+	}
+
+	js.downcountAmount = 0;
+	if (!Core::g_CoreStartupParameter.bEnableDebugging)
+	{
+		for (int i = 0; i < size_of_merged_addresses; ++i)
+		{
+			const u32 address = merged_addresses[i];
+			js.downcountAmount += PatchEngine::GetSpeedhackCycles(address);
+		}
+	}
+
+	js.skipnext = false;
+	js.blockSize = size;
+	js.compilerPC = nextPC;
+
+	// Translate instructions
+	for (int i = 0; i < (int)size; i++)
+	{
+		js.compilerPC = ops[i].address;
+		js.op = &ops[i];
+		js.instructionNumber = i;
+		const GekkoOPInfo *opinfo = ops[i].opinfo;
+		js.downcountAmount += (opinfo->numCyclesMinusOne + 1);
+
+		if (i == (int)size - 1)
+		{
+			// WARNING - cmp->branch merging will screw this up.
+			js.isLastInstruction = true;
+			js.next_inst = 0;
+			if (Profiler::g_ProfileBlocks) {
+				// CAUTION!!! push on stack regs you use, do your stuff, then pop
+				PROFILER_VPUSH;
+				// get end tic
+				PROFILER_QUERY_PERFORMANCE_COUNTER(&b->ticStop);
+				// tic counter += (end tic - start tic)
+				PROFILER_ADD_DIFF_LARGE_INTEGER(&b->ticCounter, &b->ticStop, &b->ticStart);
+				PROFILER_VPOP;
+			}
+		}
+		else
+		{
+			// help peephole optimizations
+			js.next_inst = ops[i + 1].inst;
+			js.next_compilerPC = ops[i + 1].address;
+		}
+		
+		if (!ops[i].skip)
+		{
+			printf("OP %s\n", PPCTables::GetInstructionName(ops[i].inst));
+			JitArmTables::CompileInstruction(ops[i]);
+			
+		}
+	}
+			ARMABI_MOVIMM32(R10, (u32)&PowerPC::ppcState.pc);
+			ARMABI_MOVIMM32(R11, (u32)&PowerPC::ppcState.npc);
+			LDR(R11, R11);
+			STR(R10, R11, 0);
+			MOV(ARM_PARAM1, R11);
+			ARMABI_CallFunction((void*)&Test3);
+	b->flags = js.block_flags;
+	b->codeSize = (u32)(GetCodePtr() - normalEntry);
+	b->originalSize = size;
+
 	MOV(_PC, _LR);
+	Flush();
 	return start;
 }
 

@@ -58,14 +58,24 @@ JitArmAsmRoutineManager asm_routines;
 // PLAN: no more block numbers - crazy opcodes just contain offset within
 // dynarec buffer
 // At this offset - 4, there is an int specifying the block number.
-
+void Test(unsigned int Block)
+{
+	printf("Got block: %08x\n", Block);
+}
+void Test2(unsigned int Block)
+{
+	printf("Second: %08x\n", Block);
+}
 void JitArmAsmRoutineManager::Generate()
 {
-	enterCode = AlignCode16();
-	
+	enterCode = GetCodePtr();
+
 	ARMABI_CallFunction((void*)&CoreTiming::Advance);
 	ARMABI_MOVIMM32(R9, (u32)&PowerPC::ppcState.pc);
 	LDR(R9, R9);// Load the current PC into R9
+	MOV(ARM_PARAM1, R9);
+	ARMABI_CallFunction((void*)Test2);
+
 	ARMABI_MOVIMM32(R10, JIT_ICACHE_MASK);
 	AND(R9, R9, R10); // R9 contains PC & JIT_ICACHE_MASK here.
 	// Confirmed good to this point 08-03-12
@@ -75,7 +85,6 @@ void JitArmAsmRoutineManager::Generate()
 
 	LDR(R9, R10, R9, true, true); // R9 contains iCache[PC & JIT_ICACHE_MASK] here
 	// R9 Confirmed this is the correct iCache Location loaded.
-
 	TST(R9, 0xFC); // Test  to see if it is a JIT block.
 	
 	SetCC(CC_EQ); // Only run next part if R9 is zero
@@ -83,20 +92,25 @@ void JitArmAsmRoutineManager::Generate()
 	ARMABI_MOVIMM32(R10, (u32)jitarm->GetBlockCache()->GetCodePointers());
 	// LDR R10 right here to get CodePointers()[0] pointer.
 	REV(R9, R9); // Reversing this gives us our JITblock.
+	MOV(ARM_PARAM1, R9);
+	ARMABI_CallFunction((void*)Test2);
 	ADD(R10, R10, R9);
 	LDR(R10, R10); // Shouldn't need to ADD before this LDR, just use Indexed address
-
+	// _LR contains exit to Jit::Run place before this
+	PUSH(1, _LR);
 	BLX(R10);
-
-	MOV(_PC, _LR);
+	POP(1, _LR);
+	// _LR now contains exit to here.
+	
+	// MOV(_PC, _LR);
 	SetCC(); // Return to always executing codes
 	UpdateAPSR(true, 0, true, 0); // Clear our host register flags out.
-	
-	
+
 	ARMABI_MOVIMM32(ARM_PARAM1, (u32)&PowerPC::ppcState.pc);
 	LDR(ARM_PARAM1, ARM_PARAM1); 
 	ARMABI_CallFunction((void*)&ArmJit);
 	
+
 	MOV(_PC, _LR);
 	Flush();
 }

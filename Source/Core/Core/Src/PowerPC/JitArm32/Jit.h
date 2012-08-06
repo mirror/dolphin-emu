@@ -47,6 +47,31 @@
 class JitArm : public CPUCoreBase, public ArmGen::ARMXCodeBlock 
 {
 private:
+	struct JitState
+	{
+		u32 compilerPC;
+		u32 next_compilerPC;
+		u32 blockStart;
+		bool cancel;
+		bool skipnext;
+		UGeckoInstruction next_inst;  // for easy peephole opt.
+		int blockSize;
+		int instructionNumber;
+		int downcountAmount;
+		int block_flags;
+
+		bool isLastInstruction;
+		bool memcheck;
+
+		int fifoBytesThisBlock;
+
+		PPCAnalyst::BlockStats st;
+		PPCAnalyst::BlockRegStats gpa;
+		PPCAnalyst::BlockRegStats fpa;
+		PPCAnalyst::CodeOp *op;
+
+		JitBlock *curBlock;
+	};
 	JitArmBlockCache blocks;
 
 	JitArmAsmRoutineManager asm_routines;
@@ -64,6 +89,7 @@ public:
 	JitArm() : code_buffer(32000) {}
 	~JitArm() {}
 
+	JitState js;
 	void Init();
 	void Shutdown();
 
@@ -107,6 +133,13 @@ public:
 	void Default(UGeckoInstruction _inst);
 	void DoNothing(UGeckoInstruction _inst);
 	void HLEFunction(UGeckoInstruction _inst);
+
+	void DynaRunTable4(UGeckoInstruction _inst);
+	void DynaRunTable19(UGeckoInstruction _inst);
+	void DynaRunTable31(UGeckoInstruction _inst);
+	void DynaRunTable59(UGeckoInstruction _inst);
+	void DynaRunTable63(UGeckoInstruction _inst);
+
 
 };
 void ArmJit(u32 em_address);

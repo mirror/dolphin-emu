@@ -201,8 +201,7 @@ using namespace ArmGen;
 		blockCodePointers[block_num] = code_ptr;
 		JitBlock &b = blocks[block_num];
 		b.originalFirstOpcode = JitInterface::Read_Opcode_JIT(b.originalAddress);
-		JitInterface::Write_Opcode_JIT(b.originalAddress, (JIT_OPCODE << 26) |
-		block_num);
+		JitInterface::Write_Opcode_JIT(b.originalAddress, (JIT_OPCODE << 26) | block_num);
 		block_map[std::make_pair(b.originalAddress + 4 * b.originalSize - 1, b.originalAddress)] = block_num;
 		if (block_link)
 		{
@@ -316,14 +315,18 @@ using namespace ArmGen;
 		}
 		for (int e = 0; e < 2; e++)
 		{
+			// TODO: Not currently setup on the JIT side 
 			if (b.exitAddress[e] != INVALID_EXIT && !b.linkStatus[e])
 			{
 				int destinationBlock = GetBlockNumberFromStartAddress(b.exitAddress[e]);
 				if (destinationBlock != -1)
 				{
-					#warning FIXME: Block linking won't work without this!
-					//XEmitter emit(b.exitPtrs[e]);
-					//emit.JMP(blocks[destinationBlock].checkedEntry, true);
+					ARMXEmitter emit(b.exitPtrs[e]);
+					emit.ARMABI_MOVIMM32(R10,
+					(u32)blocks[destinationBlock].checkedEntry);
+					emit.PUSH(1, _LR);
+					emit.BLX(R10);
+					emit.POP(1, _LR);
 					b.linkStatus[e] = true;
 				}
 			}
@@ -375,7 +378,11 @@ using namespace ArmGen;
 		// Not entirely ideal, but .. pretty good.
 		// Spurious entrances from previously linked blocks can only come through checkedEntry
 		#warning FIXME! Block destroying won't work right with this!
-		//XEmitter emit((u8 *)b.checkedEntry);
+		ARMXEmitter emit((u8 *)b.checkedEntry);
+		emit.ARMABI_MOVIMM32(R10, (u32)&PC);
+		emit.ARMABI_MOVIMM32(R11, b.originalAddress);
+		emit.STR(R10, R11, 0);
+		//emit.ARMABI_CallFunction(jitarm->GetAsmRoutines()->enterCode);
 		//emit.MOV(32, M(&PC), Imm32(b.originalAddress));
 		//emit.JMP(jit->GetAsmRoutines()->dispatcher, true);
 		// this is not needed really
