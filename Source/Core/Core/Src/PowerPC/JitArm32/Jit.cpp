@@ -93,6 +93,7 @@ void JitArm::HLEFunction(UGeckoInstruction _inst)
 void JitArm::DoNothing(UGeckoInstruction _inst)
 {
 	// Yup, just don't do anything.
+
 }
 
 static const bool ImHereDebug = true;
@@ -132,7 +133,6 @@ void STACKALIGN JitArm::Run()
 {
 	CompiledCode pExecAddr = (CompiledCode)asm_routines.enterCode;
 	pExecAddr();
-	return;
 }
 
 void JitArm::SingleStep()
@@ -181,10 +181,7 @@ void STACKALIGN JitArm::Jit(u32 em_address)
 	JitBlock *b = blocks.GetBlock(block_num);
 	blocks.FinalizeBlock(block_num, false, DoJit(em_address, &code_buffer, b));
 }
-void Test3(unsigned int Stuff)
-{
-	printf("Stuff: %08x\n", Stuff);
-}
+
 const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlock *b)
 {
 	int blockSize = code_buf->GetSize();
@@ -248,6 +245,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 
 	const u8 *normalEntry = GetCodePtr();
 	b->normalEntry = normalEntry;
+
 	if(ImHereDebug)
 		ARMABI_CallFunction((void *)&ImHere); //Used to get a trace of the last few blocks before a crash, sometimes VERY useful
 	if (js.fpa.any)
@@ -277,7 +275,6 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	js.skipnext = false;
 	js.blockSize = size;
 	js.compilerPC = nextPC;
-
 	// Translate instructions
 	for (int i = 0; i < (int)size; i++)
 	{
@@ -312,17 +309,26 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		if (!ops[i].skip)
 		{
 			printf("OP %s\n", PPCTables::GetInstructionName(ops[i].inst));
+			ARMABI_MOVIMM32(R10, (u32)&PowerPC::ppcState.pc);
+			ARMABI_MOVIMM32(R9, (u32)&PowerPC::ppcState.npc);
+
+			LDR(R12, R10);
+			ADD(R12, R12, sizeof(UGeckoInstruction));	
+
+			STR(R9, R12);
+
 			JitArmTables::CompileInstruction(ops[i]);
-			
+				ARMABI_MOVIMM32(R10, (u32)&PowerPC::ppcState.pc);
+			ARMABI_MOVIMM32(R9, (u32)&PowerPC::ppcState.npc);
+
+			LDR(R9, R9);
+			STR(R10, R9);
+
 		}
 	}
-			ARMABI_MOVIMM32(R10, (u32)&PowerPC::ppcState.pc);
-			ARMABI_MOVIMM32(R11, (u32)&PowerPC::ppcState.npc);
-			LDR(R11, R11);
-			STR(R10, R11, 0);
-			MOV(ARM_PARAM1, R11);
-			ARMABI_CallFunction((void*)&Test3);
-	b->flags = js.block_flags;
+			
+			
+				b->flags = js.block_flags;
 	b->codeSize = (u32)(GetCodePtr() - normalEntry);
 	b->originalSize = size;
 

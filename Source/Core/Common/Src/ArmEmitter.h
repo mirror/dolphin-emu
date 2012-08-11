@@ -156,6 +156,12 @@ public:
 	{
 		_assert_msg_(DYNA_REC, isIMM, "Imm16 not IMM");
 		return ( (Value & 0xF000) << 4) | (Value & 0x0FFF);
+	
+	}
+	const u32 Imm24()
+	{
+		_assert_msg_(DYNA_REC, isIMM, "Imm16 not IMM");
+		return (Value & 0x0FFFFFFF);	
 	}
 	/*Operand2(ARMReg base, ShiftType type = LSL, u8 shift = 0)
 	{
@@ -225,7 +231,7 @@ public:
 	virtual ~ARMXEmitter() {}
 
 	void SetCodePtr(u8 *ptr);
-	void ReserveCodeSpace(int bytes);
+	void ReserveCodeSpace(u32 bytes);
 	const u8 *AlignCode16();
 	const u8 *AlignCodePage();
 	const u8 *GetCodePtr() const;
@@ -247,8 +253,10 @@ public:
 #undef CALL
 #endif
 
+	void B (Operand2 op2);
 	void BL(const void *fnptr);
 	void BLX(ARMReg src);
+	void BX (ARMReg src);
 	void PUSH(const int num, ...);
 	void POP(const int num, ...);
 	
@@ -315,15 +323,17 @@ public:
 	// Just need to put an underscore here, bit annoying.
 	void _MSR (bool nzcvq, bool g,	   Operand2 op2);
 	void _MSR (bool nzcvq, bool g, ARMReg src	   );
+	void MRS  (ARMReg dest);
 
 	// Memory load/store operations
 	void MOVT(ARMReg dest, 			   Operand2 op2);
 	void MOVW(ARMReg dest, 			   Operand2 op2);
 	void LDR (ARMReg dest, ARMReg src, Operand2 op2);
-	void LDR (ARMReg dest, ARMReg base, ARMReg offset = R0, bool Index = false,
-	bool Add = false);
+	void LDR (ARMReg dest, ARMReg base, ARMReg offset = R0, bool Index = false, bool Add = false);
 	void LDRB(ARMReg dest, ARMReg src, Operand2 op2);
 	void STR (ARMReg dest, ARMReg src, Operand2 op2);
+	void STR (ARMReg dest, ARMReg base, ARMReg offset = R0, bool Index = false, bool Add = false);
+
 	void STRB(ARMReg dest, ARMReg src, Operand2 op2);
 	void STMFD(ARMReg dest, bool WriteBack, const int Regnum, ...);
 	void LDMFD(ARMReg dest, bool WriteBack, const int Regnum, ...);

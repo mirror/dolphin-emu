@@ -41,9 +41,9 @@ u8 *ARMXEmitter::GetWritableCodePtr()
 	return code;
 }
 
-void ARMXEmitter::ReserveCodeSpace(int bytes)
+void ARMXEmitter::ReserveCodeSpace(u32 bytes)
 {
-	for (int i = 0; i < bytes/4; i++)
+	for (u32 i = 0; i < bytes/4; i++)
 		*code++ = 0xE1200070; //bkpt 0
 }
 
@@ -85,6 +85,10 @@ void ARMXEmitter::YIELD()
 	Write32(condition | 0x0320F001);
 }
 
+void ARMXEmitter::B (Operand2 op2)
+{
+	Write32(condition | (10 << 24) | op2.Imm24());
+}
 void ARMXEmitter::BL(const void *fnptr)
 {
 	s32 distance = (s32)fnptr - (s32(code) + 8);
@@ -98,6 +102,10 @@ void ARMXEmitter::BLX(ARMReg src)
 	Write32(condition | 0x12FFF30 | src);
 }
 
+void ARMXEmitter::BX(ARMReg src)
+{
+	Write32(condition | (18 << 20) | (0xFFF << 8) | (1 << 4) | src);
+}
 void ARMXEmitter::PUSH(const int num, ...)
 {
 	u16 RegList = 0;
@@ -214,6 +222,10 @@ void ARMXEmitter::_MSR (bool nzcvq, bool g,		ARMReg src)
 {
 	Write32(condition | (0x120F << 12) | (nzcvq << 19) | (g << 18) | src);
 }
+void ARMXEmitter::MRS (ARMReg dest)
+{
+	Write32(condition | (16 << 20) | (15 << 16) | (dest << 12));
+}
 // Memory Load/Store operations
 void ARMXEmitter::WriteMoveOp(u32 op, ARMReg dest, Operand2 op2)
 {
@@ -228,6 +240,11 @@ void ARMXEmitter::WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2)
 }
 void ARMXEmitter::STR (ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x40, dest, src, op);}
 void ARMXEmitter::STRB(ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x44, dest, src, op);}
+void ARMXEmitter::STR (ARMReg dest, ARMReg base, ARMReg offset, bool Index,
+bool Add)
+{
+	Write32(condition | (0x60 << 20) | (Index << 24) | (Add << 23) | (base << 12) | (dest << 16) | offset);
+}
 void ARMXEmitter::LDR (ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x41, dest, src, op);}
 void ARMXEmitter::LDRB(ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x45, dest, src, op);}
 void ARMXEmitter::LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index,
