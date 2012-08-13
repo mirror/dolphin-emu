@@ -127,6 +127,35 @@ void JitArm::Cleanup()
 
 void JitArm::WriteExit(u32 destination, int exit_num)
 {
+	Cleanup();
+	ARMABI_MOVIMM32(R10, js.downcountAmount);
+	ARMABI_MOVIMM32(R11, (u32)&CoreTiming::downcount);
+	LDR(R9, R11);
+	SUB(R9, R9, R10);
+	STR(R11, R9);
+ 
+	//If nobody has taken care of this yet (this can be removed when all branches are done)
+	JitBlock *b = js.curBlock;
+	b->exitAddress[exit_num] = destination;
+	b->exitPtrs[exit_num] = GetWritableCodePtr();
+	
+	// Link opportunity!
+	//int block = blocks.GetBlockNumberFromStartAddress(destination);
+	//if (block >= 0 && jo.enableBlocklink) 
+//	{
+		// It exists! Joy of joy!
+	//	JMP(blocks.GetBlock(block)->checkedEntry, true);
+//		b->linkStatus[exit_num] = true;
+//	}
+//	else 
+	{
+		ARMABI_MOVIMM32((u32)&PC, destination);
+		ARMABI_MOVIMM32(R0, (u32)asm_routines.dispatcher);
+
+		BLX(R0);	
+	//	B((u32)asm_routines.dispatcher);
+	}
+
 }
 
 void STACKALIGN JitArm::Run()
@@ -309,21 +338,9 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		if (!ops[i].skip)
 		{
 			printf("OP %s\n", PPCTables::GetInstructionName(ops[i].inst));
-			ARMABI_MOVIMM32(R10, (u32)&PowerPC::ppcState.pc);
-			ARMABI_MOVIMM32(R9, (u32)&PowerPC::ppcState.npc);
 
-			LDR(R12, R10);
-			ADD(R12, R12, sizeof(UGeckoInstruction));	
-
-			STR(R9, R12);
 
 			JitArmTables::CompileInstruction(ops[i]);
-				ARMABI_MOVIMM32(R10, (u32)&PowerPC::ppcState.pc);
-			ARMABI_MOVIMM32(R9, (u32)&PowerPC::ppcState.npc);
-
-			LDR(R9, R9);
-			STR(R10, R9);
-
 		}
 	}
 			

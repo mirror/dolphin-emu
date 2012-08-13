@@ -205,7 +205,9 @@ if(_M_ARM)
 			Src/PowerPC/JitArm32/JitAsm.cpp
 			Src/PowerPC/JitArm32/JitArm_Tables.cpp
 			Src/PowerPC/JitArm32/JitArmCache.cpp
-			Src/PowerPC/JitArm32/JitRegCache.cpp)
+			Src/PowerPC/JitArm32/JitRegCache.cpp
+			Src/PowerPC/JitArm32/JitArm_Branch.cpp
+			Src/PowerPC/JitArm32/JitArm_SystemRegisters.cpp)
 endif()
 if(WIN32)
 	set(SRCS ${SRCS} Src/HW/BBA-TAP/TAP_Win32.cpp Src/stdafx.cpp

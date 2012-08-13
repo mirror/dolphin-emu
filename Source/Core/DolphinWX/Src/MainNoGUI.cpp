@@ -37,8 +37,6 @@
 #include "Host.h"
 #include "CPUDetect.h"
 #include "Thread.h"
-#include "ArmEmitter.h"
-#define COMPILED_CODE_SIZE 4096
 
 #include "PowerPC/PowerPC.h"
 #include "HW/Wiimote.h"

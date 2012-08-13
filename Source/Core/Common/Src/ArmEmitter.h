@@ -91,50 +91,65 @@ enum
 
 class ARMXEmitter;
 
+enum OpType
+{
+	TYPE_IMM = 0,
+	TYPE_MEM,
+	TYPE_REG
+};
 class Operand2
 {
 private:
-	
+
+	OpType Type;	
 	// IMM types
-	bool isIMM;
 	u32 Value;
 	u8	Rotation; // Only for u8 values
+
+	// Memory types
+	bool Away;
 	
 	// Register types
 	ARMReg Base;
 	ARMReg IndexOrShift;
-	ShiftType Type;
+	ShiftType Shift;
 public:
 	Operand2() {}
-	Operand2(u32 imm) { isIMM = true; Value = imm; }
+	Operand2(u32 imm, OpType type = TYPE_IMM, bool away = false )
+	{ 
+		Type = type; 
+		Value = imm; 
+		Away = away;
+	}
 	Operand2(u8 imm, u8 rotation)
 	{
-		isIMM = true;
+		Type = TYPE_IMM;
 		Value = imm;
 		Rotation = rotation;
 	}
 	Operand2(ARMReg base, ShiftType type, ARMReg shift)
 	{
-		isIMM = false;
+		Type = TYPE_REG;
 		_assert_msg_(DYNA_REC, type != RRX, "Invalid Operand2: RRX does not take a register shift amount");
 		IndexOrShift = shift;
-		Type = type;
+		Shift = type;
 		Base = base;
 	}
+
 	const u32 RSR() // Register shifted register
 	{
-		_assert_msg_(DYNA_REC, !isIMM, "RSR can't be IMM");
-		return (IndexOrShift << 8) | (Type << 5) | 0x10 | Base;
+		_assert_msg_(DYNA_REC, !(Type == TYPE_IMM), "RSR can't be IMM");
+		return (IndexOrShift << 8) | (Shift << 5) | 0x10 | Base;
 	}
 	const u32 Imm8Rot() // IMM8 with Rotation
 	{
-		_assert_msg_(DYNA_REC, isIMM, "Imm8Rot not IMM value;");
+		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm8Rot not IMM value;");
 		_assert_msg_(DYNA_REC, (Rotation & 0xE1) != 0, "Invalid Operand2: immediate rotation %u", Rotation);
 		return (1 << 25) | (Rotation << 7) | (Value & 0x000000FF);
 	}
 	const u32 Imm12()
 	{
-		_assert_msg_(DYNA_REC, isIMM, "Imm12 not IMM");
+		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm12 not IMM");
 		return (Value & 0x00000FFF);
 	}
 
@@ -150,17 +165,28 @@ public:
 		// 0011 = Rotate right 6 bits
 		// 0100 = Rotate right 8 bits (So the IMM is in the top 8 bits of the IMM32)
 		// See A5.2.4 in the Arm reference manual for more.
+		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm12Mod not IMM");
 		return ((Rotation & 0xF) << 8) | (Value & 0xFF);
 	}
 	const u32 Imm16()
 	{
-		_assert_msg_(DYNA_REC, isIMM, "Imm16 not IMM");
+		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm16 not IMM");
 		return ( (Value & 0xF000) << 4) | (Value & 0x0FFF);
 	
 	}
+	const u32 Imm16Low()
+	{
+		return Imm16();
+	}
+	const u32 Imm16High() // Returns high 16bits
+	{
+		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm16 not IMM");
+		return ( ((Value >> 16) & 0xF000) << 4) | ((Value >> 16) & 0x0FFF);
+
+	}
 	const u32 Imm24()
 	{
-		_assert_msg_(DYNA_REC, isIMM, "Imm16 not IMM");
+		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm16 not IMM");
 		return (Value & 0x0FFFFFFF);	
 	}
 	/*Operand2(ARMReg base, ShiftType type = LSL, u8 shift = 0)
@@ -198,7 +224,7 @@ public:
 	} */
 
 };
-
+inline Operand2 Mem(void *ptr) { return Operand2((u32)ptr, true); }
 //usage: int a[]; ARRAY_OFFSET(a,10)
 #define ARRAY_OFFSET(array,index) ((u32)((u64)&(array)[index]-(u64)&(array)[0]))
 //usage: struct {int e;} s; STRUCT_OFFSET(s,e)
@@ -217,7 +243,7 @@ private:
 	void WriteDataOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2);
 	void WriteDataOp(u32 op, ARMReg dest, ARMReg src, ARMReg op2);
 	void WriteDataOp(u32 op, ARMReg dest, ARMReg src);
-	void WriteMoveOp(u32 op, ARMReg dest, Operand2 op2);
+	void WriteMoveOp(u32 op, ARMReg dest, Operand2 op2, bool TopBits = false);
 	void WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2);
 	void WriteRegStoreOp(u32 op, ARMReg dest, bool WriteBack, u16 RegList);
 
@@ -254,7 +280,7 @@ public:
 #endif
 
 	void B (Operand2 op2);
-	void BL(const void *fnptr);
+	void BL(const void *ptr);
 	void BLX(ARMReg src);
 	void BX (ARMReg src);
 	void PUSH(const int num, ...);
@@ -326,7 +352,7 @@ public:
 	void MRS  (ARMReg dest);
 
 	// Memory load/store operations
-	void MOVT(ARMReg dest, 			   Operand2 op2);
+	void MOVT(ARMReg dest, Operand2 op2, bool TopBits = false);
 	void MOVW(ARMReg dest, 			   Operand2 op2);
 	void LDR (ARMReg dest, ARMReg src, Operand2 op2);
 	void LDR (ARMReg dest, ARMReg base, ARMReg offset = R0, bool Index = false, bool Add = false);
@@ -345,6 +371,8 @@ public:
 	void ARMABI_PushAllCalleeSavedRegsAndAdjustStack(); 
 	void ARMABI_PopAllCalleeSavedRegsAndAdjustStack(); 
 	void ARMABI_MOVIMM32(ARMReg reg, u32 val);
+	void ARMABI_MOVIMM32(Operand2 op, u32 val);
+
 	void UpdateAPSR(bool NZCVQ, u8 Flags, bool GE, u8 GEval);
 
 

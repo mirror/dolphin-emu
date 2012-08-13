@@ -51,7 +51,7 @@ static GekkoOPTemplate primarytable[] =
 	{63, &JitArm::Default}, //"RunTable63", OPTYPE_SUBTABLE | (63<<24), 0}},
 
 	{16, &JitArm::Default}, //"bcx", OPTYPE_SYSTEM, FL_ENDBLOCK}},
-	{18, &JitArm::Default}, //"bx",  OPTYPE_SYSTEM, FL_ENDBLOCK}},
+	{18, &JitArm::bx}, //"bx",  OPTYPE_SYSTEM, FL_ENDBLOCK}},
 
 	{1,  &JitArm::Default}, //"HLEFunction", OPTYPE_SYSTEM, FL_ENDBLOCK}},
 	{2,  &JitArm::Default}, //"DynaBlock",   OPTYPE_SYSTEM, 0}},
@@ -282,7 +282,7 @@ static GekkoOPTemplate table31[] =
 	{19,  &JitArm::Default}, //"mfcr",   OPTYPE_SYSTEM, FL_OUT_D}},
 	{83,  &JitArm::Default}, //"mfmsr",  OPTYPE_SYSTEM, FL_OUT_D}},
 	{144, &JitArm::Default}, //"mtcrf",  OPTYPE_SYSTEM, 0}},
-	{146, &JitArm::Default}, //"mtmsr",  OPTYPE_SYSTEM, FL_ENDBLOCK}},
+	{146, &JitArm::mtmsr}, //"mtmsr",  OPTYPE_SYSTEM, FL_ENDBLOCK}},
 	{210, &JitArm::Default}, //"mtsr",   OPTYPE_SYSTEM, 0}},
 	{242, &JitArm::Default}, //"mtsrin", OPTYPE_SYSTEM, 0}},
 	{339, &JitArm::Default}, //"mfspr",  OPTYPE_SPR, FL_OUT_D}},

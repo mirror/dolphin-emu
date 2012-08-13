@@ -68,6 +68,8 @@ void JitArmAsmRoutineManager::Generate()
 
 	static const u8* End = 0;
 	ARMABI_CallFunction((void*)&CoreTiming::Advance);
+
+	dispatcher = GetCodePtr();	
 	ARMABI_MOVIMM32(R9, (u32)&PowerPC::ppcState.pc);
 	LDR(R9, R9);// Load the current PC into R9
 

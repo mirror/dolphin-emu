@@ -42,6 +42,10 @@
 // #define INSTRUCTION_START Default(inst); return;
 // #define INSTRUCTION_START PPCTables::CountInstruction(inst);
 #define INSTRUCTION_START
+#define JITDISABLE(type) \
+	if (Core::g_CoreStartupParameter.bJITOff || \
+	Core::g_CoreStartupParameter.bJIT##type##Off) \
+	{Default(inst); return;}
 
 
 class JitArm : public CPUCoreBase, public ArmGen::ARMXCodeBlock 
@@ -140,6 +144,11 @@ public:
 	void DynaRunTable59(UGeckoInstruction _inst);
 	void DynaRunTable63(UGeckoInstruction _inst);
 
+	// Branch
+	void bx(UGeckoInstruction _inst);
+	
+	// System Registers
+	void mtmsr(UGeckoInstruction _inst);
 
 };
 void ArmJit(u32 em_address);

@@ -43,9 +43,18 @@ void ARMXEmitter::ARMABI_MOVIMM32(ARMReg reg, u32 val)
 	// variable it should be able to be moved to just a single MOV instruction
 	// but for now, we are just taking the long route out and using the MOVW
 	// and MOVT
-	Operand2 LowVal(val);
-	Operand2 HighVal((u16)(val >> 16));
-	MOVW(reg, LowVal); MOVT(reg, HighVal);
+	Operand2 Val(val);
+	MOVW(reg, Val); MOVT(reg, Val, true);
+}
+// Moves IMM to memory location
+void ARMXEmitter::ARMABI_MOVIMM32(Operand2 op, u32 val)
+{
+	// This moves imm to a memory location
+	Operand2 Val(val);
+	MOVW(R10, Val); MOVT(R10, Val, true);
+	MOVW(R11, op); MOVT(R11, op, true);
+	STR(R11, R10); // R10 is what we want to store
+	
 }
 // NZCVQ is stored in the lower five bits of the Flags variable
 // GE values are in the lower four bits of the GEval variable

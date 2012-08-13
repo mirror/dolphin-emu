@@ -227,11 +227,14 @@ void ARMXEmitter::MRS (ARMReg dest)
 	Write32(condition | (16 << 20) | (15 << 16) | (dest << 12));
 }
 // Memory Load/Store operations
-void ARMXEmitter::WriteMoveOp(u32 op, ARMReg dest, Operand2 op2)
+void ARMXEmitter::WriteMoveOp(u32 op, ARMReg dest, Operand2 op2, bool TopBits)
 {
-	Write32(condition | (op << 20) | (dest << 12) | op2.Imm16());
+	Write32(condition | (op << 20) | (dest << 12) | (TopBits ? op2.Imm16High() : op2.Imm16Low()));
 }
-void ARMXEmitter::MOVT(ARMReg dest, 			Operand2 op2) { WriteMoveOp( 52, dest, op2);}
+void ARMXEmitter::MOVT(ARMReg dest, 			Operand2 op2, bool TopBits) 
+{
+	 WriteMoveOp( 52, dest, op2, TopBits);
+}
 void ARMXEmitter::MOVW(ARMReg dest, 			Operand2 op2) { WriteMoveOp( 48, dest, op2);}
 
 void ARMXEmitter::WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2)
