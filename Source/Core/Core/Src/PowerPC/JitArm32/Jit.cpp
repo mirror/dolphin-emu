@@ -127,11 +127,16 @@ void JitArm::Cleanup()
 
 void JitArm::WriteExit(u32 destination, int exit_num)
 {
+
 	Cleanup();
+
 	ARMABI_MOVIMM32(R10, js.downcountAmount);
 	ARMABI_MOVIMM32(R11, (u32)&CoreTiming::downcount);
+	
 	LDR(R9, R11);
+
 	SUB(R9, R9, R10);
+	
 	STR(R11, R9);
  
 	//If nobody has taken care of this yet (this can be removed when all branches are done)
@@ -149,13 +154,11 @@ void JitArm::WriteExit(u32 destination, int exit_num)
 //	}
 //	else 
 	{
+
 		ARMABI_MOVIMM32((u32)&PC, destination);
 		ARMABI_MOVIMM32(R0, (u32)asm_routines.dispatcher);
-
-		BLX(R0);	
-	//	B((u32)asm_routines.dispatcher);
+		BX(R0);	
 	}
-
 }
 
 void STACKALIGN JitArm::Run()
@@ -210,6 +213,7 @@ void STACKALIGN JitArm::Jit(u32 em_address)
 	JitBlock *b = blocks.GetBlock(block_num);
 	blocks.FinalizeBlock(block_num, false, DoJit(em_address, &code_buffer, b));
 }
+
 
 const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlock *b)
 {
@@ -338,8 +342,6 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		if (!ops[i].skip)
 		{
 			printf("OP %s\n", PPCTables::GetInstructionName(ops[i].inst));
-
-
 			JitArmTables::CompileInstruction(ops[i]);
 		}
 	}

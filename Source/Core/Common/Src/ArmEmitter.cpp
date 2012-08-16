@@ -44,7 +44,7 @@ u8 *ARMXEmitter::GetWritableCodePtr()
 void ARMXEmitter::ReserveCodeSpace(u32 bytes)
 {
 	for (u32 i = 0; i < bytes/4; i++)
-		*code++ = 0xE1200070; //bkpt 0
+		Write32(0xE1200070); //bkpt 0
 }
 
 const u8 *ARMXEmitter::AlignCode16()
@@ -89,6 +89,26 @@ void ARMXEmitter::B (Operand2 op2)
 {
 	Write32(condition | (10 << 24) | op2.Imm24());
 }
+FixupBranch ARMXEmitter::B()
+{
+	FixupBranch branch;
+	branch.type = 0; // Zero for B
+	branch.ptr = code;
+	branch.condition = condition;
+	//We'll write NOP here for now.
+	Write32(condition | 0x01A00000);
+	return branch;
+}
+FixupBranch ARMXEmitter::BL()
+{
+	FixupBranch branch;
+	branch.type = 1; // Zero for B
+	branch.ptr = code;
+	branch.condition = condition;
+	//We'll write NOP here for now.
+	Write32(condition | 0x01A00000);
+	return branch;
+}
 void ARMXEmitter::BL(const void *fnptr)
 {
 	s32 distance = (s32)fnptr - (s32(code) + 8);
@@ -106,6 +126,22 @@ void ARMXEmitter::BX(ARMReg src)
 {
 	Write32(condition | (18 << 20) | (0xFFF << 8) | (1 << 4) | src);
 }
+void ARMXEmitter::SetJumpTarget(FixupBranch const &branch)
+{
+	s32 distance =  (s32(code) + 4) - (s32)branch.ptr;
+     _assert_msg_(DYNA_REC, distance > -33554432
+                     && distance <=  33554432,
+                     "SetJumpTarget out of range (%p calls %p)", code,
+					 branch.ptr);
+	printf("Jumping to %08x\n", distance);
+	if(branch.type == 0) // B
+		*(u32*)branch.ptr = (u32)(branch.condition | (10 << 24) | (distance &
+		0x00FFFFFF)); 
+	else // BL
+		*(u32*)branch.ptr =	(u32)(branch.condition | 0x0B000000 | ((distance >> 2)
+		& 0x00FFFFFF));
+}
+
 void ARMXEmitter::PUSH(const int num, ...)
 {
 	u16 RegList = 0;

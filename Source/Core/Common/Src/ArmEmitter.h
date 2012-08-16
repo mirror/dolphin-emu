@@ -135,7 +135,10 @@ public:
 		Shift = type;
 		Base = base;
 	}
-
+	Operand2(ARMReg base)
+	{
+		_assert_msg_(DYNA_REC, false, "Can't have just register operand...yet");
+	}
 	const u32 RSR() // Register shifted register
 	{
 		_assert_msg_(DYNA_REC, !(Type == TYPE_IMM), "RSR can't be IMM");
@@ -230,7 +233,13 @@ inline Operand2 Mem(void *ptr) { return Operand2((u32)ptr, true); }
 //usage: struct {int e;} s; STRUCT_OFFSET(s,e)
 #define STRUCT_OFFSET(str,elem) ((u32)((u64)&(str).elem-(u64)&(str)))
 
-typedef const u8* FixupBranch;
+struct FixupBranch
+{
+	u8 *ptr;
+	u32 condition; // Remembers our codition at the time
+	int type; //0 = B 1 = BL
+};
+
 typedef const u8* JumpTarget;
 
 class ARMXEmitter
@@ -280,9 +289,13 @@ public:
 #endif
 
 	void B (Operand2 op2);
+	FixupBranch B();
 	void BL(const void *ptr);
+	FixupBranch BL();
 	void BLX(ARMReg src);
 	void BX (ARMReg src);
+	void SetJumpTarget(FixupBranch const &branch);
+
 	void PUSH(const int num, ...);
 	void POP(const int num, ...);
 	
@@ -345,7 +358,7 @@ public:
 	void MVNS(ARMReg dest,             Operand2 op2);
 	void MVN (ARMReg dest,             ARMReg op2);
 	void MVNS(ARMReg dest,             ARMReg op2);
-// Using just MSR here messes with our defines on the PPC side of stuff
+	// Using just MSR here messes with our defines on the PPC side of stuff
 	// Just need to put an underscore here, bit annoying.
 	void _MSR (bool nzcvq, bool g,	   Operand2 op2);
 	void _MSR (bool nzcvq, bool g, ARMReg src	   );
