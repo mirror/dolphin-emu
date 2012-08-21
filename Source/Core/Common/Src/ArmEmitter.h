@@ -288,9 +288,9 @@ public:
 #undef CALL
 #endif
 
-	void B (Operand2 op2);
+	void B (const void *fnptr);
 	FixupBranch B();
-	void BL(const void *ptr);
+	void BL(const void *fnptr);
 	FixupBranch BL();
 	void BLX(ARMReg src);
 	void BX (ARMReg src);
@@ -354,6 +354,9 @@ public:
 	void BICS(ARMReg dest, ARMReg src, Operand2 op2);
 	void BIC (ARMReg dest, ARMReg src, ARMReg op2);
 	void BICS(ARMReg dest, ARMReg src, ARMReg op2);
+	void MUL (ARMReg dest,	ARMReg src, ARMReg op2);
+	void MULS(ARMReg dest,	ARMReg src, ARMReg op2);
+
 	void MVN (ARMReg dest,             Operand2 op2);
 	void MVNS(ARMReg dest,             Operand2 op2);
 	void MVN (ARMReg dest,             ARMReg op2);

@@ -58,7 +58,6 @@ JitArmAsmRoutineManager asm_routines;
 // PLAN: no more block numbers - crazy opcodes just contain offset within
 // dynarec buffer
 // At this offset - 4, there is an int specifying the block number.
-
 void JitArmAsmRoutineManager::Generate()
 {
 	enterCode = GetCodePtr();
@@ -86,8 +85,10 @@ void JitArmAsmRoutineManager::Generate()
 	ARMABI_MOVIMM32(R10, (u32)jitarm->GetBlockCache()->GetCodePointers());
 	// LDR R10 right here to get CodePointers()[0] pointer.
 	REV(R9, R9); // Reversing this gives us our JITblock.
-	ADD(R10, R10, R9);
-	LDR(R10, R10); // Shouldn't need to ADD before this LDR, just use Indexed address
+	SUB(R11, R11, R11);
+	ADD(R11, R11, 4);
+	MUL(R9, R9, R11); 
+	LDR(R10, R10, R9, true, true); // Load the block address in to R10 
 	// _LR contains exit to Jit::Run place before this
 	PUSH(1, _LR);
 	BLX(R10);
@@ -100,7 +101,8 @@ void JitArmAsmRoutineManager::Generate()
 	ARMABI_MOVIMM32(ARM_PARAM1, (u32)&PowerPC::ppcState.pc);
 	LDR(ARM_PARAM1, ARM_PARAM1); 
 	ARMABI_CallFunction((void*)&ArmJit);
-	
+	B(dispatcher);
+		
 	SetJumpTarget(End);
 
 	UpdateAPSR(true, 0, false, 0); // Clear our host register flags out.
