@@ -290,8 +290,10 @@ public:
 
 	void B (const void *fnptr);
 	FixupBranch B();
+	FixupBranch B_CC(CCFlags Cond);
 	void BL(const void *fnptr);
 	FixupBranch BL();
+	FixupBranch BL_CC(CCFlags Cond);
 	void BLX(ARMReg src);
 	void BX (ARMReg src);
 	void SetJumpTarget(FixupBranch const &branch);

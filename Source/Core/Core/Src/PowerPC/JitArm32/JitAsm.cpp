@@ -58,6 +58,11 @@ JitArmAsmRoutineManager asm_routines;
 // PLAN: no more block numbers - crazy opcodes just contain offset within
 // dynarec buffer
 // At this offset - 4, there is an int specifying the block number.
+void Test3(u32 arg)
+{
+	printf("arg0: %08x CodeBlock[1]: %08x\n", arg,
+	jitarm->GetBlockCache()->GetCodePointers()[1]);
+}
 void JitArmAsmRoutineManager::Generate()
 {
 	enterCode = GetCodePtr();
@@ -65,6 +70,7 @@ void JitArmAsmRoutineManager::Generate()
 	ARMABI_CallFunction((void*)&CoreTiming::Advance);
 
 	dispatcher = GetCodePtr();	
+	printf("Dispatcher is %08x\n", dispatcher);
 	ARMABI_MOVIMM32(R9, (u32)&PowerPC::ppcState.pc);
 	LDR(R9, R9);// Load the current PC into R9
 
@@ -103,6 +109,18 @@ void JitArmAsmRoutineManager::Generate()
 	ARMABI_CallFunction((void*)&ArmJit);
 	B(dispatcher);
 		
+
+	testExceptions = GetCodePtr();
+	ARMABI_MOVIMM32(R0, (u32)&PC);
+	ARMABI_MOVIMM32(R1, (u32)&NPC);
+	LDR(R0, R0);
+	STR(R1, R0);
+		ARMABI_CallFunction((void*)&PowerPC::CheckExceptions);
+	ARMABI_MOVIMM32(R0, (u32)&PC);
+	ARMABI_MOVIMM32(R1, (u32)&NPC);
+	LDR(R1, R1);
+	STR(R0, R1);
+
 	SetJumpTarget(End);
 
 	UpdateAPSR(true, 0, false, 0); // Clear our host register flags out.

@@ -27,7 +27,6 @@
 #include "JitRegCache.h"
 #include "JitAsm.h"
 
-
 void JitArm::mtmsr(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
@@ -43,6 +42,7 @@ void JitArm::mtmsr(UGeckoInstruction inst)
 	gpr.Flush(FLUSH_ALL);
 	fpr.Flush(FLUSH_ALL);*/
 //	MSR = m_GPR[_inst.RS];
+
 	ARMABI_MOVIMM32(R10, (u32)&MSR);
 	ARMABI_MOVIMM32(R11, (u32)&m_GPR[inst.RS]); 
 	LDR(R11, R11);

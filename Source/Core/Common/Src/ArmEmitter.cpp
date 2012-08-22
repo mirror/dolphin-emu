@@ -114,6 +114,28 @@ FixupBranch ARMXEmitter::BL()
 	Write32(condition | 0x01A00000);
 	return branch;
 }
+
+FixupBranch ARMXEmitter::B_CC(CCFlags Cond)
+{
+	FixupBranch branch;
+	branch.type = 0; // Zero for B
+	branch.ptr = code;
+	branch.condition = Cond << 28;
+	//We'll write NOP here for now.
+	Write32(condition | 0x01A00000);
+	return branch;
+}
+FixupBranch ARMXEmitter::BL_CC(CCFlags Cond)
+{
+	FixupBranch branch;
+	branch.type = 1; // Zero for B
+	branch.ptr = code;
+	branch.condition = Cond << 28;
+	//We'll write NOP here for now.
+	Write32(condition | 0x01A00000);
+	return branch;
+}
+
 void ARMXEmitter::BL(const void *fnptr)
 {
 	s32 distance = (s32)fnptr - (s32(code) + 8);

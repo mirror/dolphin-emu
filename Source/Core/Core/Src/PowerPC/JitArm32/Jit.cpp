@@ -124,7 +124,13 @@ static void ImHere()
 void JitArm::Cleanup()
 {
 }
-
+void JitArm::WriteExceptionExit()
+{
+	Cleanup();
+	//SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount)); 
+	ARMABI_MOVIMM32(R0, (u32)asm_routines.testExceptions);
+	BX(R0);
+}
 void JitArm::WriteExit(u32 destination, int exit_num)
 {
 
@@ -154,7 +160,7 @@ void JitArm::WriteExit(u32 destination, int exit_num)
 //	}
 //	else 
 	{
-
+		printf("Destination: %08x\n", destination);
 		ARMABI_MOVIMM32((u32)&PC, destination);
 		ARMABI_MOVIMM32(R0, (u32)asm_routines.dispatcher);
 		BX(R0);	
@@ -201,7 +207,12 @@ void JitArm::Trace()
 		PowerPC::ppcState.cr_fast[4], PowerPC::ppcState.cr_fast[5], PowerPC::ppcState.cr_fast[6], PowerPC::ppcState.cr_fast[7], PowerPC::ppcState.fpscr, 
 		PowerPC::ppcState.msr, PowerPC::ppcState.spr[8], regs, fregs);
 }
-
+void Test2()
+{
+	static int Num = 0;
+	Num++;
+	printf("Jit: %08x\n", Num);
+}
 void STACKALIGN JitArm::Jit(u32 em_address)
 {
 	if (GetSpaceLeft() < 0x10000 || blocks.IsFull() || Core::g_CoreStartupParameter.bJITNoBlockCache)
@@ -212,6 +223,7 @@ void STACKALIGN JitArm::Jit(u32 em_address)
 	int block_num = blocks.AllocateBlock(em_address);
 	JitBlock *b = blocks.GetBlock(block_num);
 	blocks.FinalizeBlock(block_num, false, DoJit(em_address, &code_buffer, b));
+	printf("PC was %08x\n", em_address);
 }
 
 
@@ -341,13 +353,14 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		
 		if (!ops[i].skip)
 		{
-			printf("OP %s\n", PPCTables::GetInstructionName(ops[i].inst));
+			ARMABI_CallFunction((void*)&Test2);
+			printf("OP: %s\n", PPCTables::GetInstructionName(ops[i].inst));
 			JitArmTables::CompileInstruction(ops[i]);
 		}
 	}
 			
 			
-				b->flags = js.block_flags;
+	b->flags = js.block_flags;
 	b->codeSize = (u32)(GetCodePtr() - normalEntry);
 	b->originalSize = size;
 

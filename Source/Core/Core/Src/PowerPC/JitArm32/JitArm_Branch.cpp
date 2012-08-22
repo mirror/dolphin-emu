@@ -40,6 +40,24 @@
 
 
 using namespace ArmGen;
+void JitArm::sc(UGeckoInstruction inst)
+{
+	INSTRUCTION_START
+	JITDISABLE(Branch)
+
+//	gpr.Flush(FLUSH_ALL);
+//	fpr.Flush(FLUSH_ALL);
+	ARMABI_MOVIMM32((u32)&PC, js.compilerPC + 4);
+
+	//LOCK();
+	ARMABI_MOVIMM32(R0, (u32)&PowerPC::ppcState.Exceptions);
+	LDR(R1, R0);
+	ARMABI_MOVIMM32(R2, EXCEPTION_SYSCALL);
+	ORR(R1, R1, R2);
+	STR(R0, R1);
+
+	WriteExceptionExit();
+}
 
 void JitArm::bx(UGeckoInstruction inst)
 {
@@ -80,4 +98,134 @@ void JitArm::bx(UGeckoInstruction inst)
 	}
 	WriteExit(destination, 0);
 }
+// TODO: Finish these branch instructions
+void JitArm::bcx(UGeckoInstruction inst)
+{
+	INSTRUCTION_START
+	JITDISABLE(Branch)
 
+	// USES_CR
+	_assert_msg_(DYNA_REC, js.isLastInstruction, "bcx not last instruction of block");
+
+	//gpr.Flush(FLUSH_ALL);
+	//fpr.Flush(FLUSH_ALL);
+
+	FixupBranch pCTRDontBranch;
+	if ((inst.BO & BO_DONT_DECREMENT_FLAG) == 0)  // Decrement and test CTR
+	{
+		ARMABI_MOVIMM32(R0, (u32)&CTR);
+		MOV(R1, 1);
+		LDR(R2, R0);
+		SUB(R2, R2, R1);
+		STR(R0, R2);
+		CMP(R2, 0);
+			
+		//SUB(32, M(&CTR), Imm8(1));
+		if (inst.BO & BO_BRANCH_IF_CTR_0)
+			pCTRDontBranch = B_CC(CC_NEQ);
+		else
+			pCTRDontBranch = B_CC(CC_EQ);
+	}
+
+	FixupBranch pConditionDontBranch;
+	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)  // Test a CR bit
+	{
+		ARMABI_MOVIMM32(R0, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
+		LDR(R1, R0);
+		ARMABI_MOVIMM32(R2, 8 >> (inst.BI & 3));
+		AND(R1, R1, R2);
+		CMP(R1, 0);
+		//TEST(8, M(&PowerPC::ppcState.cr_fast[inst.BI >> 2]), Imm8(8 >> (inst.BI & 3)));
+		if (inst.BO & BO_BRANCH_IF_TRUE)  // Conditional branch 
+			pConditionDontBranch = B_CC(CC_NEQ);
+		else
+			pConditionDontBranch = B_CC(CC_EQ);
+	}
+	
+	if (inst.LK)
+		ARMABI_MOVIMM32((u32)&LR, js.compilerPC + 4);
+	
+	u32 destination;
+	if(inst.AA)
+		destination = SignExt16(inst.BD << 2);
+	else
+		destination = js.compilerPC + SignExt16(inst.BD << 2);
+	WriteExit(destination, 0);
+
+	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)
+		SetJumpTarget( pConditionDontBranch );
+	if ((inst.BO & BO_DONT_DECREMENT_FLAG) == 0)
+		SetJumpTarget( pCTRDontBranch );
+	WriteExit(js.compilerPC + 4, 1);
+}
+
+void JitArm::bclrx(UGeckoInstruction inst)
+{
+	INSTRUCTION_START
+	JITDISABLE(Branch)
+
+	if (!js.isLastInstruction &&
+		(inst.BO & (1 << 4)) && (inst.BO & (1 << 2))) {
+		if (inst.LK)
+		{
+			ARMABI_MOVIMM32((u32)&LR, js.compilerPC + 4);
+			//MOV(32, M(&LR), Imm32(js.compilerPC + 4));
+		}
+		return;
+	}
+	//gpr.Flush(FLUSH_ALL);
+	//fpr.Flush(FLUSH_ALL);
+
+	FixupBranch pCTRDontBranch;
+	if ((inst.BO & BO_DONT_DECREMENT_FLAG) == 0)  // Decrement and test CTR
+	{
+		ARMABI_MOVIMM32(R0, (u32)&CTR);
+		MOV(R1, 1);
+		LDR(R2, R0);
+		SUB(R2, R2, R1);
+		STR(R0, R2);
+		CMP(R2, 0);
+			
+		//SUB(32, M(&CTR), Imm8(1));
+		if (inst.BO & BO_BRANCH_IF_CTR_0)
+			pCTRDontBranch = B_CC(CC_NEQ);
+		else
+			pCTRDontBranch = B_CC(CC_EQ);
+	}
+
+	FixupBranch pConditionDontBranch;
+	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)  // Test a CR bit
+	{
+		ARMABI_MOVIMM32(R0, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
+		LDR(R1, R0);
+		ARMABI_MOVIMM32(R2, 8 >> (inst.BI & 3));
+		AND(R1, R1, R2);
+		CMP(R1, 0);
+		//TEST(8, M(&PowerPC::ppcState.cr_fast[inst.BI >> 2]), Imm8(8 >> (inst.BI & 3)));
+		if (inst.BO & BO_BRANCH_IF_TRUE)  // Conditional branch 
+			pConditionDontBranch = B_CC(CC_NEQ);
+		else
+			pConditionDontBranch = B_CC(CC_EQ);
+	}
+
+		// This below line can be used to prove that blr "eats flags" in practice.
+		// This observation will let us do a lot of fun observations.
+#ifdef ACID_TEST
+	// TODO: Not yet implemented
+	//	AND(32, M(&PowerPC::ppcState.cr), Imm32(~(0xFF000000)));
+#endif
+
+	//MOV(32, R(EAX), M(&LR));	
+	//AND(32, R(EAX), Imm32(0xFFFFFFFC));
+	if (inst.LK)
+		ARMABI_MOVIMM32((u32)&LR, js.compilerPC + 4);
+	
+	//WriteExitDestInEAX();
+
+	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)
+		SetJumpTarget( pConditionDontBranch );
+	if ((inst.BO & BO_DONT_DECREMENT_FLAG) == 0)
+		SetJumpTarget( pCTRDontBranch );
+	WriteExit(js.compilerPC + 4, 1);
+
+}

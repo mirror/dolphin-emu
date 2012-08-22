@@ -50,13 +50,13 @@ static GekkoOPTemplate primarytable[] =
 	{59, &JitArm::DynaRunTable59}, //"RunTable59", OPTYPE_SUBTABLE | (59<<24), 0}},
 	{63, &JitArm::DynaRunTable63}, //"RunTable63", OPTYPE_SUBTABLE | (63<<24), 0}},
 
-	{16, &JitArm::Default}, //"bcx", OPTYPE_SYSTEM, FL_ENDBLOCK}},
+	{16, &JitArm::bcx}, //"bcx", OPTYPE_SYSTEM, FL_ENDBLOCK}},
 	{18, &JitArm::bx}, //"bx",  OPTYPE_SYSTEM, FL_ENDBLOCK}},
 
 	{1,  &JitArm::Default}, //"HLEFunction", OPTYPE_SYSTEM, FL_ENDBLOCK}},
 	{2,  &JitArm::Default}, //"DynaBlock",   OPTYPE_SYSTEM, 0}},
 	{3,  &JitArm::Default}, //"twi",         OPTYPE_SYSTEM, FL_ENDBLOCK}},
-	{17, &JitArm::Default}, //"sc",          OPTYPE_SYSTEM, FL_ENDBLOCK, 1}},
+	{17, &JitArm::sc}, //"sc",          OPTYPE_SYSTEM, FL_ENDBLOCK, 1}},
 
 	{7,  &JitArm::Default}, //"mulli",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_A | FL_RC_BIT, 2}},
 	{8,  &JitArm::Default}, //"subfic",   OPTYPE_INTEGER, FL_OUT_D | FL_IN_A |	FL_SET_CA}},
@@ -174,7 +174,7 @@ static GekkoOPTemplate table4_3[] =
 static GekkoOPTemplate table19[] = 
 {
 	{528, &JitArm::Default}, //"bcctrx", OPTYPE_BRANCH, FL_ENDBLOCK}},
-	{16,  &JitArm::Default}, //"bclrx",  OPTYPE_BRANCH, FL_ENDBLOCK}},
+	{16,  &JitArm::bclrx}, //"bclrx",  OPTYPE_BRANCH, FL_ENDBLOCK}},
 	{257, &JitArm::Default}, //"crand",  OPTYPE_CR, FL_EVIL}},
 	{129, &JitArm::Default}, //"crandc", OPTYPE_CR, FL_EVIL}},
 	{289, &JitArm::Default}, //"creqv",  OPTYPE_CR, FL_EVIL}},

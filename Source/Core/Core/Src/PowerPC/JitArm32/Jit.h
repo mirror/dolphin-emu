@@ -146,6 +146,9 @@ public:
 
 	// Branch
 	void bx(UGeckoInstruction _inst);
+	void bcx(UGeckoInstruction _inst);
+	void bclrx(UGeckoInstruction _inst);
+	void sc(UGeckoInstruction _inst);
 	
 	// System Registers
 	void mtmsr(UGeckoInstruction _inst);
