@@ -200,6 +200,14 @@ void ARMXEmitter::POP(const int num, ...)
 	Write32(condition | (2237 << 16) | RegList);
 }
 
+void ARMXEmitter::WriteShiftedDataOp(u32 op, bool SetFlags, ARMReg dest, ARMReg src, Operand2 op2)
+{
+	Write32(condition | (13 << 21) | (SetFlags << 20) | (dest << 12) | op2.Imm5() | (op << 4) | src);
+}
+void ARMXEmitter::WriteShiftedDataOp(u32 op, bool SetFlags, ARMReg dest, ARMReg src, ARMReg op2)
+{
+	Write32(condition | (13 << 21) | (SetFlags << 20) | (dest << 12) | (op2 << 8) | (op << 4) | src);
+}
 void ARMXEmitter::WriteDataOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2)
 {
 	Write32(condition | (op << 20) | (src << 16) | (dest << 12) | op2.Imm12Mod()); 
@@ -223,6 +231,10 @@ void ARMXEmitter::EOR (ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(34, 
 void ARMXEmitter::EORS(ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(35, dest, src, op2);}
 void ARMXEmitter::EOR (ARMReg dest, ARMReg src, ARMReg op2)	  { WriteDataOp( 2, dest, src, op2);}
 void ARMXEmitter::EORS(ARMReg dest, ARMReg src, ARMReg op2)	  { WriteDataOp( 3, dest, src, op2);}
+void ARMXEmitter::LSL (ARMReg dest, ARMReg src, Operand2 op2) { WriteShiftedDataOp(0, false, dest, src, op2);}
+void ARMXEmitter::LSLS(ARMReg dest, ARMReg src, Operand2 op2) { WriteShiftedDataOp(0, true, dest, src, op2);}
+void ARMXEmitter::LSL (ARMReg dest, ARMReg src, ARMReg op2)	  { WriteShiftedDataOp(1, false, dest, src, op2);} 
+void ARMXEmitter::LSLS(ARMReg dest, ARMReg src, ARMReg op2)	  { WriteShiftedDataOp(1, true, dest, src, op2);}
 void ARMXEmitter::SUB (ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(36, dest, src, op2);}
 void ARMXEmitter::SUBS(ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(37, dest, src, op2);}
 void ARMXEmitter::SUB (ARMReg dest, ARMReg src, ARMReg op2)   { WriteDataOp( 4, dest, src, op2);}

@@ -144,9 +144,14 @@ public:
 		_assert_msg_(DYNA_REC, !(Type == TYPE_IMM), "RSR can't be IMM");
 		return (IndexOrShift << 8) | (Shift << 5) | 0x10 | Base;
 	}
+	const u32 Imm5()
+	{
+		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm5 not IMM value");
+		return ((Value & 0x0000001F) << 7);
+	}
 	const u32 Imm8Rot() // IMM8 with Rotation
 	{
-		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm8Rot not IMM value;");
+		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm8Rot not IMM value");
 		_assert_msg_(DYNA_REC, (Rotation & 0xE1) != 0, "Invalid Operand2: immediate rotation %u", Rotation);
 		return (1 << 25) | (Rotation << 7) | (Value & 0x000000FF);
 	}
@@ -255,7 +260,8 @@ private:
 	void WriteMoveOp(u32 op, ARMReg dest, Operand2 op2, bool TopBits = false);
 	void WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2);
 	void WriteRegStoreOp(u32 op, ARMReg dest, bool WriteBack, u16 RegList);
-
+	void WriteShiftedDataOp(u32 op, bool SetFlags, ARMReg dest, ARMReg src, ARMReg op2);
+	void WriteShiftedDataOp(u32 op, bool SetFlags, ARMReg dest, ARMReg src, Operand2 op2);
 
 protected:
 	inline void Write32(u32 value) {*(u32*)code = value; code+=4;}
@@ -326,11 +332,14 @@ public:
 	void ADCS(ARMReg dest, ARMReg src, Operand2 op2);
 	void ADC (ARMReg dest, ARMReg src, ARMReg op2);
 	void ADCS(ARMReg dest, ARMReg src, ARMReg op2);
+	void LSL (ARMReg dest, ARMReg src, Operand2 op2);
+	void LSL (ARMReg dest, ARMReg src, ARMReg op2);
+	void LSLS(ARMReg dest, ARMReg src, Operand2 op2);
+	void LSLS(ARMReg dest, ARMReg src, ARMReg op2);
 	void SBC (ARMReg dest, ARMReg src, Operand2 op2);
 	void SBCS(ARMReg dest, ARMReg src, Operand2 op2);
 	void SBC (ARMReg dest, ARMReg src, ARMReg op2);
 	void SBCS(ARMReg dest, ARMReg src, ARMReg op2);
-	
 	void REV (ARMReg dest, ARMReg src			   );
 	void RSC (ARMReg dest, ARMReg src, Operand2 op2);
 	void RSCS(ARMReg dest, ARMReg src, Operand2 op2);

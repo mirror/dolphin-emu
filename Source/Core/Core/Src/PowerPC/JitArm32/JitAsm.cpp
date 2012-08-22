@@ -91,9 +91,7 @@ void JitArmAsmRoutineManager::Generate()
 	ARMABI_MOVIMM32(R10, (u32)jitarm->GetBlockCache()->GetCodePointers());
 	// LDR R10 right here to get CodePointers()[0] pointer.
 	REV(R9, R9); // Reversing this gives us our JITblock.
-	SUB(R11, R11, R11);
-	ADD(R11, R11, 4);
-	MUL(R9, R9, R11); 
+	LSL(R9, R9, 2); // Multiply by four because address locations are u32 in size 
 	LDR(R10, R10, R9, true, true); // Load the block address in to R10 
 	// _LR contains exit to Jit::Run place before this
 	PUSH(1, _LR);
