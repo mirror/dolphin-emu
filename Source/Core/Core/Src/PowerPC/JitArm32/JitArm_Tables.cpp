@@ -44,11 +44,11 @@ struct GekkoOPTemplate
 
 static GekkoOPTemplate primarytable[] = 
 {
-	{4,  &JitArm::Default}, //"RunTable4",  OPTYPE_SUBTABLE | (4<<24), 0}},
-	{19, &JitArm::Default}, //"RunTable19", OPTYPE_SUBTABLE | (19<<24), 0}},
-	{31, &JitArm::Default}, //"RunTable31", OPTYPE_SUBTABLE | (31<<24), 0}},
-	{59, &JitArm::Default}, //"RunTable59", OPTYPE_SUBTABLE | (59<<24), 0}},
-	{63, &JitArm::Default}, //"RunTable63", OPTYPE_SUBTABLE | (63<<24), 0}},
+	{4,  &JitArm::DynaRunTable4}, //"RunTable4",  OPTYPE_SUBTABLE | (4<<24), 0}},
+	{19, &JitArm::DynaRunTable19}, //"RunTable19", OPTYPE_SUBTABLE | (19<<24), 0}},
+	{31, &JitArm::DynaRunTable31}, //"RunTable31", OPTYPE_SUBTABLE | (31<<24), 0}},
+	{59, &JitArm::DynaRunTable59}, //"RunTable59", OPTYPE_SUBTABLE | (59<<24), 0}},
+	{63, &JitArm::DynaRunTable63}, //"RunTable63", OPTYPE_SUBTABLE | (63<<24), 0}},
 
 	{16, &JitArm::Default}, //"bcx", OPTYPE_SYSTEM, FL_ENDBLOCK}},
 	{18, &JitArm::bx}, //"bx",  OPTYPE_SYSTEM, FL_ENDBLOCK}},
@@ -400,7 +400,7 @@ void CompileInstruction(PPCAnalyst::CodeOp & op)
 
 void InitTables()
 {
-// once initialized, tables are read-only
+	// once initialized, tables are read-only
 	static bool initialized = false;
 	if (initialized)
 		return;
