@@ -391,6 +391,12 @@ public:
 	void STMFD(ARMReg dest, bool WriteBack, const int Regnum, ...);
 	void LDMFD(ARMReg dest, bool WriteBack, const int Regnum, ...);
 	
+	// Exclusive Access operations
+	void LDREX(ARMReg dest, ARMReg base);
+	// dest contains the result if the instruction managed to store the value
+	void STREX(ARMReg dest, ARMReg base, ARMReg op);
+	void DMB ();
+	
 	// Utility functions
 	// The difference between this and CALL is that this aligns the stack
 	// where appropriate.

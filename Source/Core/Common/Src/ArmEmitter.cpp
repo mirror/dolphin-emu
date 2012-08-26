@@ -160,9 +160,8 @@ void ARMXEmitter::SetJumpTarget(FixupBranch const &branch)
                      && distance <=  33554432,
                      "SetJumpTarget out of range (%p calls %p)", code,
 					 branch.ptr);
-	printf("Jumping to %08x\n", distance);
 	if(branch.type == 0) // B
-		*(u32*)branch.ptr = (u32)(branch.condition | (10 << 24) | (distance &
+		*(u32*)branch.ptr = (u32)(branch.condition | (10 << 24) | ((distance >> 2) &
 		0x00FFFFFF)); 
 	else // BL
 		*(u32*)branch.ptr =	(u32)(branch.condition | 0x0B000000 | ((distance >> 2)
@@ -331,6 +330,20 @@ bool Add)
 {
 	Write32(condition | (0x60 << 20) | (Index << 24) | (Add << 23) | (base << 12) | (dest << 16) | offset);
 }
+void ARMXEmitter::LDREX(ARMReg dest, ARMReg base)
+{
+	Write32(condition | (25 << 20) | (base << 16) | (dest << 12) | 0xF9F);
+}
+void ARMXEmitter::STREX(ARMReg dest, ARMReg base, ARMReg op)
+{
+	_assert_msg_(DYNA_REC, (dest != base && dest != op), "STREX dest can't be other two registers");
+	Write32(condition | (24 << 20) | (base << 16) | (dest << 12) | (0xF9 << 4) | op);
+}
+void ARMXEmitter::DMB ()
+{
+	Write32(0xF57FF05E);
+}
+
 void ARMXEmitter::LDR (ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x41, dest, src, op);}
 void ARMXEmitter::LDRB(ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x45, dest, src, op);}
 void ARMXEmitter::LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index,
