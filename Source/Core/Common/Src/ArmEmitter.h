@@ -281,6 +281,10 @@ public:
 
 	void SetCC(CCFlags cond = CC_AL);
 
+	// Special purpose instructions
+
+	// Dynamic Endian Switching
+	void SETEND(bool BE);
 	// Debug Breakpoint
 	void BKPT(u16 arg);
 
@@ -294,15 +298,17 @@ public:
 #undef CALL
 #endif
 
-	void B (const void *fnptr);
+	// Branching
 	FixupBranch B();
 	FixupBranch B_CC(CCFlags Cond);
-	void BL(const void *fnptr);
 	FixupBranch BL();
 	FixupBranch BL_CC(CCFlags Cond);
-	void BLX(ARMReg src);
-	void BX (ARMReg src);
 	void SetJumpTarget(FixupBranch const &branch);
+	
+	void B (const void *fnptr);
+	void B (ARMReg src);
+	void BL(const void *fnptr);
+	void BL(ARMReg src);
 
 	void PUSH(const int num, ...);
 	void POP(const int num, ...);
@@ -381,11 +387,13 @@ public:
 	// Memory load/store operations
 	void MOVT(ARMReg dest, Operand2 op2, bool TopBits = false);
 	void MOVW(ARMReg dest, 			   Operand2 op2);
-	void LDR (ARMReg dest, ARMReg src, Operand2 op2);
-	void LDR (ARMReg dest, ARMReg base, ARMReg offset = R0, bool Index = false, bool Add = false);
+	void LDR (ARMReg dest, ARMReg src, Operand2 op2 = 0);
+	// Offset adds to the base register in LDR
+	void LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index, bool Add);
 	void LDRB(ARMReg dest, ARMReg src, Operand2 op2);
-	void STR (ARMReg dest, ARMReg src, Operand2 op2);
-	void STR (ARMReg dest, ARMReg base, ARMReg offset = R0, bool Index = false, bool Add = false);
+	void STR (ARMReg dest, ARMReg src, Operand2 op2 = 0);
+	// Offset adds on to the destination register in STR
+	void STR (ARMReg dest, ARMReg base, ARMReg offset, bool Index, bool Add);
 
 	void STRB(ARMReg dest, ARMReg src, Operand2 op2);
 	void STMFD(ARMReg dest, bool WriteBack, const int Regnum, ...);
@@ -403,8 +411,8 @@ public:
 	void ARMABI_CallFunction(void *func);
 	void ARMABI_PushAllCalleeSavedRegsAndAdjustStack(); 
 	void ARMABI_PopAllCalleeSavedRegsAndAdjustStack(); 
-	void ARMABI_MOVIMM32(ARMReg reg, u32 val);
-	void ARMABI_MOVIMM32(Operand2 op, u32 val);
+	void ARMABI_MOVIMM32(ARMReg reg, Operand2 val);
+	void ARMABI_MOVIMM32(Operand2 op, Operand2 val);
 
 	void UpdateAPSR(bool NZCVQ, u8 Flags, bool GE, u8 GEval);
 

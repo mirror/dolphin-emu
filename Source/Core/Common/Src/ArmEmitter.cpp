@@ -76,6 +76,11 @@ void ARMXEmitter::NOP(int count)
 	}
 }
 
+void ARMXEmitter::SETEND(bool BE)
+{
+	//SETEND is non-conditional
+	Write32( 0xF1010000 | (BE << 9));
+}
 void ARMXEmitter::BKPT(u16 arg)
 {
 	Write32(condition | 0x01200070 | (arg << 4 & 0x000FFF00) | (arg & 0x0000000F));
@@ -85,15 +90,6 @@ void ARMXEmitter::YIELD()
 	Write32(condition | 0x0320F001);
 }
 
-void ARMXEmitter::B (const void *fnptr)
-{
-	s32 distance = (s32)fnptr - (s32(code) + 8);
-        _assert_msg_(DYNA_REC, distance > -33554432
-                     && distance <=  33554432,
-                     "BL out of range (%p calls %p)", code, fnptr);
-
-	Write32(condition | 0x0A000000 | ((distance >> 2) & 0x00FFFFFF));
-}
 FixupBranch ARMXEmitter::B()
 {
 	FixupBranch branch;
@@ -135,24 +131,6 @@ FixupBranch ARMXEmitter::BL_CC(CCFlags Cond)
 	Write32(condition | 0x01A00000);
 	return branch;
 }
-
-void ARMXEmitter::BL(const void *fnptr)
-{
-	s32 distance = (s32)fnptr - (s32(code) + 8);
-        _assert_msg_(DYNA_REC, distance > -33554432
-                     && distance <=  33554432,
-                     "BL out of range (%p calls %p)", code, fnptr);
-	Write32(condition | 0x0B000000 | ((distance >> 2) & 0x00FFFFFF));
-}
-void ARMXEmitter::BLX(ARMReg src)
-{
-	Write32(condition | 0x12FFF30 | src);
-}
-
-void ARMXEmitter::BX(ARMReg src)
-{
-	Write32(condition | (18 << 20) | (0xFFF << 8) | (1 << 4) | src);
-}
 void ARMXEmitter::SetJumpTarget(FixupBranch const &branch)
 {
 	s32 distance =  (s32(code) + 4) - (s32)branch.ptr;
@@ -166,6 +144,33 @@ void ARMXEmitter::SetJumpTarget(FixupBranch const &branch)
 	else // BL
 		*(u32*)branch.ptr =	(u32)(branch.condition | 0x0B000000 | ((distance >> 2)
 		& 0x00FFFFFF));
+}
+void ARMXEmitter::B (const void *fnptr)
+{
+	s32 distance = (s32)fnptr - (s32(code) + 8);
+        _assert_msg_(DYNA_REC, distance > -33554432
+                     && distance <=  33554432,
+                     "BL out of range (%p calls %p)", code, fnptr);
+
+	Write32(condition | 0x0A000000 | ((distance >> 2) & 0x00FFFFFF));
+}
+
+void ARMXEmitter::B(ARMReg src)
+{
+	Write32(condition | (18 << 20) | (0xFFF << 8) | (1 << 4) | src);
+}
+
+void ARMXEmitter::BL(const void *fnptr)
+{
+	s32 distance = (s32)fnptr - (s32(code) + 8);
+        _assert_msg_(DYNA_REC, distance > -33554432
+                     && distance <=  33554432,
+                     "BL out of range (%p calls %p)", code, fnptr);
+	Write32(condition | 0x0B000000 | ((distance >> 2) & 0x00FFFFFF));
+}
+void ARMXEmitter::BL(ARMReg src)
+{
+	Write32(condition | 0x12FFF30 | src);
 }
 
 void ARMXEmitter::PUSH(const int num, ...)
@@ -325,10 +330,9 @@ void ARMXEmitter::WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2)
 }
 void ARMXEmitter::STR (ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x40, dest, src, op);}
 void ARMXEmitter::STRB(ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x44, dest, src, op);}
-void ARMXEmitter::STR (ARMReg dest, ARMReg base, ARMReg offset, bool Index,
-bool Add)
+void ARMXEmitter::STR (ARMReg dest, ARMReg base, ARMReg offset, bool Index, bool Add)
 {
-	Write32(condition | (0x60 << 20) | (Index << 24) | (Add << 23) | (base << 12) | (dest << 16) | offset);
+	Write32(condition | (0x60 << 20) | (Index << 24) | (Add << 23) | (dest << 16) | (base << 12) | offset);
 }
 void ARMXEmitter::LDREX(ARMReg dest, ARMReg base)
 {
@@ -344,8 +348,8 @@ void ARMXEmitter::DMB ()
 	Write32(0xF57FF05E);
 }
 
-void ARMXEmitter::LDR (ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x41, dest, src, op);}
-void ARMXEmitter::LDRB(ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x45, dest, src, op);}
+void ARMXEmitter::LDR (ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x41, src, dest, op);}
+void ARMXEmitter::LDRB(ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x45, src, dest, op);}
 void ARMXEmitter::LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index,
 bool Add)
 {

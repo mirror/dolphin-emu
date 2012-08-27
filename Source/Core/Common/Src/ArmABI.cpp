@@ -25,7 +25,7 @@ void ARMXEmitter::ARMABI_CallFunction(void *func)
 {
 	ARMABI_MOVIMM32(R8, (u32)func);	
 	PUSH(1, _LR);
-	BLX(R8);
+	BL(R8);
 	POP(1, _LR);
 }
 void ARMXEmitter::ARMABI_PushAllCalleeSavedRegsAndAdjustStack() {
@@ -34,24 +34,22 @@ void ARMXEmitter::ARMABI_PushAllCalleeSavedRegsAndAdjustStack() {
 }
 
 void ARMXEmitter::ARMABI_PopAllCalleeSavedRegsAndAdjustStack() {
-	POP(4, R3, R4, R5, R6);
+	POP(4, R3, R2, R1, R0);
 }
-void ARMXEmitter::ARMABI_MOVIMM32(ARMReg reg, u32 val)
+void ARMXEmitter::ARMABI_MOVIMM32(ARMReg reg, Operand2 val)
 {
 	// TODO: We can do this in less instructions if we check for if it is
 	// smaller than a 32bit variable. Like if it is a 8bit or 14bit(?)
 	// variable it should be able to be moved to just a single MOV instruction
 	// but for now, we are just taking the long route out and using the MOVW
 	// and MOVT
-	Operand2 Val(val);
-	MOVW(reg, Val); MOVT(reg, Val, true);
+	MOVW(reg, val); MOVT(reg, val, true);
 }
 // Moves IMM to memory location
-void ARMXEmitter::ARMABI_MOVIMM32(Operand2 op, u32 val)
+void ARMXEmitter::ARMABI_MOVIMM32(Operand2 op, Operand2 val)
 {
 	// This moves imm to a memory location
-	Operand2 Val(val);
-	MOVW(R10, Val); MOVT(R10, Val, true);
+	MOVW(R10, val); MOVT(R10, val, true);
 	MOVW(R11, op); MOVT(R11, op, true);
 	STR(R11, R10); // R10 is what we want to store
 	
@@ -70,7 +68,6 @@ void ARMXEmitter::UpdateAPSR(bool NZCVQ, u8 Flags, bool GE, u8 GEval)
 		_MSR(true, true, R8);
 	}
 	else
-	{
 		if(NZCVQ)
 		{
 			Operand2 value(Flags << 1, 3);
@@ -81,8 +78,4 @@ void ARMXEmitter::UpdateAPSR(bool NZCVQ, u8 Flags, bool GE, u8 GEval)
 			Operand2 value(GEval << 2, 9);
 			_MSR(false, true, value);
 		}
-		else
-			; // Okay?
-
-	}
 }
