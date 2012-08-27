@@ -41,6 +41,7 @@ public:
 	static void SetColorMatrix(const float* pmatrix);
 	static void InvalidateXFRange(int start, int end);
 	static void SetMaterialColorChanged(int index);
+	static void SetZSlope(float dfdx, float dfdy, float f0);
 };
 
 

@@ -464,6 +464,11 @@ void PixelShaderManager::SetColorMatrix(const float* pmatrix)
 	s_nColorsChanged[0] = s_nColorsChanged[1] = 15;
 }
 
+void PixelShaderManager::SetZSlope(float dfdx, float dfdy, float f0)
+{
+	SetPSConstant4f(C_ZSLOPE, dfdx, dfdy, f0, 0);
+}
+
 void PixelShaderManager::InvalidateXFRange(int start, int end)
 {
 	if (start < XFMEM_LIGHTS_END && end > XFMEM_LIGHTS)

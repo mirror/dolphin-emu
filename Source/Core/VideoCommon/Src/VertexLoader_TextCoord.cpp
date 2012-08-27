@@ -96,6 +96,18 @@ void LOADERDECL TexCoord_ReadIndex_Short2_SSE4()
 	const __m128 d = _mm_cvtepi32_ps(c);
 	const __m128 e = _mm_load1_ps(&tcScale[tcIndex]);
 	const __m128 f = _mm_mul_ps(d, e);
+/*=======
+	// Heavy in ZWW - TODO: Broken on gcc...
+	u16 Index = DataReadU16();
+	const s32 *pData = (const s32*)(cached_arraybases[ARRAY_TEXCOORD0+tcIndex] + (Index * arraystrides[ARRAY_TEXCOORD0+tcIndex]));
+	GC_ALIGNED128(const __m128i a = _mm_cvtsi32_si128(*pData));
+	GC_ALIGNED128(const __m128i b = _mm_shuffle_epi8(a, kMaskSwap16_2));
+	GC_ALIGNED128(const __m128i c = _mm_cvtepi16_epi32(b));
+	GC_ALIGNED128(const __m128 d = _mm_cvtepi32_ps(c));
+	GC_ALIGNED128(const __m128 e = _mm_load1_ps(&tcScale[tcIndex]));
+//	const __m128 e = _mm_cvtepi32_ps(c);
+	GC_ALIGNED128(const __m128 f = _mm_mul_ps(d, e));
+>>>>>>> e086837... Implement zfreeze*/
 	_mm_storeu_ps((float*)VertexManager::s_pCurBufferPointer, f);
 	VertexManager::s_pCurBufferPointer += sizeof(float) * 2;
 	LOG_TEX<2>();

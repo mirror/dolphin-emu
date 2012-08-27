@@ -93,6 +93,8 @@ public:
 	VertexLoader(const TVtxDesc &vtx_desc, const VAT &vtx_attr);
 	~VertexLoader();
 
+	static void TransformVertex(const float* data, float *out);
+
 	int GetVertexSize() const {return m_VertexSize;}
 	
 	int SetupRunVertices(int vtx_attr_group, int primitive, int const count);

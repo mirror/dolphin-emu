@@ -234,7 +234,7 @@ inline void CalculateLOD(s32 &lod, bool &linear, u32 texmap, u32 texcoord)
 		sDelta = fabsf(uv0[0] - uv1[0]);
 		tDelta = fabsf(uv0[1] - uv1[1]);
 	}
-	else
+/*	else
 	{
 		float *uv0 = rasterBlock.Pixel[0][0].Uv[texcoord];
 		float *uv1 = rasterBlock.Pixel[1][0].Uv[texcoord];
@@ -242,14 +242,14 @@ inline void CalculateLOD(s32 &lod, bool &linear, u32 texmap, u32 texcoord)
 
 		sDelta = max(fabsf(uv0[0] - uv1[0]), fabsf(uv0[0] - uv2[0]));
 		tDelta = max(fabsf(uv0[1] - uv1[1]), fabsf(uv0[1] - uv2[1]));
-	}
+	}*/
 
 	// get LOD in s28.4
 	lod = FixedLog2(max(sDelta, tDelta));
 
 	// bias is s2.5
 	int bias = tm0.lod_bias;
-	bias >>= 1;
+//	bias >>= 1;
 	lod += bias;
 
 	linear = ((lod > 0 && (tm0.min_filter & 4)) || (lod <= 0 && tm0.mag_filter));
@@ -385,8 +385,11 @@ void DrawTriangleFrontFace(OutputVertexData *v0, OutputVertexData *v1, OutputVer
 	float w[3] = { 1.0f / v0->projectedPosition.w, 1.0f / v1->projectedPosition.w, 1.0f / v2->projectedPosition.w };
 	InitSlope(&WSlope, w[0], w[1], w[2], fltdx31, fltdx12, fltdy12, fltdy31);
 
-	if (!bpmem.genMode.zfreeze || !g_SWVideoConfig.bZFreeze)
+	if (!bpmem.genMode.zfreeze || !g_SWVideoConfig.bZFreeze) {
+		// TODO: Only do that if depth test passed?
+		// NOTE: Should be fairly easy to implement this, without an option, in hw accelerated backends. just needs to apply it on the last triangle..
 		InitSlope(&ZSlope, v0->screenPosition[2], v1->screenPosition[2], v2->screenPosition[2], fltdx31, fltdx12, fltdy12, fltdy31);
+	}
 
 	for(unsigned int i = 0; i < bpmem.genMode.numcolchans; i++)
 	{

@@ -104,7 +104,7 @@ void LOADERDECL UpdateBoundingBoxPrepare()
 	VertexManager::s_pCurBufferPointer = (u8*)s_bbox_vertex_buffer;
 }
 
-void LOADERDECL TransformVertex(const float* data, float *out)
+void VertexLoader::TransformVertex(const float* data, float *out)
 {
 	const float *world_matrix  = (float*)xfmem + MatrixIndexA.PosNormalMtxIdx * 4;
 	const float *proj_matrix = &g_fProjectionMatrix[0];
@@ -124,6 +124,8 @@ void LOADERDECL TransformVertex(const float* data, float *out)
 	out[1] /= out[2];
 }
 
+using namespace Gen;
+
 void LOADERDECL UpdateBoundingBox() 
 {
 	if (!PixelEngine::bbox_active)
@@ -138,7 +140,8 @@ void LOADERDECL UpdateBoundingBox()
 
 	// We must transform the just loaded point by the current world and projection matrix - in software.
 	// Then convert to screen space and update the bounding box.
-	TransformVertex(s_bbox_vertex_buffer, o);
+	float o[3];
+	VertexLoader::TransformVertex(s_bbox_vertex_buffer, o);
 
 	// Max width seems to be 608, while max height is 480
 	// Here height is set to 484 as BBox bottom always seems to be off by a few pixels

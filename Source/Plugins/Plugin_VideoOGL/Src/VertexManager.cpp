@@ -231,6 +231,43 @@ void VertexManager::vFlush()
 		}
 	}
 
+	// TODO: Only do this if triangles are being used.
+	// TODO: Is it nice that we're assuming that first 4 bytes == position? o_o
+	float vtx[9], out[9];
+	u8* vtx_ptr = (u8*)&GetVertexBuffer()[GetTriangleIndexBuffer()[IndexGenerator::GetNumTriangles()*3 - 1] * g_nativeVertexFmt->GetVertexStride()];
+	for (unsigned int i = 0; i < 3; ++i)
+	{
+		vtx[0 + i * 3] = ((float*)vtx_ptr)[0];
+		vtx[1 + i * 3] = ((float*)vtx_ptr)[1];
+		vtx[2 + i * 3] = ((float*)vtx_ptr)[2];
+		VertexLoader::TransformVertex(&vtx[i*3], &out[i*3]);
+
+		vtx_ptr += g_nativeVertexFmt->GetVertexStride();
+	}
+
+    float fltx1 = out[0];
+    float flty1 = out[1];
+    float fltdx31 = out[6] - fltx1;
+    float fltdx12 = fltx1 - out[3];
+    float fltdy12 = flty1 - out[4];
+    float fltdy31 = out[7] - flty1;
+
+    float DF31 = vtx[8] - vtx[2];
+    float DF21 = vtx[5] - vtx[2];
+    float a = DF31 * -fltdy12 - DF21 * fltdy31;
+    float b = fltdx31 * DF21 + fltdx12 * DF31;
+    float c = -fltdx12 * fltdy31 - fltdx31 * -fltdy12;
+
+    float slope_dfdx = -a / c;
+    float slope_dfdy = -b / c;
+    float slope_f0 = vtx[2];
+
+	if (!bpmem.genMode.zfreeze)
+		PixelShaderManager::SetZSlope(slope_dfdx, slope_dfdy, slope_f0);
+
+	// TODO: Set constant :)
+
+
 	bool useDstAlpha = !g_ActiveConfig.bDstAlphaPass && bpmem.dstalpha.enable && bpmem.blendmode.alphaupdate
 		&& bpmem.zcontrol.pixel_format == PIXELFMT_RGBA6_Z24;
 

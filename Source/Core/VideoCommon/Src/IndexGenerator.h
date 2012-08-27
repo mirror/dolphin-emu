@@ -40,7 +40,7 @@ public:
 		Prim_Fan
 	};
 */
-private:
+//private:
 	// Triangles
 	template <bool pr> static void AddList(u32 numVerts);
 	template <bool pr> static void AddStrip(u32 numVerts);
