@@ -326,8 +326,17 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		ARMABI_CallFunction((void *)&ImHere); //Used to get a trace of the last few blocks before a crash, sometimes VERY useful
 	if (js.fpa.any)
 	{
-		//TODO: Need a FP exception bailout here since this will use FPU
-		BKPT(0x1337);
+		// This block uses FPU - needs to add FP exception bailout
+		ARMABI_MOVIMM32(R0, (u32)&PowerPC::ppcState.msr);
+		ARMABI_MOVIMM32(R1, (u32)&PC);
+		ARMABI_MOVIMM32(R2, 1 << 13);
+		ARMABI_MOVIMM32(R3, js.blockStart);
+		TST(R0, R2);
+		FixupBranch b1 = B_CC(CC_NEQ);
+		STR(R1, R3);
+		ARMABI_MOVIMM32(R0, (u32)asm_routines.fpException);
+		B(R0);
+		SetJumpTarget(b1);
 	}
 	// Conditionally add profiling code.
 	if (Profiler::g_ProfileBlocks) {

@@ -113,6 +113,20 @@ void JitArmAsmRoutineManager::Generate()
 		
 	B(dispatcher);
 
+	// Floating Point Exception Check, Jumped to if false
+	fpException = GetCodePtr();
+	ARMABI_MOVIMM32(R0, (u32)&PowerPC::ppcState.Exceptions);
+	ARMABI_MOVIMM32(R2, EXCEPTION_FPU_UNAVAILABLE);
+	LDREX(R1, R0);
+	ORR(R1, R1, R2);
+	STREX(R2, R0, R1);
+	ARMABI_CallFunction((void*)&PowerPC::CheckExceptions);
+	ARMABI_MOVIMM32(R0, (u32)&NPC);
+	ARMABI_MOVIMM32(R1, (u32)&PC);
+	LDR(R0, R0);
+	STR(R1, R0);
+	B(dispatcher);
+
 	SetJumpTarget(bail);
 	doTiming = GetCodePtr();			
 	ARMABI_CallFunction((void*)&CoreTiming::Advance);

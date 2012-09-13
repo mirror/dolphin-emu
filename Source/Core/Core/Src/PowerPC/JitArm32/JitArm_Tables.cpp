@@ -294,7 +294,7 @@ static GekkoOPTemplate table31[] =
 
 	{4,   &JitArm::Default}, //"tw",     OPTYPE_SYSTEM, FL_ENDBLOCK, 1}},
 	{598, &JitArm::Default}, //"sync",   OPTYPE_SYSTEM, 0, 2}},
-	{982, &JitArm::Default}, //"icbi",   OPTYPE_SYSTEM, FL_ENDBLOCK, 3}},
+	{982, &JitArm::icbi}, //"icbi",   OPTYPE_SYSTEM, FL_ENDBLOCK, 3}},
 
 	// Unused instructions on GC
 	{310, &JitArm::Default}, //"eciwx",   OPTYPE_INTEGER, FL_RC_BIT}},

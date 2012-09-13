@@ -21,6 +21,12 @@
 #include "JitCommon/JitBase.h"
 #include "JitCommon/JitCache.h"
 
+#ifdef _M_ARM
+#include "JitArm32/Jit.h"
+#include "JitArm32/JitArm_Tables.h"
+#include "JitArm32/ArmInterface.h"
+#endif
+
 namespace PowerPC
 {
 
@@ -78,6 +84,8 @@ namespace PowerPC
 #endif
 		if (jit)
 			jit->GetBlockCache()->ClearSafe();
+		if (jitarm)
+			jitarm->GetBlockCache()->ClearSafe();
 	}
 
 	void InstructionCache::Init()
@@ -111,6 +119,8 @@ namespace PowerPC
 		valid[set] = 0;
 		if (jit)
 			jit->GetBlockCache()->InvalidateICache(addr);
+		if (jitarm)
+			jitarm->GetBlockCache()->InvalidateICache(addr);
 	}
 
 	u32 InstructionCache::ReadInstruction(u32 addr)

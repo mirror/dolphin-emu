@@ -81,6 +81,7 @@ void JitArm::rfi(UGeckoInstruction inst)
 	LDR(R1, R0);
 
 	AND(R1, R1, R2); // R1 = Masked MSR
+	STR(R0, R1);
 
 	ARMABI_MOVIMM32(R2, (u32)&SRR1);
 	LDR(R2, R2); // R2 contains SRR1 here

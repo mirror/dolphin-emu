@@ -165,6 +165,8 @@ public:
 	// System Registers
 	void mtmsr(UGeckoInstruction _inst);
 
+	// LoadStore
+	void icbi(UGeckoInstruction _inst);
 };
 void ArmJit(u32 em_address);
 
