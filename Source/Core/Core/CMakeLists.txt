@@ -207,6 +207,7 @@ if(_M_ARM)
 			Src/PowerPC/JitArm32/JitArmCache.cpp
 			Src/PowerPC/JitArm32/JitRegCache.cpp
 			Src/PowerPC/JitArm32/JitArm_Branch.cpp
+			Src/PowerPC/JitArm32/JitArm_Integer.cpp
 			Src/PowerPC/JitArm32/JitArm_SystemRegisters.cpp)
 endif()
 if(WIN32)

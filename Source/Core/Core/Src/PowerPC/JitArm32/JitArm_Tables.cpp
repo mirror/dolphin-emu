@@ -64,14 +64,14 @@ static GekkoOPTemplate primarytable[] =
 	{11, &JitArm::Default}, //"cmpi",     OPTYPE_INTEGER, FL_IN_A | FL_SET_CRn}},
 	{12, &JitArm::Default}, //"addic",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_A | FL_SET_CA}},
 	{13, &JitArm::Default}, //"addic_rc", OPTYPE_INTEGER, FL_OUT_D | FL_IN_A | FL_SET_CR0}},
-	{14, &JitArm::Default}, //"addi",     OPTYPE_INTEGER, FL_OUT_D | FL_IN_A0}},
+	{14, &JitArm::addi}, //"addi",     OPTYPE_INTEGER, FL_OUT_D | FL_IN_A0}},
 	{15, &JitArm::Default}, //"addis",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_A0}},
 
 	{20, &JitArm::Default}, //"rlwimix",  OPTYPE_INTEGER, FL_OUT_A | FL_IN_A | FL_IN_S | FL_RC_BIT}},
 	{21, &JitArm::Default}, //"rlwinmx",  OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_RC_BIT}},
 	{23, &JitArm::Default}, //"rlwnmx",   OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_IN_B | FL_RC_BIT}},
 
-	{24, &JitArm::Default}, //"ori",      OPTYPE_INTEGER, FL_OUT_A | FL_IN_S}},
+	{24, &JitArm::ori}, //"ori",      OPTYPE_INTEGER, FL_OUT_A | FL_IN_S}},
 	{25, &JitArm::Default}, //"oris",     OPTYPE_INTEGER, FL_OUT_A | FL_IN_S}},
 	{26, &JitArm::Default}, //"xori",     OPTYPE_INTEGER, FL_OUT_A | FL_IN_S}},
 	{27, &JitArm::Default}, //"xoris",    OPTYPE_INTEGER, FL_OUT_A | FL_IN_S}},
@@ -187,7 +187,7 @@ static GekkoOPTemplate table19[] =
 	{150, &JitArm::Default}, //"isync",  OPTYPE_ICACHE, FL_EVIL}},
 	{0,   &JitArm::Default}, //"mcrf",   OPTYPE_SYSTEM, FL_EVIL}},
 												   
-	{50,  &JitArm::Default}, //"rfi",    OPTYPE_SYSTEM, FL_ENDBLOCK | FL_CHECKEXCEPTIONS, 1}},
+	{50,  &JitArm::rfi}, //"rfi",    OPTYPE_SYSTEM, FL_ENDBLOCK | FL_CHECKEXCEPTIONS, 1}},
 	{18,  &JitArm::Default}, //"rfid",   OPTYPE_SYSTEM, FL_ENDBLOCK | FL_CHECKEXCEPTIONS}}
 };
 

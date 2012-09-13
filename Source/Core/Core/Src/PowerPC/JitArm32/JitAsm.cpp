@@ -58,20 +58,25 @@ JitArmAsmRoutineManager asm_routines;
 // PLAN: no more block numbers - crazy opcodes just contain offset within
 // dynarec buffer
 // At this offset - 4, there is an int specifying the block number.
-void Test3(u32 arg)
-{
-	printf("arg0: %08x CodeBlock[1]: %08x\n", arg,
-	jitarm->GetBlockCache()->GetCodePointers()[1]);
-}
 void JitArmAsmRoutineManager::Generate()
 {
 	enterCode = GetCodePtr();
 
-	ARMABI_CallFunction((void*)&CoreTiming::Advance);
+	PUSH(1, _LR);
+
+	FixupBranch skipToRealDispatcher = B();
 
 	dispatcher = GetCodePtr();	
 	printf("Dispatcher is %08x\n", dispatcher);
-	ARMABI_MOVIMM32(R9, (u32)&PowerPC::ppcState.pc);
+
+	// Downcount Check
+	ARMABI_MOVIMM32(R0, (u32)&CoreTiming::downcount);
+	LDR(R0, R0);
+	CMP(R0, 0);	
+	FixupBranch bail = B_CC(CC_EQ);
+
+	SetJumpTarget(skipToRealDispatcher); 
+	ARMABI_MOVIMM32(R9, (u32)&PC);
 	LDR(R9, R9);// Load the current PC into R9
 
 	ARMABI_MOVIMM32(R10, JIT_ICACHE_MASK);
@@ -93,35 +98,40 @@ void JitArmAsmRoutineManager::Generate()
 	REV(R9, R9); // Reversing this gives us our JITblock.
 	LSL(R9, R9, 2); // Multiply by four because address locations are u32 in size 
 	LDR(R10, R10, R9, true, true); // Load the block address in to R10 
-	// _LR contains exit to Jit::Run place before this
-	PUSH(1, _LR);
-	BLX(R10);
-	POP(1, _LR);
-	// _LR now contains exit to here.
 
+	B(R10);
+	
 	FixupBranch End = B(); // Jump to the end
 	SetCC(); // Return to always executing codes
 
-	ARMABI_MOVIMM32(ARM_PARAM1, (u32)&PowerPC::ppcState.pc);
+	ARMABI_MOVIMM32(ARM_PARAM1, (u32)&PC);
+	LDR(ARM_PARAM1, ARM_PARAM1); 
+
+	ARMABI_MOVIMM32(ARM_PARAM1, (u32)&PC);
 	LDR(ARM_PARAM1, ARM_PARAM1); 
 	ARMABI_CallFunction((void*)&ArmJit);
-	B(dispatcher);
 		
+	B(dispatcher);
+
+	SetJumpTarget(bail);
+	doTiming = GetCodePtr();			
+	ARMABI_CallFunction((void*)&CoreTiming::Advance);
 
 	testExceptions = GetCodePtr();
+
 	ARMABI_MOVIMM32(R0, (u32)&PC);
 	ARMABI_MOVIMM32(R1, (u32)&NPC);
 	LDR(R0, R0);
 	STR(R1, R0);
 		ARMABI_CallFunction((void*)&PowerPC::CheckExceptions);
-	ARMABI_MOVIMM32(R0, (u32)&PC);
-	ARMABI_MOVIMM32(R1, (u32)&NPC);
-	LDR(R1, R1);
-	STR(R0, R1);
-
+		
 	SetJumpTarget(End);
 
-	UpdateAPSR(true, 0, false, 0); // Clear our host register flags out.
+	UpdateAPSR(true, 0, true, 0); // Clear our host register flags out.
+	B(dispatcher);
+	
+
+	POP(1, _LR);
 	MOV(_PC, _LR);
 	Flush();
 }

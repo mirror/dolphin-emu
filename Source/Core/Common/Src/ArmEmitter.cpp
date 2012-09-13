@@ -133,7 +133,7 @@ FixupBranch ARMXEmitter::BL_CC(CCFlags Cond)
 }
 void ARMXEmitter::SetJumpTarget(FixupBranch const &branch)
 {
-	s32 distance =  (s32(code) + 4) - (s32)branch.ptr;
+	s32 distance =  (s32(code) - 8)  - (s32)branch.ptr;
      _assert_msg_(DYNA_REC, distance > -33554432
                      && distance <=  33554432,
                      "SetJumpTarget out of range (%p calls %p)", code,
@@ -350,6 +350,7 @@ void ARMXEmitter::DMB ()
 
 void ARMXEmitter::LDR (ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x41, src, dest, op);}
 void ARMXEmitter::LDRB(ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x45, src, dest, op);}
+
 void ARMXEmitter::LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index,
 bool Add)
 {

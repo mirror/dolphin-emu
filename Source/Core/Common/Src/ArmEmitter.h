@@ -120,7 +120,9 @@ public:
 		Type = type; 
 		Value = imm; 
 		Away = away;
+		Rotation = 0;		
 	}
+	
 	Operand2(u8 imm, u8 rotation)
 	{
 		Type = TYPE_IMM;
@@ -390,7 +392,7 @@ public:
 	void LDR (ARMReg dest, ARMReg src, Operand2 op2 = 0);
 	// Offset adds to the base register in LDR
 	void LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index, bool Add);
-	void LDRB(ARMReg dest, ARMReg src, Operand2 op2);
+	void LDRB(ARMReg dest, ARMReg src, Operand2 op2 = 0);
 	void STR (ARMReg dest, ARMReg src, Operand2 op2 = 0);
 	// Offset adds on to the destination register in STR
 	void STR (ARMReg dest, ARMReg base, ARMReg offset, bool Index, bool Add);
@@ -413,6 +415,7 @@ public:
 	void ARMABI_PopAllCalleeSavedRegsAndAdjustStack(); 
 	void ARMABI_MOVIMM32(ARMReg reg, Operand2 val);
 	void ARMABI_MOVIMM32(Operand2 op, Operand2 val);
+	void ARMABI_ShowConditions();
 
 	void UpdateAPSR(bool NZCVQ, u8 Flags, bool GE, u8 GEval);
 

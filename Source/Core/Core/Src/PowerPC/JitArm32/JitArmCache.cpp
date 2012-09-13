@@ -322,11 +322,7 @@ using namespace ArmGen;
 				if (destinationBlock != -1)
 				{
 					ARMXEmitter emit(b.exitPtrs[e]);
-					emit.ARMABI_MOVIMM32(R10,
-					(u32)blocks[destinationBlock].checkedEntry);
-					emit.PUSH(1, _LR);
-					emit.BLX(R10);
-					emit.POP(1, _LR);
+					emit.B(blocks[destinationBlock].checkedEntry);
 					b.linkStatus[e] = true;
 				}
 			}
@@ -377,20 +373,11 @@ using namespace ArmGen;
 		// We don't unlink blocks, we just send anyone who tries to run them back to the dispatcher.
 		// Not entirely ideal, but .. pretty good.
 		// Spurious entrances from previously linked blocks can only come through checkedEntry
-		#warning FIXME! Block destroying won't work right with this!
 		ARMXEmitter emit((u8 *)b.checkedEntry);
 		emit.ARMABI_MOVIMM32(R10, (u32)&PC);
 		emit.ARMABI_MOVIMM32(R11, b.originalAddress);
-		emit.STR(R10, R11, 0);
-		//emit.ARMABI_CallFunction(jitarm->GetAsmRoutines()->enterCode);
-		//emit.MOV(32, M(&PC), Imm32(b.originalAddress));
-		//emit.JMP(jit->GetAsmRoutines()->dispatcher, true);
-		// this is not needed really
-		/*
-		emit.SetCodePtr((u8 *)blockCodePointers[blocknum]);
-		emit.MOV(32, M(&PC), Imm32(b.originalAddress));
-		emit.JMP(asm_routines.dispatcher, true);
-		*/
+		emit.STR(R10, R11);
+		emit.B(jitarm->GetAsmRoutines()->dispatcher);
 	}
 
 

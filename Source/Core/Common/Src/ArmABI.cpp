@@ -20,7 +20,6 @@
 #include "ArmABI.h"
 
 using namespace ArmGen;
-// Shared code between Win32 and Unix32
 void ARMXEmitter::ARMABI_CallFunction(void *func) 
 {
 	ARMABI_MOVIMM32(R8, (u32)func);	
@@ -34,7 +33,7 @@ void ARMXEmitter::ARMABI_PushAllCalleeSavedRegsAndAdjustStack() {
 }
 
 void ARMXEmitter::ARMABI_PopAllCalleeSavedRegsAndAdjustStack() {
-	POP(4, R3, R2, R1, R0);
+	POP(4, R0, R1, R2, R3);
 }
 void ARMXEmitter::ARMABI_MOVIMM32(ARMReg reg, Operand2 val)
 {
@@ -52,7 +51,27 @@ void ARMXEmitter::ARMABI_MOVIMM32(Operand2 op, Operand2 val)
 	MOVW(R10, val); MOVT(R10, val, true);
 	MOVW(R11, op); MOVT(R11, op, true);
 	STR(R11, R10); // R10 is what we want to store
-	
+}
+const char *conditions[] = {"EQ", "NEQ", "CS", "CC", "MI", "PL", "VS", "VC", "HI", "LS", "GE", "LT", "GT", "LE", "AL" };      
+static void ShowCondition(u32 cond)
+{
+	printf("Condition: %s[%d]\n", conditions[cond], cond);
+}
+void ARMXEmitter::ARMABI_ShowConditions()
+{
+	const u8 *ptr = GetCodePtr();
+	FixupBranch cc[15];
+	for(u32 a = 0; a < 15; ++a)
+		cc[a] = B_CC((CCFlags)a);  
+
+	for(u32 a = 0; a < 15; ++a)
+	{
+		SetJumpTarget(cc[a]);
+		MOV(R0, a);
+		ARMABI_CallFunction((void*)&ShowCondition);
+		if(a != 14)
+			B(ptr + ((a + 1) * 4));
+	}
 }
 // NZCVQ is stored in the lower five bits of the Flags variable
 // GE values are in the lower four bits of the GEval variable

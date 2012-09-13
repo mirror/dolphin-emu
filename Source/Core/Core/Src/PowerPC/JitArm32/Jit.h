@@ -76,6 +76,11 @@ private:
 
 		JitBlock *curBlock;
 	};
+	struct JitOptions
+	{
+		bool optimizeGatherPipe;
+		bool enableBlocklink;
+	};
 	JitArmBlockCache blocks;
 
 	JitArmAsmRoutineManager asm_routines;
@@ -88,12 +93,14 @@ private:
 	//FPURegCache fpr;
 
 	PPCAnalyst::CodeBuffer code_buffer;
+	void DoDownCount();
 
 public:
 	JitArm() : code_buffer(32000) {}
 	~JitArm() {}
 
 	JitState js;
+	JitOptions jo;
 	void Init();
 	void Shutdown();
 
@@ -111,8 +118,8 @@ public:
 	const u8 *GetDispatcher() {
 		return 0; 
 	}
-	const void *GetAsmRoutines() {
-		return 0; 
+	JitArmAsmRoutineManager *GetAsmRoutines() {
+		return &asm_routines; 
 	}
 
 	const char *GetName() {
@@ -126,9 +133,9 @@ public:
 	// Utilities for use by opcodes
 
 	void WriteExit(u32 destination, int exit_num);
-	void WriteExitDestInEAX();
+	void WriteExitDestInR0();
 	void WriteExceptionExit();
-	void WriteRfiExitDestInEAX();
+	void WriteRfiExitDestInR0();
 	void WriteCallInterpreter(UGeckoInstruction _inst);
 	void Cleanup();
 
@@ -149,7 +156,12 @@ public:
 	void bcx(UGeckoInstruction _inst);
 	void bclrx(UGeckoInstruction _inst);
 	void sc(UGeckoInstruction _inst);
+	void rfi(UGeckoInstruction _inst);
 	
+	// Integer
+	void addi(UGeckoInstruction _inst);
+	void ori(UGeckoInstruction _inst);	
+
 	// System Registers
 	void mtmsr(UGeckoInstruction _inst);
 

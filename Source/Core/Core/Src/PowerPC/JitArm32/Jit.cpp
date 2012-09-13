@@ -96,8 +96,8 @@ void JitArm::DoNothing(UGeckoInstruction _inst)
 
 }
 
-static const bool ImHereDebug = true;
-static const bool ImHereLog = true;
+static const bool ImHereDebug = false;
+static const bool ImHereLog = false;
 static std::map<u32, int> been_here;
 
 static void ImHere()
@@ -123,48 +123,75 @@ static void ImHere()
 
 void JitArm::Cleanup()
 {
+	if (jo.optimizeGatherPipe && js.fifoBytesThisBlock > 0)
+		ARMABI_CallFunction((void *)&GPFifo::CheckGatherPipe);
+}
+void JitArm::DoDownCount()
+{
+	ARMABI_MOVIMM32(R0, (u32)&CoreTiming::downcount);
+	ARMABI_MOVIMM32(R2, js.downcountAmount);
+	LDR(R1, R0);
+	SUBS(R1, R1, R2);
+	STR(R0, R1);
+	DMB();
+	MOV(R0, R1);
+}
+void JitArm::WriteExitDestInR0() 
+{
+	ARMABI_MOVIMM32(R1, (u32)&PC);
+	STR(R1, R0);
+	Cleanup();
+	DoDownCount();
+
+	ARMABI_MOVIMM32(R0, (u32)asm_routines.dispatcher);
+	B(R0);
+}
+void JitArm::WriteRfiExitDestInR0() 
+{
+	ARMABI_MOVIMM32(R1, (u32)&PC);
+	STR(R1, R0);
+		
+	Cleanup();
+	DoDownCount();
+
+	ARMABI_MOVIMM32(R0, (u32)asm_routines.testExceptions);
+	B(R0);
 }
 void JitArm::WriteExceptionExit()
 {
 	Cleanup();
-	//SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount)); 
+	DoDownCount();
+
 	ARMABI_MOVIMM32(R0, (u32)asm_routines.testExceptions);
-	BX(R0);
+	B(R0);
 }
 void JitArm::WriteExit(u32 destination, int exit_num)
 {
-
 	Cleanup();
 
-	ARMABI_MOVIMM32(R10, js.downcountAmount);
-	ARMABI_MOVIMM32(R11, (u32)&CoreTiming::downcount);
-	
-	LDR(R9, R11);
+	DoDownCount(); 
 
-	SUB(R9, R9, R10);
-	
-	STR(R11, R9);
- 
 	//If nobody has taken care of this yet (this can be removed when all branches are done)
 	JitBlock *b = js.curBlock;
 	b->exitAddress[exit_num] = destination;
 	b->exitPtrs[exit_num] = GetWritableCodePtr();
 	
 	// Link opportunity!
-	//int block = blocks.GetBlockNumberFromStartAddress(destination);
-	//if (block >= 0 && jo.enableBlocklink) 
-//	{
-		// It exists! Joy of joy!
-	//	JMP(blocks.GetBlock(block)->checkedEntry, true);
-//		b->linkStatus[exit_num] = true;
-//	}
-//	else 
+	int block = blocks.GetBlockNumberFromStartAddress(destination);
+	if (block >= 0 && jo.enableBlocklink) 
 	{
-		printf("Destination: %08x\n", destination);
+		// It exists! Joy of joy!
+		B(blocks.GetBlock(block)->checkedEntry);
+		b->linkStatus[exit_num] = true;
+	}
+	else 
+	{
 		ARMABI_MOVIMM32((u32)&PC, destination);
 		ARMABI_MOVIMM32(R0, (u32)asm_routines.dispatcher);
-		BX(R0);	
+		B(R0);	
 	}
+	printf("Jump Out: %08x: Available block: %s\n", destination, (block >= 0)
+	? "True" : "False");
 }
 
 void STACKALIGN JitArm::Run()
@@ -207,12 +234,7 @@ void JitArm::Trace()
 		PowerPC::ppcState.cr_fast[4], PowerPC::ppcState.cr_fast[5], PowerPC::ppcState.cr_fast[6], PowerPC::ppcState.cr_fast[7], PowerPC::ppcState.fpscr, 
 		PowerPC::ppcState.msr, PowerPC::ppcState.spr[8], regs, fregs);
 }
-void Test2()
-{
-	static int Num = 0;
-	Num++;
-	printf("Jit: %08x\n", Num);
-}
+
 void STACKALIGN JitArm::Jit(u32 em_address)
 {
 	if (GetSpaceLeft() < 0x10000 || blocks.IsFull() || Core::g_CoreStartupParameter.bJITNoBlockCache)
@@ -220,10 +242,11 @@ void STACKALIGN JitArm::Jit(u32 em_address)
 		ClearCache();
 	}
 
+	printf("Addr: %08x\n", em_address);
 	int block_num = blocks.AllocateBlock(em_address);
 	JitBlock *b = blocks.GetBlock(block_num);
-	blocks.FinalizeBlock(block_num, false, DoJit(em_address, &code_buffer, b));
-	printf("PC was %08x\n", em_address);
+	const u8* BlockPtr = DoJit(em_address, &code_buffer, b);
+	blocks.FinalizeBlock(block_num, jo.enableBlocklink, BlockPtr);
 }
 
 
@@ -286,7 +309,15 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	b->checkedEntry = start;
 	b->runCount = 0;
 
-	// JIT64 has a downcount check here.
+	// Downcount flag check, Only valid for linked blocks
+	/*ARMABI_MOVIMM32(R0, (u32)&CoreTiming::downcount);
+	LDR(R0, R0);
+	CMP(R0, 0);	
+	FixupBranch skip = B_CC(CC_GE);
+	ARMABI_MOVIMM32((u32)&PC, js.blockStart);
+	ARMABI_MOVIMM32(R0, (u32)asm_routines.doTiming);
+	B(R0);
+	SetJumpTarget(skip);*/
 
 	const u8 *normalEntry = GetCodePtr();
 	b->normalEntry = normalEntry;
@@ -296,13 +327,14 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	if (js.fpa.any)
 	{
 		//TODO: Need a FP exception bailout here since this will use FPU
+		BKPT(0x1337);
 	}
 	// Conditionally add profiling code.
 	if (Profiler::g_ProfileBlocks) {
 		ARMABI_MOVIMM32(R10, (u32)&b->runCount); // Load in to register
 		LDR(R11, R10); // Load the actual value in to R11.
 		ADD(R11, R11, 1); // Add one to the value
-		STR(R10, R11, 0); // Now store it back in the memory location 
+		STR(R10, R11); // Now store it back in the memory location 
 		// get start tic
 		PROFILER_QUERY_PERFORMANCE_COUNTER(&b->ticStart);
 	}
@@ -321,6 +353,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	js.blockSize = size;
 	js.compilerPC = nextPC;
 	// Translate instructions
+	printf("OPS: %08x\n", size);
 	for (int i = 0; i < (int)size; i++)
 	{
 		js.compilerPC = ops[i].address;
@@ -353,18 +386,19 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		
 		if (!ops[i].skip)
 		{
-			ARMABI_CallFunction((void*)&Test2);
 			printf("OP: %s\n", PPCTables::GetInstructionName(ops[i].inst));
 			JitArmTables::CompileInstruction(ops[i]);
 		}
 	}
-			
+	if(broken_block)
+	{
+		WriteExit(nextPC, 0);
+	}
 			
 	b->flags = js.block_flags;
 	b->codeSize = (u32)(GetCodePtr() - normalEntry);
 	b->originalSize = size;
 
-	MOV(_PC, _LR);
 	Flush();
 	return start;
 }
