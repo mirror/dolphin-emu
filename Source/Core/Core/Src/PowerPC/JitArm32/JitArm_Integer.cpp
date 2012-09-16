@@ -26,6 +26,27 @@
 #include "Jit.h"
 #include "JitRegCache.h"
 #include "JitAsm.h"
+extern u32 Helper_Mask(u8 mb, u8 me);
+// Assumes that Sign and Zero flags were set by the last operation. Preserves all flags and registers.
+void JitArm::GenerateRC() {
+	ARMABI_MOVIMM32(R0, (u32)&PowerPC::ppcState.cr_fast[0]);
+	FixupBranch pZero  = B_CC(CC_EQ);
+	FixupBranch pNegative = B_CC(CC_MI);
+	MOV(R1, 0x4); // Result > 0
+	FixupBranch continue1 = B();
+
+	SetJumpTarget(pNegative);
+	MOV(R1, 0x8); // Result < 0
+	FixupBranch continue2 = B();
+
+	
+	SetJumpTarget(pZero);
+	MOV(R1, 0x2); // Result == 0
+
+	SetJumpTarget(continue1);
+	SetJumpTarget(continue2);
+	STRB(R0, R1, 0);
+}
 
 void JitArm::addi(UGeckoInstruction _inst)
 {
@@ -36,10 +57,8 @@ void JitArm::addi(UGeckoInstruction _inst)
 		ARMABI_MOVIMM32(R2, (u32)&m_GPR[_inst.RA]);
 		LDR(R2, R2);
 		ADD(R1, R1, R2);
-		STR(R0, R1);
 	}
-	else
-		STR(R0, R1);
+	STR(R0, R1);
 }
 void JitArm::ori(UGeckoInstruction _inst)
 {
@@ -50,3 +69,20 @@ void JitArm::ori(UGeckoInstruction _inst)
 	ORR(R1, R1, R2);
 	STR(R0, R1);
 }
+void JitArm::rlwinmx(UGeckoInstruction _inst)
+{
+	u32 mask = Helper_Mask(_inst.MB,_inst.ME);
+	ARMABI_MOVIMM32(R0, (u32)&m_GPR[_inst.RA]);
+	ARMABI_MOVIMM32(R1, mask);
+	ARMABI_MOVIMM32(R2, (u32)&m_GPR[_inst.RS]);
+	LDR(R2, R2);
+
+	Operand2 Shift(32 - _inst.SH, ROR, R2); // This rotates left, while ARM has only rotate right, so swap it.
+
+	ANDS(R2, R1, Shift);
+	STR(R0, R2);
+
+	//m_GPR[_inst.RA] = _rotl(m_GPR[_inst.RS],_inst.SH) & mask;
+	if (_inst.Rc) GenerateRC(); 
+}
+

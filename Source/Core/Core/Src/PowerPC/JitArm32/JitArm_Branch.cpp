@@ -89,8 +89,6 @@ void JitArm::rfi(UGeckoInstruction inst)
 	AND(R2, R2, R3); // R2 contains masked SRR1 here
 	ORR(R2, R1, R2); // R2 = Masked MSR OR masked SRR1
 
-	
-	ARMABI_MOVIMM32(R0, (u32)&MSR);
 	STR(R0, R2); // STR R2 in to R0
 
 	ARMABI_MOVIMM32(R0, (u32)&SRR0);
@@ -175,11 +173,11 @@ void JitArm::bcx(UGeckoInstruction inst)
 	FixupBranch pConditionDontBranch;
 	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)  // Test a CR bit
 	{
-		//printf("CR: %08x\n", PowerPC::ppcState.cr_fast[inst.BI >> 2]);
 		ARMABI_MOVIMM32(R0, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
-		LDRB(R1, R0);
-		ARMABI_MOVIMM32(R2, 8 >> (inst.BI & 3));
-		ANDS(R1, R1, R2);
+		LDRB(R0, R0);
+
+		ARMABI_MOVIMM32(R1, 8 >> (inst.BI & 3));
+		TST(R0, R1);
 		//TEST(8, M(&PowerPC::ppcState.cr_fast[inst.BI >> 2]), Imm8(8 >> (inst.BI & 3)));
 		if (inst.BO & BO_BRANCH_IF_TRUE)  // Conditional branch 
 			pConditionDontBranch = B_CC(CC_EQ); // Zero
@@ -226,9 +224,9 @@ void JitArm::bclrx(UGeckoInstruction inst)
 	if ((inst.BO & BO_DONT_DECREMENT_FLAG) == 0)  // Decrement and test CTR
 	{
 		ARMABI_MOVIMM32(R0, (u32)&CTR);
-		LDR(R2, R0);
-		SUBS(R2, R2, 1);
-		STR(R0, R2);
+		LDR(R1, R0);
+		SUBS(R1, R1, 1);
+		STR(R0, R1);
 			
 		//SUB(32, M(&CTR), Imm8(1));
 		if (inst.BO & BO_BRANCH_IF_CTR_0)
@@ -241,9 +239,9 @@ void JitArm::bclrx(UGeckoInstruction inst)
 	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)  // Test a CR bit
 	{
 		ARMABI_MOVIMM32(R0, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
-		ARMABI_MOVIMM32(R2, 8 >> (inst.BI & 3));
-		LDR(R1, R0);
-		ANDS(R1, R1, R2);
+		ARMABI_MOVIMM32(R1, 8 >> (inst.BI & 3));
+		LDR(R0, R0);
+		TST(R0, R1);
 		//TEST(8, M(&PowerPC::ppcState.cr_fast[inst.BI >> 2]), Imm8(8 >> (inst.BI & 3)));
 		if (inst.BO & BO_BRANCH_IF_TRUE)  // Conditional branch 
 			pConditionDontBranch = B_CC(CC_EQ);
@@ -260,11 +258,10 @@ void JitArm::bclrx(UGeckoInstruction inst)
 
 	//MOV(32, R(EAX), M(&LR));	
 	//AND(32, R(EAX), Imm32(0xFFFFFFFC));
-	ARMABI_MOVIMM32(R2, (u32)&LR);
+	ARMABI_MOVIMM32(R0, (u32)&LR);
 	ARMABI_MOVIMM32(R1, 0xFFFFFFFC);
-	LDR(R0, R2);
+	LDR(R0, R0);
 	AND(R0, R0, R1);
-	STR(R2, R0);
 	if (inst.LK)
 		ARMABI_MOVIMM32((u32)&LR, js.compilerPC + 4);
 	

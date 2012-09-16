@@ -150,7 +150,7 @@ void ARMXEmitter::B (const void *fnptr)
 	s32 distance = (s32)fnptr - (s32(code) + 8);
         _assert_msg_(DYNA_REC, distance > -33554432
                      && distance <=  33554432,
-                     "BL out of range (%p calls %p)", code, fnptr);
+                     "B out of range (%p calls %p)", code, fnptr);
 
 	Write32(condition | 0x0A000000 | ((distance >> 2) & 0x00FFFFFF));
 }
@@ -225,12 +225,22 @@ void ARMXEmitter::WriteDataOp(u32 op, ARMReg dest, ARMReg src)
 	Write32(condition | (op << 20) | (dest << 12) | src);
 }
 
+// IMM, REG, IMMSREG, RSR 
+// -1 for invalid if the instruction doesn't support that
+const s32 InstOps[][4] = {{32, 0, 0, 0}, {33, 1, 1, 1}}; // AND, ANDS
+const char *InstNames[] = { "AND", "ANDS" };
+void ARMXEmitter::AND (ARMReg Rd, ARMReg Rn, Operand2 Rm) { WriteInstruction(0, Rd, Rn, Rm); }
+void ARMXEmitter::ANDS(ARMReg Rd, ARMReg Rn, Operand2 Rm) { WriteInstruction(1, Rd, Rn, Rm); }
+void ARMXEmitter::WriteInstruction (u32 Op, ARMReg Rd, ARMReg Rn, Operand2 Rm) // This can get renamed later
+{
+	u32 op = InstOps[Op][Rm.GetType()]; // Type always decided by last operand
+	u32 Data = Rm.GetData();
+	if (op == -1)
+		_assert_msg_(DYNA_REC, false, "%s not yet support %d", InstNames[Op], Rm.GetType()); 
+	Write32(condition | (op << 20) | Rn << 16 | Rd << 12 | Data);
+}
 
 // Data Operations
-void ARMXEmitter::AND (ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(32, dest, src, op2);}
-void ARMXEmitter::ANDS(ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(33, dest, src, op2);}
-void ARMXEmitter::AND (ARMReg dest, ARMReg src, ARMReg op2)   { WriteDataOp( 0, dest, src, op2);}
-void ARMXEmitter::ANDS(ARMReg dest, ARMReg src, ARMReg op2)   { WriteDataOp( 1, dest, src, op2);}
 void ARMXEmitter::EOR (ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(34, dest, src, op2);}
 void ARMXEmitter::EORS(ARMReg dest, ARMReg src, Operand2 op2) { WriteDataOp(35, dest, src, op2);}
 void ARMXEmitter::EOR (ARMReg dest, ARMReg src, ARMReg op2)	  { WriteDataOp( 2, dest, src, op2);}

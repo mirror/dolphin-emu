@@ -51,6 +51,8 @@ void JitArm::Init()
 	gpr.Start();
 	blocks.Init();
 	asm_routines.Init();
+	jo.enableBlocklink = false;
+	jo.optimizeGatherPipe = false;
 }
 
 void JitArm::ClearCache() 
@@ -128,7 +130,7 @@ void JitArm::Cleanup()
 }
 void JitArm::DoDownCount()
 {
-	ARMABI_MOVIMM32(R0, (u32)&CoreTiming::downcount);
+	ARMABI_MOVIMM32(R0, Mem(&CoreTiming::downcount));
 	ARMABI_MOVIMM32(R2, js.downcountAmount);
 	LDR(R1, R0);
 	SUBS(R1, R1, R2);
@@ -310,10 +312,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	b->runCount = 0;
 
 	// Downcount flag check, Only valid for linked blocks
-	/*ARMABI_MOVIMM32(R0, (u32)&CoreTiming::downcount);
-	LDR(R0, R0);
-	CMP(R0, 0);	
-	FixupBranch skip = B_CC(CC_GE);
+	/*Fixupbranch skip = B_CC(CC_GE);
 	ARMABI_MOVIMM32((u32)&PC, js.blockStart);
 	ARMABI_MOVIMM32(R0, (u32)asm_routines.doTiming);
 	B(R0);

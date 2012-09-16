@@ -68,7 +68,7 @@ static GekkoOPTemplate primarytable[] =
 	{15, &JitArm::Default}, //"addis",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_A0}},
 
 	{20, &JitArm::Default}, //"rlwimix",  OPTYPE_INTEGER, FL_OUT_A | FL_IN_A | FL_IN_S | FL_RC_BIT}},
-	{21, &JitArm::Default}, //"rlwinmx",  OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_RC_BIT}},
+	{21, &JitArm::rlwinmx}, //"rlwinmx",  OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_RC_BIT}},
 	{23, &JitArm::Default}, //"rlwnmx",   OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_IN_B | FL_RC_BIT}},
 
 	{24, &JitArm::ori}, //"ori",      OPTYPE_INTEGER, FL_OUT_A | FL_IN_S}},

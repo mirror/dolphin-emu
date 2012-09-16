@@ -139,6 +139,8 @@ public:
 	void WriteCallInterpreter(UGeckoInstruction _inst);
 	void Cleanup();
 
+	void GenerateRC();
+
 	// OPCODES
 	void unknown_instruction(UGeckoInstruction _inst);
 	void Default(UGeckoInstruction _inst);
@@ -161,7 +163,8 @@ public:
 	// Integer
 	void addi(UGeckoInstruction _inst);
 	void ori(UGeckoInstruction _inst);	
-
+	void rlwinmx(UGeckoInstruction _inst);
+	
 	// System Registers
 	void mtmsr(UGeckoInstruction _inst);
 

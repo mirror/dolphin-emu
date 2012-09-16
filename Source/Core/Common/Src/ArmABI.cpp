@@ -22,7 +22,7 @@
 using namespace ArmGen;
 void ARMXEmitter::ARMABI_CallFunction(void *func) 
 {
-	ARMABI_MOVIMM32(R8, (u32)func);	
+	ARMABI_MOVIMM32(R8, Mem(func));	
 	PUSH(1, _LR);
 	BL(R8);
 	POP(1, _LR);
@@ -37,12 +37,12 @@ void ARMXEmitter::ARMABI_PopAllCalleeSavedRegsAndAdjustStack() {
 }
 void ARMXEmitter::ARMABI_MOVIMM32(ARMReg reg, Operand2 val)
 {
-	// TODO: We can do this in less instructions if we check for if it is
-	// smaller than a 32bit variable. Like if it is a 8bit or 14bit(?)
-	// variable it should be able to be moved to just a single MOV instruction
-	// but for now, we are just taking the long route out and using the MOVW
-	// and MOVT
-	MOVW(reg, val); MOVT(reg, val, true);
+	// TODO: There are more fancy ways to save calls if we check if 
+	// The imm can be rotated or shifted a certain way.
+	// Masks tend to be able to be moved in to a reg with one call
+	MOVW(reg, val); 
+	if(val.Imm16High() & 0xFFFF) 
+		MOVT(reg, val, true);
 }
 // Moves IMM to memory location
 void ARMXEmitter::ARMABI_MOVIMM32(Operand2 op, Operand2 val)
@@ -67,7 +67,7 @@ void ARMXEmitter::ARMABI_ShowConditions()
 	for(u32 a = 0; a < 15; ++a)
 	{
 		SetJumpTarget(cc[a]);
-		MOV(R0, a);
+		MOV(R0, IMM(a));
 		ARMABI_CallFunction((void*)&ShowCondition);
 		if(a != 14)
 			B(ptr + ((a + 1) * 4));
@@ -82,8 +82,8 @@ void ARMXEmitter::UpdateAPSR(bool NZCVQ, u8 Flags, bool GE, u8 GEval)
 	{
 		// Can't update GE with the other ones with a immediate
 		// Got to use a scratch register
-		u32 IMM = (Flags << 27) | ((GEval & 0xF) << 16);
-		ARMABI_MOVIMM32(R8, IMM);
+		u32 Imm = (Flags << 27) | ((GEval & 0xF) << 16);
+		ARMABI_MOVIMM32(R8, IMM(Imm));
 		_MSR(true, true, R8);
 	}
 	else

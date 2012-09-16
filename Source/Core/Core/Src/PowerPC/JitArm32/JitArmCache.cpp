@@ -376,8 +376,9 @@ using namespace ArmGen;
 		ARMXEmitter emit((u8 *)b.checkedEntry);
 		emit.ARMABI_MOVIMM32(R10, (u32)&PC);
 		emit.ARMABI_MOVIMM32(R11, b.originalAddress);
+		emit.ARMABI_MOVIMM32(R12, (u32)jitarm->GetAsmRoutines()->dispatcher);
 		emit.STR(R10, R11);
-		emit.B(jitarm->GetAsmRoutines()->dispatcher);
+		emit.B(R12);
 	}
 
 
