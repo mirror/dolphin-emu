@@ -121,6 +121,15 @@ FixupBranch ARMXEmitter::B_CC(CCFlags Cond)
 	Write32(condition | 0x01A00000);
 	return branch;
 }
+void ARMXEmitter::B_CC(CCFlags Cond, const void *fnptr)
+{
+	s32 distance = (s32)fnptr - (s32(code) + 8);
+        _assert_msg_(DYNA_REC, distance > -33554432
+                     && distance <=  33554432,
+                     "B_CC out of range (%p calls %p)", code, fnptr);
+
+	Write32((Cond << 28) | 0x0A000000 | ((distance >> 2) & 0x00FFFFFF));
+}
 FixupBranch ARMXEmitter::BL_CC(CCFlags Cond)
 {
 	FixupBranch branch;

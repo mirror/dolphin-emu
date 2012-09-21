@@ -42,10 +42,10 @@ void JitArm::mtmsr(UGeckoInstruction inst)
 	gpr.Flush(FLUSH_ALL);
 	fpr.Flush(FLUSH_ALL);*/
 //	MSR = m_GPR[_inst.RS];
-
-	ARMABI_MOVIMM32(R10, (u32)&MSR);
-	ARMABI_MOVIMM32(R11, (u32)&m_GPR[inst.RS]); 
-	LDR(R11, R11);
-	STR(R10, R11);
+	
+	ARMReg rA = gpr.GetReg();
+	ARMABI_MOVI2R(rA, (u32)&MSR);
+	STR(rA, gpr.R(inst.RS));
+	gpr.Unlock(rA);
 	WriteExit(js.compilerPC + 4, 0);
 }

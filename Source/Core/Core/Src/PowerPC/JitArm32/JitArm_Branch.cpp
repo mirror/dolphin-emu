@@ -45,16 +45,18 @@ void JitArm::sc(UGeckoInstruction inst)
 	INSTRUCTION_START
 	JITDISABLE(Branch)
 
-//	gpr.Flush(FLUSH_ALL);
+	gpr.Flush();
 //	fpr.Flush(FLUSH_ALL);
-	ARMABI_MOVIMM32((u32)&PC, js.compilerPC + 4);
-	
-	ARMABI_MOVIMM32(R0, (u32)&PowerPC::ppcState.Exceptions);
-	ARMABI_MOVIMM32(R2, EXCEPTION_SYSCALL);
-	LDREX(R1, R0);
-	ORR(R1, R1, R2);
-	STREX(R2, R0, R1);
+	ARMABI_MOVI2M((u32)&PC, js.compilerPC + 4); // Destroys R12 and R14
+	ARMReg rA = gpr.GetReg();
+	ARMReg rB = gpr.GetReg();
+	ARMReg rC = gpr.GetReg();
+	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.Exceptions);
+	LDREX(rB, rA);
+	ORR(rB, rB, EXCEPTION_SYSCALL);
+	STREX(rC, rA, rB);
 	DMB();
+	gpr.Unlock(rA, rB, rC);
 
 	WriteExceptionExit();
 }
@@ -64,37 +66,42 @@ void JitArm::rfi(UGeckoInstruction inst)
 	INSTRUCTION_START
 	JITDISABLE(Branch)
 
-//	gpr.Flush(FLUSH_ALL);
+	gpr.Flush();
 //	fpr.Flush(FLUSH_ALL);
-	// See Interpreter rfi for details
+ 	// See Interpreter rfi for details
 	const u32 mask = 0x87C0FFFF;
-	const u32 clearMSR13 = 0xFFFBFFFF; // Mask used to clear the bit MSR[13]
+		const u32 clearMSR13 = 0xFFFBFFFF; // Mask used to clear the bit MSR[13]
 	// MSR = ((MSR & ~mask) | (SRR1 & mask)) & clearMSR13;
 	// R0 = MSR location
 	// R1 = MSR contents
 	// R2 = Mask
 	// R3 = Mask
-	ARMABI_MOVIMM32(R0, (u32)&MSR);
-	ARMABI_MOVIMM32(R2, (~mask) & clearMSR13);
-	ARMABI_MOVIMM32(R3, mask & clearMSR13);
+	ARMReg rA = gpr.GetReg();
+	ARMReg rB = gpr.GetReg();
+	ARMReg rC = gpr.GetReg();
+	ARMReg rD = gpr.GetReg();
+	ARMABI_MOVI2R(rA, (u32)&MSR);
+	ARMABI_MOVI2R(rB, (~mask) & clearMSR13);
+	ARMABI_MOVI2R(rC, mask & clearMSR13);
 
-	LDR(R1, R0);
+	LDR(rD, rA);
 
-	AND(R1, R1, R2); // R1 = Masked MSR
-	STR(R0, R1);
+	AND(rD, rD, rB); // rD = Masked MSR
+	STR(rA, rD);
 
-	ARMABI_MOVIMM32(R2, (u32)&SRR1);
-	LDR(R2, R2); // R2 contains SRR1 here
+	ARMABI_MOVI2R(rB, (u32)&SRR1);
+	LDR(rB, rB); // rB contains SRR1 here
 
-	AND(R2, R2, R3); // R2 contains masked SRR1 here
-	ORR(R2, R1, R2); // R2 = Masked MSR OR masked SRR1
+	AND(rB, rB, rC); // rB contains masked SRR1 here
+	ORR(rB, rD, rB); // rB = Masked MSR OR masked SRR1
 
-	STR(R0, R2); // STR R2 in to R0
+	STR(rA, rB); // STR rB in to rA
 
-	ARMABI_MOVIMM32(R0, (u32)&SRR0);
-	LDR(R0, R0);
-
-	WriteRfiExitDestInR0();
+	ARMABI_MOVI2R(rA, (u32)&SRR0);
+	LDR(rA, rA);
+	
+	gpr.Unlock(rB, rC, rD);
+	WriteRfiExitDestInR(rA); // rA gets unlocked here
 	//AND(32, M(&MSR), Imm32((~mask) & clearMSR13));
 	//MOV(32, R(EAX), M(&SRR1));
 	//AND(32, R(EAX), Imm32(mask & clearMSR13));
@@ -110,8 +117,9 @@ void JitArm::bx(UGeckoInstruction inst)
 	JITDISABLE(Branch)
 	// We must always process the following sentence
 	// even if the blocks are merged by PPCAnalyst::Flatten().
+	printf("LR address: %08x\n", (u32)&LR);
 	if (inst.LK)
-		ARMABI_MOVIMM32((u32)&LR, js.compilerPC + 4);
+		ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
 
 	// If this is not the last instruction of a block,
 	// we will skip the rest process.
@@ -120,7 +128,7 @@ void JitArm::bx(UGeckoInstruction inst)
 		return;
 	}
 
-	//gpr.Flush(FLUSH_ALL);
+	gpr.Flush();
 	//fpr.Flush(FLUSH_ALL);
 
 	u32 destination;
@@ -133,9 +141,9 @@ void JitArm::bx(UGeckoInstruction inst)
 //	if (inst.LK)
 //		AND(32, M(&PowerPC::ppcState.cr), Imm32(~(0xFF000000)));
 #endif
-	if (destination == js.compilerPC)
+ 	if (destination == js.compilerPC)
 	{
-		//PanicAlert("Idle loop detected at %08x", destination);
+ 		//PanicAlert("Idle loop detected at %08x", destination);
 		//	CALL(ProtectFunction(&CoreTiming::Idle, 0));
 		//	JMP(Asm::testExceptions, true);
 		// make idle loops go faster
@@ -143,6 +151,7 @@ void JitArm::bx(UGeckoInstruction inst)
 	}
 	WriteExit(destination, 0);
 }
+
 // TODO: Finish these branch instructions
 void JitArm::bcx(UGeckoInstruction inst)
 {
@@ -152,41 +161,44 @@ void JitArm::bcx(UGeckoInstruction inst)
 	// USES_CR
 	_assert_msg_(DYNA_REC, js.isLastInstruction, "bcx not last instruction of block");
 
-	//gpr.Flush(FLUSH_ALL);
+	gpr.Flush();
 	//fpr.Flush(FLUSH_ALL);
-
+	ARMReg rA = gpr.GetReg();
+	ARMReg rB = gpr.GetReg();
 	FixupBranch pCTRDontBranch;
 	if ((inst.BO & BO_DONT_DECREMENT_FLAG) == 0)  // Decrement and test CTR
 	{
-		ARMABI_MOVIMM32(R0, (u32)&CTR);
-		LDR(R2, R0);
-		SUBS(R2, R2, 1);
-		STR(R0, R2);
+		ARMABI_MOVI2R(rA, (u32)&CTR);
+		LDR(rB, rA);
+		SUBS(rB, rB, 1);
+		STR(rA, rB);
 			
 		//SUB(32, M(&CTR), Imm8(1));
 		if (inst.BO & BO_BRANCH_IF_CTR_0)
-			pCTRDontBranch = B_CC(CC_NEQ);
-		else
 			pCTRDontBranch = B_CC(CC_EQ);
+		else
+			pCTRDontBranch = B_CC(CC_NEQ);
 	}
 
 	FixupBranch pConditionDontBranch;
 	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)  // Test a CR bit
 	{
-		ARMABI_MOVIMM32(R0, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
-		LDRB(R0, R0);
+		printf("Value: %08x, Jmp on %s\n", (8 >> (inst.BI & 3)), (inst.BO & BO_BRANCH_IF_TRUE) ? "True" :
+		"False");
+		ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
+		LDRB(rA, rA);
+		MOV(rB, 8 >> (inst.BI & 3));
+		TST(rA, rB);
 
-		ARMABI_MOVIMM32(R1, 8 >> (inst.BI & 3));
-		TST(R0, R1);
 		//TEST(8, M(&PowerPC::ppcState.cr_fast[inst.BI >> 2]), Imm8(8 >> (inst.BI & 3)));
 		if (inst.BO & BO_BRANCH_IF_TRUE)  // Conditional branch 
-			pConditionDontBranch = B_CC(CC_EQ); // Zero
+			pConditionDontBranch = B_CC(CC_NEQ); // Zero
 		else
-			pConditionDontBranch = B_CC(CC_NEQ); // Not Zero
+			pConditionDontBranch = B_CC(CC_EQ); // Not Zero
 	}
-	
+	gpr.Unlock(rA, rB);
 	if (inst.LK)
-		ARMABI_MOVIMM32((u32)&LR, js.compilerPC + 4);
+		ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4); // Careful, destroys R14, R12
 	
 	u32 destination;
 	if(inst.AA)
@@ -207,46 +219,46 @@ void JitArm::bclrx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(Branch)
-
+	
 	if (!js.isLastInstruction &&
 		(inst.BO & (1 << 4)) && (inst.BO & (1 << 2))) {
 		if (inst.LK)
 		{
-			ARMABI_MOVIMM32((u32)&LR, js.compilerPC + 4);
-			//MOV(32, M(&LR), Imm32(js.compilerPC + 4));
+			ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
 		}
 		return;
 	}
-	//gpr.Flush(FLUSH_ALL);
+	gpr.Flush();
 	//fpr.Flush(FLUSH_ALL);
-
+	ARMReg rA = gpr.GetReg();
+	ARMReg rB = gpr.GetReg();
 	FixupBranch pCTRDontBranch;
 	if ((inst.BO & BO_DONT_DECREMENT_FLAG) == 0)  // Decrement and test CTR
 	{
-		ARMABI_MOVIMM32(R0, (u32)&CTR);
-		LDR(R1, R0);
-		SUBS(R1, R1, 1);
-		STR(R0, R1);
+		ARMABI_MOVI2R(rA, (u32)&CTR);
+		LDR(rB, rA);
+		SUBS(rB, rB, 1);
+		STR(rA, rB);
 			
 		//SUB(32, M(&CTR), Imm8(1));
 		if (inst.BO & BO_BRANCH_IF_CTR_0)
-			pCTRDontBranch = B_CC(CC_NEQ);
-		else
 			pCTRDontBranch = B_CC(CC_EQ);
+		else
+			pCTRDontBranch = B_CC(CC_NEQ);
 	}
 
 	FixupBranch pConditionDontBranch;
 	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)  // Test a CR bit
 	{
-		ARMABI_MOVIMM32(R0, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
-		ARMABI_MOVIMM32(R1, 8 >> (inst.BI & 3));
-		LDR(R0, R0);
-		TST(R0, R1);
+		ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
+		MOV(rB, 8 >> (inst.BI & 3));
+		LDR(rA, rA);
+		TST(rA, rB);
 		//TEST(8, M(&PowerPC::ppcState.cr_fast[inst.BI >> 2]), Imm8(8 >> (inst.BI & 3)));
 		if (inst.BO & BO_BRANCH_IF_TRUE)  // Conditional branch 
-			pConditionDontBranch = B_CC(CC_EQ);
-		else
 			pConditionDontBranch = B_CC(CC_NEQ);
+		else
+			pConditionDontBranch = B_CC(CC_EQ);
 	}
 
 	// This below line can be used to prove that blr "eats flags" in practice.
@@ -258,14 +270,14 @@ void JitArm::bclrx(UGeckoInstruction inst)
 
 	//MOV(32, R(EAX), M(&LR));	
 	//AND(32, R(EAX), Imm32(0xFFFFFFFC));
-	ARMABI_MOVIMM32(R0, (u32)&LR);
-	ARMABI_MOVIMM32(R1, 0xFFFFFFFC);
-	LDR(R0, R0);
-	AND(R0, R0, R1);
+	ARMABI_MOVI2R(rA, (u32)&LR);
+	MVN(rB, 0x3); // 0xFFFFFFFC
+	LDR(rA, rA);
+	AND(rA, rA, rB);
 	if (inst.LK)
-		ARMABI_MOVIMM32((u32)&LR, js.compilerPC + 4);
-	
-	WriteExitDestInR0();
+		ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
+	gpr.Unlock(rB); // rA gets unlocked in WriteExitDestInR
+	WriteExitDestInR(rA);
 
 	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)
 		SetJumpTarget( pConditionDontBranch );

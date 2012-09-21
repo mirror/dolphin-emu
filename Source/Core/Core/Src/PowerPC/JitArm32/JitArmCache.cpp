@@ -374,9 +374,9 @@ using namespace ArmGen;
 		// Not entirely ideal, but .. pretty good.
 		// Spurious entrances from previously linked blocks can only come through checkedEntry
 		ARMXEmitter emit((u8 *)b.checkedEntry);
-		emit.ARMABI_MOVIMM32(R10, (u32)&PC);
-		emit.ARMABI_MOVIMM32(R11, b.originalAddress);
-		emit.ARMABI_MOVIMM32(R12, (u32)jitarm->GetAsmRoutines()->dispatcher);
+		emit.ARMABI_MOVI2R(R10, (u32)&PC);
+		emit.ARMABI_MOVI2R(R11, b.originalAddress);
+		emit.ARMABI_MOVI2R(R12, (u32)jitarm->GetAsmRoutines()->dispatcher);
 		emit.STR(R10, R11);
 		emit.B(R12);
 	}

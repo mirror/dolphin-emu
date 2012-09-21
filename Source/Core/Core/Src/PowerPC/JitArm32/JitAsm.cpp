@@ -64,26 +64,27 @@ void JitArmAsmRoutineManager::Generate()
 
 	PUSH(1, _LR);
 
-	FixupBranch skipToRealDispatcher = B();
 
+	const u8* outerLoop = GetCodePtr();
+	ARMABI_MOVI2R(R0, (u32)&CoreTiming::downcount);
+
+	FixupBranch skipToRealDispatcher = B();
 	dispatcher = GetCodePtr();	
 	printf("Dispatcher is %08x\n", dispatcher);
 
-	// Downcount Check
-	ARMABI_MOVIMM32(R0, (u32)&CoreTiming::downcount);
-	LDR(R0, R0);
-	CMP(R0, 0);	
-	FixupBranch bail = B_CC(CC_EQ);
+	// Downcount Check	
+	FixupBranch bail = B_CC(CC_MI);
 
 	SetJumpTarget(skipToRealDispatcher); 
-	ARMABI_MOVIMM32(R9, (u32)&PC);
+	dispatcherNoCheck = GetCodePtr();
+	ARMABI_MOVI2R(R9, (u32)&PC);
 	LDR(R9, R9);// Load the current PC into R9
 
-	ARMABI_MOVIMM32(R10, JIT_ICACHE_MASK);
+	ARMABI_MOVI2R(R10, JIT_ICACHE_MASK); // Potential for optimization
 	AND(R9, R9, R10); // R9 contains PC & JIT_ICACHE_MASK here.
 	// Confirmed good to this point 08-03-12
 
-	ARMABI_MOVIMM32(R10, (u32)jitarm->GetBlockCache()->GetICache());
+	ARMABI_MOVI2R(R10, (u32)jitarm->GetBlockCache()->GetICache());
 	// Confirmed That this loads the base iCache Location correctly 08-04-12
 
 	LDR(R9, R10, R9, true, true); // R9 contains iCache[PC & JIT_ICACHE_MASK] here
@@ -93,7 +94,7 @@ void JitArmAsmRoutineManager::Generate()
 
 	SetCC(CC_EQ); // Only run next part if R9 is zero
 	// Success, it is our Jitblock.
-	ARMABI_MOVIMM32(R10, (u32)jitarm->GetBlockCache()->GetCodePointers());
+	ARMABI_MOVI2R(R10, (u32)jitarm->GetBlockCache()->GetCodePointers());
 	// LDR R10 right here to get CodePointers()[0] pointer.
 	REV(R9, R9); // Reversing this gives us our JITblock.
 	LSL(R9, R9, 2); // Multiply by four because address locations are u32 in size 
@@ -104,25 +105,20 @@ void JitArmAsmRoutineManager::Generate()
 	FixupBranch End = B(); // Jump to the end
 	SetCC(); // Return to always executing codes
 
-	ARMABI_MOVIMM32(ARM_PARAM1, (u32)&PC);
-	LDR(ARM_PARAM1, ARM_PARAM1); 
-
-	ARMABI_MOVIMM32(ARM_PARAM1, (u32)&PC);
-	LDR(ARM_PARAM1, ARM_PARAM1); 
-	ARMABI_CallFunction((void*)&ArmJit);
+	ARMABI_CallFunctionC((void*)&ArmJit, (u32)&PC);
 		
-	B(dispatcher);
+	B(dispatcherNoCheck);
 
 	// Floating Point Exception Check, Jumped to if false
 	fpException = GetCodePtr();
-	ARMABI_MOVIMM32(R0, (u32)&PowerPC::ppcState.Exceptions);
-	ARMABI_MOVIMM32(R2, EXCEPTION_FPU_UNAVAILABLE);
+	ARMABI_MOVI2R(R0, (u32)&PowerPC::ppcState.Exceptions);
+	ARMABI_MOVI2R(R2, EXCEPTION_FPU_UNAVAILABLE); // Potentially can be optimized
 	LDREX(R1, R0);
 	ORR(R1, R1, R2);
 	STREX(R2, R0, R1);
 	ARMABI_CallFunction((void*)&PowerPC::CheckExceptions);
-	ARMABI_MOVIMM32(R0, (u32)&NPC);
-	ARMABI_MOVIMM32(R1, (u32)&PC);
+	ARMABI_MOVI2R(R0, (u32)&NPC);
+	ARMABI_MOVI2R(R1, (u32)&PC);
 	LDR(R0, R0);
 	STR(R1, R0);
 	B(dispatcher);
@@ -132,13 +128,21 @@ void JitArmAsmRoutineManager::Generate()
 	ARMABI_CallFunction((void*)&CoreTiming::Advance);
 
 	testExceptions = GetCodePtr();
-
-	ARMABI_MOVIMM32(R0, (u32)&PC);
-	ARMABI_MOVIMM32(R1, (u32)&NPC);
+	ARMABI_MOVI2R(R0, (u32)&PC);
+	ARMABI_MOVI2R(R1, (u32)&NPC);
 	LDR(R0, R0);
 	STR(R1, R0);
 		ARMABI_CallFunction((void*)&PowerPC::CheckExceptions);
-		
+	ARMABI_MOVI2R(R0, (u32)&PC);
+	ARMABI_MOVI2R(R1, (u32)&NPC);
+	LDR(R1, R1);
+	STR(R0, R1);
+	ARMABI_MOVI2R(R0, Mem((void*)PowerPC::GetStatePtr()));
+	ARMABI_MOVI2R(R1, IMM(0xFFFFFFFF));
+	LDR(R0, R0);
+	TST(R0, R1);
+	B_CC(CC_EQ, outerLoop);
+
 	SetJumpTarget(End);
 
 	UpdateAPSR(true, 0, true, 0); // Clear our host register flags out.

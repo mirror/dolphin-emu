@@ -45,14 +45,13 @@ namespace CPUCompare
 
 void JitArm::Init()
 {
-	gpr.SetEmitter(this);
-//	fpr.SetEmitter(this);
 	AllocCodeSpace(CODE_SIZE);
-	gpr.Start();
 	blocks.Init();
 	asm_routines.Init();
+	gpr.Init(this);
 	jo.enableBlocklink = false;
 	jo.optimizeGatherPipe = false;
+	gpr.SetEmitter(this);
 }
 
 void JitArm::ClearCache() 
@@ -71,11 +70,13 @@ void JitArm::Shutdown()
 // This is only called by Default() in this file. It will execute an instruction with the interpreter functions.
 void JitArm::WriteCallInterpreter(UGeckoInstruction inst)
 {
-//	gpr.Flush();
+	gpr.Flush();
 //	fpr.Flush(FLUSH_ALL);
+	NOP();
 	Interpreter::_interpreterInstruction instr = GetInterpreterOp(inst);
-	ARMABI_MOVIMM32(ARM_PARAM1, inst.hex);
-	ARMABI_CallFunction((void*)instr);
+	ARMABI_CallFunctionC((void*)instr, inst.hex);
+	gpr.SetEmitter(this);
+	gpr.ReloadPPC();
 }
 void JitArm::unknown_instruction(UGeckoInstruction inst)
 {
@@ -130,42 +131,57 @@ void JitArm::Cleanup()
 }
 void JitArm::DoDownCount()
 {
-	ARMABI_MOVIMM32(R0, Mem(&CoreTiming::downcount));
-	ARMABI_MOVIMM32(R2, js.downcountAmount);
-	LDR(R1, R0);
-	SUBS(R1, R1, R2);
-	STR(R0, R1);
-	DMB();
-	MOV(R0, R1);
+	ARMReg A = gpr.GetReg();
+	ARMReg B = gpr.GetReg();
+	ARMABI_MOVI2R(A, Mem(&CoreTiming::downcount));
+	LDR(B, A);
+	if(js.downcountAmount < 255) // We can enlarge this if we used rotations
+	{
+		SUBS(B, B, js.downcountAmount);
+		STR(A, B);
+	}
+	else
+	{
+		ARMReg C = gpr.GetReg();
+		ARMABI_MOVI2R(C, js.downcountAmount);
+		SUBS(B, B, C);
+		STR(A, B);
+	}
+	gpr.Unlock(A, B);
 }
-void JitArm::WriteExitDestInR0() 
+void JitArm::WriteExitDestInR(ARMReg Reg) 
 {
-	ARMABI_MOVIMM32(R1, (u32)&PC);
-	STR(R1, R0);
+	ARMReg A = gpr.GetReg();
+	ARMABI_MOVI2R(A, (u32)&PC);
+	STR(A, Reg);
+	gpr.Unlock(Reg); // This was locked in the instruction beforehand.
+	Cleanup();
+	DoDownCount();
+	ARMABI_MOVI2R(A, (u32)asm_routines.dispatcher);
+	B(A);
+	gpr.Unlock(A);
+}
+void JitArm::WriteRfiExitDestInR(ARMReg Reg) 
+{
+	ARMReg A = gpr.GetReg();
+	ARMABI_MOVI2R(A, (u32)&PC);
+	STR(A, Reg);
+	gpr.Unlock(Reg); // This was locked in the instruction beforehand
 	Cleanup();
 	DoDownCount();
 
-	ARMABI_MOVIMM32(R0, (u32)asm_routines.dispatcher);
-	B(R0);
-}
-void JitArm::WriteRfiExitDestInR0() 
-{
-	ARMABI_MOVIMM32(R1, (u32)&PC);
-	STR(R1, R0);
-		
-	Cleanup();
-	DoDownCount();
-
-	ARMABI_MOVIMM32(R0, (u32)asm_routines.testExceptions);
-	B(R0);
+	ARMABI_MOVI2R(A, (u32)asm_routines.testExceptions);
+	B(A);
+	gpr.Unlock(A);
 }
 void JitArm::WriteExceptionExit()
 {
+	ARMReg A = gpr.GetReg(false);
 	Cleanup();
 	DoDownCount();
 
-	ARMABI_MOVIMM32(R0, (u32)asm_routines.testExceptions);
-	B(R0);
+	ARMABI_MOVI2R(A, (u32)asm_routines.testExceptions);
+	B(A);
 }
 void JitArm::WriteExit(u32 destination, int exit_num)
 {
@@ -188,9 +204,10 @@ void JitArm::WriteExit(u32 destination, int exit_num)
 	}
 	else 
 	{
-		ARMABI_MOVIMM32((u32)&PC, destination);
-		ARMABI_MOVIMM32(R0, (u32)asm_routines.dispatcher);
-		B(R0);	
+		ARMABI_MOVI2M((u32)&PC, destination); // Watch out! This uses R14 and R12!
+		ARMReg A = gpr.GetReg(false);
+		ARMABI_MOVI2R(A, (u32)asm_routines.dispatcher);
+		B(A);	
 	}
 	printf("Jump Out: %08x: Available block: %s\n", destination, (block >= 0)
 	? "True" : "False");
@@ -313,9 +330,9 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 
 	// Downcount flag check, Only valid for linked blocks
 	/*Fixupbranch skip = B_CC(CC_GE);
-	ARMABI_MOVIMM32((u32)&PC, js.blockStart);
-	ARMABI_MOVIMM32(R0, (u32)asm_routines.doTiming);
-	B(R0);
+	ARMABI_MOVI2M((u32)&PC, js.blockStart);
+	ARMABI_MOVI2R(R14, (u32)asm_routines.doTiming);
+	B(14);
 	SetJumpTarget(skip);*/
 
 	const u8 *normalEntry = GetCodePtr();
@@ -326,27 +343,35 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	if (js.fpa.any)
 	{
 		// This block uses FPU - needs to add FP exception bailout
-		ARMABI_MOVIMM32(R0, (u32)&PowerPC::ppcState.msr);
-		ARMABI_MOVIMM32(R1, (u32)&PC);
-		ARMABI_MOVIMM32(R2, 1 << 13);
-		ARMABI_MOVIMM32(R3, js.blockStart);
-		TST(R0, R2);
+		ARMReg A = gpr.GetReg();
+		ARMReg RB = gpr.GetReg();
+		ARMReg C = gpr.GetReg();
+		ARMABI_MOVI2R(A, (u32)&PowerPC::ppcState.msr); // R0
+		ARMABI_MOVI2R(RB, (u32)&PC); // R1
+		Operand2 Shift(2, 10); // 1 << 13
+		ARMABI_MOVI2R(C, js.blockStart); // R3
+		LDR(A, A);
+		TST(A, Shift);
 		FixupBranch b1 = B_CC(CC_NEQ);
-		STR(R1, R3);
-		ARMABI_MOVIMM32(R0, (u32)asm_routines.fpException);
-		B(R0);
+		STR(RB, C);
+		ARMABI_MOVI2R(A, (u32)asm_routines.fpException);
+		B(A);
 		SetJumpTarget(b1);
+		gpr.Unlock(A, RB, C);	
 	}
 	// Conditionally add profiling code.
 	if (Profiler::g_ProfileBlocks) {
-		ARMABI_MOVIMM32(R10, (u32)&b->runCount); // Load in to register
-		LDR(R11, R10); // Load the actual value in to R11.
-		ADD(R11, R11, 1); // Add one to the value
-		STR(R10, R11); // Now store it back in the memory location 
+		ARMReg A = gpr.GetReg();
+		ARMReg B = gpr.GetReg();
+		ARMABI_MOVI2R(A, (u32)&b->runCount); // Load in to register
+		LDR(B, A); // Load the actual value in to R11.
+		ADD(B, B, 1); // Add one to the value
+		STR(A, B); // Now store it back in the memory location 
 		// get start tic
 		PROFILER_QUERY_PERFORMANCE_COUNTER(&b->ticStart);
+		gpr.Unlock(A, B);
 	}
-
+	gpr.Start(js.gpa);
 	js.downcountAmount = 0;
 	if (!Core::g_CoreStartupParameter.bEnableDebugging)
 	{
@@ -394,8 +419,27 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		
 		if (!ops[i].skip)
 		{
-			printf("OP: %s\n", PPCTables::GetInstructionName(ops[i].inst));
-			JitArmTables::CompileInstruction(ops[i]);
+			printf("Start: %08x OP '%s' Info\n",GetCodePtr(),  PPCTables::GetInstructionName(ops[i].inst));
+			/*GekkoOPInfo* Info = GetOpInfo(ops[i].inst.hex);
+				printf("\tOuts\n");
+				if (Info->flags & FL_OUT_A)
+					printf("\t-OUT_A: %x\n", ops[i].inst.RA);
+				if(Info->flags & FL_OUT_D)
+					printf("\t-OUT_D: %x\n", ops[i].inst.RD);
+				printf("\tIns\n");
+				// A, AO, B, C, S
+				if(Info->flags & FL_IN_A)
+					printf("\t-IN_A: %x\n", ops[i].inst.RA);
+				if(Info->flags & FL_IN_A0)
+					printf("\t-IN_A0: %x\n", ops[i].inst.RA);
+				if(Info->flags & FL_IN_B)
+					printf("\t-IN_B: %x\n", ops[i].inst.RB);
+				if(Info->flags & FL_IN_C)
+					printf("\t-IN_C: %x\n", ops[i].inst.RC);
+				if(Info->flags & FL_IN_S)
+					printf("\t-IN_S: %x\n", ops[i].inst.RS);*/
+				gpr.Analyze(ops[i].inst);
+				JitArmTables::CompileInstruction(ops[i]);
 		}
 	}
 	if(broken_block)
@@ -411,7 +455,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	return start;
 }
 
-void ArmJit(u32 em_address)
+void ArmJit(u32 *em_address)
 {	
-	jitarm->Jit(em_address);
+	jitarm->Jit(*em_address);
 }

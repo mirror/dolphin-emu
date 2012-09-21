@@ -133,9 +133,9 @@ public:
 	// Utilities for use by opcodes
 
 	void WriteExit(u32 destination, int exit_num);
-	void WriteExitDestInR0();
+	void WriteExitDestInR(ARMReg Reg);
+	void WriteRfiExitDestInR(ARMReg Reg);
 	void WriteExceptionExit();
-	void WriteRfiExitDestInR0();
 	void WriteCallInterpreter(UGeckoInstruction _inst);
 	void Cleanup();
 
@@ -171,7 +171,7 @@ public:
 	// LoadStore
 	void icbi(UGeckoInstruction _inst);
 };
-void ArmJit(u32 em_address);
+void ArmJit(u32 *em_address);
 
 
 #endif // _JIT64_H

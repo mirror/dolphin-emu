@@ -239,12 +239,7 @@ public:
 		// bottom eight being a IMM. This is for instructions that need to
 		// expand a 8bit IMM to a 32bit value and gives you some rotation as
 		// well.
-		// 0000 = no rotation
-		// 0001 = Rotate right 2 bits
-		// 0010 = Rotate right 4 bits
-		// 0011 = Rotate right 6 bits
-		// 0100 = Rotate right 8 bits (So the IMM is in the top 8 bits of the IMM32)
-		// See A5.2.4 in the Arm reference manual for more.
+		// Each rotation rotates to the right by 2 bits
 		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm12Mod not IMM");
 		return ((Rotation & 0xF) << 8) | (Value & 0xFF);
 	}
@@ -346,6 +341,7 @@ public:
 	// Branching
 	FixupBranch B();
 	FixupBranch B_CC(CCFlags Cond);
+	void B_CC(CCFlags Cond, const void *fnptr);
 	FixupBranch BL();
 	FixupBranch BL_CC(CCFlags Cond);
 	void SetJumpTarget(FixupBranch const &branch);
@@ -454,10 +450,11 @@ public:
 	// The difference between this and CALL is that this aligns the stack
 	// where appropriate.
 	void ARMABI_CallFunction(void *func);
+	void ARMABI_CallFunctionC(void *func, u32 Arg0);
 	void ARMABI_PushAllCalleeSavedRegsAndAdjustStack(); 
 	void ARMABI_PopAllCalleeSavedRegsAndAdjustStack(); 
-	void ARMABI_MOVIMM32(ARMReg reg, Operand2 val);
-	void ARMABI_MOVIMM32(Operand2 op, Operand2 val);
+	void ARMABI_MOVI2R(ARMReg reg, Operand2 val);
+	void ARMABI_MOVI2M(Operand2 op, Operand2 val);
 	void ARMABI_ShowConditions();
 
 	void UpdateAPSR(bool NZCVQ, u8 Flags, bool GE, u8 GEval);
