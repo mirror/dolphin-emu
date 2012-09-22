@@ -157,7 +157,6 @@ void JitArm::bcx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(Branch)
-
 	// USES_CR
 	_assert_msg_(DYNA_REC, js.isLastInstruction, "bcx not last instruction of block");
 
@@ -175,9 +174,9 @@ void JitArm::bcx(UGeckoInstruction inst)
 			
 		//SUB(32, M(&CTR), Imm8(1));
 		if (inst.BO & BO_BRANCH_IF_CTR_0)
-			pCTRDontBranch = B_CC(CC_EQ);
-		else
 			pCTRDontBranch = B_CC(CC_NEQ);
+		else
+			pCTRDontBranch = B_CC(CC_EQ);
 	}
 
 	FixupBranch pConditionDontBranch;
@@ -192,9 +191,9 @@ void JitArm::bcx(UGeckoInstruction inst)
 
 		//TEST(8, M(&PowerPC::ppcState.cr_fast[inst.BI >> 2]), Imm8(8 >> (inst.BI & 3)));
 		if (inst.BO & BO_BRANCH_IF_TRUE)  // Conditional branch 
-			pConditionDontBranch = B_CC(CC_NEQ); // Zero
+			pConditionDontBranch = B_CC(CC_EQ); // Zero
 		else
-			pConditionDontBranch = B_CC(CC_EQ); // Not Zero
+			pConditionDontBranch = B_CC(CC_NEQ); // Not Zero
 	}
 	gpr.Unlock(rA, rB);
 	if (inst.LK)
@@ -214,12 +213,65 @@ void JitArm::bcx(UGeckoInstruction inst)
 
 	WriteExit(js.compilerPC + 4, 1);
 }
+void JitArm::bcctrx(UGeckoInstruction inst)
+{
+	INSTRUCTION_START
+	JITDISABLE(Branch)
 
+	gpr.Flush();
+	//fpr.Flush(FLUSH_ALL);
+
+	// bcctrx doesn't decrement and/or test CTR
+	_dbg_assert_msg_(POWERPC, inst.BO_2 & BO_DONT_DECREMENT_FLAG, "bcctrx with decrement and test CTR option is invalid!");
+
+	if (inst.BO_2 & BO_DONT_CHECK_CONDITION)
+	{
+		// BO_2 == 1z1zz -> b always
+
+		//NPC = CTR & 0xfffffffc;
+		if(inst.LK_3)
+			ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
+		ARMReg rA = gpr.GetReg();
+		ARMReg rB = gpr.GetReg();
+		ARMABI_MOVI2R(rA, (u32)&CTR);
+		MVN(rB, 0x3); // 0xFFFFFFFC
+		LDR(rA, rA);
+		AND(rA, rA, rB);
+		gpr.Unlock(rB);
+		WriteExitDestInR(rA);
+	}
+	else
+	{
+		printf("Rare version not yet implemented\n");
+		exit(0x4A4E);
+		// Rare condition seen in (just some versions of?) Nintendo's NES Emulator
+
+		// BO_2 == 001zy -> b if false
+		// BO_2 == 011zy -> b if true
+
+		// Ripped from bclrx
+		/*TEST(8, M(&PowerPC::ppcState.cr_fast[inst.BI >> 2]), Imm8(8 >> (inst.BI & 3)));
+		Gen::CCFlags branch;
+		if (inst.BO_2 & BO_BRANCH_IF_TRUE)
+			branch = CC_Z;
+		else
+			branch = CC_NZ; 
+		FixupBranch b = J_CC(branch, false);
+		MOV(32, R(EAX), M(&CTR));
+		AND(32, R(EAX), Imm32(0xFFFFFFFC));
+		//MOV(32, M(&PC), R(EAX)); => Already done in WriteExitDestInEAX()
+		if (inst.LK_3)
+			MOV(32, M(&LR), Imm32(js.compilerPC + 4)); //	LR = PC + 4;
+		WriteExitDestInEAX();
+		// Would really like to continue the block here, but it ends. TODO.
+		SetJumpTarget(b);
+		WriteExit(js.compilerPC + 4, 1);*/
+	}
+}
 void JitArm::bclrx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(Branch)
-	
 	if (!js.isLastInstruction &&
 		(inst.BO & (1 << 4)) && (inst.BO & (1 << 2))) {
 		if (inst.LK)
@@ -242,9 +294,9 @@ void JitArm::bclrx(UGeckoInstruction inst)
 			
 		//SUB(32, M(&CTR), Imm8(1));
 		if (inst.BO & BO_BRANCH_IF_CTR_0)
-			pCTRDontBranch = B_CC(CC_EQ);
-		else
 			pCTRDontBranch = B_CC(CC_NEQ);
+		else
+			pCTRDontBranch = B_CC(CC_EQ);
 	}
 
 	FixupBranch pConditionDontBranch;
@@ -256,9 +308,9 @@ void JitArm::bclrx(UGeckoInstruction inst)
 		TST(rA, rB);
 		//TEST(8, M(&PowerPC::ppcState.cr_fast[inst.BI >> 2]), Imm8(8 >> (inst.BI & 3)));
 		if (inst.BO & BO_BRANCH_IF_TRUE)  // Conditional branch 
-			pConditionDontBranch = B_CC(CC_NEQ);
+			pConditionDontBranch = B_CC(CC_EQ); // Zero
 		else
-			pConditionDontBranch = B_CC(CC_EQ);
+			pConditionDontBranch = B_CC(CC_NEQ); // Not Zero
 	}
 
 	// This below line can be used to prove that blr "eats flags" in practice.
@@ -274,8 +326,15 @@ void JitArm::bclrx(UGeckoInstruction inst)
 	MVN(rB, 0x3); // 0xFFFFFFFC
 	LDR(rA, rA);
 	AND(rA, rA, rB);
-	if (inst.LK)
-		ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
+	if (inst.LK){
+		ARMReg rC = gpr.GetReg(false);
+		u32 Jumpto = js.compilerPC + 4;
+		ARMABI_MOVI2R(rB, (u32)&LR);
+		MOVW(rC, Jumpto);
+		MOVT(rC, Jumpto, true);
+		STR(rB, rC);
+		//ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
+	}
 	gpr.Unlock(rB); // rA gets unlocked in WriteExitDestInR
 	WriteExitDestInR(rA);
 

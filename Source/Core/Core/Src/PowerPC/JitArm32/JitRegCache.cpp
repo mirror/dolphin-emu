@@ -220,7 +220,8 @@ void ArmRegCache::Analyze(UGeckoInstruction inst)
 	// won't be using.
 	GekkoOPInfo *Info = GetOpInfo(inst);
 	int flags = Info->flags;
-	u8 Regs[8];
+	s8 Regs[3];
+	Regs[0] = Regs[1] = Regs[2] = -1;
 	u8 CurrentReg = 0;
 
 	if ((flags & FL_IN_A) || ((flags & FL_IN_A0) && inst.RA != 0))
@@ -238,19 +239,24 @@ void ArmRegCache::Analyze(UGeckoInstruction inst)
 	// We can only have three registers per instruction max
 	_assert_msg_(_DYNA_REC, !(CurrentReg > 3), "Somehow got more registers analyzed then we can have");
 	// let's check to make sure all of these are loaded.
+	if (CurrentReg == 0) // No registers this instruction
+		return;
 	u8 LoadedReg = 0;
 	s8 URegs[3];
 	
 	for (u8 b = 0; b < 3; ++b){
 		URegs[b] = -1;
-		for( u8 a = 0; a < NUMPPCREG; ++a){
-			if ( ArmCRegs[a].PPCReg == Regs[b]) // Alright, it is loaded
-			{
-				URegs[b] = ArmCRegs[a].PPCReg;
-				LoadedReg++;
-				goto NextOne;
+		if (Regs[b] != -1)
+			for( u8 a = 0; a < NUMPPCREG; ++a){
+				if (ArmCRegs[a].PPCReg == Regs[b]) // Alright, it is already loaded
+				{
+					URegs[b] = ArmCRegs[a].PPCReg;
+					LoadedReg++;
+					goto NextOne;
+				}
 			}
-		}
+		else
+			URegs[b] = -2;
 		NextOne:
 		;
 	}
@@ -260,13 +266,13 @@ void ArmRegCache::Analyze(UGeckoInstruction inst)
 	// Check to make sure we aren't trying to load multiple of the same ones
 	if (URegs[0] > 0){
 		if (URegs[0] == URegs[1]) // 0 is 1
-			URegs[1] = -1; 
+			URegs[1] = -2; 
 		if (URegs[0] == URegs[2]) // 0 is 2
-			URegs[2] = -1;
+			URegs[2] = -2;
 	}
 	if (URegs[1] > 0) {
 		if(URegs[1] == URegs[2])
-			URegs[2] = - 1;
+			URegs[2] = -2;
 	}
 	for (u8 b = 0; b < 3; ++b)
 	{
@@ -308,6 +314,7 @@ void ArmRegCache::Analyze(UGeckoInstruction inst)
 					}
 					break;
 			}
+			URegs[b] = Regs[b];
 		}
 	}
 	// Should be all loaded at this point

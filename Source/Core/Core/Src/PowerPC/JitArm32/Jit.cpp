@@ -72,7 +72,6 @@ void JitArm::WriteCallInterpreter(UGeckoInstruction inst)
 {
 	gpr.Flush();
 //	fpr.Flush(FLUSH_ALL);
-	NOP();
 	Interpreter::_interpreterInstruction instr = GetInterpreterOp(inst);
 	ARMABI_CallFunctionC((void*)instr, inst.hex);
 	gpr.SetEmitter(this);
@@ -329,11 +328,12 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	b->runCount = 0;
 
 	// Downcount flag check, Only valid for linked blocks
-	/*Fixupbranch skip = B_CC(CC_GE);
+	FixupBranch skip = B_CC(CC_GE);
 	ARMABI_MOVI2M((u32)&PC, js.blockStart);
-	ARMABI_MOVI2R(R14, (u32)asm_routines.doTiming);
-	B(14);
-	SetJumpTarget(skip);*/
+	ARMReg rA = gpr.GetReg(false);
+	ARMABI_MOVI2R(rA, (u32)asm_routines.doTiming);
+	B(rA);
+	SetJumpTarget(skip);
 
 	const u8 *normalEntry = GetCodePtr();
 	b->normalEntry = normalEntry;

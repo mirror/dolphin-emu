@@ -173,7 +173,7 @@ static GekkoOPTemplate table4_3[] =
 
 static GekkoOPTemplate table19[] = 
 {
-	{528, &JitArm::Default}, //"bcctrx", OPTYPE_BRANCH, FL_ENDBLOCK}},
+	{528, &JitArm::bcctrx}, //"bcctrx", OPTYPE_BRANCH, FL_ENDBLOCK}},
 	{16,  &JitArm::bclrx}, //"bclrx",  OPTYPE_BRANCH, FL_ENDBLOCK}},
 	{257, &JitArm::Default}, //"crand",  OPTYPE_CR, FL_EVIL}},
 	{129, &JitArm::Default}, //"crandc", OPTYPE_CR, FL_EVIL}},

@@ -159,7 +159,8 @@ public:
 	void bclrx(UGeckoInstruction _inst);
 	void sc(UGeckoInstruction _inst);
 	void rfi(UGeckoInstruction _inst);
-	
+	void bcctrx(UGeckoInstruction _inst);
+		
 	// Integer
 	void addi(UGeckoInstruction _inst);
 	void ori(UGeckoInstruction _inst);	
