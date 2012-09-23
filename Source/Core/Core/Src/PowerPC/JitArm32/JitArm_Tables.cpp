@@ -53,9 +53,9 @@ static GekkoOPTemplate primarytable[] =
 	{16, &JitArm::bcx}, //"bcx", OPTYPE_SYSTEM, FL_ENDBLOCK}},
 	{18, &JitArm::bx}, //"bx",  OPTYPE_SYSTEM, FL_ENDBLOCK}},
 
-	{1,  &JitArm::Default}, //"HLEFunction", OPTYPE_SYSTEM, FL_ENDBLOCK}},
+	{1,  &JitArm::Break}, //"HLEFunction", OPTYPE_SYSTEM, FL_ENDBLOCK}},
 	{2,  &JitArm::Default}, //"DynaBlock",   OPTYPE_SYSTEM, 0}},
-	{3,  &JitArm::Default}, //"twi",         OPTYPE_SYSTEM, FL_ENDBLOCK}},
+	{3,  &JitArm::Break}, //"twi",         OPTYPE_SYSTEM, FL_ENDBLOCK}},
 	{17, &JitArm::sc}, //"sc",          OPTYPE_SYSTEM, FL_ENDBLOCK, 1}},
 
 	{7,  &JitArm::Default}, //"mulli",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_A | FL_RC_BIT, 2}},
@@ -184,11 +184,11 @@ static GekkoOPTemplate table19[] =
 	{417, &JitArm::Default}, //"crorc",  OPTYPE_CR, FL_EVIL}},
 	{193, &JitArm::Default}, //"crxor",  OPTYPE_CR, FL_EVIL}},
 												   
-	{150, &JitArm::Default}, //"isync",  OPTYPE_ICACHE, FL_EVIL}},
+	{150, &JitArm::DoNothing}, //"isync",  OPTYPE_ICACHE, FL_EVIL}},
 	{0,   &JitArm::Default}, //"mcrf",   OPTYPE_SYSTEM, FL_EVIL}},
 												   
 	{50,  &JitArm::rfi}, //"rfi",    OPTYPE_SYSTEM, FL_ENDBLOCK | FL_CHECKEXCEPTIONS, 1}},
-	{18,  &JitArm::Default}, //"rfid",   OPTYPE_SYSTEM, FL_ENDBLOCK | FL_CHECKEXCEPTIONS}}
+	{18,  &JitArm::Break}, //"rfid",   OPTYPE_SYSTEM, FL_ENDBLOCK | FL_CHECKEXCEPTIONS}}
 };
 
 
@@ -292,7 +292,7 @@ static GekkoOPTemplate table31[] =
 	{595, &JitArm::Default}, //"mfsr",   OPTYPE_SYSTEM, FL_OUT_D, 2}},
 	{659, &JitArm::Default}, //"mfsrin", OPTYPE_SYSTEM, FL_OUT_D, 2}},
 
-	{4,   &JitArm::Default}, //"tw",     OPTYPE_SYSTEM, FL_ENDBLOCK, 1}},
+	{4,   &JitArm::Break}, //"tw",     OPTYPE_SYSTEM, FL_ENDBLOCK, 1}},
 	{598, &JitArm::Default}, //"sync",   OPTYPE_SYSTEM, 0, 2}},
 	{982, &JitArm::icbi}, //"icbi",   OPTYPE_SYSTEM, FL_ENDBLOCK, 3}},
 

@@ -153,6 +153,8 @@ public:
 	void DynaRunTable59(UGeckoInstruction _inst);
 	void DynaRunTable63(UGeckoInstruction _inst);
 
+	// Breakin shit
+	void Break(UGeckoInstruction _inst);
 	// Branch
 	void bx(UGeckoInstruction _inst);
 	void bcx(UGeckoInstruction _inst);

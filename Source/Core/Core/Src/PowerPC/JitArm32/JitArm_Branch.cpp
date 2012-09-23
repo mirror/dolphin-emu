@@ -46,7 +46,7 @@ void JitArm::sc(UGeckoInstruction inst)
 	JITDISABLE(Branch)
 
 	gpr.Flush();
-//	fpr.Flush(FLUSH_ALL);
+	//fpr.Flush(FLUSH_ALL);
 	ARMABI_MOVI2M((u32)&PC, js.compilerPC + 4); // Destroys R12 and R14
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
@@ -67,7 +67,7 @@ void JitArm::rfi(UGeckoInstruction inst)
 	JITDISABLE(Branch)
 
 	gpr.Flush();
-//	fpr.Flush(FLUSH_ALL);
+	//fpr.Flush(FLUSH_ALL);
  	// See Interpreter rfi for details
 	const u32 mask = 0x87C0FFFF;
 		const u32 clearMSR13 = 0xFFFBFFFF; // Mask used to clear the bit MSR[13]
@@ -117,7 +117,6 @@ void JitArm::bx(UGeckoInstruction inst)
 	JITDISABLE(Branch)
 	// We must always process the following sentence
 	// even if the blocks are merged by PPCAnalyst::Flatten().
-	printf("LR address: %08x\n", (u32)&LR);
 	if (inst.LK)
 		ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
 
@@ -136,11 +135,11 @@ void JitArm::bx(UGeckoInstruction inst)
 		destination = SignExt26(inst.LI << 2);
 	else
 		destination = js.compilerPC + SignExt26(inst.LI << 2);
-#ifdef ACID_TEST
-	// TODO: Not implemented yet.
-//	if (inst.LK)
-//		AND(32, M(&PowerPC::ppcState.cr), Imm32(~(0xFF000000)));
-#endif
+	#ifdef ACID_TEST
+		// TODO: Not implemented yet.
+		//if (inst.LK)
+		//AND(32, M(&PowerPC::ppcState.cr), Imm32(~(0xFF000000)));
+	#endif
  	if (destination == js.compilerPC)
 	{
  		//PanicAlert("Idle loop detected at %08x", destination);
@@ -152,7 +151,6 @@ void JitArm::bx(UGeckoInstruction inst)
 	WriteExit(destination, 0);
 }
 
-// TODO: Finish these branch instructions
 void JitArm::bcx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
@@ -182,8 +180,6 @@ void JitArm::bcx(UGeckoInstruction inst)
 	FixupBranch pConditionDontBranch;
 	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)  // Test a CR bit
 	{
-		printf("Value: %08x, Jmp on %s\n", (8 >> (inst.BI & 3)), (inst.BO & BO_BRANCH_IF_TRUE) ? "True" :
-		"False");
 		ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
 		LDRB(rA, rA);
 		MOV(rB, 8 >> (inst.BI & 3));
@@ -315,10 +311,10 @@ void JitArm::bclrx(UGeckoInstruction inst)
 
 	// This below line can be used to prove that blr "eats flags" in practice.
 	// This observation will let us do a lot of fun observations.
-#ifdef ACID_TEST
-	// TODO: Not yet implemented
-	//	AND(32, M(&PowerPC::ppcState.cr), Imm32(~(0xFF000000)));
-#endif
+	#ifdef ACID_TEST
+		// TODO: Not yet implemented
+		//	AND(32, M(&PowerPC::ppcState.cr), Imm32(~(0xFF000000)));
+	#endif
 
 	//MOV(32, R(EAX), M(&LR));	
 	//AND(32, R(EAX), Imm32(0xFFFFFFFC));
@@ -343,5 +339,4 @@ void JitArm::bclrx(UGeckoInstruction inst)
 	if ((inst.BO & BO_DONT_DECREMENT_FLAG) == 0)
 		SetJumpTarget( pCTRDontBranch );
 	WriteExit(js.compilerPC + 4, 1);
-
 }

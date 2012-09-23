@@ -27,6 +27,8 @@
 #include "JitRegCache.h"
 #include "JitAsm.h"
 extern u32 Helper_Mask(u8 mb, u8 me);
+// ADDI and RLWINMX broken for now
+
 // Assumes that Sign and Zero flags were set by the last operation. Preserves all flags and registers.
 void JitArm::GenerateRC() {
 	ARMReg rA = gpr.GetReg();
@@ -53,6 +55,7 @@ void JitArm::GenerateRC() {
 
 void JitArm::addi(UGeckoInstruction _inst)
 {
+	Default(_inst); return;
 	ARMReg RD = gpr.R(_inst.RD);
 	ARMReg rA = gpr.GetReg();
 	ARMABI_MOVI2R(rA, _inst.SIMM_16);
@@ -76,6 +79,8 @@ void JitArm::ori(UGeckoInstruction _inst)
 }
 void JitArm::rlwinmx(UGeckoInstruction _inst)
 {
+	Default(_inst); return;
+
 	u32 mask = Helper_Mask(_inst.MB,_inst.ME);
 	ARMReg RA = gpr.R(_inst.RA);
 	ARMReg RS = gpr.R(_inst.RS);

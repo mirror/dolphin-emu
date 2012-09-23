@@ -49,7 +49,7 @@ void JitArm::Init()
 	blocks.Init();
 	asm_routines.Init();
 	gpr.Init(this);
-	jo.enableBlocklink = false;
+	jo.enableBlocklink = true;
 	jo.optimizeGatherPipe = false;
 	gpr.SetEmitter(this);
 }
@@ -74,8 +74,7 @@ void JitArm::WriteCallInterpreter(UGeckoInstruction inst)
 //	fpr.Flush(FLUSH_ALL);
 	Interpreter::_interpreterInstruction instr = GetInterpreterOp(inst);
 	ARMABI_CallFunctionC((void*)instr, inst.hex);
-	gpr.SetEmitter(this);
-	gpr.ReloadPPC();
+	gpr.ReloadPPC(); // This reloads all of our flushed PPC registers
 }
 void JitArm::unknown_instruction(UGeckoInstruction inst)
 {
@@ -90,6 +89,7 @@ void JitArm::Default(UGeckoInstruction _inst)
 void JitArm::HLEFunction(UGeckoInstruction _inst)
 {
 	printf("Trying to HLE a call, can't do this yet\n");
+	exit(0);
 }
 
 void JitArm::DoNothing(UGeckoInstruction _inst)
@@ -208,8 +208,6 @@ void JitArm::WriteExit(u32 destination, int exit_num)
 		ARMABI_MOVI2R(A, (u32)asm_routines.dispatcher);
 		B(A);	
 	}
-	printf("Jump Out: %08x: Available block: %s\n", destination, (block >= 0)
-	? "True" : "False");
 }
 
 void STACKALIGN JitArm::Run()
@@ -260,13 +258,15 @@ void STACKALIGN JitArm::Jit(u32 em_address)
 		ClearCache();
 	}
 
-	printf("Addr: %08x\n", em_address);
 	int block_num = blocks.AllocateBlock(em_address);
 	JitBlock *b = blocks.GetBlock(block_num);
 	const u8* BlockPtr = DoJit(em_address, &code_buffer, b);
 	blocks.FinalizeBlock(block_num, jo.enableBlocklink, BlockPtr);
 }
-
+void JitArm::Break(UGeckoInstruction inst)
+{
+	BKPT(0x4444);
+}
 
 const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlock *b)
 {
@@ -328,7 +328,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	b->runCount = 0;
 
 	// Downcount flag check, Only valid for linked blocks
-	FixupBranch skip = B_CC(CC_GE);
+	FixupBranch skip = B_CC(CC_PL);
 	ARMABI_MOVI2M((u32)&PC, js.blockStart);
 	ARMReg rA = gpr.GetReg(false);
 	ARMABI_MOVI2R(rA, (u32)asm_routines.doTiming);
@@ -386,7 +386,6 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	js.blockSize = size;
 	js.compilerPC = nextPC;
 	// Translate instructions
-	printf("OPS: %08x\n", size);
 	for (int i = 0; i < (int)size; i++)
 	{
 		js.compilerPC = ops[i].address;
@@ -416,11 +415,16 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 			js.next_inst = ops[i + 1].inst;
 			js.next_compilerPC = ops[i + 1].address;
 		}
-		
+		if (jo.optimizeGatherPipe && js.fifoBytesThisBlock >= 32)
+		{
+			js.fifoBytesThisBlock -= 32;
+			// TODO: This needs thunkmanager for ARM
+			//ARMABI_CallFunction(thunks.ProtectFunction((void *)&GPFifo::CheckGatherPipe, 0));
+		}
 		if (!ops[i].skip)
 		{
-			printf("Start: %08x OP '%s' Info\n",GetCodePtr(),  PPCTables::GetInstructionName(ops[i].inst));
-			/*GekkoOPInfo* Info = GetOpInfo(ops[i].inst.hex);
+			/*printf("Start: %08x OP '%s' Info\n",GetCodePtr(),  PPCTables::GetInstructionName(ops[i].inst));
+			GekkoOPInfo* Info = GetOpInfo(ops[i].inst.hex);
 				printf("\tOuts\n");
 				if (Info->flags & FL_OUT_A)
 					printf("\t-OUT_A: %x\n", ops[i].inst.RA);
@@ -439,10 +443,22 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 				if(Info->flags & FL_IN_S)
 					printf("\t-IN_S: %x\n", ops[i].inst.RS);*/
 				gpr.Analyze(ops[i].inst);
+				if (js.memcheck && (opinfo->flags & FL_USE_FPU))
+				{
+					// Don't do this yet
+					BKPT(0x7777);
+				}
 				JitArmTables::CompileInstruction(ops[i]);
+				if (js.memcheck && (opinfo->flags & FL_LOADSTORE))
+				{
+					// Don't do this yet
+					BKPT(0x666);
+				}
 		}
 	}
-	if(broken_block)
+	if (memory_exception)
+		BKPT(0x500);
+	if	(broken_block)
 	{
 		WriteExit(nextPC, 0);
 	}
