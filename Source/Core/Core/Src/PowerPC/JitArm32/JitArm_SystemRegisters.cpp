@@ -31,17 +31,7 @@ void JitArm::mtmsr(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
  	// Don't interpret this, if we do we get thrown out
-/*	//JITDISABLE(SystemRegisters)
-	if (!gpr.R(inst.RS).IsImm())
-	{
-		gpr.Lock(inst.RS);
-		gpr.BindToRegister(inst.RS, true, false);
-	}
-	MOV(32, M(&MSR), gpr.R(inst.RS));
-	gpr.UnlockAll();
-	gpr.Flush(FLUSH_ALL);
-	fpr.Flush(FLUSH_ALL);*/
-//	MSR = m_GPR[_inst.RS];
+	//JITDISABLE(SystemRegisters)
 	
 	ARMReg rA = gpr.GetReg();
 	ARMABI_MOVI2R(rA, (u32)&MSR);

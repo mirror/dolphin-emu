@@ -33,3 +33,4 @@ void JitArm::icbi(UGeckoInstruction inst)
 	Default(inst);
 	WriteExit(js.compilerPC + 4, 0);
 }
+

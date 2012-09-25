@@ -141,7 +141,7 @@ void JitArm::DoDownCount()
 	}
 	else
 	{
-		ARMReg C = gpr.GetReg();
+		ARMReg C = gpr.GetReg(false);
 		ARMABI_MOVI2R(C, js.downcountAmount);
 		SUBS(B, B, C);
 		STR(A, B);

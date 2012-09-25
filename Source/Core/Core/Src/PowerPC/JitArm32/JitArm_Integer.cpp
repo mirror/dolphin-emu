@@ -42,7 +42,6 @@ void JitArm::GenerateRC() {
 	SetJumpTarget(pNegative);
 	MOV(rB, 0x8); // Result < 0
 	FixupBranch continue2 = B();
-
 	
 	SetJumpTarget(pZero);
 	MOV(rB, 0x2); // Result == 0
@@ -55,7 +54,9 @@ void JitArm::GenerateRC() {
 
 void JitArm::addi(UGeckoInstruction _inst)
 {
-	Default(_inst); return;
+	if (_inst.RA) {
+		Default(_inst); return;
+	}
 	ARMReg RD = gpr.R(_inst.RD);
 	ARMReg rA = gpr.GetReg();
 	ARMABI_MOVI2R(rA, _inst.SIMM_16);
@@ -76,6 +77,16 @@ void JitArm::ori(UGeckoInstruction _inst)
 	ARMABI_MOVI2R(rA, _inst.UIMM);
 	ORR(RA, RS, rA);
 	gpr.Unlock(rA);
+}
+void JitArm::orx(UGeckoInstruction _inst)
+{
+	Default(_inst); return;
+	ARMReg rA = gpr.R(_inst.RA);
+	ARMReg rS = gpr.R(_inst.RS);
+	ARMReg rB = gpr.R(_inst.RB);
+	ORR(rA, rS, rB);
+	CMP(rA, 0);
+	if (_inst.Rc) GenerateRC();
 }
 void JitArm::rlwinmx(UGeckoInstruction _inst)
 {

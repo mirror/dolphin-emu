@@ -166,6 +166,7 @@ public:
 	// Integer
 	void addi(UGeckoInstruction _inst);
 	void ori(UGeckoInstruction _inst);	
+	void orx(UGeckoInstruction _inst);
 	void rlwinmx(UGeckoInstruction _inst);
 	
 	// System Registers
