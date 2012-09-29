@@ -314,7 +314,20 @@ void ARMXEmitter::MVN (ARMReg dest,             Operand2 op2) { WriteDataOp(62, 
 void ARMXEmitter::MVNS(ARMReg dest,             Operand2 op2) { WriteDataOp(63, dest, R0 , op2);} 
 void ARMXEmitter::MVN (ARMReg dest,             ARMReg op2)   { WriteDataOp(30, dest, R0 , op2);} 
 void ARMXEmitter::MVNS(ARMReg dest,             ARMReg op2)   { WriteDataOp(31, dest, R0 , op2);} 
-
+void ARMXEmitter::SXTB (ARMReg dest, ARMReg op2)
+{
+	Write32(condition | (0x6AF << 16) | (dest << 12) | (7 << 4) | op2);
+}
+void ARMXEmitter::SXTH (ARMReg dest, ARMReg op2, u8 rotation)
+{
+	SXTAH(dest, (ARMReg)15, op2, rotation);
+}
+void ARMXEmitter::SXTAH(ARMReg dest, ARMReg src, ARMReg op2, u8 rotation) 
+{
+	// bits ten and 11 are the rotation amount, see 8.8.232 for more
+	// information
+	Write32(condition | (0x6B << 20) | (src << 16) | (dest << 12) | (rotation << 10) | (7 << 4) | op2);
+}
 void ARMXEmitter::REV (ARMReg dest, ARMReg src				) 
 {
 	Write32(condition | (107 << 20) | (15 << 16) | (dest << 12) | (243 << 4) | src);

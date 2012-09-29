@@ -60,12 +60,12 @@ static GekkoOPTemplate primarytable[] =
 
 	{7,  &JitArm::Default}, //"mulli",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_A | FL_RC_BIT, 2}},
 	{8,  &JitArm::Default}, //"subfic",   OPTYPE_INTEGER, FL_OUT_D | FL_IN_A |	FL_SET_CA}},
-	{10, &JitArm::Default}, //"cmpli",    OPTYPE_INTEGER, FL_IN_A | FL_SET_CRn}},
-	{11, &JitArm::Default}, //"cmpi",     OPTYPE_INTEGER, FL_IN_A | FL_SET_CRn}},
+	{10, &JitArm::cmpli}, //"cmpli",    OPTYPE_INTEGER, FL_IN_A | FL_SET_CRn}},
+	{11, &JitArm::cmpi}, //"cmpi",     OPTYPE_INTEGER, FL_IN_A | FL_SET_CRn}},
 	{12, &JitArm::Default}, //"addic",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_A | FL_SET_CA}},
 	{13, &JitArm::Default}, //"addic_rc", OPTYPE_INTEGER, FL_OUT_D | FL_IN_A | FL_SET_CR0}},
 	{14, &JitArm::addi}, //"addi",     OPTYPE_INTEGER, FL_OUT_D | FL_IN_A0}},
-	{15, &JitArm::Default}, //"addis",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_A0}},
+	{15, &JitArm::addis}, //"addis",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_A0}},
 
 	{20, &JitArm::Default}, //"rlwimix",  OPTYPE_INTEGER, FL_OUT_A | FL_IN_A | FL_IN_S | FL_RC_BIT}},
 	{21, &JitArm::rlwinmx}, //"rlwinmx",  OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_RC_BIT}},
@@ -202,11 +202,11 @@ static GekkoOPTemplate table31[] =
 	{412, &JitArm::Default}, //"orcx",   OPTYPE_INTEGER, FL_OUT_A | FL_IN_SB | FL_RC_BIT}},
 	{476, &JitArm::Default}, //"nandx",  OPTYPE_INTEGER, FL_OUT_A | FL_IN_SB | FL_RC_BIT}},
 	{284, &JitArm::Default}, //"eqvx",   OPTYPE_INTEGER, FL_OUT_A | FL_IN_SB | FL_RC_BIT}},
-	{0,   &JitArm::Default}, //"cmp",    OPTYPE_INTEGER, FL_IN_AB | FL_SET_CRn}},
+	{0,   &JitArm::cmp}, //"cmp",    OPTYPE_INTEGER, FL_IN_AB | FL_SET_CRn}},
 	{32,  &JitArm::Default}, //"cmpl",   OPTYPE_INTEGER, FL_IN_AB | FL_SET_CRn}},
 	{26,  &JitArm::Default}, //"cntlzwx",OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_RC_BIT}},
-	{922, &JitArm::Default}, //"extshx", OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_RC_BIT}},
-	{954, &JitArm::Default}, //"extsbx", OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_RC_BIT}},
+	{922, &JitArm::extshx}, //"extshx", OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_RC_BIT}},
+	{954, &JitArm::extsbx}, //"extsbx", OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_RC_BIT}},
 	{536, &JitArm::Default}, //"srwx",   OPTYPE_INTEGER, FL_OUT_A | FL_IN_B | FL_IN_S | FL_RC_BIT}},
 	{792, &JitArm::Default}, //"srawx",  OPTYPE_INTEGER, FL_OUT_A | FL_IN_B | FL_IN_S | FL_RC_BIT}},
 	{824, &JitArm::Default}, //"srawix", OPTYPE_INTEGER, FL_OUT_A | FL_IN_B | FL_IN_S | FL_RC_BIT}},
@@ -307,8 +307,8 @@ static GekkoOPTemplate table31[] =
 
 static GekkoOPTemplate table31_2[] = 
 {	
-	{266,  &JitArm::Default}, //"addx",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_AB | FL_RC_BIT}},
-	{778,  &JitArm::Default}, //"addx",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_AB | FL_RC_BIT}},
+	{266,  &JitArm::addx}, //"addx",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_AB | FL_RC_BIT}},
+	{778,  &JitArm::addx}, //"addx",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_AB | FL_RC_BIT}},
 	{10,   &JitArm::Default}, //"addcx",   OPTYPE_INTEGER, FL_OUT_D | FL_IN_AB | FL_SET_CA | FL_RC_BIT}},
 	{138,  &JitArm::Default}, //"addex",   OPTYPE_INTEGER, FL_OUT_D | FL_IN_AB | FL_READ_CA | FL_SET_CA | FL_RC_BIT}},
 	{234,  &JitArm::Default}, //"addmex",  OPTYPE_INTEGER, FL_OUT_D | FL_IN_AB | FL_READ_CA | FL_SET_CA | FL_RC_BIT}},

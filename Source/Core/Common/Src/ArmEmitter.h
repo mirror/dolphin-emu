@@ -414,7 +414,9 @@ public:
 	void BICS(ARMReg dest, ARMReg src, ARMReg op2);
 	void MUL (ARMReg dest,	ARMReg src, ARMReg op2);
 	void MULS(ARMReg dest,	ARMReg src, ARMReg op2);
-
+	void SXTB(ARMReg dest, ARMReg op2);
+	void SXTH(ARMReg dest, ARMReg op2, u8 rotation = 0);
+	void SXTAH(ARMReg dest, ARMReg src, ARMReg op2, u8 rotation = 0);
 	void MVN (ARMReg dest,             Operand2 op2);
 	void MVNS(ARMReg dest,             Operand2 op2);
 	void MVN (ARMReg dest,             ARMReg op2);

@@ -30,12 +30,15 @@ extern u32 Helper_Mask(u8 mb, u8 me);
 // ADDI and RLWINMX broken for now
 
 // Assumes that Sign and Zero flags were set by the last operation. Preserves all flags and registers.
-void JitArm::GenerateRC() {
+// Jit64 ComputerRC is signed
+// JIT64 GenerateRC is unsigned
+void JitArm::GenerateRC(int cr) {
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
-	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[0]);
+	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[cr]);
 	FixupBranch pZero  = B_CC(CC_EQ);
 	FixupBranch pNegative = B_CC(CC_MI);
+
 	MOV(rB, 0x4); // Result > 0
 	FixupBranch continue1 = B();
 
@@ -51,61 +54,185 @@ void JitArm::GenerateRC() {
 	STRB(rA, rB, 0);
 	gpr.Unlock(rA, rB);
 }
-
-void JitArm::addi(UGeckoInstruction _inst)
-{
-	if (_inst.RA) {
-		Default(_inst); return;
-	}
-	ARMReg RD = gpr.R(_inst.RD);
+void JitArm::ComputeRC(int cr) {
 	ARMReg rA = gpr.GetReg();
-	ARMABI_MOVI2R(rA, _inst.SIMM_16);
-	if (_inst.RA)
+	ARMReg rB = gpr.GetReg();
+	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[cr]);
+	FixupBranch pGreater  = B_CC(CC_GT);
+	FixupBranch pLessThan = B_CC(CC_LT);
+
+	MOV(rB, 0x2); // Result == 0
+	FixupBranch continue1 = B();
+
+	SetJumpTarget(pLessThan);
+	MOV(rB, 0x8); // Result < 0
+	FixupBranch continue2 = B();
+	
+	SetJumpTarget(pGreater);
+	MOV(rB, 0x4); // Result > 0
+
+	SetJumpTarget(continue1);
+	SetJumpTarget(continue2);
+	STRB(rA, rB, 0);
+	gpr.Unlock(rA, rB);
+}
+// inst.RA path wrong
+void JitArm::addi(UGeckoInstruction inst)
+{
+	if (inst.RA) {
+		Default(inst); return;
+	}
+	ARMReg RD = gpr.R(inst.RD);
+	if (inst.RA)
 	{
-		ARMReg RA = gpr.R(_inst.RA);
+		ARMReg rA = gpr.GetReg(false);
+		ARMReg RA = gpr.R(inst.RA);
+		ARMABI_MOVI2R(rA, inst.SIMM_16);
+		SXTH(rA, rA);
 		ADD(RD, RA, rA);
 	}
 	else
-		MOV(RD, rA);
-	gpr.Unlock(rA);
+	{
+		ARMABI_MOVI2R(RD, inst.SIMM_16);
+		if (inst.SIMM_16 < 0)
+			SXTH(RD, RD);
+	}
 }
-void JitArm::ori(UGeckoInstruction _inst)
+// Wrong
+void JitArm::addis(UGeckoInstruction inst)
 {
-	ARMReg RA = gpr.R(_inst.RA);
-	ARMReg RS = gpr.R(_inst.RS);
+	//if (inst.RA) 
+	{
+		Default(inst); return;
+	}
+	ARMReg RD = gpr.R(inst.RD);
+	if (inst.RA)
+	{
+		ARMReg rA = gpr.GetReg(false);
+		ARMReg RA = gpr.R(inst.RA);
+		ARMABI_MOVI2R(rA, inst.SIMM_16 << 16);
+		ADD(RD, RA, rA);
+	}
+	else
+		ARMABI_MOVI2R(RD, inst.SIMM_16 << 16);
+}
+// Wrong
+void JitArm::addx(UGeckoInstruction inst)
+{
+	Default(inst); return;
+	ARMReg RA = gpr.R(inst.RA);
+	ARMReg RB = gpr.R(inst.RB);
+	ARMReg RD = gpr.R(inst.RD);
+	ADDS(RD, RA, RB);
+	if (inst.Rc) GenerateRC();
+}
+void JitArm::ori(UGeckoInstruction inst)
+{
+	ARMReg RA = gpr.R(inst.RA);
+	ARMReg RS = gpr.R(inst.RS);
 	ARMReg rA = gpr.GetReg();
-	ARMABI_MOVI2R(rA, _inst.UIMM);
+	ARMABI_MOVI2R(rA, inst.UIMM);
 	ORR(RA, RS, rA);
 	gpr.Unlock(rA);
 }
-void JitArm::orx(UGeckoInstruction _inst)
+void JitArm::extshx(UGeckoInstruction inst)
 {
-	Default(_inst); return;
-	ARMReg rA = gpr.R(_inst.RA);
-	ARMReg rS = gpr.R(_inst.RS);
-	ARMReg rB = gpr.R(_inst.RB);
-	ORR(rA, rS, rB);
-	CMP(rA, 0);
-	if (_inst.Rc) GenerateRC();
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+	ARMReg RA, RS;
+	RA = gpr.R(inst.RA);
+	RS = gpr.R(inst.RS);
+	SXTH(RA, RS);
+	if (inst.RC){
+		CMP(RA, 0);
+		ComputeRC();
+	}
 }
-void JitArm::rlwinmx(UGeckoInstruction _inst)
+void JitArm::extsbx(UGeckoInstruction inst)
 {
-	Default(_inst); return;
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+	ARMReg RA, RS;
+	RA = gpr.R(inst.RA);
+	RS = gpr.R(inst.RS);
+	SXTB(RA, RS);
+	if (inst.RC){
+		CMP(RA, 0);
+		ComputeRC();
+	}
+}
+void JitArm::cmp (UGeckoInstruction inst)
+{
+	ARMReg RA = gpr.R(inst.RA);
+	ARMReg RB = gpr.R(inst.RB);
+	int crf = inst.CRFD;
+	CMP(RA, RB);
+	ComputeRC(crf);
+}
+void JitArm::cmpi(UGeckoInstruction inst)
+{
+	ARMReg RA = gpr.R(inst.RA);
+	ARMReg rA = gpr.GetReg();
+	int crf = inst.CRFD;
+	ARMABI_MOVI2R(rA, inst.SIMM_16);
+	SXTH(rA, rA);
+	CMP(RA, rA);
+	gpr.Unlock(rA);
+	ComputeRC(crf);
+}
+// Wrong
+void JitArm::cmpli(UGeckoInstruction inst)
+{
+	// Bit special, look in to this one
+	Default(inst); return;
+	ARMReg RA = gpr.R(inst.RA);
+	ARMReg rA = gpr.GetReg(false);
+	int crf = inst.CRFD;
+	u32 b = inst.UIMM;
+	ARMABI_MOVI2R(rA, b);
+	CMP(RA, rA);
+	GenerateRC(crf);		 
 
-	u32 mask = Helper_Mask(_inst.MB,_inst.ME);
-	ARMReg RA = gpr.R(_inst.RA);
-	ARMReg RS = gpr.R(_inst.RS);
+}
+// Wrong
+void JitArm::orx(UGeckoInstruction inst)
+{
+	Default(inst); return;
+	ARMReg rA = gpr.R(inst.RA);
+	ARMReg rS = gpr.R(inst.RS);
+	ARMReg rB = gpr.R(inst.RB);
+	ORR(rA, rS, rB);
+	if (inst.Rc)
+	{
+		CMP(rA, 0);
+		ComputeRC();
+	}
+}
+// Wrong
+void JitArm::rlwinmx(UGeckoInstruction inst)
+{
+	Default(inst); return;
+	if (inst.Rc) {
+		Default(inst);
+		return;
+	}
+	u32 mask = Helper_Mask(inst.MB,inst.ME);
+	ARMReg RA = gpr.R(inst.RA);
+	ARMReg RS = gpr.R(inst.RS);
 	ARMReg rA = gpr.GetReg();
 	ARMABI_MOVI2R(rA, mask);
 
-	Operand2 Shift(32 - _inst.SH, ROR, RS); // This rotates left, while ARM has only rotate right, so swap it.
-	if( _inst.RC)
+	Operand2 Shift(32 - inst.SH, ROR, RS); // This rotates left, while ARM has only rotate right, so swap it.
+	if (inst.Rc)
+	{
 		ANDS(RA, rA, Shift);
+		GenerateRC();	
+	}
 	else
 		AND (RA, rA, Shift);
 	gpr.Unlock(rA);
 
-	//m_GPR[_inst.RA] = _rotl(m_GPR[_inst.RS],_inst.SH) & mask;
-	if (_inst.Rc) GenerateRC(); 
+	//m_GPR[inst.RA] = _rotl(m_GPR[inst.RS],inst.SH) & mask;
+	if (inst.Rc) GenerateRC(); 
 }
 
