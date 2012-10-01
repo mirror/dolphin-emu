@@ -63,6 +63,9 @@ void ArmRegCache::Start(PPCAnalyst::BlockRegStats &stats)
 		ArmCRegs[a].PPCReg = -1;
 		ArmCRegs[a].free = true;
 	}
+	// Alright, load in the GPR location
+	emit->MOVW(R14, (u32)&PowerPC::ppcState.gpr); // Load in our location
+	emit->MOVT(R14, (u32)&PowerPC::ppcState.gpr, true);
 		// We have less used registers this block than the max we can offer.
 		// We can just allocate them all.
 		// MOV and LDR them all
@@ -76,9 +79,7 @@ void ArmRegCache::Start(PPCAnalyst::BlockRegStats &stats)
 				ArmCRegs[CurrentSetReg].free = false;
 				// Let's load up that register
 				ARMReg tReg = ArmCRegs[CurrentSetReg].Reg;
-				emit->MOVW(tReg, (u32)regs[ArmCRegs[CurrentSetReg].PPCReg].location); // Load in our location
-				emit->MOVT(tReg, (u32)regs[ArmCRegs[CurrentSetReg].PPCReg].location, true);
-				emit->LDR(tReg, tReg); // Load the values
+				emit->LDR(tReg, R14, a * 4); // Load the values
 				++CurrentSetReg;
 			}
 		}
@@ -95,7 +96,6 @@ ARMReg *ArmRegCache::GetPPCAllocationOrder(int &count)
 	};
 	count = sizeof(allocationOrder) / sizeof(const int);
 	return allocationOrder;
-
 }
 ARMReg *ArmRegCache::GetAllocationOrder(int &count)
 {
@@ -158,55 +158,43 @@ ARMReg ArmRegCache::R(int preg)
 }
 void ArmRegCache::Flush()
 {
+	emit->MOVW(R14, (u32)&PowerPC::ppcState.gpr);
+	emit->MOVT(R14, (u32)&PowerPC::ppcState.gpr, true);
+	
 	for(u8 a = 0; a < NUMPPCREG; ++a)
 	{
 		if(!ArmCRegs[a].free)
 		{
-			emit->MOVW(R14, (u32)regs[ArmCRegs[a].PPCReg].location);
-			emit->MOVT(R14, (u32)regs[ArmCRegs[a].PPCReg].location, true);
-			emit->STR(R14, ArmCRegs[a].Reg); 
+			emit->STR(R14, ArmCRegs[a].Reg, ArmCRegs[a].PPCReg * 4); 
 		}
 	}
 }
-void ArmRegCache::Flush(int preg)
+
+void ArmRegCache::FlushAndStore(int OldReg, int NewReg)
 {
-	for(u8 a = 0; a < NUMPPCREG; ++a)
-	{
-		if(ArmCRegs[a].PPCReg == preg) // Flush it good
-		{
-			emit->MOVW(R14, (u32)regs[preg].location);
-			emit->MOVT(R14, (u32)regs[preg].location, true);
-			emit->STR(R14, ArmCRegs[a].Reg);
-			ArmCRegs[a].PPCReg = -1;
-			ArmCRegs[a].free = true;
-			return;
-		}
-	}
-	_assert_msg_(_DYNA_REC_, false, "Trying to flush PPC Reg that we don't have");
-}
-void ArmRegCache::ReloadPPC(int preg)
-{
+	emit->MOVW(R14, (u32)&PowerPC::ppcState.gpr);
+	emit->MOVT(R14, (u32)&PowerPC::ppcState.gpr, true);
 	for (u8 a = 0; a < NUMPPCREG; ++a)
-		if (ArmCRegs[a].free == true) // Throw it in any ol register
+	{
+		if(ArmCRegs[a].PPCReg == OldReg)
 		{
-			emit->MOVW(ArmCRegs[a].Reg, (u32)regs[preg].location);
-			emit->MOVT(ArmCRegs[a].Reg, (u32)regs[preg].location, true);
-			emit->LDR(ArmCRegs[a].Reg, ArmCRegs[a].Reg);
-			ArmCRegs[a].PPCReg = preg;
-			ArmCRegs[a].free = false;
+			emit->STR(R14, ArmCRegs[a].Reg, ArmCRegs[a].PPCReg * 4);
+			emit->LDR(ArmCRegs[a].Reg, R14, NewReg * 4);
+			ArmCRegs[a].PPCReg = NewReg;
 			return;
 		}
-	_assert_msg_(_DYNA_REC_, false, "Couldn't find free register to load PPC register");
+	}
 }
+
 void ArmRegCache::ReloadPPC()
 {
+	emit->MOVW(R14, (u32)&PowerPC::ppcState.gpr);
+	emit->MOVT(R14, (u32)&PowerPC::ppcState.gpr, true);
 	for(u8 a = 0; a < NUMPPCREG; ++a)
 	{
 		if(!ArmCRegs[a].free)
 		{
-			emit->MOVW(ArmCRegs[a].Reg, (u32)regs[ArmCRegs[a].PPCReg].location);
-			emit->MOVT(ArmCRegs[a].Reg, (u32)regs[ArmCRegs[a].PPCReg].location, true);
-			emit->LDR(ArmCRegs[a].Reg, ArmCRegs[a].Reg); 
+			emit->LDR(ArmCRegs[a].Reg, R14, ArmCRegs[a].PPCReg * 4); 
 		}
 	}
 }
@@ -286,8 +274,7 @@ void ArmRegCache::Analyze(UGeckoInstruction inst)
 					{
 						// Alright, w/e PPC reg this is, it doesn't contain our new registers
 						// First we've got to flush the old one, and then load the new one.
-						Flush(ArmCRegs[a].PPCReg);
-						ReloadPPC(Regs[b]); // This'll load it in the new one's spot
+						FlushAndStore(ArmCRegs[a].PPCReg, Regs[b]);
 						break;
 					}
 					break;
@@ -297,8 +284,7 @@ void ArmRegCache::Analyze(UGeckoInstruction inst)
 					{
 						// Alright, w/e PPC reg this is, it doesn't contain our new registers
 						// First we've got to flush the old one, and then load the new one.
-						Flush(ArmCRegs[a].PPCReg);
-						ReloadPPC(Regs[b]); // This'll load it in the new one's spot
+						FlushAndStore(ArmCRegs[a].PPCReg, Regs[b]);
 						break;
 					}
 					break;
@@ -308,8 +294,7 @@ void ArmRegCache::Analyze(UGeckoInstruction inst)
 					{
 						// Alright, w/e PPC reg this is, it doesn't contain our new registers
 						// First we've got to flush the old one, and then load the new one.
-						Flush(ArmCRegs[a].PPCReg);
-						ReloadPPC(Regs[b]); // This'll load it in the new one's spot
+						FlushAndStore(ArmCRegs[a].PPCReg, Regs[b]);
 						break;
 					}
 					break;

@@ -28,7 +28,7 @@ using namespace ArmGen;
 // the block to increase speed since every memory load requires two
 // instructions to load it. We are going to use R0-RMAX as registers for the
 // use of PPC Registers.
-#define NUMPPCREG 9
+#define NUMPPCREG 10 
 #define NUMARMREG 4
 // Allocation order as follows
 
@@ -82,8 +82,7 @@ public:
 	void Unlock(ARMReg R0, ARMReg R1 = INVALID_REG, ARMReg R2 = INVALID_REG, ARMReg R3 =
 	INVALID_REG);
 	void Flush();
-	void Flush(int preg); // Flush a preg
-	void ReloadPPC(int preg); //Reload a preg
+	void FlushAndStore(int OldReg, int NewReg);
 	void ReloadPPC(); // Need to reload after flush most of the time
 	ARMReg R(int preg); // Returns a cached register
 	void Analyze(UGeckoInstruction inst);
