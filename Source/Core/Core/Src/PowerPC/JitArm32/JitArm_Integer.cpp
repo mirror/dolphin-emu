@@ -76,10 +76,11 @@ void JitArm::ComputeRC(int cr) {
 	STRB(rA, rB, 0);
 	gpr.Unlock(rA, rB);
 }
-// inst.RA path wrong
+// Wrong, causes SMS to jump to zero
 void JitArm::addi(UGeckoInstruction inst)
 {
-	if (inst.RA) {
+	//if (inst.RA) 
+	{
 		Default(inst); return;
 	}
 	ARMReg RD = gpr.R(inst.RD);
@@ -88,15 +89,10 @@ void JitArm::addi(UGeckoInstruction inst)
 		ARMReg rA = gpr.GetReg(false);
 		ARMReg RA = gpr.R(inst.RA);
 		ARMABI_MOVI2R(rA, inst.SIMM_16);
-		SXTH(rA, rA);
 		ADD(RD, RA, rA);
 	}
 	else
-	{
 		ARMABI_MOVI2R(RD, inst.SIMM_16);
-		if (inst.SIMM_16 < 0)
-			SXTH(RD, RD);
-	}
 }
 // Wrong
 void JitArm::addis(UGeckoInstruction inst)
@@ -126,8 +122,10 @@ void JitArm::addx(UGeckoInstruction inst)
 	ADDS(RD, RA, RB);
 	if (inst.Rc) GenerateRC();
 }
+// Testing in SMS
 void JitArm::ori(UGeckoInstruction inst)
 {
+	Default(inst); return;
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RS = gpr.R(inst.RS);
 	ARMReg rA = gpr.GetReg();
@@ -161,16 +159,21 @@ void JitArm::extsbx(UGeckoInstruction inst)
 		ComputeRC();
 	}
 }
+// Seems fine in SMS
+// Crashes BAM3K though
 void JitArm::cmp (UGeckoInstruction inst)
 {
+	Default(inst); return;	
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RB = gpr.R(inst.RB);
 	int crf = inst.CRFD;
 	CMP(RA, RB);
 	ComputeRC(crf);
 }
+// SMS crashes with this one
 void JitArm::cmpi(UGeckoInstruction inst)
 {
+	Default(inst); return;
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg rA = gpr.GetReg();
 	int crf = inst.CRFD;
@@ -192,7 +195,26 @@ void JitArm::cmpli(UGeckoInstruction inst)
 	ARMABI_MOVI2R(rA, b);
 	CMP(RA, rA);
 	GenerateRC(crf);		 
+}
+// Wrong
+void JitArm::negx(UGeckoInstruction inst)
+{
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+	Default(inst);return;
+	ARMReg RA = gpr.R(inst.RA);
+	ARMReg RD = gpr.R(inst.RD);
 
+	RSBS(RD, RA, 0);
+	if (inst.Rc)
+	{
+		GenerateRC();
+	}
+	if (inst.OE)
+	{
+		BKPT(0x333);
+		//GenerateOverflow();
+	}
 }
 // Wrong
 void JitArm::orx(UGeckoInstruction inst)

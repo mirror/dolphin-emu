@@ -171,6 +171,7 @@ public:
 	void cmp (UGeckoInstruction _inst);
 	void cmpi(UGeckoInstruction _inst);
 	void cmpli(UGeckoInstruction _inst);
+	void negx(UGeckoInstruction _inst);
 	void ori(UGeckoInstruction _inst);	
 	void orx(UGeckoInstruction _inst);
 	void rlwinmx(UGeckoInstruction _inst);
@@ -179,6 +180,8 @@ public:
 
 	// System Registers
 	void mtmsr(UGeckoInstruction _inst);
+	void mtspr(UGeckoInstruction _inst);
+	void mfspr(UGeckoInstruction _inst);
 
 	// LoadStore
 	void icbi(UGeckoInstruction _inst);

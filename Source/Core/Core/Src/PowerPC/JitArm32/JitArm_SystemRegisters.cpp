@@ -27,6 +27,78 @@
 #include "JitRegCache.h"
 #include "JitAsm.h"
 
+
+void JitArm::mtspr(UGeckoInstruction inst)
+{
+	INSTRUCTION_START
+	JITDISABLE(SystemRegisters)
+	Default(inst); return;
+	u32 iIndex = (inst.SPRU << 5) | (inst.SPRL & 0x1F);
+	ARMReg RD = gpr.R(inst.RD);
+
+	switch (iIndex)
+	{
+	case SPR_LR:
+	case SPR_CTR:
+	case SPR_XER:
+		// These are safe to do the easy way, see the bottom of this function.
+		break;
+
+	case SPR_GQR0:
+	case SPR_GQR0 + 1:
+	case SPR_GQR0 + 2:
+	case SPR_GQR0 + 3:
+	case SPR_GQR0 + 4:
+	case SPR_GQR0 + 5:
+	case SPR_GQR0 + 6:
+	case SPR_GQR0 + 7:
+		// Prevent recompiler from compiling in old quantizer values.
+		// If the value changed, destroy all blocks using this quantizer
+		// This will create a little bit of block churn, but hopefully not too bad.
+		{
+			/*
+			MOV(32, R(EAX), M(&PowerPC::ppcState.spr[iIndex]));  // Load old value
+			CMP(32, R(EAX), gpr.R(inst.RD));
+			FixupBranch skip_destroy = J_CC(CC_E, false);
+			int gqr = iIndex - SPR_GQR0;
+			ABI_CallFunctionC(ProtectFunction(&Jit64::DestroyBlocksWithFlag, 1), (u32)BLOCK_USE_GQR0 << gqr);
+			SetJumpTarget(skip_destroy);*/
+		}
+		break;
+		// TODO - break block if quantizers are written to.
+	default:
+		Default(inst);
+		return;
+	}
+
+	// OK, this is easy.
+	ARMReg rA = gpr.GetReg(false);
+	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.spr);
+	STR(rA, RD, iIndex * 4);
+}
+
+void JitArm::mfspr(UGeckoInstruction inst)
+{
+	INSTRUCTION_START
+	JITDISABLE(SystemRegisters)
+	Default(inst); return;
+	u32 iIndex = (inst.SPRU << 5) | (inst.SPRL & 0x1F);
+	ARMReg RD = gpr.R(inst.RD);
+	switch (iIndex)
+	{
+	case SPR_WPAR:
+	case SPR_DEC:
+	case SPR_TL:
+	case SPR_TU:
+		Default(inst);
+		return;
+	default:
+		ARMReg rA = gpr.GetReg(false);
+		ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.spr);
+		LDR(RD, rA, iIndex * 4);
+		break;
+	}
+}
 void JitArm::mtmsr(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
