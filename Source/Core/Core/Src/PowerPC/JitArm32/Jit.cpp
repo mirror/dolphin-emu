@@ -73,7 +73,9 @@ void JitArm::WriteCallInterpreter(UGeckoInstruction inst)
 	gpr.Flush();
 //	fpr.Flush(FLUSH_ALL);
 	Interpreter::_interpreterInstruction instr = GetInterpreterOp(inst);
-	ARMABI_CallFunctionC((void*)instr, inst.hex);
+	ARMABI_MOVI2R(R0, inst.hex);
+	ARMABI_MOVI2R(R12, (u32)instr);
+	BL(R12);
 	gpr.ReloadPPC(); // This reloads all of our flushed PPC registers
 }
 void JitArm::unknown_instruction(UGeckoInstruction inst)
