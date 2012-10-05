@@ -181,7 +181,6 @@ void ARMXEmitter::BL(ARMReg src)
 {
 	Write32(condition | 0x12FFF30 | src);
 }
-
 void ARMXEmitter::PUSH(const int num, ...)
 {
 	u16 RegList = 0;
@@ -358,7 +357,10 @@ void ARMXEmitter::MOVW(ARMReg dest, 			Operand2 op2) { WriteMoveOp( 48, dest, op
 
 void ARMXEmitter::WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2)
 {
-	Write32(condition | (op << 20) | (dest << 16) | (src << 12) | op2.Imm12());
+	if (op2.GetData() == 0) // Don't index
+		Write32(condition | (op << 20) | (dest << 16) | (src << 12) | op2.Imm12());
+	else
+		Write32(condition | (op << 20) | (3 << 23) | (dest << 16) | (src << 12) | op2.Imm12()); 
 }
 void ARMXEmitter::STR (ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x40, dest, src, op);}
 void ARMXEmitter::STRB(ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x44, dest, src, op);}
@@ -394,7 +396,6 @@ void ARMXEmitter::WriteRegStoreOp(u32 op, ARMReg dest, bool WriteBack, u16 RegLi
 }
 void ARMXEmitter::STMFD(ARMReg dest, bool WriteBack, const int Regnum, ...)
 {
-	_assert_msg_(DYNA_REC, Regnum > 1, "Doesn't support only one register");
 	u16 RegList = 0;
 	u8 Reg;
 	int i;
@@ -410,7 +411,6 @@ void ARMXEmitter::STMFD(ARMReg dest, bool WriteBack, const int Regnum, ...)
 }
 void ARMXEmitter::LDMFD(ARMReg dest, bool WriteBack, const int Regnum, ...)
 {
-	_assert_msg_(DYNA_REC, Regnum > 1, "Doesn't support only one register");
 	u16 RegList = 0;
 	u8 Reg;
 	int i;
