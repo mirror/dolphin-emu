@@ -24,6 +24,8 @@ ArmRegCache::ArmRegCache()
 void ArmRegCache::Init(ARMXEmitter *emitter)
 {
 	emit = emitter;
+	ARMReg *PPCRegs = GetPPCAllocationOrder(NUMPPCREG);
+	ARMReg *Regs = GetAllocationOrder(NUMARMREG);
 	for(u8 a = 0; a < 32; ++a)
 	{
 		// This gives us the memory locations of the gpr registers so we can
@@ -31,15 +33,12 @@ void ArmRegCache::Init(ARMXEmitter *emitter)
 		regs[a].location = (u8*)&PowerPC::ppcState.gpr[a]; 	
 		regs[a].UsesLeft = 0;
 	}
-	int Count = 0;
-	ARMReg *Regs = GetPPCAllocationOrder(Count);
 	for(u8 a = 0; a < NUMPPCREG; ++a)
 	{
 		ArmCRegs[a].PPCReg = -1;
-		ArmCRegs[a].Reg = Regs[a];
+		ArmCRegs[a].Reg = PPCRegs[a];
 		ArmCRegs[a].free = true;
 	}
-	Regs = GetAllocationOrder(Count);
 	for(u8 a = 0; a < NUMARMREG; ++a)
 	{
 		ArmRegs[a].Reg = Regs[a];
@@ -90,10 +89,17 @@ ARMReg *ArmRegCache::GetPPCAllocationOrder(int &count)
 {
 	// This will return us the allocation order of the registers we can use on
 	// the ppc side.
+#ifdef _DEBUG
+	static ARMReg allocationOrder[] = 
+	{
+		R0, R1, R2, R3, R4, R5, R6, R8, R9 // Can't use R7 on ARM debug, is the stack pointer on ARM
+	};
+#else
 	static ARMReg allocationOrder[] = 
 	{
 		R0, R1, R2, R3, R4, R5, R6, R7, R8, R9
 	};
+#endif
 	count = sizeof(allocationOrder) / sizeof(const int);
 	return allocationOrder;
 }

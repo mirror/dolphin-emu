@@ -28,10 +28,8 @@ using namespace ArmGen;
 // the block to increase speed since every memory load requires two
 // instructions to load it. We are going to use R0-RMAX as registers for the
 // use of PPC Registers.
-#define NUMPPCREG 10 
-#define NUMARMREG 4
 // Allocation order as follows
-
+#define ARMREGS 16
 // Allocate R0 to R9 for PPC first.
 // For General registers on the host side, start with R14 and go down as we go
 // R13 is reserved for our stack pointer, don't ever use that. Unless you save
@@ -58,9 +56,12 @@ class ArmRegCache
 {
 private:
 	PPCCachedReg regs[32];
-	JRCPPC ArmCRegs[NUMPPCREG];
-	JRCReg ArmRegs[NUMARMREG]; // Four registers remaining
-
+	JRCPPC ArmCRegs[ARMREGS];
+	JRCReg ArmRegs[ARMREGS]; // Four registers remaining
+	int NUMPPCREG;
+	int NUMARMREG;
+	
+	ARMReg *GetAllocationOrder(int &count);
 	ARMReg *GetPPCAllocationOrder(int &count);
 protected:
 	
@@ -75,7 +76,6 @@ public:
 	void Start(PPCAnalyst::BlockRegStats &stats);
 
 	void SetEmitter(ARMXEmitter *emitter) {emit = emitter;}
-	ARMReg *GetAllocationOrder(int &count);
 	
 	ARMReg GetReg(bool AutoLock = true); // Return a ARM register we can use.
 	void Lock(ARMReg reg);
