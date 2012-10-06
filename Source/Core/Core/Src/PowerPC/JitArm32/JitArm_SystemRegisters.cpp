@@ -27,7 +27,7 @@
 #include "JitRegCache.h"
 #include "JitAsm.h"
 
-
+// Wrong
 void JitArm::mtspr(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
@@ -77,6 +77,7 @@ void JitArm::mtspr(UGeckoInstruction inst)
 	STR(rA, RD, iIndex * 4);
 }
 
+// Wrong
 void JitArm::mfspr(UGeckoInstruction inst)
 {
 	INSTRUCTION_START

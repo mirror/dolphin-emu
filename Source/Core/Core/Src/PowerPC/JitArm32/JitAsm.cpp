@@ -61,9 +61,7 @@ JitArmAsmRoutineManager asm_routines;
 void JitArmAsmRoutineManager::Generate()
 {
 	enterCode = GetCodePtr();
-
-	PUSH(1, _LR);
-
+	PUSH(2, R11, _LR); // R11 is frame pointer in Debug.
 
 	const u8* outerLoop = GetCodePtr();
 	ARMABI_MOVI2R(R0, (u32)&CoreTiming::downcount);
@@ -141,16 +139,16 @@ void JitArmAsmRoutineManager::Generate()
 	ARMABI_MOVI2R(R1, IMM(0xFFFFFFFF));
 	LDR(R0, R0);
 	TST(R0, R1);
-	B_CC(CC_EQ, outerLoop);
+	FixupBranch end = B_CC(CC_NEQ);
 
 	SetJumpTarget(End);
 
 	UpdateAPSR(true, 0, true, 0); // Clear our host register flags out.
 	B(dispatcher);
 	
+	SetJumpTarget(end);
 
-	POP(1, _LR);
-	MOV(_PC, _LR);
+	POP(2, R11, _PC);
 	Flush();
 }
 

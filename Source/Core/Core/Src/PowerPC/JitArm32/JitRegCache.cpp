@@ -89,17 +89,10 @@ ARMReg *ArmRegCache::GetPPCAllocationOrder(int &count)
 {
 	// This will return us the allocation order of the registers we can use on
 	// the ppc side.
-#ifdef _DEBUG
-	static ARMReg allocationOrder[] = 
-	{
-		R0, R1, R2, R3, R4, R5, R6, R8, R9 // Can't use R7 on ARM debug, is the stack pointer on ARM
-	};
-#else
 	static ARMReg allocationOrder[] = 
 	{
 		R0, R1, R2, R3, R4, R5, R6, R7, R8, R9
 	};
-#endif
 	count = sizeof(allocationOrder) / sizeof(const int);
 	return allocationOrder;
 }
