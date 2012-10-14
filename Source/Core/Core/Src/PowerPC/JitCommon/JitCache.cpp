@@ -39,9 +39,6 @@
 #include "../PPCTables.h"
 #include "../PPCAnalyst.h"
 
-#include "x64Emitter.h"
-#include "x64Analyzer.h"
-
 #include "JitCache.h"
 #include "JitBase.h"
 
@@ -65,12 +62,12 @@ bool JitBlock::ContainsAddress(u32 em_address)
 	return (em_address >= originalAddress && em_address < originalAddress + 4 * originalSize);
 }
 
-	bool JitBlockCache::IsFull() const 
+	bool JitBaseBlockCache::IsFull() const 
 	{
 		return GetNumBlocks() >= MAX_NUM_BLOCKS - 1;
 	}
 
-	void JitBlockCache::Init()
+	void JitBaseBlockCache::Init()
 	{
 		MAX_NUM_BLOCKS = 65536*2;
 
@@ -88,11 +85,11 @@ bool JitBlock::ContainsAddress(u32 em_address)
 		}
 		else
 		{
-			PanicAlert("JitBlockCache::Init() - iCache is already initialized");
+			PanicAlert("JitBaseBlockCache::Init() - iCache is already initialized");
 		}
 		if (iCache == 0 || iCacheEx == 0 || iCacheVMEM == 0)
 		{
-			PanicAlert("JitBlockCache::Init() - unable to allocate iCache");
+			PanicAlert("JitBaseBlockCache::Init() - unable to allocate iCache");
 		}
 		memset(iCache, JIT_ICACHE_INVALID_BYTE, JIT_ICACHE_SIZE);
 		memset(iCacheEx, JIT_ICACHE_INVALID_BYTE, JIT_ICACHEEX_SIZE);
@@ -101,7 +98,7 @@ bool JitBlock::ContainsAddress(u32 em_address)
 		Clear();
 	}
 
-	void JitBlockCache::Shutdown()
+	void JitBaseBlockCache::Shutdown()
 	{
 		delete[] blocks;
 		delete[] blockCodePointers;
@@ -126,7 +123,7 @@ bool JitBlock::ContainsAddress(u32 em_address)
 	
 	// This clears the JIT cache. It's called from JitCache.cpp when the JIT cache
 	// is full and when saving and loading states.
-	void JitBlockCache::Clear()
+	void JitBaseBlockCache::Clear()
 	{
 		Core::DisplayMessage("Clearing code cache.", 3000);
 		for (int i = 0; i < num_blocks; i++)
@@ -139,7 +136,7 @@ bool JitBlock::ContainsAddress(u32 em_address)
 		memset(blockCodePointers, 0, sizeof(u8*)*MAX_NUM_BLOCKS);
 	}
 
-	void JitBlockCache::ClearSafe()
+	void JitBaseBlockCache::ClearSafe()
 	{
 #ifdef JIT_UNLIMITED_ICACHE
 		memset(iCache, JIT_ICACHE_INVALID_BYTE, JIT_ICACHE_SIZE);
@@ -148,7 +145,7 @@ bool JitBlock::ContainsAddress(u32 em_address)
 #endif
 	}
 
-	/*void JitBlockCache::DestroyBlocksWithFlag(BlockFlag death_flag)
+	/*void JitBaseBlockCache::DestroyBlocksWithFlag(BlockFlag death_flag)
 	{
 		for (int i = 0; i < num_blocks; i++)
 		{
@@ -159,23 +156,23 @@ bool JitBlock::ContainsAddress(u32 em_address)
 		}
 	}*/
 
-	void JitBlockCache::Reset()
+	void JitBaseBlockCache::Reset()
 	{
 		Shutdown();
 		Init();
 	}
 
-	JitBlock *JitBlockCache::GetBlock(int no)
+	JitBlock *JitBaseBlockCache::GetBlock(int no)
 	{
 		return &blocks[no];
 	}
 
-	int JitBlockCache::GetNumBlocks() const
+	int JitBaseBlockCache::GetNumBlocks() const
 	{
 		return num_blocks;
 	}
 
-	bool JitBlockCache::RangeIntersect(int s1, int e1, int s2, int e2) const
+	bool JitBaseBlockCache::RangeIntersect(int s1, int e1, int s2, int e2) const
 	{
 		// check if any endpoint is inside the other range
 		if ((s1 >= s2 && s1 <= e2) ||
@@ -187,7 +184,7 @@ bool JitBlock::ContainsAddress(u32 em_address)
 			return false;
 	}
 
-	int JitBlockCache::AllocateBlock(u32 em_address)
+	int JitBaseBlockCache::AllocateBlock(u32 em_address)
 	{
 		JitBlock &b = blocks[num_blocks];
 		b.invalid = false;
@@ -203,7 +200,7 @@ bool JitBlock::ContainsAddress(u32 em_address)
 		return num_blocks - 1;
 	}
 
-	void JitBlockCache::FinalizeBlock(int block_num, bool block_link, const u8 *code_ptr)
+	void JitBaseBlockCache::FinalizeBlock(int block_num, bool block_link, const u8 *code_ptr)
 	{
 		blockCodePointers[block_num] = code_ptr;
 		JitBlock &b = blocks[block_num];
@@ -231,29 +228,29 @@ bool JitBlock::ContainsAddress(u32 em_address)
 #endif
 	}
 
-	const u8 **JitBlockCache::GetCodePointers()
+	const u8 **JitBaseBlockCache::GetCodePointers()
 	{
 		return blockCodePointers;
 	}
 
 #ifdef JIT_UNLIMITED_ICACHE
-	u8* JitBlockCache::GetICache()
+	u8* JitBaseBlockCache::GetICache()
 	{
 		return iCache;
 	}
 
-	u8* JitBlockCache::GetICacheEx()
+	u8* JitBaseBlockCache::GetICacheEx()
 	{
 		return iCacheEx;
 	}
 
-	u8* JitBlockCache::GetICacheVMEM()
+	u8* JitBaseBlockCache::GetICacheVMEM()
 	{
 		return iCacheVMEM;
 	}
 #endif
 
-	int JitBlockCache::GetBlockNumberFromStartAddress(u32 addr)
+	int JitBaseBlockCache::GetBlockNumberFromStartAddress(u32 addr)
 	{
 		if (!blocks)
 			return -1;		
@@ -284,24 +281,24 @@ bool JitBlock::ContainsAddress(u32 em_address)
 		return inst;
 	}
 
-	void JitBlockCache::GetBlockNumbersFromAddress(u32 em_address, std::vector<int> *block_numbers)
+	void JitBaseBlockCache::GetBlockNumbersFromAddress(u32 em_address, std::vector<int> *block_numbers)
 	{
 		for (int i = 0; i < num_blocks; i++)
 			if (blocks[i].ContainsAddress(em_address))
 				block_numbers->push_back(i);
 	}
 
-	u32 JitBlockCache::GetOriginalFirstOp(int block_num)
+	u32 JitBaseBlockCache::GetOriginalFirstOp(int block_num)
 	{
 		if (block_num >= num_blocks)
 		{
-			//PanicAlert("JitBlockCache::GetOriginalFirstOp - block_num = %u is out of range", block_num);
+			//PanicAlert("JitBaseBlockCache::GetOriginalFirstOp - block_num = %u is out of range", block_num);
 			return block_num;
 		}
 		return blocks[block_num].originalFirstOpcode;
 	}
 
-	CompiledCode JitBlockCache::GetCompiledCodeFromBlock(int block_num)
+	CompiledCode JitBaseBlockCache::GetCompiledCodeFromBlock(int block_num)
 	{		
 		return (CompiledCode)blockCodePointers[block_num];
 	}
@@ -312,7 +309,7 @@ bool JitBlock::ContainsAddress(u32 em_address)
 	//Can be faster by doing a queue for blocks to link up, and only process those
 	//Should probably be done
 
-	void JitBlockCache::LinkBlockExits(int i)
+	void JitBaseBlockCache::LinkBlockExits(int i)
 	{
 		JitBlock &b = blocks[i];
 		if (b.invalid)
@@ -327,8 +324,7 @@ bool JitBlock::ContainsAddress(u32 em_address)
 				int destinationBlock = GetBlockNumberFromStartAddress(b.exitAddress[e]);
 				if (destinationBlock != -1)
 				{
-					XEmitter emit(b.exitPtrs[e]);
-					emit.JMP(blocks[destinationBlock].checkedEntry, true);
+					WriteLinkBlock(b.exitPtrs[e], blocks[destinationBlock].checkedEntry);
 					b.linkStatus[e] = true;
 				}
 			}
@@ -337,7 +333,7 @@ bool JitBlock::ContainsAddress(u32 em_address)
 
 	using namespace std;
 
-	void JitBlockCache::LinkBlock(int i)
+	void JitBaseBlockCache::LinkBlock(int i)
 	{
 		LinkBlockExits(i);
 		JitBlock &b = blocks[i];
@@ -354,7 +350,7 @@ bool JitBlock::ContainsAddress(u32 em_address)
 		}
 	}
 
-	void JitBlockCache::DestroyBlock(int block_num, bool invalidate)
+	void JitBaseBlockCache::DestroyBlock(int block_num, bool invalidate)
 	{
 		if (block_num < 0 || block_num >= num_blocks)
 		{
@@ -379,19 +375,11 @@ bool JitBlock::ContainsAddress(u32 em_address)
 		// We don't unlink blocks, we just send anyone who tries to run them back to the dispatcher.
 		// Not entirely ideal, but .. pretty good.
 		// Spurious entrances from previously linked blocks can only come through checkedEntry
-		XEmitter emit((u8 *)b.checkedEntry);
-		emit.MOV(32, M(&PC), Imm32(b.originalAddress));
-		emit.JMP(jit->GetAsmRoutines()->dispatcher, true);
-		// this is not needed really
-		/*
-		emit.SetCodePtr((u8 *)blockCodePointers[blocknum]);
-		emit.MOV(32, M(&PC), Imm32(b.originalAddress));
-		emit.JMP(asm_routines.dispatcher, true);
-		*/
+		WriteDestroyBlock(b.checkedEntry, b.originalAddress);
 	}
 
 
-	void JitBlockCache::InvalidateICache(u32 address)
+	void JitBaseBlockCache::InvalidateICache(u32 address)
 	{
 		address &= ~0x1f;
 		// destroy JIT blocks
@@ -432,4 +420,15 @@ bool JitBlock::ContainsAddress(u32 em_address)
 			memset(iCache + cacheaddr, JIT_ICACHE_INVALID_BYTE, 32);
 		}
 #endif
+	}
+	void JitBlockCache::WriteLinkBlock(u8* location, const u8* address)
+	{
+		XEmitter emit(location);
+		emit.JMP(address, true);
+	}
+	void JitBlockCache::WriteDestroyBlock(const u8* location, u32 address)
+	{
+        XEmitter emit((u8 *)location);
+        emit.MOV(32, M(&PC), Imm32(address));
+        emit.JMP(jit->GetAsmRoutines()->dispatcher, true);
 	}

@@ -468,11 +468,6 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	b->flags = js.block_flags;
 	b->codeSize = (u32)(GetCodePtr() - normalEntry);
 	b->originalSize = size;
-	if (size > 4000)
-	{
-		printf("Crap, the size is too large: %08x\n", size);
-		exit(42);
-	}
 	Flush();
 	return start;
 }
