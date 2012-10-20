@@ -38,9 +38,7 @@
 
 using namespace MathUtil;
 
-#ifdef _MSC_VER
-#pragma float_control(precise, on, push)
-#endif
+void UpdateSSEState();
 
 // Extremely rare - actually, never seen.
 // Star Wars : Rogue Leader spams that at some point :|
@@ -515,7 +513,3 @@ void Interpreter::fsqrtx(UGeckoInstruction _inst)
  	UpdateFPRF(rPS0(_inst.FD));
 	if (_inst.Rc) Helper_UpdateCR1(rPS0(_inst.FD));
 }
-
-#ifdef _MSC_VER
-#pragma float_control(pop)
-#endif

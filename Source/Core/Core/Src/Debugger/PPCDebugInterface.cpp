@@ -34,7 +34,7 @@ void PPCDebugInterface::disasm(unsigned int address, char *dest, int max_size)
 
 	if (Core::GetState() != Core::CORE_UNINITIALIZED)
 	{
-		if (Memory::IsRAMAddress(address, true))
+		if (Memory::IsRAMAddress(address, true, true))
 		{
 			u32 op = Memory::Read_Instruction(address);
 			DisassembleGekko(op, address, dest, max_size);
@@ -59,7 +59,7 @@ void PPCDebugInterface::getRawMemoryString(int memory, unsigned int address, cha
 {
 	if (Core::GetState() != Core::CORE_UNINITIALIZED)
 	{
-		if (memory || Memory::IsRAMAddress(address, true))
+		if (memory || Memory::IsRAMAddress(address, true, true))
 		{
 			snprintf(dest, max_size, "%08X%s", readExtraMemory(memory, address), memory ? " (ARAM)" : "");
 		}
@@ -174,7 +174,7 @@ void PPCDebugInterface::breakNow()
 // -------------
 int PPCDebugInterface::getColor(unsigned int address)
 {
-	if (!Memory::IsRAMAddress(address, true))
+	if (!Memory::IsRAMAddress(address, true, true))
 		return 0xeeeeee;
 	static const int colors[6] =
 	{ 

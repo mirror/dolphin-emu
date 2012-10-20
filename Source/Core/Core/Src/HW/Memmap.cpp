@@ -509,6 +509,7 @@ u8 *GetPointer(const u32 _Address)
 	{
 	case 0x0:
 	case 0x8:
+		if ((_Address & 0xfffffff) < REALRAM_SIZE)
 		return m_pPhysicalRAM + (_Address & RAM_MASK);
 	case 0xc:
 		switch (_Address >> 24)
@@ -521,6 +522,7 @@ u8 *GetPointer(const u32 _Address)
 			break;
 
 		default:
+			if ((_Address & 0xfffffff) < REALRAM_SIZE)
 			return m_pPhysicalRAM + (_Address & RAM_MASK);
 		}
 
@@ -528,6 +530,7 @@ u8 *GetPointer(const u32 _Address)
 	case 0x9:
 	case 0xd:
 		if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii)
+			if ((_Address & 0xfffffff) < EXRAM_SIZE)
 			return m_pPhysicalEXRAM + (_Address & EXRAM_MASK);
 		else
 			break;
@@ -549,10 +552,10 @@ u8 *GetPointer(const u32 _Address)
 }
 
 
-bool IsRAMAddress(const u32 addr, bool allow_locked_cache) 
+bool IsRAMAddress(const u32 addr, bool allow_locked_cache, bool allow_fake_vmem)
 {
 	switch ((addr >> 24) & 0xFC)
-	{
+{
 	case 0x00:
 	case 0x80:
 	case 0xC0:
@@ -569,6 +572,11 @@ bool IsRAMAddress(const u32 addr, bool allow_locked_cache)
 			return false;
 	case 0xE0:
 		if (allow_locked_cache && addr - 0xE0000000 < L1_CACHE_SIZE)
+			return true;
+		else
+			return false;
+	case 0x7C:
+		if (allow_fake_vmem && bFakeVMEM && addr >= 0x7E000000)
 			return true;
 		else
 			return false;

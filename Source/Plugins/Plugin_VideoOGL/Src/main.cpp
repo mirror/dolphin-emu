@@ -243,6 +243,7 @@ void VideoBackend::Shutdown()
 		OpcodeDecoder_Shutdown();
 		delete g_renderer;
 		g_renderer = NULL;
+		g_texture_cache = NULL;
 	}
 	OpenGL_Shutdown();
 }

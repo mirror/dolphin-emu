@@ -149,9 +149,6 @@ BEGIN_EVENT_TABLE(wxEmuStateTip, wxTipWindow)
 END_EVENT_TABLE()
 
 BEGIN_EVENT_TABLE(CGameListCtrl, wxListCtrl)
-#ifdef _WIN32
-	EVT_PAINT(CGameListCtrl::OnPaintDrawImages)
-#endif
 	EVT_SIZE(CGameListCtrl::OnSize)
 	EVT_RIGHT_DOWN(CGameListCtrl::OnRightClick)
 	EVT_LEFT_DOWN(CGameListCtrl::OnLeftClick)
@@ -299,14 +296,19 @@ void CGameListCtrl::Update()
 		InsertColumn(COLUMN_SIZE, _("Size"));
 		InsertColumn(COLUMN_EMULATION_STATE, _("State"));
 
+#ifdef __WXMSW__
+		const int platform_padding = 0;
+#else
+		const int platform_padding = 8;
+#endif
 
 		// set initial sizes for columns
-		SetColumnWidth(COLUMN_PLATFORM, 35);
-		SetColumnWidth(COLUMN_BANNER, 96);
-		SetColumnWidth(COLUMN_TITLE, 200);
-		SetColumnWidth(COLUMN_NOTES, 200);
-		SetColumnWidth(COLUMN_COUNTRY, 32);
-		SetColumnWidth(COLUMN_EMULATION_STATE, 50);
+		SetColumnWidth(COLUMN_PLATFORM, 35 + platform_padding);
+		SetColumnWidth(COLUMN_BANNER, 96 + platform_padding);
+		SetColumnWidth(COLUMN_TITLE, 200 + platform_padding);
+		SetColumnWidth(COLUMN_NOTES, 200 + platform_padding);
+		SetColumnWidth(COLUMN_COUNTRY, 32 + platform_padding);
+		SetColumnWidth(COLUMN_EMULATION_STATE, 50 + platform_padding);
 
 		// add all items
 		for (int i = 0; i < (int)m_ISOFiles.size(); i++)
@@ -384,48 +386,6 @@ std::string CGameListCtrl::GetGameNames() const
 	return m_gameList;
 }
 
-#ifdef _WIN32
-// This draws our icons on top of the gamelist, it's only used on Windows
-void CGameListCtrl::OnPaintDrawImages(wxPaintEvent& event)
-{
-	wxPaintDC dc(this);
-
-	// Calls the default drawing code
-	wxControl::OnPaint(event);
-
-	// Draw the flags, platform icons and emustate icons on top if there's games to show
-	if (m_ISOFiles.empty())
-		return;
-
-	// Retrieve the topmost shown item and get drawing offsets
-	const long
-		top_item = GetTopItem(),
-		bottom_item = std::min(top_item + GetCountPerPage() + 2, (long)GetItemCount());
-
-	int flagOffset = GetColumnWidth(0) + GetColumnWidth(1) +
-		GetColumnWidth(2) + GetColumnWidth(3);
-	int stateOffset = flagOffset + GetColumnWidth(4) + GetColumnWidth(5);
-
-	// Only redraw shown lines
-	for (long i = top_item; i != bottom_item; ++i)
-	{
-		wxRect itemRect;
-		if (GetItemRect(i, itemRect))
-		{
-			const int itemY = itemRect.GetTop();
-			const GameListItem& rISOFile = *m_ISOFiles[GetItemData(i)];
-
-			m_imageListSmall->Draw(m_PlatformImageIndex[rISOFile.GetPlatform()],
-					dc, itemRect.GetX()+3, itemY);
-			m_imageListSmall->Draw(m_FlagImageIndex[rISOFile.GetCountry()],
-					dc, flagOffset, itemY);
-			m_imageListSmall->Draw(m_EmuStateImageIndex[rISOFile.GetEmuState()],
-					dc, stateOffset, itemY);
-		}
-	}
-}
-#endif
-
 void CGameListCtrl::InsertItemInReportView(long _Index)
 {
 	// When using wxListCtrl, there is no hope of per-column text colors.
@@ -448,19 +408,15 @@ void CGameListCtrl::InsertItemInReportView(long _Index)
 #else
 		// on linux the wrong string is returned from wxFontMapper::GetEncodingName(wxFONTENCODING_SHIFT_JIS)
 		// it returns CP-932, in order to use iconv we need to use CP932
-		wxCSConv SJISConv(L"CP932");
+		wxCSConv SJISConv(wxT("CP932"));
 #endif
 
 	GameListItem& rISOFile = *m_ISOFiles[_Index];
 	m_gamePath.append(rISOFile.GetFileName() + '\n');
 
 	// Insert a first row with the platform image, that will be used as the Index
-#ifndef _WIN32
 	long ItemIndex = InsertItem(_Index, wxEmptyString,
 			m_PlatformImageIndex[rISOFile.GetPlatform()]);
-#else
-	long ItemIndex = InsertItem(_Index, wxEmptyString, -1);
-#endif
 
 	if (rISOFile.GetImage().IsOk())
 		ImageIndex = m_imageListSmall->Add(rISOFile.GetImage());
@@ -468,9 +424,12 @@ void CGameListCtrl::InsertItemInReportView(long _Index)
 	// Set the game's banner in the second column
 	SetItemColumnImage(_Index, COLUMN_BANNER, ImageIndex);
 	
-	std::wstring wname;
-	const std::wstring& wdescription = rISOFile.GetDescription();
+	std::wstring wstring_name;
+	const std::wstring& wstring_description = rISOFile.GetDescription();
 	std::string company;
+
+	wxString name;
+	wxString description;
 
 	// We show the company string on Gamecube only
 	// On Wii we show the description instead as the company string is empty
@@ -482,13 +441,11 @@ void CGameListCtrl::InsertItemInReportView(long _Index)
 	case DiscIO::IVolume::COUNTRY_TAIWAN:
 	case DiscIO::IVolume::COUNTRY_JAPAN:
 		{
-			rISOFile.GetName(wname, -1);
-			wxString name = wxString(rISOFile.GetName(0).c_str(), SJISConv);
+			rISOFile.GetName(wstring_name, -1);
+			name = wxString(rISOFile.GetName(0).c_str(), SJISConv);
 			m_gameList.append(StringFromFormat("%s (J)\n", (const char *)name.c_str()));
-			SetItem(_Index, COLUMN_TITLE, name, -1);
-			SetItem(_Index, COLUMN_NOTES, wxString(company.size() ?
-						company.c_str() : rISOFile.GetDescription(0).c_str(),
-						SJISConv), -1);
+			description = wxString(company.size() ?	company.c_str() :
+								rISOFile.GetDescription(0).c_str(),	SJISConv);
 		}
 		break;
 	case DiscIO::IVolume::COUNTRY_USA:
@@ -496,36 +453,31 @@ void CGameListCtrl::InsertItemInReportView(long _Index)
 	default:
 		{
 		wxCSConv WindowsCP1252(wxFontMapper::GetEncodingName(wxFONTENCODING_CP1252));
-		rISOFile.GetName(wname, SelectedLanguage);
 
-		SetItem(_Index, COLUMN_TITLE,
-			wxString(
-				rISOFile.GetName(SelectedLanguage).c_str(), WindowsCP1252),
-			-1);
+		rISOFile.GetName(wstring_name, SelectedLanguage);
+
+		name = wxString(rISOFile.GetName(SelectedLanguage).c_str(), WindowsCP1252);
 		m_gameList.append(StringFromFormat("%s (%c)\n",
 			rISOFile.GetName(SelectedLanguage).c_str(), (rISOFile.GetCountry() == DiscIO::IVolume::COUNTRY_USA)?'U':'E'));
-		SetItem(_Index, COLUMN_NOTES,
-				wxString(company.size() ?
-					company.c_str() :
-					rISOFile.GetDescription(SelectedLanguage).c_str(), WindowsCP1252),
-				-1);
+		description = wxString(company.size() ?	company.c_str() :
+							rISOFile.GetDescription(SelectedLanguage).c_str(), WindowsCP1252);
 		}
 		break;
 	}
 
-	if (wname.length())
-		SetItem(_Index, COLUMN_TITLE, wname, -1);
-	if (wdescription.length())
-		SetItem(_Index, COLUMN_NOTES, wdescription, -1);
+	if (wstring_name.length())
+		name = wstring_name.c_str();
+	if (wstring_description.length())
+		description = wstring_description.c_str();
+		
+	SetItem(_Index, COLUMN_TITLE, name, -1);
+	SetItem(_Index, COLUMN_NOTES, description, -1);
 
-
-#ifndef _WIN32
 	// Emulation state
 	SetItemColumnImage(_Index, COLUMN_EMULATION_STATE, m_EmuStateImageIndex[rISOFile.GetEmuState()]);
 
 	// Country
 	SetItemColumnImage(_Index, COLUMN_COUNTRY, m_FlagImageIndex[rISOFile.GetCountry()]);
-#endif
 
 	// File size
 	SetItem(_Index, COLUMN_SIZE, NiceSizeFormat(rISOFile.GetFileSize()), -1);
@@ -602,6 +554,7 @@ void CGameListCtrl::ScanForISOs()
 		Extensions.push_back("*.iso");
 		Extensions.push_back("*.ciso");
 		Extensions.push_back("*.gcz");
+		Extensions.push_back("*.wbfs");
 	}
 	if (SConfig::GetInstance().m_ListWad)
 		Extensions.push_back("*.wad");
@@ -611,17 +564,17 @@ void CGameListCtrl::ScanForISOs()
 
 	if (rFilenames.size() > 0)
 	{
-		wxProgressDialog dialog(_("Scanning for ISOs"),
+		wxProgressDialog dialog(
+			_("Scanning for ISOs"),
 					_("Scanning..."),
-					(int)rFilenames.size(), // range
-					this, // parent
+			(int)rFilenames.size() - 1,
+			this,
 					wxPD_APP_MODAL |
-					wxPD_ELAPSED_TIME |
-					wxPD_ESTIMATED_TIME |
-					wxPD_REMAINING_TIME |
-					wxPD_SMOOTH // - makes indeterminate mode bar on WinXP very small
+			wxPD_AUTO_HIDE |
+			wxPD_CAN_ABORT |
+			wxPD_ELAPSED_TIME | wxPD_ESTIMATED_TIME | wxPD_REMAINING_TIME |
+			wxPD_SMOOTH // - makes updates as small as possible (down to 1px)
 					);
-		dialog.CenterOnParent();
 
 		for (u32 i = 0; i < rFilenames.size(); i++)
 		{
@@ -629,9 +582,9 @@ void CGameListCtrl::ScanForISOs()
 			SplitPath(rFilenames[i], NULL, &FileName, NULL);
 
 			// Update with the progress (i) and the message
-			bool Cont = dialog.Update(i,
-					wxString::Format(_("Scanning %s"), wxString(FileName.c_str(), *wxConvCurrent).c_str()));
-			if (!Cont)
+			dialog.Update(i, wxString::Format(_("Scanning %s"),
+				wxString(FileName.c_str(), *wxConvCurrent).c_str()));
+			if (dialog.WasCancelled())
 				break;
 
 			std::auto_ptr<GameListItem> iso_file(new GameListItem(rFilenames[i]));
@@ -726,8 +679,8 @@ const GameListItem *CGameListCtrl::GetISO(size_t index) const
 
 CGameListCtrl *caller;
 #if wxCHECK_VERSION(2, 9, 0)
-int wxCALLBACK wxListCompare(long item1, long item2, wxIntPtr sortData)
-#else
+int wxCALLBACK wxListCompare(wxIntPtr item1, wxIntPtr item2, wxIntPtr sortData)
+#else // 2.8.x
 int wxCALLBACK wxListCompare(long item1, long item2, long sortData)
 #endif
 {
@@ -1143,20 +1096,15 @@ void CGameListCtrl::CompressSelection(bool _compress)
 	if (browseDialog.ShowModal() != wxID_OK)
 		return;
 
-	wxProgressDialog progressDialog(_compress ?
-			_("Compressing ISO") : _("Decompressing ISO"),
+	wxProgressDialog progressDialog(
+		_compress ? _("Compressing ISO") : _("Decompressing ISO"),
 			_("Working..."),
-			1000, // range
-			this, // parent
+		1000,
+		this,
 			wxPD_APP_MODAL |
-			wxPD_ELAPSED_TIME |
-			wxPD_ESTIMATED_TIME |
-			wxPD_REMAINING_TIME |
-			wxPD_SMOOTH // - makes indeterminate mode bar on WinXP very small
+		wxPD_ELAPSED_TIME | wxPD_ESTIMATED_TIME | wxPD_REMAINING_TIME |
+		wxPD_SMOOTH
 			);
-
-	progressDialog.SetSize(wxSize(340, 180));
-	progressDialog.CenterOnParent();
 
 	m_currentItem = 0;
 	m_numberItem = GetSelectedItemCount();
@@ -1276,20 +1224,15 @@ void CGameListCtrl::OnCompressGCM(wxCommandEvent& WXUNUSED (event))
 				_("Confirm File Overwrite"),
 				wxYES_NO) == wxNO);
 
-	wxProgressDialog dialog(iso->IsCompressed() ?
-			_("Decompressing ISO") : _("Compressing ISO"),
+	wxProgressDialog dialog(
+		iso->IsCompressed() ? _("Decompressing ISO") : _("Compressing ISO"),
 			_("Working..."),
-			1000, // range
-			this, // parent
+		1000,
+		this,
 			wxPD_APP_MODAL |
-			wxPD_ELAPSED_TIME |
-			wxPD_ESTIMATED_TIME |
-			wxPD_REMAINING_TIME |
-			wxPD_SMOOTH // - makes indeterminate mode bar on WinXP very small
+		wxPD_ELAPSED_TIME | wxPD_ESTIMATED_TIME | wxPD_REMAINING_TIME |
+		wxPD_SMOOTH
 			);
-
-	dialog.SetSize(wxSize(340, 180));
-	dialog.CenterOnParent();
 
 	if (iso->IsCompressed())
 		DiscIO::DecompressBlobToFile(iso->GetFileName().c_str(),

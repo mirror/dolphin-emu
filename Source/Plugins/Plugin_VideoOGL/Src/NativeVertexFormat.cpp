@@ -273,8 +273,6 @@ void GLVertexFormat::EnableComponents(u32 components)
 		// tex
 		for (int i = 0; i < 8; ++i) 
 		{
-			if (!g_ActiveConfig.bDisableTexturing)
-			{
 				if ((components & (VB_HAS_UV0 << i)) != (s_prevcomponents & (VB_HAS_UV0 << i))) 
 				{
 					glClientActiveTexture(GL_TEXTURE0 + i);
@@ -284,12 +282,6 @@ void GLVertexFormat::EnableComponents(u32 components)
 						glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 				}
 			}
-			else
-			{
-				glClientActiveTexture(GL_TEXTURE0 + i);
-				glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-			}
-		}
 
 		s_prevcomponents = components;
 	}

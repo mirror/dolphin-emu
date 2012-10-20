@@ -82,10 +82,7 @@ namespace PowerPC
 		memset(lookup_table_ex, 0xff, sizeof(lookup_table_ex));
 		memset(lookup_table_vmem, 0xff, sizeof(lookup_table_vmem));
 #endif
-		if (jit)
-			jit->GetBlockCache()->ClearSafe();
-		if (jitarm)
-			jitarm->GetBlockCache()->ClearSafe();
+		JitInterface::ClearSafe();
 	}
 
 	void InstructionCache::Init()
@@ -117,10 +114,7 @@ namespace PowerPC
 			}
 #endif
 		valid[set] = 0;
-		if (jit)
-			jit->GetBlockCache()->InvalidateICache(addr);
-		if (jitarm)
-			jitarm->GetBlockCache()->InvalidateICache(addr);
+			JitInterface::InvalidateICache(addr & ~0x1f, 32);
 	}
 
 	u32 InstructionCache::ReadInstruction(u32 addr)

@@ -147,10 +147,11 @@ void Wiimote::InterruptChannel(const u16 channel, const void* const data, const 
 	// party ones don't.
  	if (rpt.first[0] == 0xa2)
 	{
-		rpt.first[0] = 0x52;
+		rpt.first[0] = WM_SET_REPORT | WM_BT_OUTPUT;
  	}
 
- 	if (rpt.first[0] == 0x52 && rpt.first[1] == 0x18 && rpt.second == 23)
+	if (rpt.first[0] == (WM_SET_REPORT | WM_BT_OUTPUT) &&
+		rpt.first[1] == 0x18 && rpt.second == 23)
 	{
 		m_audio_reports.Push(rpt);
  		return;
@@ -510,5 +511,20 @@ void StateChange(EMUSTATE_CHANGE newState)
 
 	// TODO: disable/enable auto reporting, maybe
 }
+
+#define ARRAYSIZE(_arr) (sizeof(_arr)/(sizeof(_arr[0])))
+
+bool IsValidBluetoothName(const char* name) {
+	static const char* kValidWiiRemoteBluetoothNames[] = {
+		"Nintendo RVL-CNT-01",
+		"Nintendo RVL-CNT-01-TR",
+		"Nintendo RVL-WBC-01",
+	};
+	for (size_t i = 0; i < ARRAYSIZE(kValidWiiRemoteBluetoothNames); i++)
+		if (strcmp(name, kValidWiiRemoteBluetoothNames[i]) == 0)
+			return true;
+	return false;
+}
+
 
 }; // end of namespace

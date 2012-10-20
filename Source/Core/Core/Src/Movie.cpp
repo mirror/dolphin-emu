@@ -304,7 +304,7 @@ bool BeginRecordingInput(int controllers)
 	g_rerecords = 0;
 	g_playMode = MODE_RECORDING;
 
-	delete tmpInput;
+	delete [] tmpInput;
 	tmpInput = new u8[MAX_DTM_LENGTH];
 	g_currentByte = g_totalBytes = 0;
 		
@@ -591,14 +591,8 @@ cleanup:
 	return false;
 }
 
-void DoState(PointerWrap &p, bool doNot)
+void DoState(PointerWrap &p)
 {
-	if(doNot)
-	{
-		if(p.GetMode() == PointerWrap::MODE_READ)
-			g_currentSaveVersion = 0;
-		return;
-	}
 	static const int MOVIE_STATE_VERSION = 1;
 	g_currentSaveVersion = MOVIE_STATE_VERSION;
 	p.Do(g_currentSaveVersion);
@@ -627,6 +621,10 @@ void LoadInput(const char *filename)
 
 	if (!g_bReadOnly)
 	{
+		if (g_rerecords > tmpHeader.numRerecords)
+		{
+			tmpHeader.numRerecords = g_rerecords;
+		}
 		tmpHeader.numRerecords++;
 		t_record.Seek(0, SEEK_SET);
 		t_record.WriteArray(&tmpHeader, 1);
@@ -653,7 +651,7 @@ void LoadInput(const char *filename)
 		g_totalInputCount = tmpHeader.inputCount;
 
 		g_totalBytes = totalSavedBytes;
-		delete tmpInput;
+		delete [] tmpInput;
 		tmpInput = new u8[MAX_DTM_LENGTH];
 		t_record.ReadArray(tmpInput, (size_t)g_totalBytes);
 	}
@@ -707,7 +705,7 @@ void LoadInput(const char *filename)
 					break;
 				}
 			}
-			delete movInput;
+			delete [] movInput;
 		}
 	}
 	t_record.Close();

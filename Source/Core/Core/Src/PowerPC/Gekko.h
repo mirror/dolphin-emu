@@ -493,7 +493,41 @@ union UReg_SPR1
 	};
 };
 
+// MMCR0 - Monitor Mode Control Register 0 format
+union UReg_MMCR0
+{
+	u32 Hex;
+	struct
+	{
+		u32	PMC2SELECT		:	6;
+		u32	PMC1SELECT		:	7;
+		u32	PMCTRIGGER		:	1;
+		u32	PMCINTCONTROL	:	1;
+		u32	PMC1INTCONTROL	:	1;
+		u32	THRESHOLD		:	6;
+		u32	INTONBITTRANS	:	1;
+		u32	RTCSELECT		:	2;
+		u32	DISCOUNT		:	1;
+		u32	ENINT			:	1;
+		u32	DMR				:	1;
+		u32	DMS				:	1;
+		u32	DU				:	1;
+		u32	DP				:	1;
+		u32	DIS				:	1;
+	};
+};
 
+// MMCR1 - Monitor Mode Control Register 1 format
+union UReg_MMCR1
+{
+	u32 Hex;
+	struct
+	{
+		u32				:	22;
+		u32	PMC4SELECT	:	5;
+		u32	PMC3SELECT	:	5;
+	};
+};
 
 // Write Pipe Address Register
 union UReg_WPAR
@@ -669,7 +703,17 @@ enum
 	SPR_ECID_U = 924,
 	SPR_ECID_M = 925,
 	SPR_ECID_L = 926,
-	SPR_L2CR  = 1017
+	SPR_L2CR  = 1017,
+
+	SPR_UMMCR0 = 936,
+	SPR_MMCR0 = 952,
+	SPR_PMC1 = 953,
+	SPR_PMC2 = 954,
+
+	SPR_UMMCR1 = 940,
+	SPR_MMCR1 = 956,
+	SPR_PMC3 = 957,
+	SPR_PMC4 = 958,
 };
 
 // Exceptions
@@ -681,6 +725,7 @@ enum
 #define EXCEPTION_ALIGNMENT				0x00000020
 #define EXCEPTION_FPU_UNAVAILABLE       0x00000040
 #define EXCEPTION_PROGRAM				0x00000080
+#define EXCEPTION_PERFORMANCE_MONITOR	0x00000100
 
 inline s32 SignExt16(s16 x) {return (s32)(s16)x;}
 inline s32 SignExt26(u32 x) {return x & 0x2000000 ? (s32)(x | 0xFC000000) : (s32)(x);}

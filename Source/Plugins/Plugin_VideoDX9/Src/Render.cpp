@@ -54,6 +54,7 @@
 #include "Core.h"
 #include "Movie.h"
 #include "BPFunctions.h"
+#include "FPSCounter.h"
 
 namespace DX9
 {
@@ -237,7 +238,7 @@ void TeardownDeviceObjects()
 	D3D::dev->SetDepthStencilSurface(D3D::GetBackBufferDepthSurface());
 	delete g_framebuffer_manager;
 	D3D::font.Shutdown();
-	TextureCache::Invalidate(false);
+	TextureCache::Invalidate();
 	VertexLoaderManager::Shutdown();
 	VertexShaderCache::Shutdown();
 	PixelShaderCache::Shutdown();
@@ -247,6 +248,8 @@ void TeardownDeviceObjects()
 // Init functions
 Renderer::Renderer()
 {
+	InitFPSCounter();
+
 	st = new char[32768];
 
 	int fullScreenRes, x, y, w_temp, h_temp;
@@ -622,7 +625,7 @@ u32 Renderer::AccessEFB(EFBAccessType type, u32 x, u32 y, u32 poke_data)
 	{
 		// TODO: Speed this up by batching pokes?
 		ResetAPIState();
-		D3D::drawColorQuad(GetTargetWidth(), GetTargetHeight(), poke_data,
+		D3D::drawColorQuad(poke_data,
 							  (float)RectToLock.left   * 2.f / (float)Renderer::GetTargetWidth()  - 1.f,
 							- (float)RectToLock.top    * 2.f / (float)Renderer::GetTargetHeight() + 1.f,
 							  (float)RectToLock.right  * 2.f / (float)Renderer::GetTargetWidth()  - 1.f,
@@ -747,7 +750,7 @@ void Renderer::ClearScreen(const EFBRectangle& rc, bool colorEnable, bool alphaE
 	vp.MinZ = 0.0;
 	vp.MaxZ = 1.0;
 	D3D::dev->SetViewport(&vp);
-	D3D::drawClearQuad(GetTargetWidth(), GetTargetHeight(), color, (z & 0xFFFFFF) / float(0xFFFFFF), PixelShaderCache::GetClearProgram(), VertexShaderCache::GetClearVertexShader());
+	D3D::drawClearQuad(color, (z & 0xFFFFFF) / float(0xFFFFFF), PixelShaderCache::GetClearProgram(), VertexShaderCache::GetClearVertexShader());
 	RestoreAPIState();
 }
 
@@ -896,7 +899,7 @@ void Renderer::Swap(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight,cons
 		vp.MinZ = 0.0f;
 		vp.MaxZ = 1.0f;
 		D3D::dev->SetViewport(&vp);
-		D3D::drawClearQuad(GetTargetWidth(), GetTargetHeight(), 0, 1.0, PixelShaderCache::GetClearProgram(), VertexShaderCache::GetClearVertexShader());
+		D3D::drawClearQuad(0, 1.0, PixelShaderCache::GetClearProgram(), VertexShaderCache::GetClearVertexShader());
 	}
 	else
 	{
@@ -1107,20 +1110,16 @@ void Renderer::Swap(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight,cons
 
 	OSD::DrawMessages();
 	D3D::EndFrame();
-	frameCount++;
+	++frameCount;
 
 	GFX_DEBUGGER_PAUSE_AT(NEXT_FRAME, true);
 
 	DLCache::ProgressiveCleanup();
 	TextureCache::Cleanup();
 
-	// reload textures if these settings changed
-	if (g_Config.bSafeTextureCache != g_ActiveConfig.bSafeTextureCache ||
-		g_Config.bUseNativeMips != g_ActiveConfig.bUseNativeMips)
-		TextureCache::Invalidate(false);
-
-	// Enable any configuration changes
+	// Enable configuration changes
 	UpdateActiveConfig();
+	TextureCache::OnConfigChanged(g_ActiveConfig);
 
 	SetWindowSize(fbWidth, fbHeight);
 
@@ -1172,20 +1171,8 @@ void Renderer::Swap(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight,cons
 		D3D::dev->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0,0,0), 1.0f, 0);
 	}
 
-	// Place messages on the picture, then copy it to the screen
-	// ---------------------------------------------------------------------
-	// Count FPS.
-	// -------------
-	static int fpscount = 0;
-	static unsigned long lasttime = 0;
-	if (Common::Timer::GetTimeMs() - lasttime >= 1000)
-	{
-		lasttime = Common::Timer::GetTimeMs();
-		s_fps = fpscount;
-		fpscount = 0;
-	}
 	if (XFBWrited)
-		++fpscount;
+		s_fps = UpdateFPSCounter();
 
 	// Begin new frame
 	// Set default viewport and scissor, for the clear to work correctly

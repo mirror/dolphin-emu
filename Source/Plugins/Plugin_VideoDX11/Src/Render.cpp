@@ -44,6 +44,7 @@
 #include "Host.h"
 #include "BPFunctions.h"
 #include "AVIDump.h"
+#include "FPSCounter.h"
 
 namespace DX11
 {
@@ -219,6 +220,7 @@ static const D3D11_TEXTURE_ADDRESS_MODE d3dClamps[4] =
 	D3D11_TEXTURE_ADDRESS_WRAP //reserved
 };
 
+
 void SetupDeviceObjects()
 {
 	s_television.Init();
@@ -300,10 +302,7 @@ void SetupDeviceObjects()
 	CHECK(hr==S_OK, "Create rasterizer state for Renderer::ResetAPIState");
 	D3D::SetDebugObjectName((ID3D11DeviceChild*)resetraststate, "rasterizer state for Renderer::ResetAPIState");
 
-	D3D11_TEXTURE2D_DESC scrtex_desc = CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, D3D::GetBackBufferWidth(), D3D::GetBackBufferHeight(), 1, 1, 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ|D3D11_CPU_ACCESS_WRITE);
-	hr = D3D::device->CreateTexture2D(&scrtex_desc, NULL, &s_screenshot_texture);
-	CHECK(hr==S_OK, "Create screenshot staging texture");
-	D3D::SetDebugObjectName((ID3D11DeviceChild*)s_screenshot_texture, "staging screenshot texture");
+	s_screenshot_texture = NULL;
 }
 
 // Kill off all device objects
@@ -327,10 +326,20 @@ void TeardownDeviceObjects()
 	s_television.Shutdown();
 }
 
+void CreateScreenshotTexture()
+{
+	D3D11_TEXTURE2D_DESC scrtex_desc = CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, D3D::GetBackBufferWidth(), D3D::GetBackBufferHeight(), 1, 1, 0, D3D11_USAGE_STAGING, D3D11_CPU_ACCESS_READ|D3D11_CPU_ACCESS_WRITE);
+	HRESULT hr = D3D::device->CreateTexture2D(&scrtex_desc, NULL, &s_screenshot_texture);
+	CHECK(hr==S_OK, "Create screenshot staging texture");
+	D3D::SetDebugObjectName((ID3D11DeviceChild*)s_screenshot_texture, "staging screenshot texture");
+}
+
 Renderer::Renderer()
 {
 	int x, y, w_temp, h_temp;
 	s_blendMode = 0;
+
+	InitFPSCounter();
 
 	Host_GetRenderWindowSize(x, y, w_temp, h_temp);
 
@@ -699,11 +708,14 @@ void Renderer::UpdateViewport(Matrix44& vpCorrection)
 	// If GX viewport is off the render target, we must clamp our viewport
 	// within the bounds. Use the correction matrix to compensate.
 	ViewportCorrectionMatrix(vpCorrection,
-		intendedX, intendedY, intendedWd, intendedHt,
-		X, Y, Wd, Ht);
+		(float)intendedX, (float)intendedY,
+		(float)intendedWd, (float)intendedHt,
+		(float)X, (float)Y,
+		(float)Wd, (float)Ht);
 
 	// Some games set invalids values for z min and z max so fix them to the max an min alowed and let the shaders do this work
-	D3D11_VIEWPORT vp = CD3D11_VIEWPORT(X, Y, Wd, Ht,
+	D3D11_VIEWPORT vp = CD3D11_VIEWPORT((float)X, (float)Y,
+										(float)Wd, (float)Ht,
 										0.f,	// (xfregs.viewport.farZ - xfregs.viewport.zRange) / 16777216.0f;
 										1.f);   //  xfregs.viewport.farZ / 16777216.0f;
 	D3D::context->RSSetViewports(1, &vp);
@@ -844,6 +856,9 @@ void Renderer::SetBlendMode(bool forceUpdate)
 
 bool Renderer::SaveScreenshot(const std::string &filename, const TargetRectangle &rc)
 {
+	if (!s_screenshot_texture)
+		CreateScreenshotTexture();
+
 	// copy back buffer to system memory
 	D3D::context->CopyResource(s_screenshot_texture, (ID3D11Resource*)D3D::GetBackBuffer()->GetTex());
 
@@ -914,16 +929,13 @@ void Renderer::Swap(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight,cons
 	// Prepare to copy the XFBs to our backbuffer
 	TargetRectangle dst_rect;
 	ComputeDrawRectangle(s_backbuffer_width, s_backbuffer_height, false, &dst_rect);
-	D3D11_VIEWPORT vp = CD3D11_VIEWPORT(0.f, 0.f, (float)s_backbuffer_width, (float)s_backbuffer_height);
-	D3D::context->RSSetViewports(1, &vp);
-	float ClearColor[4] = { 0.f, 0.f, 0.f, 1.f };
-	D3D::context->ClearRenderTargetView(D3D::GetBackBuffer()->GetRTV(), ClearColor);
 
 	int X = dst_rect.left;
 	int Y = dst_rect.top;
 	int Width  = dst_rect.right - dst_rect.left;
 	int Height = dst_rect.bottom - dst_rect.top;
 
+	// TODO: Redundant checks...
 	if (X < 0) X = 0;
 	if (Y < 0) Y = 0;
 	if (X > s_backbuffer_width) X = s_backbuffer_width;
@@ -932,9 +944,12 @@ void Renderer::Swap(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight,cons
 	if (Height < 0) Height = 0;
 	if (Width > (s_backbuffer_width - X)) Width = s_backbuffer_width - X;
 	if (Height > (s_backbuffer_height - Y)) Height = s_backbuffer_height - Y;
-	vp = CD3D11_VIEWPORT((float)X, (float)Y, (float)Width, (float)Height);
+	D3D11_VIEWPORT vp = CD3D11_VIEWPORT((float)X, (float)Y, (float)Width, (float)Height);
 	D3D::context->RSSetViewports(1, &vp);
 	D3D::context->OMSetRenderTargets(1, &D3D::GetBackBuffer()->GetRTV(), NULL);
+
+	float ClearColor[4] = { 0.f, 0.f, 0.f, 1.f };
+	D3D::context->ClearRenderTargetView(D3D::GetBackBuffer()->GetRTV(), ClearColor);
 
 	// activate linear filtering for the buffer copies
 	D3D::SetLinearCopySampler();
@@ -1016,6 +1031,9 @@ void Renderer::Swap(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight,cons
 	{
 		static int s_recordWidth;
 		static int s_recordHeight;
+
+		if (!s_screenshot_texture)
+			CreateScreenshotTexture();
 
 		D3D::context->CopyResource(s_screenshot_texture, (ID3D11Resource*)D3D::GetBackBuffer()->GetTex());
 		if (!bLastFrameDumped)
@@ -1106,13 +1124,9 @@ void Renderer::Swap(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight,cons
 	DLCache::ProgressiveCleanup();
 	TextureCache::Cleanup();
 
-	// reload textures if these settings changed
-	if (g_Config.bSafeTextureCache != g_ActiveConfig.bSafeTextureCache ||
-		g_Config.bUseNativeMips != g_ActiveConfig.bUseNativeMips)
-		TextureCache::Invalidate(false);
-
-	// Enable any configuration changes
+	// Enable configuration changes
 	UpdateActiveConfig();
+	TextureCache::OnConfigChanged(g_ActiveConfig);
 
 	SetWindowSize(fbWidth, fbHeight);
 
@@ -1132,16 +1146,8 @@ void Renderer::Swap(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight,cons
 	}
 
 	// update FPS counter
-	static int fpscount = 0;
-	static unsigned long lasttime = 0;
-	if (Common::Timer::GetTimeMs() - lasttime >= 1000)
-	{
-		lasttime = Common::Timer::GetTimeMs();
-		s_fps = fpscount;
-		fpscount = 0;
-	}
 	if (XFBWrited)
-		++fpscount;
+		s_fps = UpdateFPSCounter();
 
 	// Begin new frame
 	// Set default viewport and scissor, for the clear to work correctly
@@ -1160,10 +1166,14 @@ void Renderer::Swap(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight,cons
 		s_LastAA = g_ActiveConfig.iMultisampleMode;
 		PixelShaderCache::InvalidateMSAAShaders();
 
+		if (windowResized)
+		{
 		// TODO: Aren't we still holding a reference to the back buffer right now?
 		D3D::Reset();
+			SAFE_RELEASE(s_screenshot_texture);
 		s_backbuffer_width = D3D::GetBackBufferWidth();
 		s_backbuffer_height = D3D::GetBackBufferHeight();
+		}
 
 		ComputeDrawRectangle(s_backbuffer_width, s_backbuffer_height, false, &dst_rect);
 
@@ -1418,9 +1428,10 @@ void Renderer::SetSamplerState(int stage, int texindex)
 	gx_state.sampdc[stage].AddressU = d3dClamps[tm0.wrap_s];
 	gx_state.sampdc[stage].AddressV = d3dClamps[tm0.wrap_t];
 
-	gx_state.sampdc[stage].MipLODBias = (float)tm0.lod_bias/32.0f;
-	gx_state.sampdc[stage].MaxLOD = (float)tm1.max_lod/16.f;
+	// When mipfilter is set to "none", just disable mipmapping altogether
+	gx_state.sampdc[stage].MaxLOD = (mip == TEXF_NONE) ? 0.0f : (float)tm1.max_lod/16.f;
 	gx_state.sampdc[stage].MinLOD = (float)tm1.min_lod/16.f;
+	gx_state.sampdc[stage].MipLODBias = (float)tm0.lod_bias/32.0f;
 }
 
 void Renderer::SetInterlacingMode()

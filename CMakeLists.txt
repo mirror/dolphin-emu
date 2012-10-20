@@ -2,6 +2,17 @@
 # General setup
 #
 cmake_minimum_required(VERSION 2.6)
+
+# Update compiler before calling project()
+if (APPLE)
+	# Use clang compiler
+	set(CMAKE_C_COMPILER "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang")
+	set(CMAKE_CXX_COMPILER "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++")
+	if (NOT EXISTS "${CMAKE_CXX_COMPILER}")
+		set(CMAKE_C_COMPILER "clang")
+		set(CMAKE_CXX_COMPILER "clang++")
+	endif()
+endif()
 project(dolphin-emu)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/CMakeTests)
 set(DOLPHIN_IS_STABLE FALSE)
@@ -148,8 +159,17 @@ if (APPLE)
 	# features can be used, not the minimum required version to run.
 	set(OSX_MIN_VERSION "10.5.4")
 	set(TARGET_FLAGS "${TARGET_FLAGS} -mmacosx-version-min=${OSX_MIN_VERSION}")
-	set(TARGET_FLAGS "${TARGET_FLAGS} -isysroot /Developer/SDKs/MacOSX10.6.sdk")
-	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-syslibroot,/Developer/SDKs/MacOSX10.6.sdk")
+	set(SYSROOT_LEGACY_PATH "/Developer/SDKs/MacOSX10.6.sdk")
+	set(SYSROOT_PATH "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.6.sdk")
+	if(EXISTS "${SYSROOT_PATH}/")
+        set(TARGET_SYSROOT ${SYSROOT_PATH})
+	elseif(EXISTS "${SYSROOT_LEGACY_PATH}/")
+        set(TARGET_SYSROOT ${SYSROOT_LEGACY_PATH})
+	endif()
+	if(${TARGET_SYSROOT})
+        set(TARGET_FLAGS "${TARGET_FLAGS} -isysroot ${TARGET_SYSROOT}")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-syslibroot,${TARGET_SYSROOT}")
+	endif()
 	# Do not warn about frameworks that are not available on all architectures.
 	# This avoids a warning when linking with QuickTime.
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-no_arch_warnings")
@@ -211,6 +231,7 @@ if(FASTLOG)
 	add_definitions(-DDEBUGFAST)
 endif()
 
+add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE)
 
 ########################################
 # Dependency checking
@@ -385,6 +406,14 @@ else()
 endif()
 
 if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	include(FindSDL2 OPTIONAL)
+endif()
+if(SDL2_FOUND)
+	message("Using shared SDL2")
+	include_directories(${SDL2_INCLUDE_DIR})
+else(SDL2_FOUND)
+	# SDL2 not found, try SDL
+	if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	include(FindSDL OPTIONAL)
 endif()
 if(SDL_FOUND)
@@ -396,6 +425,7 @@ else(SDL_FOUND)
 	include_directories(Externals/SDL Externals/SDL/include)
 	add_subdirectory(Externals/SDL)
 endif(SDL_FOUND)
+endif(SDL2_FOUND)
 
 set(SFML_FIND_VERSION TRUE)
 set(SFML_FIND_VERSION_MAJOR 1)
@@ -499,7 +529,24 @@ if(NOT DISABLE_WX)
 	endif(wxWidgets_FOUND)
 		
 	if(wxWidgets_FOUND)
-		include(${wxWidgets_USE_FILE})
+		EXECUTE_PROCESS(
+			COMMAND sh "${wxWidgets_CONFIG_EXECUTABLE}"
+				${wxWidgets_CONFIG_OPTIONS} --version
+			OUTPUT_VARIABLE wxWidgets_VERSION
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+			ERROR_QUIET
+			)
+		message("Found wxWidgets version ${wxWidgets_VERSION}")
+		if(UNIX AND NOT APPLE)
+			set(wxMIN_VERSION "2.9.3")
+		else()
+			set(wxMIN_VERSION "2.9.4")
+		endif()
+		if(${wxWidgets_VERSION} VERSION_LESS ${wxMIN_VERSION})
+			message("At least ${wxMIN_VERSION} is required; ignoring found version")
+			unset(wxWidgets_FOUND)
+		endif()
+	endif(wxWidgets_FOUND)
 
 		if(UNIX AND NOT APPLE)
 			# There is a bug in the FindGTK module in cmake version 2.8.2 that
@@ -522,23 +569,34 @@ if(NOT DISABLE_WX)
 			endif()
 		endif()
 
+	if(wxWidgets_FOUND)
+		include(${wxWidgets_USE_FILE})
 		message("wxWidgets found, enabling GUI build")
 	else(wxWidgets_FOUND)
-		if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-			message(FATAL_ERROR "wxWidgets not found.  It is required to build the GUI")
-		endif()
 		message("Using static wxWidgets from Externals")
+
+		# These definitions and includes are used when building dolphin against wx,
+		# not when building wx itself (see wxw3 CMakeLists.txt for that)
 		if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 			add_definitions(-D__WXOSX_COCOA__)
-			include_directories(Externals/wxWidgets3)
-			include_directories(Externals/wxWidgets3/include)
-			add_subdirectory(Externals/wxWidgets3)
-			set(wxWidgets_LIBRARIES "wx")
+		elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+			add_definitions(-D__WXGTK__)
+
+			# Check for required libs
+			check_lib(GTHREAD2 gthread-2.0 glib/gthread.h REQUIRED)
+			check_lib(PANGOCAIRO pangocairo pango/pangocairo.h REQUIRED)
+		elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+			add_definitions(-D__WXMSW__)
 		else()
-			include_directories(Externals/wxWidgets/include)
-			add_subdirectory(Externals/wxWidgets)
+			message(FATAL_ERROR "wxWidgets in Externals is not compatible with your platform")
 		endif()
+		
+		include_directories(
+			Externals/wxWidgets3
+			Externals/wxWidgets3/include)
+		add_subdirectory(Externals/wxWidgets3)
 		set(wxWidgets_FOUND TRUE)
+		set(wxWidgets_LIBRARIES "wx")
 	endif(wxWidgets_FOUND)
 	add_definitions(-DHAVE_WX=1)
 endif(NOT DISABLE_WX)
@@ -562,8 +620,6 @@ file(WRITE ${PROJECT_BINARY_DIR}/Source/Core/Common/Src/scmrev.h
 include_directories("${PROJECT_BINARY_DIR}/Source/Core/Common/Src")
 
 
-add_definitions(-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE)
-
 ########################################
 # Optional Targets
 # TODO: Add DSPSpy and TestSuite.
@@ -573,6 +629,7 @@ option(UNITTESTS "Build unitests" OFF)
 ########################################
 # Start compiling our code
 #
+add_definitions(-std=gnu++0x)
 add_subdirectory(Source)
 
 

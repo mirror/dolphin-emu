@@ -300,7 +300,7 @@ u32 Flatten(u32 address, int *realsize, BlockStats *st, BlockRegStats *gpa,
 	merged_addresses[0] = address;
 	size_of_merged_addresses = 1;
 
-	memset(st, 0, sizeof(st));
+	memset(st, 0, sizeof(*st));
 	
 	// Disabled the following optimization in preference of FAST_ICACHE
 	//UGeckoInstruction previnst = Memory::Read_Opcode_JIT_LC(address - 4);
@@ -560,7 +560,7 @@ u32 Flatten(u32 address, int *realsize, BlockStats *st, BlockRegStats *gpa,
 		}
 		else
 		{
-			// Memory exception occurred
+			// ISI exception or other critical memory exception occurred (game over)
 			break;
 		}
 	}

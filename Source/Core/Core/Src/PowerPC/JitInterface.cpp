@@ -219,13 +219,32 @@ namespace JitInterface
 		if (jit)
 			jit->ClearCache();
 		#endif
+		#ifdef _M_ARM
+		if (jitarm)
+			jitarm->ClearCache();
+		#endif
 	}
-
-	void InvalidateICache(u32 address)
+	void ClearSafe()
 	{
 		#ifndef _M_GENERIC
 		if (jit)
-			jit->GetBlockCache()->InvalidateICache(address);
+			jit->GetBlockCache()->ClearSafe();
+		#endif
+		#ifdef _M_ARM
+		if (jitarm)
+			jitarm->GetBlockCache()->ClearSafe();
+		#endif
+	}
+
+	void InvalidateICache(u32 address, u32 size)
+	{
+		#ifndef _M_GENERIC
+		if (jit)
+			jit->GetBlockCache()->InvalidateICache(address, size);
+		#endif
+		#ifdef _M_ARM
+		if (jitarm)
+			jitarm->GetBlockCache()->InvalidateICache(address, size);
 		#endif
 	}
 

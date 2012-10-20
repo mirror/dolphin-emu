@@ -570,7 +570,7 @@ const char *GenerateVertexShaderCode(u32 components, API_TYPE ApiType)
 	//if not early z culling will improve speed
 	if (is_d3d)
 	{
-		WRITE(p, "o.pos.z = "I_DEPTHPARAMS".x * o.pos.w + o.pos.z * "I_DEPTHPARAMS".y;\n");
+		WRITE(p, "o.pos.z = " I_DEPTHPARAMS".x * o.pos.w + o.pos.z * " I_DEPTHPARAMS".y;\n");
 	}
 	else
 	{
@@ -596,7 +596,14 @@ const char *GenerateVertexShaderCode(u32 components, API_TYPE ApiType)
 	    //seems to get rather complicated
 	}
 
-	if (ApiType == API_GLSL)
+	if (ApiType & API_D3D9)
+	{
+		// D3D9 is addressing pixel centers instead of pixel boundaries in clip space.
+		// Thus we need to offset the final position by half a pixel
+		WRITE(p, "o.pos = o.pos + float4(" I_DEPTHPARAMS".z, " I_DEPTHPARAMS".w, 0.f, 0.f);\n");
+	}
+
+	if(ApiType == API_GLSL)
 	{
 		// Bit ugly here
 		// Will look better when we bind uniforms in GLSL 1.3
