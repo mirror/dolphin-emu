@@ -137,6 +137,7 @@ void JitArm::extshx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(Integer)
+	Default(inst); return;
 	ARMReg RA, RS;
 	RA = gpr.R(inst.RA);
 	RS = gpr.R(inst.RS);
@@ -150,6 +151,7 @@ void JitArm::extsbx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(Integer)
+	Default(inst); return;
 	ARMReg RA, RS;
 	RA = gpr.R(inst.RA);
 	RS = gpr.R(inst.RS);
