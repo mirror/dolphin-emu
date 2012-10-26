@@ -21,6 +21,8 @@ ArmRegCache::ArmRegCache()
 {
 	emit = 0;
 }
+
+static u32 EmitRegs[ARMREGS];
 void ArmRegCache::Init(ARMXEmitter *emitter)
 {
 	emit = emitter;
@@ -44,6 +46,10 @@ void ArmRegCache::Init(ARMXEmitter *emitter)
 		ArmRegs[a].Reg = Regs[a];
 		ArmRegs[a].free = true;
 	}
+	// Set to a invalid number first so it will load w/e
+	// value that is in if it hasn't ever loaded
+	for(u8 a = 0; a < ARMREGS; ++a)
+		EmitRegs[a] = 33;
 }
 void ArmRegCache::Start(PPCAnalyst::BlockRegStats &stats)
 {
@@ -54,36 +60,86 @@ void ArmRegCache::Start(PPCAnalyst::BlockRegStats &stats)
 			numUsedRegs++;
 	}
 	int count = 0;
-	ARMReg *PPCRegs = GetPPCAllocationOrder(count);
 	int CurrentSetReg = 0;
-	// Reset our registers
-	for (u8 a = 0; a < NUMPPCREG; ++a)
+	ARMReg *PPCRegs = GetPPCAllocationOrder(count);
+	// We have less used registers this block than the max we can offer.
+	// We can just allocate them all.
+	// MOV and LDR them all
+	
+	for(u8 a = 0; a < 32 && CurrentSetReg < NUMPPCREG; ++a)
 	{
-		ArmCRegs[a].PPCReg = -1;
-		ArmCRegs[a].free = true;
-	}
-	// Alright, load in the GPR location
-	emit->MOVW(R14, (u32)&PowerPC::ppcState.gpr); // Load in our location
-	emit->MOVT(R14, (u32)&PowerPC::ppcState.gpr, true);
-		// We have less used registers this block than the max we can offer.
-		// We can just allocate them all.
-		// MOV and LDR them all
-		for(u8 a = 0; a < 32 && CurrentSetReg < NUMPPCREG; ++a)
+		if (stats.GetTotalNumAccesses(a) > 0)
 		{
-			if (stats.GetTotalNumAccesses(a) > 0)
+			// Right, we use this one.
+			// Set the host side stuff first so we can track usage
+			// while compiling as well
+							
+		// Now on the emitted side, let's check to see if that
+			// register is loaded in already in this register location
+			ARMReg GPRReg = R12;
+
+			ARMReg CacheLoc = R14;
+			emit->ARMABI_MOVI2R(CacheLoc, (u32)&EmitRegs);
+
+			
+			emit->ARMABI_MOVI2R(R11, (u32)&PowerPC::ppcState.gpr);
+			// Need to check if this register exists anywhere else, if it
+			// does, flush it.
+			emit->MOV(R10, 0);
+			for(int b = 0; b < NUMPPCREG; ++b)
 			{
-				// Right, we use this one.
-				ArmCRegs[CurrentSetReg].PPCReg = a;
-				ArmCRegs[CurrentSetReg].Reg = PPCRegs[CurrentSetReg]; 
-				ArmCRegs[CurrentSetReg].free = false;
-				// Let's load up that register
-				ARMReg tReg = ArmCRegs[CurrentSetReg].Reg;
-				emit->LDR(tReg, R14, a * 4); // Load the values
-				++CurrentSetReg;
+				emit->LDR(GPRReg, CacheLoc, b * 4); // A is the PPC reg
+				// Check if the PPC variable we are going to use is in
+				// this cache location.
+				emit->CMP(GPRReg, a);
+				FixupBranch Next = emit->B_CC(CC_NEQ);
+				// The PPC Register is in /THIS/ cache location
+				// Check if it is in the location we are currently in.
+				emit->CMP(R10, CurrentSetReg);
+				FixupBranch NotSame = emit->B_CC(CC_EQ);
+				// Not in the same location, dump it.
+				emit->LSL(GPRReg, GPRReg, 2);
+				emit->STR(R11, PPCRegs[b], GPRReg, true, true);
+				emit->MOV(R12, 33);
+				emit->STR(CacheLoc, R12, b * 4); 
+				
+				emit->SetJumpTarget(NotSame);
+				emit->SetJumpTarget(Next);	
+				emit->ADD(R10, R10, 1);
 			}
+			emit->LDR(GPRReg, CacheLoc, CurrentSetReg * 4); // A is the PPC reg
+			emit->CMP(GPRReg, a); // Now compare it to the reg
+			FixupBranch Equal = emit->B_CC(CC_EQ);
+			// Will jump over this loading if it contains the register
+
+			emit->CMP(GPRReg, 33);
+			FixupBranch DontStore = emit->B_CC(CC_EQ);
+			// Alright, so it doesn't contain the register we want.
+			// First let's store the register that is in there
+			
+			// Shift the register left two to get the memory address
+			// offset in the array
+			emit->LSL(GPRReg, GPRReg, 2);
+
+			emit->STR(R11, PPCRegs[CurrentSetReg], GPRReg, true, true);
+			emit->SetJumpTarget(DontStore);
+			// Alright, let's load the register from memory location
+			emit->LDR(PPCRegs[CurrentSetReg], R11, a * 4);
+
+			// Alright, let's set the cache number to the PPC number
+			emit->MOV(GPRReg, a);
+			emit->STR(CacheLoc, GPRReg, CurrentSetReg * 4);
+			 
+			emit->SetJumpTarget(Equal);
+			ArmCRegs[CurrentSetReg].PPCReg = a;
+			ArmCRegs[CurrentSetReg].Reg = PPCRegs[CurrentSetReg]; 
+			ArmCRegs[CurrentSetReg].free = false;
+			++CurrentSetReg;
 		}
-		for(u8 a = 0; a < 32; ++a)
-			regs[a].UsesLeft = stats.GetTotalNumAccesses(a);	
+	}
+
+	for(u8 a = 0; a < 32; ++a)
+		regs[a].UsesLeft = stats.GetTotalNumAccesses(a);	
 }
 ARMReg *ArmRegCache::GetPPCAllocationOrder(int &count)
 {
@@ -155,16 +211,23 @@ ARMReg ArmRegCache::R(int preg)
 	_assert_msg_(_DYNA_REC, false, "Can't handle overflow yet! Tried loading PREG: %d", preg);
 	exit(0);
 }
+
 void ArmRegCache::Flush()
 {
 	emit->MOVW(R14, (u32)&PowerPC::ppcState.gpr);
 	emit->MOVT(R14, (u32)&PowerPC::ppcState.gpr, true);
+	emit->ARMABI_MOVI2R(R12, (u32)&EmitRegs);
 	
 	for(u8 a = 0; a < NUMPPCREG; ++a)
 	{
-		if(!ArmCRegs[a].free)
+		if (!ArmCRegs[a].free)
 		{
-			emit->STR(R14, ArmCRegs[a].Reg, ArmCRegs[a].PPCReg * 4); 
+			emit->LDR(R11, R12, a * 4);
+			emit->CMP(R11, 33);
+			FixupBranch Invalid = emit->B_CC(CC_EQ);
+			// Not in the same location, dump it.
+			emit->STR(R14, ArmCRegs[a].Reg, a * 4);
+			emit->SetJumpTarget(Invalid);
 		}
 	}
 }
@@ -173,6 +236,8 @@ void ArmRegCache::FlushAndStore(int OldReg, int NewReg)
 {
 	emit->MOVW(R14, (u32)&PowerPC::ppcState.gpr);
 	emit->MOVT(R14, (u32)&PowerPC::ppcState.gpr, true);
+	emit->ARMABI_MOVI2R(R11, (u32)&EmitRegs);
+
 	for (u8 a = 0; a < NUMPPCREG; ++a)
 	{
 		if(ArmCRegs[a].PPCReg == OldReg)
@@ -180,6 +245,11 @@ void ArmRegCache::FlushAndStore(int OldReg, int NewReg)
 			emit->STR(R14, ArmCRegs[a].Reg, ArmCRegs[a].PPCReg * 4);
 			emit->LDR(ArmCRegs[a].Reg, R14, NewReg * 4);
 			ArmCRegs[a].PPCReg = NewReg;
+
+			// Alright, make sure to set the emit array to the current reg we
+			// are switching too as well
+			emit->MOV(R12, NewReg);
+			emit->STR(R11, R12, a * 4);
 			return;
 		}
 	}
@@ -189,11 +259,18 @@ void ArmRegCache::ReloadPPC()
 {
 	emit->MOVW(R14, (u32)&PowerPC::ppcState.gpr);
 	emit->MOVT(R14, (u32)&PowerPC::ppcState.gpr, true);
+	emit->ARMABI_MOVI2R(R12, (u32)&EmitRegs);
+		
 	for(u8 a = 0; a < NUMPPCREG; ++a)
 	{
-		if(!ArmCRegs[a].free)
+		if (!ArmCRegs[a].free)
 		{
-			emit->LDR(ArmCRegs[a].Reg, R14, ArmCRegs[a].PPCReg * 4); 
+			emit->LDR(R11, R12, a * 4);
+			emit->CMP(R11, 33);
+			FixupBranch Invalid = emit->B_CC(CC_EQ);
+			// Not in the same location, dump it.
+			emit->LDR(ArmCRegs[a].Reg, R14, a * 4);	
+			emit->SetJumpTarget(Invalid);
 		}
 	}
 }

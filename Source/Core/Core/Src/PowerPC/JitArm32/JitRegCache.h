@@ -58,20 +58,22 @@ private:
 	PPCCachedReg regs[32];
 	JRCPPC ArmCRegs[ARMREGS];
 	JRCReg ArmRegs[ARMREGS]; // Four registers remaining
+
 	int NUMPPCREG;
 	int NUMARMREG;
-	
+
 	ARMReg *GetAllocationOrder(int &count);
 	ARMReg *GetPPCAllocationOrder(int &count);
+
+	void FlushAndStore(int OldReg, int NewReg);
+
 protected:
-	
 	ARMXEmitter *emit;
 	
 public:
-
 	ArmRegCache();
-
 	~ArmRegCache() {}
+
 	void Init(ARMXEmitter *emitter);
 	void Start(PPCAnalyst::BlockRegStats &stats);
 
@@ -82,7 +84,6 @@ public:
 	void Unlock(ARMReg R0, ARMReg R1 = INVALID_REG, ARMReg R2 = INVALID_REG, ARMReg R3 =
 	INVALID_REG);
 	void Flush();
-	void FlushAndStore(int OldReg, int NewReg);
 	void ReloadPPC(); // Need to reload after flush most of the time
 	ARMReg R(int preg); // Returns a cached register
 	void Analyze(UGeckoInstruction inst);
