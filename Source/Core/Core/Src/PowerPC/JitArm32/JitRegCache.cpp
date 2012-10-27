@@ -220,13 +220,13 @@ void ArmRegCache::Flush()
 	
 	for(u8 a = 0; a < NUMPPCREG; ++a)
 	{
-		if (!ArmCRegs[a].free)
 		{
 			emit->LDR(R11, R12, a * 4);
 			emit->CMP(R11, 33);
 			FixupBranch Invalid = emit->B_CC(CC_EQ);
 			// Not in the same location, dump it.
-			emit->STR(R14, ArmCRegs[a].Reg, a * 4);
+			emit->LSL(R11, R11, 2);
+			emit->STR(R14, ArmCRegs[a].Reg, R11, true, true);
 			emit->SetJumpTarget(Invalid);
 		}
 	}
@@ -263,13 +263,13 @@ void ArmRegCache::ReloadPPC()
 		
 	for(u8 a = 0; a < NUMPPCREG; ++a)
 	{
-		if (!ArmCRegs[a].free)
 		{
 			emit->LDR(R11, R12, a * 4);
 			emit->CMP(R11, 33);
 			FixupBranch Invalid = emit->B_CC(CC_EQ);
 			// Not in the same location, dump it.
-			emit->LDR(ArmCRegs[a].Reg, R14, a * 4);	
+			emit->LSL(R11, R11, 2);
+			emit->LDR(ArmCRegs[a].Reg, R14, R11, true, true);	
 			emit->SetJumpTarget(Invalid);
 		}
 	}
