@@ -71,7 +71,7 @@ void JitArm::Shutdown()
 void JitArm::WriteCallInterpreter(UGeckoInstruction inst)
 {
 	gpr.Flush();
-//	fpr.Flush(FLUSH_ALL);
+	//fpr.Flush(FLUSH_ALL);
 	Interpreter::_interpreterInstruction instr = GetInterpreterOp(inst);
 	ARMABI_MOVI2R(R0, inst.hex);
 	ARMABI_MOVI2R(R12, (u32)instr);
@@ -189,7 +189,6 @@ void JitArm::WriteExit(u32 destination, int exit_num)
 	Cleanup();
 
 	DoDownCount(); 
-
 	//If nobody has taken care of this yet (this can be removed when all branches are done)
 	JitBlock *b = js.curBlock;
 	b->exitAddress[exit_num] = destination;
@@ -444,7 +443,6 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 					printf("\t-IN_C: %x\n", ops[i].inst.RC);
 				if(Info->flags & FL_IN_S)
 					printf("\t-IN_S: %x\n", ops[i].inst.RS);*/
-				gpr.Analyze(ops[i].inst);
 				if (js.memcheck && (opinfo->flags & FL_USE_FPU))
 				{
 					// Don't do this yet
@@ -462,6 +460,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		BKPT(0x500);
 	if	(broken_block)
 	{
+		printf("Broken Block going to 0x%08x\n", nextPC);
 		WriteExit(nextPC, 0);
 	}
 			

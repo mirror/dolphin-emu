@@ -43,9 +43,9 @@ struct PPCCachedReg
 };
 struct JRCPPC
 {
-	s32 PPCReg; // Tied to which PPC Register
+	u32 PPCReg; // Tied to which PPC Register
 	ARMReg Reg; // Tied to which ARM Register
-	bool free;	// Is it free?
+	u32 LastLoad;
 };
 struct JRCReg
 {
@@ -64,8 +64,6 @@ private:
 
 	ARMReg *GetAllocationOrder(int &count);
 	ARMReg *GetPPCAllocationOrder(int &count);
-
-	void FlushAndStore(int OldReg, int NewReg);
 
 protected:
 	ARMXEmitter *emit;
@@ -86,7 +84,6 @@ public:
 	void Flush();
 	void ReloadPPC(); // Need to reload after flush most of the time
 	ARMReg R(int preg); // Returns a cached register
-	void Analyze(UGeckoInstruction inst);
 
 };
 

@@ -76,14 +76,15 @@ void JitArm::ComputeRC(int cr) {
 	STRB(rA, rB, 0);
 	gpr.Unlock(rA, rB);
 }
-// Wrong, causes SMS to jump to zero
+
 void JitArm::addi(UGeckoInstruction inst)
 {
-	//if (inst.RA) 
+	if (inst.RA)
 	{
 		Default(inst); return;
 	}
 	ARMReg RD = gpr.R(inst.RD);
+
 	if (inst.RA)
 	{
 		ARMReg rA = gpr.GetReg(false);
@@ -94,7 +95,7 @@ void JitArm::addi(UGeckoInstruction inst)
 	else
 		ARMABI_MOVI2R(RD, inst.SIMM_16);
 }
-// Wrong
+// Wrong - 27/10/2012
 void JitArm::addis(UGeckoInstruction inst)
 {
 	//if (inst.RA) 
@@ -112,7 +113,7 @@ void JitArm::addis(UGeckoInstruction inst)
 	else
 		ARMABI_MOVI2R(RD, inst.SIMM_16 << 16);
 }
-// Wrong
+// Wrong 27/10/2012
 void JitArm::addx(UGeckoInstruction inst)
 {
 	Default(inst); return;
@@ -122,10 +123,8 @@ void JitArm::addx(UGeckoInstruction inst)
 	ADDS(RD, RA, RB);
 	if (inst.Rc) GenerateRC();
 }
-// Testing in SMS
 void JitArm::ori(UGeckoInstruction inst)
 {
-	Default(inst); return;
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RS = gpr.R(inst.RS);
 	ARMReg rA = gpr.GetReg();
@@ -137,7 +136,6 @@ void JitArm::extshx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(Integer)
-	Default(inst); return;
 	ARMReg RA, RS;
 	RA = gpr.R(inst.RA);
 	RS = gpr.R(inst.RS);
@@ -151,7 +149,6 @@ void JitArm::extsbx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(Integer)
-	Default(inst); return;
 	ARMReg RA, RS;
 	RA = gpr.R(inst.RA);
 	RS = gpr.R(inst.RS);
@@ -161,21 +158,16 @@ void JitArm::extsbx(UGeckoInstruction inst)
 		ComputeRC();
 	}
 }
-// Seems fine in SMS
-// Crashes BAM3K though
 void JitArm::cmp (UGeckoInstruction inst)
 {
-	Default(inst); return;	
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RB = gpr.R(inst.RB);
 	int crf = inst.CRFD;
 	CMP(RA, RB);
 	ComputeRC(crf);
 }
-// SMS crashes with this one
 void JitArm::cmpi(UGeckoInstruction inst)
 {
-	Default(inst); return;
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg rA = gpr.GetReg();
 	int crf = inst.CRFD;
@@ -185,7 +177,7 @@ void JitArm::cmpi(UGeckoInstruction inst)
 	gpr.Unlock(rA);
 	ComputeRC(crf);
 }
-// Wrong
+// Wrong - 27/10/2012
 void JitArm::cmpli(UGeckoInstruction inst)
 {
 	// Bit special, look in to this one
@@ -198,7 +190,7 @@ void JitArm::cmpli(UGeckoInstruction inst)
 	CMP(RA, rA);
 	GenerateRC(crf);		 
 }
-// Wrong
+// Wrong - 27/10/2012
 void JitArm::negx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
@@ -218,10 +210,8 @@ void JitArm::negx(UGeckoInstruction inst)
 		//GenerateOverflow();
 	}
 }
-// Wrong
 void JitArm::orx(UGeckoInstruction inst)
 {
-	Default(inst); return;
 	ARMReg rA = gpr.R(inst.RA);
 	ARMReg rS = gpr.R(inst.RS);
 	ARMReg rB = gpr.R(inst.RB);
@@ -232,14 +222,10 @@ void JitArm::orx(UGeckoInstruction inst)
 		ComputeRC();
 	}
 }
-// Wrong
+// Wrong 27/10/2012
 void JitArm::rlwinmx(UGeckoInstruction inst)
 {
 	Default(inst); return;
-	if (inst.Rc) {
-		Default(inst);
-		return;
-	}
 	u32 mask = Helper_Mask(inst.MB,inst.ME);
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RS = gpr.R(inst.RS);

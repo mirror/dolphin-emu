@@ -27,12 +27,10 @@
 #include "JitRegCache.h"
 #include "JitAsm.h"
 
-// Wrong
 void JitArm::mtspr(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(SystemRegisters)
-	Default(inst); return;
 	u32 iIndex = (inst.SPRU << 5) | (inst.SPRL & 0x1F);
 	ARMReg RD = gpr.R(inst.RD);
 
@@ -77,12 +75,10 @@ void JitArm::mtspr(UGeckoInstruction inst)
 	STR(rA, RD, iIndex * 4);
 }
 
-// Wrong
 void JitArm::mfspr(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(SystemRegisters)
-	Default(inst); return;
 	u32 iIndex = (inst.SPRU << 5) | (inst.SPRL & 0x1F);
 	ARMReg RD = gpr.R(inst.RD);
 	switch (iIndex)
