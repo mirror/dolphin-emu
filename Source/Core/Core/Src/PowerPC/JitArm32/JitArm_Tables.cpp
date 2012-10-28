@@ -58,7 +58,7 @@ static GekkoOPTemplate primarytable[] =
 	{3,  &JitArm::Break}, //"twi",         OPTYPE_SYSTEM, FL_ENDBLOCK}},
 	{17, &JitArm::sc}, //"sc",          OPTYPE_SYSTEM, FL_ENDBLOCK, 1}},
 
-	{7,  &JitArm::Default}, //"mulli",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_A | FL_RC_BIT, 2}},
+	{7,  &JitArm::mulli}, //"mulli",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_A | FL_RC_BIT, 2}},
 	{8,  &JitArm::Default}, //"subfic",   OPTYPE_INTEGER, FL_OUT_D | FL_IN_A |	FL_SET_CA}},
 	{10, &JitArm::cmpli}, //"cmpli",    OPTYPE_INTEGER, FL_IN_A | FL_SET_CRn}},
 	{11, &JitArm::cmpi}, //"cmpi",     OPTYPE_INTEGER, FL_IN_A | FL_SET_CRn}},
@@ -67,12 +67,12 @@ static GekkoOPTemplate primarytable[] =
 	{14, &JitArm::addi}, //"addi",     OPTYPE_INTEGER, FL_OUT_D | FL_IN_A0}},
 	{15, &JitArm::addis}, //"addis",    OPTYPE_INTEGER, FL_OUT_D | FL_IN_A0}},
 
-	{20, &JitArm::Default}, //"rlwimix",  OPTYPE_INTEGER, FL_OUT_A | FL_IN_A | FL_IN_S | FL_RC_BIT}},
+	{20, &JitArm::rlwimix}, //"rlwimix",  OPTYPE_INTEGER, FL_OUT_A | FL_IN_A | FL_IN_S | FL_RC_BIT}},
 	{21, &JitArm::rlwinmx}, //"rlwinmx",  OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_RC_BIT}},
 	{23, &JitArm::Default}, //"rlwnmx",   OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_IN_B | FL_RC_BIT}},
 
 	{24, &JitArm::ori}, //"ori",      OPTYPE_INTEGER, FL_OUT_A | FL_IN_S}},
-	{25, &JitArm::Default}, //"oris",     OPTYPE_INTEGER, FL_OUT_A | FL_IN_S}},
+	{25, &JitArm::oris}, //"oris",     OPTYPE_INTEGER, FL_OUT_A | FL_IN_S}},
 	{26, &JitArm::Default}, //"xori",     OPTYPE_INTEGER, FL_OUT_A | FL_IN_S}},
 	{27, &JitArm::Default}, //"xoris",    OPTYPE_INTEGER, FL_OUT_A | FL_IN_S}},
 	{28, &JitArm::Default}, //"andi_rc",  OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_SET_CR0}},
@@ -82,15 +82,15 @@ static GekkoOPTemplate primarytable[] =
 	{33, &JitArm::Default}, //"lwzu", OPTYPE_LOAD, FL_OUT_D | FL_OUT_A | FL_IN_A}},
 	{34, &JitArm::Default}, //"lbz",  OPTYPE_LOAD, FL_OUT_D | FL_IN_A}},
 	{35, &JitArm::Default}, //"lbzu", OPTYPE_LOAD, FL_OUT_D | FL_OUT_A | FL_IN_A}},
-	{40, &JitArm::Default}, //"lhz",  OPTYPE_LOAD, FL_OUT_D | FL_IN_A}},
+	{40, &JitArm::lhz}, //"lhz",  OPTYPE_LOAD, FL_OUT_D | FL_IN_A}},
 	{41, &JitArm::Default}, //"lhzu", OPTYPE_LOAD, FL_OUT_D | FL_OUT_A | FL_IN_A}},
 	{42, &JitArm::Default}, //"lha",  OPTYPE_LOAD, FL_OUT_D | FL_IN_A}},
 	{43, &JitArm::Default}, //"lhau", OPTYPE_LOAD, FL_OUT_D | FL_OUT_A | FL_IN_A}},
 
 	{44, &JitArm::Default}, //"sth",  OPTYPE_STORE, FL_IN_A | FL_IN_S}},
 	{45, &JitArm::Default}, //"sthu", OPTYPE_STORE, FL_OUT_A | FL_IN_A | FL_IN_S}},
-	{36, &JitArm::Default}, //"stw",  OPTYPE_STORE, FL_IN_A | FL_IN_S}},
-	{37, &JitArm::Default}, //"stwu", OPTYPE_STORE, FL_OUT_A | FL_IN_A | FL_IN_S}},
+	{36, &JitArm::stw}, //"stw",  OPTYPE_STORE, FL_IN_A | FL_IN_S}},
+	{37, &JitArm::stwu}, //"stwu", OPTYPE_STORE, FL_OUT_A | FL_IN_A | FL_IN_S}},
 	{38, &JitArm::Default}, //"stb",  OPTYPE_STORE, FL_IN_A | FL_IN_S}},
 	{39, &JitArm::Default}, //"stbu", OPTYPE_STORE, FL_OUT_A | FL_IN_A | FL_IN_S}},
 

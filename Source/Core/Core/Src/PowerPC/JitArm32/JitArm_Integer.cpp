@@ -108,15 +108,24 @@ void JitArm::addis(UGeckoInstruction inst)
 	else
 		ARMABI_MOVI2R(RD, inst.SIMM_16 << 16);
 }
-// Wrong 27/10/2012
 void JitArm::addx(UGeckoInstruction inst)
 {
-	Default(inst); return;
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RB = gpr.R(inst.RB);
 	ARMReg RD = gpr.R(inst.RD);
 	ADDS(RD, RA, RB);
-	if (inst.Rc) GenerateRC();
+	if (inst.Rc) ComputeRC();
+}
+// Wrong - 28/10/2012
+void JitArm::mulli(UGeckoInstruction inst)
+{
+	Default(inst); return;
+	ARMReg RA = gpr.R(inst.RA);
+	ARMReg RD = gpr.R(inst.RD);
+	ARMReg rA = gpr.GetReg();
+	ARMABI_MOVI2R(rA, inst.SIMM_16);
+	MUL(RD, RA, rA);
+	gpr.Unlock(rA);
 }
 void JitArm::ori(UGeckoInstruction inst)
 {
@@ -124,6 +133,15 @@ void JitArm::ori(UGeckoInstruction inst)
 	ARMReg RS = gpr.R(inst.RS);
 	ARMReg rA = gpr.GetReg();
 	ARMABI_MOVI2R(rA, inst.UIMM);
+	ORR(RA, RS, rA);
+	gpr.Unlock(rA);
+}
+void JitArm::oris(UGeckoInstruction inst)
+{
+	ARMReg RA = gpr.R(inst.RA);
+	ARMReg RS = gpr.R(inst.RS);
+	ARMReg rA = gpr.GetReg();
+	ARMABI_MOVI2R(rA, inst.UIMM << 16);
 	ORR(RA, RS, rA);
 	gpr.Unlock(rA);
 }
@@ -172,18 +190,16 @@ void JitArm::cmpi(UGeckoInstruction inst)
 	gpr.Unlock(rA);
 	ComputeRC(crf);
 }
-// Wrong - 27/10/2012
+// Wrong - 28/10/2012
 void JitArm::cmpli(UGeckoInstruction inst)
 {
-	// Bit special, look in to this one
-	Default(inst); return;
+	Default(inst); return; 
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg rA = gpr.GetReg(false);
 	int crf = inst.CRFD;
-	u32 b = inst.UIMM;
-	ARMABI_MOVI2R(rA, b);
+	ARMABI_MOVI2R(rA, inst.UIMM);
 	CMP(RA, rA);
-	GenerateRC(crf);		 
+	ComputeRC(crf);		 
 }
 // Wrong - 27/10/2012
 void JitArm::negx(UGeckoInstruction inst)
@@ -205,24 +221,43 @@ void JitArm::negx(UGeckoInstruction inst)
 		//GenerateOverflow();
 	}
 }
-// Wrong - 28/10/2012
 void JitArm::orx(UGeckoInstruction inst)
 {
-	Default(inst);return;
 	ARMReg rA = gpr.R(inst.RA);
 	ARMReg rS = gpr.R(inst.RS);
 	ARMReg rB = gpr.R(inst.RB);
-	ORR(rA, rS, rB);
+	ORRS(rA, rS, rB);
+	if (inst.Rc)
+		ComputeRC();
+}
+void JitArm::rlwimix(UGeckoInstruction inst)
+{
+	u32 mask = Helper_Mask(inst.MB,inst.ME);
+	ARMReg RA = gpr.R(inst.RA);
+	ARMReg RS = gpr.R(inst.RS);
+	ARMReg rA = gpr.GetReg();
+	ARMReg rB = gpr.GetReg();
+	ARMABI_MOVI2R(rA, mask);
+	ARMABI_MOVI2R(rB, ~mask);
+
+	Operand2 Shift(32 - inst.SH, ROR, RS); // This rotates left, while ARM has only rotate right, so swap it.
 	if (inst.Rc)
 	{
-		CMP(rA, 0);
-		ComputeRC();
+		AND (rB, RA, rB); // RA & ~mask
+		AND (rA, rA, Shift);
+		ORRS(RA, rB, rA);
+		GenerateRC();	
 	}
+	else
+	{
+		AND (rB, RA, rB); // RA & ~mask
+		AND (rA, rA, Shift);
+		ORR(RA, rB, rA);
+	}
+	gpr.Unlock(rA, rB);
 }
-// Wrong 27/10/2012
 void JitArm::rlwinmx(UGeckoInstruction inst)
 {
-	Default(inst); return;
 	u32 mask = Helper_Mask(inst.MB,inst.ME);
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RS = gpr.R(inst.RS);
@@ -240,6 +275,5 @@ void JitArm::rlwinmx(UGeckoInstruction inst)
 	gpr.Unlock(rA);
 
 	//m_GPR[inst.RA] = _rotl(m_GPR[inst.RS],inst.SH) & mask;
-	if (inst.Rc) GenerateRC(); 
 }
 

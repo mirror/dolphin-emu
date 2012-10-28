@@ -22,12 +22,94 @@
 #include "../../CoreTiming.h"
 #include "../PPCTables.h"
 #include "ArmEmitter.h"
+#include "../../HW/Memmap.h"
+
 
 #include "Jit.h"
 #include "JitRegCache.h"
 #include "JitAsm.h"
 
+void JitArm::stw(UGeckoInstruction inst)
+{
+	ARMReg RS = gpr.R(inst.RS);
+	ARMReg ValueReg = gpr.GetReg();
+	ARMReg Addr = gpr.GetReg();
+	ARMReg Function = gpr.GetReg();
+	
+	ARMABI_MOVI2R(Addr, (u32)inst.SIMM_16);
+	MOV(ValueReg, RS);
+	if (inst.RA)
+	{
+		ARMReg RA = gpr.R(inst.RA);
+		ADD(Addr, Addr, RA);
+	}
+	ARMABI_MOVI2R(Function, (u32)&Memory::Write_U32);	
+	PUSH(4, R0, R1, R2, R3);
+	MOV(R0, ValueReg);
+	MOV(R1, Addr);
+	BL(Function);
+	POP(4, R0, R1, R2, R3);
+	gpr.Unlock(ValueReg, Addr, Function);
 
+//Memory::Write_U32(m_GPR[_inst.RS], _inst.RA ? (m_GPR[_inst.RA] + _inst.SIMM_16) : (u32)_inst.SIMM_16);
+}
+// Wrong 28/10/2012
+void JitArm::stwu(UGeckoInstruction inst)
+{
+	Default(inst); return;
+	ARMReg RA = gpr.R(inst.RA);
+	ARMReg RS = gpr.R(inst.RS);
+	ARMReg ValueReg = gpr.GetReg();
+	ARMReg Addr = gpr.GetReg();
+	ARMReg Function = gpr.GetReg();
+	
+	ARMABI_MOVI2R(Addr, inst.SIMM_16);
+	MOV(ValueReg, RS);
+	ADD(Addr, Addr, RA);
+
+	ARMABI_MOVI2R(Function, (u32)&Memory::Write_U32);	
+	PUSH(4, R0, R1, R2, R3);
+	MOV(R0, ValueReg);
+	MOV(R1, Addr);
+	BL(Function);
+	POP(4, R0, R1, R2, R3);
+	gpr.Unlock(ValueReg, Addr, Function);
+//Memory::Write_U32(m_GPR[_inst.RS], m_GPR[_inst.RA] + _inst.SIMM_16);
+}
+// Wrong 28/10/2012
+void JitArm::lhz(UGeckoInstruction inst)
+{
+	Default(inst); return;
+	ARMReg rA = gpr.GetReg();
+	ARMReg rB = gpr.GetReg();
+	ARMReg RD = gpr.R(inst.RD);
+	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.Exceptions);
+	LDR(rA, rA);
+	ARMABI_MOVI2R(rB, EXCEPTION_DSI);
+	CMP(rA, rB);
+	FixupBranch DoNotLoad = B_CC(CC_EQ);
+	
+	ARMABI_MOVI2R(rB, (u32)inst.SIMM_16);
+	if (inst.RA)
+	{
+		ARMReg RA = gpr.R(inst.RA);
+		ADD(rB, rB, RA);
+	}
+	
+	ARMABI_MOVI2R(rA, (u32)&Memory::Read_U16);	
+	PUSH(4, R0, R1, R2, R3);
+	MOV(R0, rB);
+	BL(rA);
+	SXTH(R0, R0);
+	MOV(rA, R0);
+	POP(4, R0, R1, R2, R3);
+	MOV(RD, rA);
+	SetJumpTarget(DoNotLoad);
+	gpr.Unlock(rA, rB);
+//	u32 temp = (u32)(u16)Memory::Read_U16(_inst.RA ? (m_GPR[_inst.RA] + _inst.SIMM_16) : (u32)_inst.SIMM_16);
+//	if (!(PowerPC::ppcState.Exceptions & EXCEPTION_DSI))
+//		m_GPR[_inst.RD] = temp;
+}
 void JitArm::icbi(UGeckoInstruction inst)
 {
 	Default(inst);

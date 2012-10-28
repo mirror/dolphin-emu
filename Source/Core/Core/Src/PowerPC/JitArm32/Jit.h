@@ -172,8 +172,11 @@ public:
 	void cmpi(UGeckoInstruction _inst);
 	void cmpli(UGeckoInstruction _inst);
 	void negx(UGeckoInstruction _inst);
+	void mulli(UGeckoInstruction _inst);
 	void ori(UGeckoInstruction _inst);	
+	void oris(UGeckoInstruction _inst);	
 	void orx(UGeckoInstruction _inst);
+	void rlwimix(UGeckoInstruction _inst);
 	void rlwinmx(UGeckoInstruction _inst);
 	void extshx(UGeckoInstruction inst);
 	void extsbx(UGeckoInstruction inst);
@@ -185,6 +188,9 @@ public:
 
 	// LoadStore
 	void icbi(UGeckoInstruction _inst);
+	void lhz(UGeckoInstruction _inst);
+	void stw(UGeckoInstruction _inst);
+	void stwu(UGeckoInstruction _inst);
 };
 void ArmJit(u32 *em_address);
 
