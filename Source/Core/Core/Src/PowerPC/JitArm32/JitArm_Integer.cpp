@@ -95,13 +95,8 @@ void JitArm::addi(UGeckoInstruction inst)
 	else
 		ARMABI_MOVI2R(RD, inst.SIMM_16);
 }
-// Wrong - 27/10/2012
 void JitArm::addis(UGeckoInstruction inst)
 {
-	//if (inst.RA) 
-	{
-		Default(inst); return;
-	}
 	ARMReg RD = gpr.R(inst.RD);
 	if (inst.RA)
 	{
@@ -210,8 +205,10 @@ void JitArm::negx(UGeckoInstruction inst)
 		//GenerateOverflow();
 	}
 }
+// Wrong - 28/10/2012
 void JitArm::orx(UGeckoInstruction inst)
 {
+	Default(inst);return;
 	ARMReg rA = gpr.R(inst.RA);
 	ARMReg rS = gpr.R(inst.RS);
 	ARMReg rB = gpr.R(inst.RB);
