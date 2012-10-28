@@ -61,7 +61,7 @@ void ARMXEmitter::ARMABI_MOVI2R(ARMReg reg, Operand2 val)
 	// The imm can be rotated or shifted a certain way.
 	// Masks tend to be able to be moved in to a reg with one call
 	MOVW(reg, val); 
-	if(val.Imm16High() & 0xFFFF) 
+	if(val.Value & 0xFFFF0000) 
 		MOVT(reg, val, true);
 }
 // Moves IMM to memory location

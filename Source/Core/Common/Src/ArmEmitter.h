@@ -102,10 +102,13 @@ enum OpType
 
 class Operand2
 {
+	friend class ARMXEmitter;
+protected:
+	u32 Value;
+
 private:
 	OpType Type;	
 
-	u32 Value;
 	// IMM types
 	u8	Rotation; // Only for u8 values
 
