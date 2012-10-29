@@ -78,7 +78,7 @@ static GekkoOPTemplate primarytable[] =
 	{28, &JitArm::Default}, //"andi_rc",  OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_SET_CR0}},
 	{29, &JitArm::Default}, //"andis_rc", OPTYPE_INTEGER, FL_OUT_A | FL_IN_S | FL_SET_CR0}},
 
-	{32, &JitArm::Default}, //"lwz",  OPTYPE_LOAD, FL_OUT_D | FL_IN_A}},
+	{32, &JitArm::lwz}, //"lwz",  OPTYPE_LOAD, FL_OUT_D | FL_IN_A}},
 	{33, &JitArm::Default}, //"lwzu", OPTYPE_LOAD, FL_OUT_D | FL_OUT_A | FL_IN_A}},
 	{34, &JitArm::Default}, //"lbz",  OPTYPE_LOAD, FL_OUT_D | FL_IN_A}},
 	{35, &JitArm::Default}, //"lbzu", OPTYPE_LOAD, FL_OUT_D | FL_OUT_A | FL_IN_A}},
