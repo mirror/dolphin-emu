@@ -90,8 +90,13 @@ void JitArm::Default(UGeckoInstruction _inst)
 
 void JitArm::HLEFunction(UGeckoInstruction _inst)
 {
-	printf("Trying to HLE a call, can't do this yet\n");
-	exit(0);
+	gpr.Flush();
+//	fpr.Flush(FLUSH_ALL);
+	ARMABI_CallFunctionCC((void*)&HLE::Execute, js.compilerPC, _inst.hex);
+	ARMReg rA = gpr.GetReg();
+	ARMABI_MOVI2R(rA, (u32)&NPC);
+	LDR(rA, rA);
+	WriteExitDestInR(rA);
 }
 
 void JitArm::DoNothing(UGeckoInstruction _inst)

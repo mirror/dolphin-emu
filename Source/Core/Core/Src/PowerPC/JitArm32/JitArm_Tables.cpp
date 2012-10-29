@@ -53,7 +53,7 @@ static GekkoOPTemplate primarytable[] =
 	{16, &JitArm::bcx}, //"bcx", OPTYPE_SYSTEM, FL_ENDBLOCK}},
 	{18, &JitArm::bx}, //"bx",  OPTYPE_SYSTEM, FL_ENDBLOCK}},
 
-	{1,  &JitArm::Break}, //"HLEFunction", OPTYPE_SYSTEM, FL_ENDBLOCK}},
+	{1,  &JitArm::HLEFunction}, //"HLEFunction", OPTYPE_SYSTEM, FL_ENDBLOCK}},
 	{2,  &JitArm::Default}, //"DynaBlock",   OPTYPE_SYSTEM, 0}},
 	{3,  &JitArm::Break}, //"twi",         OPTYPE_SYSTEM, FL_ENDBLOCK}},
 	{17, &JitArm::sc}, //"sc",          OPTYPE_SYSTEM, FL_ENDBLOCK, 1}},

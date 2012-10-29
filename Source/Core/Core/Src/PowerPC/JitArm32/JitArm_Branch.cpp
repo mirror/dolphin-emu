@@ -238,30 +238,43 @@ void JitArm::bcctrx(UGeckoInstruction inst)
 	}
 	else
 	{
-		printf("Rare version not yet implemented\n");
-		exit(0x4A4E);
 		// Rare condition seen in (just some versions of?) Nintendo's NES Emulator
 
 		// BO_2 == 001zy -> b if false
 		// BO_2 == 011zy -> b if true
-
-		// Ripped from bclrx
-		/*TEST(8, M(&PowerPC::ppcState.cr_fast[inst.BI >> 2]), Imm8(8 >> (inst.BI & 3)));
-		Gen::CCFlags branch;
+		ARMReg rA = gpr.GetReg();
+		ARMReg rB = gpr.GetReg();
+		
+		ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
+		MOV(rB, 8 >> (inst.BI & 3));
+		LDR(rA, rA);
+		TST(rA, rB);
+		CCFlags branch;
 		if (inst.BO_2 & BO_BRANCH_IF_TRUE)
-			branch = CC_Z;
+			branch = CC_EQ;
 		else
-			branch = CC_NZ; 
-		FixupBranch b = J_CC(branch, false);
-		MOV(32, R(EAX), M(&CTR));
-		AND(32, R(EAX), Imm32(0xFFFFFFFC));
-		//MOV(32, M(&PC), R(EAX)); => Already done in WriteExitDestInEAX()
-		if (inst.LK_3)
-			MOV(32, M(&LR), Imm32(js.compilerPC + 4)); //	LR = PC + 4;
-		WriteExitDestInEAX();
-		// Would really like to continue the block here, but it ends. TODO.
+			branch = CC_NEQ;
+		FixupBranch b = B_CC(branch);
+
+		ARMABI_MOVI2R(rA, (u32)&CTR);
+		LDR(rA, rA);
+		MVN(rB, 0x3); // 0xFFFFFFFC
+		AND(rA, rA, rB);
+
+		if (inst.LK_3){
+			ARMReg rC = gpr.GetReg(false);
+			u32 Jumpto = js.compilerPC + 4;
+			ARMABI_MOVI2R(rB, (u32)&LR);
+			MOVW(rC, Jumpto);
+			MOVT(rC, Jumpto, true);
+			STR(rB, rC);
+			//ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
+		}
+		gpr.Unlock(rB); // rA gets unlocked in WriteExitDestInR
+		WriteExitDestInR(rA);
+
 		SetJumpTarget(b);
-		WriteExit(js.compilerPC + 4, 1);*/
+		WriteExit(js.compilerPC + 4, 1);
 	}
 }
 void JitArm::bclrx(UGeckoInstruction inst)

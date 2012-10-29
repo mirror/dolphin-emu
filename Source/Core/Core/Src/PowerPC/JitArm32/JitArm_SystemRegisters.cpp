@@ -31,6 +31,7 @@ void JitArm::mtspr(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(SystemRegisters)
+
 	u32 iIndex = (inst.SPRU << 5) | (inst.SPRL & 0x1F);
 	ARMReg RD = gpr.R(inst.RD);
 
@@ -62,7 +63,6 @@ void JitArm::mtspr(UGeckoInstruction inst)
 			ABI_CallFunctionC(ProtectFunction(&Jit64::DestroyBlocksWithFlag, 1), (u32)BLOCK_USE_GQR0 << gqr);
 			SetJumpTarget(skip_destroy);*/
 		}
-		break;
 		// TODO - break block if quantizers are written to.
 	default:
 		Default(inst);
@@ -79,6 +79,7 @@ void JitArm::mfspr(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(SystemRegisters)
+
 	u32 iIndex = (inst.SPRU << 5) | (inst.SPRL & 0x1F);
 	ARMReg RD = gpr.R(inst.RD);
 	switch (iIndex)
