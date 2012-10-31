@@ -79,17 +79,13 @@ void JitArm::ComputeRC(int cr) {
 
 void JitArm::addi(UGeckoInstruction inst)
 {
-	if (inst.RA)
-	{
-		Default(inst); return;
-	}
 	ARMReg RD = gpr.R(inst.RD);
 
 	if (inst.RA)
 	{
 		ARMReg rA = gpr.GetReg(false);
 		ARMReg RA = gpr.R(inst.RA);
-		ARMABI_MOVI2R(rA, inst.SIMM_16);
+		ARMABI_MOVI2R(rA, (u32)inst.SIMM_16);
 		ADD(RD, RA, rA);
 	}
 	else
@@ -185,21 +181,39 @@ void JitArm::cmpi(UGeckoInstruction inst)
 	ARMReg rA = gpr.GetReg();
 	int crf = inst.CRFD;
 	ARMABI_MOVI2R(rA, inst.SIMM_16);
-	SXTH(rA, rA);
 	CMP(RA, rA);
 	gpr.Unlock(rA);
 	ComputeRC(crf);
 }
-// Wrong - 28/10/2012
 void JitArm::cmpli(UGeckoInstruction inst)
 {
-	Default(inst); return; 
 	ARMReg RA = gpr.R(inst.RA);
-	ARMReg rA = gpr.GetReg(false);
+	ARMReg rA = gpr.GetReg();
 	int crf = inst.CRFD;
-	ARMABI_MOVI2R(rA, inst.UIMM);
+	ARMABI_MOVI2R(rA, (u32)inst.UIMM);
 	CMP(RA, rA);
-	ComputeRC(crf);		 
+
+	// Unsigned GenerateRC()
+	ARMReg rB = gpr.GetReg();
+	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast);
+	FixupBranch pEqual  = B_CC(CC_EQ);
+	FixupBranch pGreater = B_CC(CC_HI);
+
+	MOV(rB, 0x8); // Result < 0
+	FixupBranch continue1 = B();
+
+	SetJumpTarget(pGreater);
+	MOV(rB, 0x4); // Result > 0
+	FixupBranch continue2 = B();
+	
+	SetJumpTarget(pEqual);
+	MOV(rB, 0x2); // Result == 0
+
+	SetJumpTarget(continue1);
+	SetJumpTarget(continue2);
+	STRB(rA, rB, crf);
+	gpr.Unlock(rA, rB);
+
 }
 // Wrong - 27/10/2012
 void JitArm::negx(UGeckoInstruction inst)

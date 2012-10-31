@@ -221,7 +221,7 @@ static GekkoOPTemplate table31[] =
 	{1014, &JitArm::Default}, //"dcbz",   OPTYPE_DCACHE, 0, 4}},
 
 	//load word
-	{23,  &JitArm::Default}, //"lwzx",  OPTYPE_LOAD, FL_OUT_D | FL_IN_A0 | FL_IN_B}},
+	{23,  &JitArm::lwzx}, //"lwzx",  OPTYPE_LOAD, FL_OUT_D | FL_IN_A0 | FL_IN_B}},
 	{55,  &JitArm::Default}, //"lwzux", OPTYPE_LOAD, FL_OUT_D | FL_OUT_A | FL_IN_A | FL_IN_B}},
 
 	//load halfword

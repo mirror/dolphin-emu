@@ -65,7 +65,7 @@ enum CCFlags
 	CC_VS, // Overflow
 	CC_VC, // No Overflow
 	CC_HI, // Unsigned higher
-	CC_LS, // Unsigned lower
+	CC_LS, // Unsigned lower or same
 	CC_GE, // Signed greater than or equal
 	CC_LT, // Signed less than
 	CC_GT, // Signed greater than

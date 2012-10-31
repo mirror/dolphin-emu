@@ -155,6 +155,40 @@ void JitArm::lwz(UGeckoInstruction inst)
 //	if (!(PowerPC::ppcState.Exceptions & EXCEPTION_DSI))
 //		m_GPR[_inst.RD] = temp;
 }
+void JitArm::lwzx(UGeckoInstruction inst)
+{
+	ARMReg rA = gpr.GetReg();
+	ARMReg rB = gpr.GetReg();
+
+	ARMReg RB = gpr.R(inst.RB);
+	ARMReg RD = gpr.R(inst.RD);
+	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.Exceptions);
+	LDR(rA, rA);
+	ARMABI_MOVI2R(rB, EXCEPTION_DSI);
+	CMP(rA, rB);
+	FixupBranch DoNotLoad = B_CC(CC_EQ);
+	
+	if (inst.RA)
+	{
+		ARMReg RA = gpr.R(inst.RA);
+		ADD(rB, RA, RB);
+	}
+	else
+		MOV(rB, RB);
+	
+	ARMABI_MOVI2R(rA, (u32)&Memory::Read_U32);	
+	PUSH(4, R0, R1, R2, R3);
+	MOV(R0, rB);
+	BL(rA);
+	MOV(rA, R0);
+	POP(4, R0, R1, R2, R3);
+	MOV(RD, rA);
+	SetJumpTarget(DoNotLoad);
+	gpr.Unlock(rA, rB);
+	////	u32 temp = Memory::Read_U32(_inst.RA ? (m_GPR[_inst.RA] + m_GPR[_inst.RB]) : m_GPR[_inst.RB]);
+//	if (!(PowerPC::ppcState.Exceptions & EXCEPTION_DSI))
+//		m_GPR[_inst.RD] = temp;
+}
 void JitArm::icbi(UGeckoInstruction inst)
 {
 	Default(inst);
