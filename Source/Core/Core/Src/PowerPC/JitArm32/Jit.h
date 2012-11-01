@@ -118,7 +118,7 @@ public:
 	const u8 *GetDispatcher() {
 		return 0; 
 	}
-	JitArmAsmRoutineManager *GetAsmRoutines() {
+	CommonAsmRoutinesBase *GetAsmRoutines() {
 		return &asm_routines; 
 	}
 
