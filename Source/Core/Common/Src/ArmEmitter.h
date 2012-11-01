@@ -252,7 +252,6 @@ public:
 	{
 		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm16 not IMM");
 		return ( (Value & 0xF000) << 4) | (Value & 0x0FFF);
-	
 	}
 	const u32 Imm16Low()
 	{
@@ -295,18 +294,13 @@ private:
 	u8 *code, *startcode;
 	u32 condition;
 
-	void WriteDataOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2);
-	void WriteDataOp(u32 op, ARMReg dest, ARMReg src, ARMReg op2);
-	void WriteDataOp(u32 op, ARMReg dest, ARMReg src);
-	void WriteMoveOp(u32 op, ARMReg dest, Operand2 op2, bool TopBits = false);
 	void WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2);
 	void WriteRegStoreOp(u32 op, ARMReg dest, bool WriteBack, u16 RegList);
 	void WriteShiftedDataOp(u32 op, bool SetFlags, ARMReg dest, ARMReg src, ARMReg op2);
 	void WriteShiftedDataOp(u32 op, bool SetFlags, ARMReg dest, ARMReg src, Operand2 op2);
 
 	// New Ops
-
-	void WriteInstruction(u32 op, ARMReg Rd, ARMReg Rn, Operand2 Rm);
+	void WriteInstruction(u32 op, ARMReg Rd, ARMReg Rn, Operand2 Rm, bool SetFlags = false);
 
 protected:
 	inline void Write32(u32 value) {*(u32*)code = value; code+=4;}
@@ -362,70 +356,46 @@ public:
 	// New Data Ops
 	void AND (ARMReg Rd, ARMReg Rn, Operand2 Rm);
 	void ANDS(ARMReg Rd, ARMReg Rn, Operand2 Rm);
-
-	// Data operations
 	void EOR (ARMReg dest, ARMReg src, Operand2 op2);
 	void EORS(ARMReg dest, ARMReg src, Operand2 op2);
-	void EOR (ARMReg dest, ARMReg src, ARMReg op2);
-	void EORS(ARMReg dest, ARMReg src, ARMReg op2);
 	void SUB (ARMReg dest, ARMReg src, Operand2 op2);
 	void SUBS(ARMReg dest, ARMReg src, Operand2 op2);
-	void SUB (ARMReg dest, ARMReg src, ARMReg op2);
-	void SUBS(ARMReg dest, ARMReg src, ARMReg op2);
 	void RSB (ARMReg dest, ARMReg src, Operand2 op2);
 	void RSBS(ARMReg dest, ARMReg src, Operand2 op2);
-	void RSB (ARMReg dest, ARMReg src, ARMReg op2);
-	void RSBS(ARMReg dest, ARMReg src, ARMReg op2);
 	void ADD (ARMReg dest, ARMReg src, Operand2 op2);
 	void ADDS(ARMReg dest, ARMReg src, Operand2 op2);
-	void ADD (ARMReg dest, ARMReg src, ARMReg op2);
-	void ADDS(ARMReg dest, ARMReg src, ARMReg op2);
 	void ADC (ARMReg dest, ARMReg src, Operand2 op2);
 	void ADCS(ARMReg dest, ARMReg src, Operand2 op2);
-	void ADC (ARMReg dest, ARMReg src, ARMReg op2);
-	void ADCS(ARMReg dest, ARMReg src, ARMReg op2);
 	void LSL (ARMReg dest, ARMReg src, Operand2 op2);
 	void LSL (ARMReg dest, ARMReg src, ARMReg op2);
 	void LSLS(ARMReg dest, ARMReg src, Operand2 op2);
 	void LSLS(ARMReg dest, ARMReg src, ARMReg op2);
 	void SBC (ARMReg dest, ARMReg src, Operand2 op2);
 	void SBCS(ARMReg dest, ARMReg src, Operand2 op2);
-	void SBC (ARMReg dest, ARMReg src, ARMReg op2);
-	void SBCS(ARMReg dest, ARMReg src, ARMReg op2);
 	void REV (ARMReg dest, ARMReg src			   );
 	void RSC (ARMReg dest, ARMReg src, Operand2 op2);
 	void RSCS(ARMReg dest, ARMReg src, Operand2 op2);
-	void RSC (ARMReg dest, ARMReg src, ARMReg op2);
-	void RSCS(ARMReg dest, ARMReg src, ARMReg op2);
 	void TST (             ARMReg src, Operand2 op2);
-	void TST (             ARMReg src, ARMReg op2);
 	void TEQ (             ARMReg src, Operand2 op2);
-	void TEQ (             ARMReg src, ARMReg op2);
 	void CMP (             ARMReg src, Operand2 op2);
-	void CMP (             ARMReg src, ARMReg op2);
 	void CMN (             ARMReg src, Operand2 op2);
-	void CMN (             ARMReg src, ARMReg op2);
 	void ORR (ARMReg dest, ARMReg src, Operand2 op2);
 	void ORRS(ARMReg dest, ARMReg src, Operand2 op2);
-	void ORR (ARMReg dest, ARMReg src, ARMReg op2);
-	void ORRS(ARMReg dest, ARMReg src, ARMReg op2);
 	void MOV (ARMReg dest,             Operand2 op2);
 	void MOVS(ARMReg dest,             Operand2 op2);
-	void MOV (ARMReg dest, ARMReg src			   );
-	void MOVS(ARMReg dest, ARMReg src			   );
 	void BIC (ARMReg dest, ARMReg src, Operand2 op2);
 	void BICS(ARMReg dest, ARMReg src, Operand2 op2);
-	void BIC (ARMReg dest, ARMReg src, ARMReg op2);
-	void BICS(ARMReg dest, ARMReg src, ARMReg op2);
+	void MVN (ARMReg dest,             Operand2 op2);
+	void MVNS(ARMReg dest,             Operand2 op2);
+	void MOVW(ARMReg dest, 			   Operand2 op2);
+	void MOVT(ARMReg dest, Operand2 op2, bool TopBits = false);
+
+
 	void MUL (ARMReg dest,	ARMReg src, ARMReg op2);
 	void MULS(ARMReg dest,	ARMReg src, ARMReg op2);
 	void SXTB(ARMReg dest, ARMReg op2);
 	void SXTH(ARMReg dest, ARMReg op2, u8 rotation = 0);
 	void SXTAH(ARMReg dest, ARMReg src, ARMReg op2, u8 rotation = 0);
-	void MVN (ARMReg dest,             Operand2 op2);
-	void MVNS(ARMReg dest,             Operand2 op2);
-	void MVN (ARMReg dest,             ARMReg op2);
-	void MVNS(ARMReg dest,             ARMReg op2);
 	// Using just MSR here messes with our defines on the PPC side of stuff
 	// Just need to put an underscore here, bit annoying.
 	void _MSR (bool nzcvq, bool g,	   Operand2 op2);
@@ -433,8 +403,6 @@ public:
 	void MRS  (ARMReg dest);
 
 	// Memory load/store operations
-	void MOVT(ARMReg dest, Operand2 op2, bool TopBits = false);
-	void MOVW(ARMReg dest, 			   Operand2 op2);
 	void LDR (ARMReg dest, ARMReg src, Operand2 op2 = 0);
 	// Offset adds to the base register in LDR
 	void LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index, bool Add);

@@ -184,8 +184,6 @@ void JitArm::cmpli(UGeckoInstruction inst)
 	SetCC(CC_HI); MOV(rB, 0x4); // Result > 0
 	SetCC();
 
-	SetJumpTarget(continue1);
-	SetJumpTarget(continue2);
 	STRB(rA, rB, crf);
 	gpr.Unlock(rA, rB);
 
