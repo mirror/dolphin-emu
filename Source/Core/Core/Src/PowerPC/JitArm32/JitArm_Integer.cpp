@@ -36,21 +36,12 @@ void JitArm::GenerateRC(int cr) {
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
 	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[cr]);
-	FixupBranch pZero  = B_CC(CC_EQ);
-	FixupBranch pNegative = B_CC(CC_MI);
 
 	MOV(rB, 0x4); // Result > 0
-	FixupBranch continue1 = B();
+	SetCC(CC_EQ); MOV(rB, 0x2); // Result == 0
+	SetCC(CC_MI); MOV(rB, 0x8); // Result < 0
+	SetCC();
 
-	SetJumpTarget(pNegative);
-	MOV(rB, 0x8); // Result < 0
-	FixupBranch continue2 = B();
-	
-	SetJumpTarget(pZero);
-	MOV(rB, 0x2); // Result == 0
-
-	SetJumpTarget(continue1);
-	SetJumpTarget(continue2);
 	STRB(rA, rB, 0);
 	gpr.Unlock(rA, rB);
 }
@@ -58,21 +49,12 @@ void JitArm::ComputeRC(int cr) {
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
 	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[cr]);
-	FixupBranch pGreater  = B_CC(CC_GT);
-	FixupBranch pLessThan = B_CC(CC_LT);
 
 	MOV(rB, 0x2); // Result == 0
-	FixupBranch continue1 = B();
+	SetCC(CC_LT); MOV(rB, 0x8); // Result < 0
+	SetCC(CC_GT); MOV(rB, 0x4); // Result > 0
+	SetCC();
 
-	SetJumpTarget(pLessThan);
-	MOV(rB, 0x8); // Result < 0
-	FixupBranch continue2 = B();
-	
-	SetJumpTarget(pGreater);
-	MOV(rB, 0x4); // Result > 0
-
-	SetJumpTarget(continue1);
-	SetJumpTarget(continue2);
 	STRB(rA, rB, 0);
 	gpr.Unlock(rA, rB);
 }
@@ -196,18 +178,11 @@ void JitArm::cmpli(UGeckoInstruction inst)
 	// Unsigned GenerateRC()
 	ARMReg rB = gpr.GetReg();
 	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast);
-	FixupBranch pEqual  = B_CC(CC_EQ);
-	FixupBranch pGreater = B_CC(CC_HI);
-
-	MOV(rB, 0x8); // Result < 0
-	FixupBranch continue1 = B();
-
-	SetJumpTarget(pGreater);
-	MOV(rB, 0x4); // Result > 0
-	FixupBranch continue2 = B();
 	
-	SetJumpTarget(pEqual);
 	MOV(rB, 0x2); // Result == 0
+	SetCC(CC_LO); MOV(rB, 0x8); // Result < 0
+	SetCC(CC_HI); MOV(rB, 0x4); // Result > 0
+	SetCC();
 
 	SetJumpTarget(continue1);
 	SetJumpTarget(continue2);
@@ -252,19 +227,18 @@ void JitArm::rlwimix(UGeckoInstruction inst)
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
 	ARMABI_MOVI2R(rA, mask);
-	ARMABI_MOVI2R(rB, ~mask);
 
 	Operand2 Shift(32 - inst.SH, ROR, RS); // This rotates left, while ARM has only rotate right, so swap it.
 	if (inst.Rc)
 	{
-		AND (rB, RA, rB); // RA & ~mask
+		BIC (rB, RA, rA); // RA & ~mask
 		AND (rA, rA, Shift);
 		ORRS(RA, rB, rA);
 		GenerateRC();	
 	}
 	else
 	{
-		AND (rB, RA, rB); // RA & ~mask
+		BIC (rB, RA, rA); // RA & ~mask
 		AND (rA, rA, Shift);
 		ORR(RA, rB, rA);
 	}
