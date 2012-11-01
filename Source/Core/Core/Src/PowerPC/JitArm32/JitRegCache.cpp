@@ -163,16 +163,10 @@ void ArmRegCache::Flush()
 	
 	for(u8 a = 0; a < NUMPPCREG; ++a)
 		if (ArmCRegs[a].PPCReg != 33)
+		{
 			emit->STR(R14, ArmCRegs[a].Reg, ArmCRegs[a].PPCReg * 4);
-}
-
-void ArmRegCache::ReloadPPC()
-{
-	emit->MOVW(R14, (u32)&PowerPC::ppcState.gpr);
-	emit->MOVT(R14, (u32)&PowerPC::ppcState.gpr, true);
-		
-	for(u8 a = 0; a < NUMPPCREG; ++a)
-		if (ArmCRegs[a].PPCReg != 33)
-			emit->LDR(ArmCRegs[a].Reg, R14, ArmCRegs[a].PPCReg * 4);
+			ArmCRegs[a].PPCReg = 33;
+			ArmCRegs[a].LastLoad = 0;
+		}
 }
 

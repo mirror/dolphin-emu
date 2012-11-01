@@ -82,7 +82,6 @@ public:
 	void Unlock(ARMReg R0, ARMReg R1 = INVALID_REG, ARMReg R2 = INVALID_REG, ARMReg R3 =
 	INVALID_REG);
 	void Flush();
-	void ReloadPPC(); // Need to reload after flush most of the time
 	ARMReg R(int preg); // Returns a cached register
 
 };

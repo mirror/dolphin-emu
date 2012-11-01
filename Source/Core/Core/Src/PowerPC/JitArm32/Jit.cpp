@@ -76,7 +76,6 @@ void JitArm::WriteCallInterpreter(UGeckoInstruction inst)
 	ARMABI_MOVI2R(R0, inst.hex);
 	ARMABI_MOVI2R(R12, (u32)instr);
 	BL(R12);
-	gpr.ReloadPPC(); // This reloads all of our flushed PPC registers
 }
 void JitArm::unknown_instruction(UGeckoInstruction inst)
 {
