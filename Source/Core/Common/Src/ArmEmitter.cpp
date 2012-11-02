@@ -301,7 +301,6 @@ void ARMXEmitter::WriteInstruction (u32 Op, ARMReg Rd, ARMReg Rn, Operand2 Rm, b
 		switch (Op)
 		{
 			// MOV cases that support IMM16
-			case 13:
 			case 16:
 			case 17:
 				Data = Rm.Imm16();
