@@ -2,7 +2,6 @@ set(SRCS	Src/BreakPoints.cpp
 			Src/CDUtils.cpp
 			Src/ColorUtil.cpp
 			Src/ConsoleListener.cpp
-			Src/CPUDetect.cpp
 			Src/FileSearch.cpp
 			Src/FileUtil.cpp
 			Src/Hash.cpp
@@ -34,12 +33,14 @@ set(SRCS	Src/BreakPoints.cpp
 
 if(_M_ARM) #ARM
 	set(SRCS	${SRCS}
+				Src/ArmCPUDetect.cpp
 				Src/ArmEmitter.cpp
 				Src/ArmABI.cpp
 				Src/ThunkArm.cpp)
 else()
 	if(NOT _M_GENERIC) #X86
 		set(SRCS	${SRCS}
+					Src/CPUDetect.cpp
 					Src/FPURoundModeX86.cpp
 					Src/ThunkX86.cpp
 					)
@@ -47,6 +48,7 @@ else()
 endif()
 if(_M_GENERIC) #Generic
 	set(SRCS	${SRCS}
+				Src/CPUDetect.cpp
 				Src/FPURoundModeGeneric.cpp)
 endif()
 if(WIN32)

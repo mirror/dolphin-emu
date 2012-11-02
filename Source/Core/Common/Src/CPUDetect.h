@@ -25,7 +25,8 @@ enum CPUVendor
 {
 	VENDOR_INTEL = 0,
 	VENDOR_AMD = 1,
-	VENDOR_OTHER = 2,
+	VENDOR_ARM = 2,
+	VENDOR_OTHER = 3,
 };
 
 struct CPUInfo
@@ -55,6 +56,21 @@ struct CPUInfo
 	bool bAES;
 	bool bLAHFSAHF64;
 	bool bLongMode;
+	
+	// ARM specific CPUInfo
+	bool bSwp;
+	bool bHalf;
+	bool bThumb;
+	bool bFastMult;
+	bool bVFP;
+	bool bEDSP;
+	bool bThumbEE;
+	bool bNEON;
+	bool bVFPv3;
+	bool bTLS;
+	bool bVFPv4;
+	bool bIDIVa;
+	bool bIDIVt;
 
 	// Call Detect()
 	explicit CPUInfo();
