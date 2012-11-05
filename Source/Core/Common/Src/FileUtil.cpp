@@ -102,6 +102,26 @@ bool IsDirectory(const std::string &filename)
 	return S_ISDIR(file_info.st_mode);
 }
 
+// Returns true if a file is compressed
+bool IsSparse(const std::string &filename)
+{
+#ifdef _WIN32
+	DWORD attribute = GetFileAttributesA(filename.c_str());
+	return attribute&FILE_ATTRIBUTE_SPARSE_FILE || attribute&FILE_ATTRIBUTE_COMPRESSED;
+#else
+	struct stat64 file_info;
+	int result = stat64(filename.c_str(), &file_info);
+
+	if (result < 0) {
+		WARN_LOG(COMMON, "IsCompressed: stat failed on %s: %s",
+				 filename.c_str(), GetLastErrorMsg());
+		return false;
+	}
+
+	return file_info.st_size > file_info.st_blocks*512 + file_info.st_blksize;
+#endif
+}
+
 // Deletes a given filename, return true on success
 // Doesn't supports deleting a directory
 bool Delete(const std::string &filename)
@@ -339,7 +359,15 @@ u64 GetSize(const std::string &filename)
 		WARN_LOG(COMMON, "GetSize: failed %s: is a directory", filename.c_str());
 		return 0;
 	}
-	
+
+	// return the sparse or compressed size rather than the file size
+#ifdef _WIN32
+	LARGE_INTEGER liFileSize;
+	liFileSize.LowPart = GetCompressedFileSizeA(filename.c_str(), (LPDWORD)&liFileSize.HighPart);
+	DEBUG_LOG(CONSOLE, "size: %s, %lld", filename.c_str(), liFileSize.QuadPart);
+	return liFileSize.QuadPart;
+#else
+
 	struct stat64 buf;
 #ifdef _WIN32
 	if (_tstat64(UTF8ToTStr(filename).c_str(), &buf) == 0)
@@ -347,10 +375,11 @@ u64 GetSize(const std::string &filename)
 	if (stat64(filename.c_str(), &buf) == 0)
 #endif
 	{
-		DEBUG_LOG(COMMON, "GetSize: %s: %lld",
-				filename.c_str(), (long long)buf.st_size);
-		return buf.st_size;
+		DEBUG_LOG(COMMON, "GetSize: %s: %lld %lld",
+				filename.c_str(), (long long)buf.st_size, (long long)buf.st_blocks*512);
+		return buf.st_blocks*512;
 	}
+#endif
 
 	ERROR_LOG(COMMON, "GetSize: Stat failed %s: %s",
 			filename.c_str(), GetLastErrorMsg());
