@@ -1,0 +1,1 @@
+call build.proj /t:Clean

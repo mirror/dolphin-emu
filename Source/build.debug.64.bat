@@ -1,0 +1,1 @@
+call build /t:Dolphin:Debug /p:Configuration=Release;Platform=x64
