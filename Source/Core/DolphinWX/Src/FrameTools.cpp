@@ -110,6 +110,8 @@ void CFrame::CreateMenu()
 	fileMenu->AppendSeparator();
 	fileMenu->Append(IDM_BROWSE, _("&Browse for ISOs..."));
 	fileMenu->AppendSeparator();
+	fileMenu->Append(IDM_RESTART, UseDebugger ? _T("Regular mode") : _T("Debugging mode"));
+	fileMenu->AppendSeparator();
 	fileMenu->Append(wxID_EXIT, _("E&xit") + wxString(wxT("\tAlt+F4")));
 	m_MenuBar->Append(fileMenu, _("&File"));
 
