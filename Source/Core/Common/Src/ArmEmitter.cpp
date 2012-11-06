@@ -428,6 +428,22 @@ void ARMXEmitter::LDMFD(ARMReg dest, bool WriteBack, const int Regnum, ...)
 	va_end(vl);
 	WriteRegStoreOp(0x89, dest, WriteBack, RegList);
 }
+
+// NEON and ASIMD
+void ARMXEmitter::VLDR(ARMReg Dest, ARMReg Base, Operand2 op)
+{
+	_assert_msg_(DYNA_REC, Dest >= S0 && Dest <= D31, "Passed Invalid dest register to VLDR"); 
+	_assert_msg_(DYNA_REC, Base <= R15, "Passed invalid Base register to VLDR");
+	bool single_reg = Dest < D0;
+	if (single_reg)
+		Dest = (ARMReg)(Dest - S0);
+	else
+		Dest = (ARMReg)(Dest - D0);
+	Write32(NO_COND | (13 << 24) | ((Dest & 0x10) << 18) | (1 << 20) | (Base << 16) \
+			| (5 << 9) | (!single_reg << 8) | op.Imm8());	
+}
+
+
 // helper routines for setting pointers
 void ARMXEmitter::CallCdeclFunction3(void* fnptr, u32 arg0, u32 arg1, u32 arg2)
 {
