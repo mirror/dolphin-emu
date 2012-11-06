@@ -71,6 +71,9 @@ struct CPUInfo
 	bool bVFPv4;
 	bool bIDIVa;
 	bool bIDIVt;
+	// ARMv8 specific
+	bool bFP;
+	bool bASIMD;
 
 	// Call Detect()
 	explicit CPUInfo();

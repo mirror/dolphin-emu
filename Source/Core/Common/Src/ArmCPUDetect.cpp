@@ -29,7 +29,7 @@ char *GetCPUString()
 	char buf[1024];
 	FILE *fp;
 
-	fp = fopen("/proc/cpuinfo", "r");
+	fp = fopen(procfile, "r");
 	if (!fp)
 		return 0;
 	
@@ -46,11 +46,10 @@ char *GetCPUString()
 bool CheckCPUFeature(const char *feature)
 {
 	const char marker[] = "Features\t: ";
-	// Count the number of processor lines in /proc/cpuinfo
 	char buf[1024];
 	FILE *fp;
 
-	fp = fopen("/proc/cpuinfo", "r");
+	fp = fopen(procfile, "r");
 	if (!fp)
 		return 0;
 	
@@ -72,12 +71,11 @@ bool CheckCPUFeature(const char *feature)
 int GetCoreCount()
 {
 	const char marker[] = "processor\t: ";
-	// Count the number of processor lines in /proc/cpuinfo
 	int cores = 0;
 	char buf[1024];
 	FILE *fp;
 
-	fp = fopen("/proc/cpuinfo", "r");
+	fp = fopen(procfile, "r");
 	if (!fp)
 		return 0;
 	
@@ -123,6 +121,9 @@ void CPUInfo::Detect()
 	bVFPv4 = CheckCPUFeature("vfpv4");
 	bIDIVa = CheckCPUFeature("idiva");
 	bIDIVt = CheckCPUFeature("idivt");
+	// These two are ARMv8 specific.
+	bFP = CheckCPUFeature("fp");
+	bASIMD = CheckCPUFeature("asimd");
 }
 
 // Turn the cpu info into a string we can show
