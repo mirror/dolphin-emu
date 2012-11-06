@@ -276,6 +276,17 @@ public:
 		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm16 not IMM");
 		return (Value & 0x0FFFFFFF);	
 	}
+	// NEON and ASIMD specific
+	const u32 Imm8ASIMD()
+	{
+		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm8ASIMD not IMM");
+		return  ((Value & 0x80) << 17) | ((Value & 0x70) << 12) | (Value & 0xF);
+	}
+	const u32 Imm8VFP()
+	{
+		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm8VFP not IMM");
+		return ((Value & 0xF0) << 12) | (Value & 0xF);
+	}
 	
 
 };
