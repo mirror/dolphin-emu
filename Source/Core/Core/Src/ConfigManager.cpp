@@ -196,6 +196,10 @@ void SConfig::SaveSettings()
 	ini.Set("Display", "RenderWindowYPos",		m_LocalCoreStartupParameter.iRenderWindowYPos);
 	ini.Set("Display", "RenderWindowWidth",		m_LocalCoreStartupParameter.iRenderWindowWidth);
 	ini.Set("Display", "RenderWindowHeight",	m_LocalCoreStartupParameter.iRenderWindowHeight);
+	ini.Set("Display", "CLIRenderWindowXPos",	m_LocalCoreStartupParameter.iCLIRenderWindowXPos);
+	ini.Set("Display", "CLIRenderWindowYPos",	m_LocalCoreStartupParameter.iCLIRenderWindowYPos);
+	ini.Set("Display", "CLIRenderWindowWidth",	m_LocalCoreStartupParameter.iCLIRenderWindowWidth);
+	ini.Set("Display", "CLIRenderWindowHeight",	m_LocalCoreStartupParameter.iCLIRenderWindowHeight);
 	ini.Set("Display", "RenderWindowAutoSize",	m_LocalCoreStartupParameter.bRenderWindowAutoSize);
 	ini.Set("Display", "KeepWindowOnTop",		m_LocalCoreStartupParameter.bKeepWindowOnTop);
 	ini.Set("Display", "ProgressiveScan",		m_LocalCoreStartupParameter.bProgressive);
@@ -345,6 +349,10 @@ void SConfig::LoadSettings()
 		ini.Get("Display", "RenderWindowYPos",		&m_LocalCoreStartupParameter.iRenderWindowYPos,	-1);
 		ini.Get("Display", "RenderWindowWidth",		&m_LocalCoreStartupParameter.iRenderWindowWidth, 640);
 		ini.Get("Display", "RenderWindowHeight",	&m_LocalCoreStartupParameter.iRenderWindowHeight, 480);
+		ini.Get("Display", "CLIRenderWindowXPos",	&m_LocalCoreStartupParameter.iCLIRenderWindowXPos,	-1);
+		ini.Get("Display", "CLIRenderWindowYPos",	&m_LocalCoreStartupParameter.iCLIRenderWindowYPos,	-1);
+		ini.Get("Display", "CLIRenderWindowWidth",	&m_LocalCoreStartupParameter.iCLIRenderWindowWidth, 640);
+		ini.Get("Display", "CLIRenderWindowHeight",	&m_LocalCoreStartupParameter.iCLIRenderWindowHeight, 480);
 		ini.Get("Display", "RenderWindowAutoSize",	&m_LocalCoreStartupParameter.bRenderWindowAutoSize, false);
 		ini.Get("Display", "KeepWindowOnTop",		&m_LocalCoreStartupParameter.bKeepWindowOnTop, false);
 		ini.Get("Display", "ProgressiveScan",		&m_LocalCoreStartupParameter.bProgressive, false);

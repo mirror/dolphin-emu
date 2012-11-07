@@ -75,6 +75,31 @@ void EnableCompression(bool compression)
 	g_use_compression = compression;
 }
 
+// get ISO ID
+bool GetISOID(std::string &isoID_, std::string filename)
+{
+	File::IOFile g_recordfd;
+	if (!g_recordfd.Open(filename, "rb"))
+	{
+		PanicAlertT("Can't open %s.", filename.c_str());
+		isoID_ = "";
+		return false;
+	}
+
+	char isoID[7];
+	g_recordfd.ReadArray(&isoID, 1);
+	isoID[6] = '\0';
+	isoID_ = std::string(isoID);
+
+	if (isoID_.empty())
+	{
+		PanicAlertT("Can't find ISO ID in %s.", filename.c_str());
+		return false;
+	}
+
+	return true;
+}
+
 void DoState(PointerWrap &p)
 {
 	u32 version = STATE_VERSION;
@@ -491,6 +516,8 @@ void LoadAs(const std::string& filename)
 	if (g_loadDepth == 0)
 		_CrtSetDbgFlag(tmpflag);
 #endif
+
+	Movie::SetStartTime();
 
 	// resume dat core
 	Core::PauseAndLock(false, wasUnpaused);

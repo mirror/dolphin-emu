@@ -163,6 +163,32 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam )
 		s_sizing = false;
 		break;
 
+	case WM_MOVE:
+		if (Host_IsCLI())
+		{
+			RECT rc, wrc;
+			GetWindowRect(hWnd, &rc);
+			SystemParametersInfo(SPI_GETWORKAREA, 0, &wrc, 0);
+			// don't save any area outside the screen
+			if (rc.right > wrc.right)
+				rc.left = wrc.right - (rc.right - rc.left);
+			if (rc.bottom > wrc.bottom)
+				rc.top = wrc.bottom - (rc.bottom - rc.top);
+			SConfig::GetInstance().m_LocalCoreStartupParameter.iCLIRenderWindowXPos = rc.left;
+			SConfig::GetInstance().m_LocalCoreStartupParameter.iCLIRenderWindowYPos = rc.top;
+		}
+		break;
+
+	case WM_SIZE:
+		if (Host_IsCLI())
+		{
+			RECT rc;
+			GetWindowRect(hWnd, &rc);
+			SConfig::GetInstance().m_LocalCoreStartupParameter.iCLIRenderWindowWidth = rc.right - rc.left;
+			SConfig::GetInstance().m_LocalCoreStartupParameter.iCLIRenderWindowHeight = rc.bottom - rc.top;
+		}
+		break;
+
 	/* Post the mouse events to the main window, it's necessary, because the difference between the
 	   keyboard inputs is that these events only appear here, not in the parent window or any other WndProc()*/
 	case WM_LBUTTONDOWN:
@@ -182,10 +208,10 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam )
 	case WM_CLOSE:
 		// When the user closes the window, we post an event to the main window to call Stop()
 		// Which then handles all the necessary steps to Shutdown the core
-		if (m_hParent == NULL)
+		if (Host_IsCLI())
 		{
 			// Stop the game
-			//PostMessage(m_hParent, WM_USER, WM_USER_STOP, 0);
+			Host_Message(WM_USER_STOP);
 		}
 		break;
 
@@ -211,17 +237,17 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam )
 		}
 		break;
 	case WM_SETCURSOR:
-		PostMessage(m_hParent, WM_USER, WM_USER_SETCURSOR, 0);
-		return true;
+		if (!Host_IsCLI())
+		{
+			PostMessage(m_hParent, WM_USER, WM_USER_SETCURSOR, 0);
+			return true;
+		}
 
 	case WM_SETTEXT_CUSTOM:
 		SendMessage(hWnd, WM_SETTEXT, wParam, lParam);
 		break;
-
-	default:
-		return DefWindowProc(hWnd, iMsg, wParam, lParam);
 	}
-	return 0;
+	return DefWindowProc(hWnd, iMsg, wParam, lParam);
 }
 
 // ---------------------------------------------------------------------
@@ -278,7 +304,7 @@ HWND OpenWindow(HWND parent, HINSTANCE hInstance, int width, int height, const T
 	wndClass.cbWndExtra = 0;
 	wndClass.hInstance = hInstance;
 	wndClass.hIcon = LoadIcon( NULL, IDI_APPLICATION );
-	wndClass.hCursor = NULL;
+	wndClass.hCursor = Host_IsCLI() ? LoadCursor(NULL, IDC_ARROW) : NULL;
 	wndClass.hbrBackground = (HBRUSH)GetStockObject( BLACK_BRUSH );
 	wndClass.lpszMenuName = NULL;
 	wndClass.lpszClassName = m_szClassName;
@@ -289,8 +315,18 @@ HWND OpenWindow(HWND parent, HINSTANCE hInstance, int width, int height, const T
 
 	m_hParent = parent;
 
-	m_hWnd = CreateWindow(m_szClassName, title, (g_ActiveConfig.backend_info.bSupports3DVision && g_ActiveConfig.b3DVision) ? WS_EX_TOPMOST | WS_POPUP : WS_CHILD,
-		0, 0, width, height, m_hParent, NULL, hInstance, NULL);
+	int x = 0, y = 0;
+
+	if (Host_IsCLI())
+	{
+		x = SConfig::GetInstance().m_LocalCoreStartupParameter.iCLIRenderWindowXPos;
+		y = SConfig::GetInstance().m_LocalCoreStartupParameter.iCLIRenderWindowYPos;
+		width = SConfig::GetInstance().m_LocalCoreStartupParameter.iCLIRenderWindowWidth;
+		height = SConfig::GetInstance().m_LocalCoreStartupParameter.iCLIRenderWindowHeight;
+	}
+
+	m_hWnd = CreateWindow(m_szClassName, title, (g_ActiveConfig.backend_info.bSupports3DVision && g_ActiveConfig.b3DVision) ? WS_EX_TOPMOST | WS_POPUP : (Host_IsCLI() ? WS_OVERLAPPEDWINDOW : WS_CHILD),
+		x, y, width, height, m_hParent, NULL, hInstance, NULL);
 
 	return m_hWnd;
 }

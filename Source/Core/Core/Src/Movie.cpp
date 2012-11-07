@@ -4,8 +4,11 @@
 
 #include "Movie.h"
 
+#include "BootManager.h"
 #include "Core.h"
 #include "ConfigManager.h"
+#include "CPUDetect.h"
+#include "Host.h"
 #include "Thread.h"
 #include "FileUtil.h"
 #include "PowerPC/PowerPC.h"
@@ -50,6 +53,8 @@ u64 g_currentFrame = 0, g_totalFrames = 0; // VI
 u64 g_currentLagCount = 0, g_totalLagCount = 0; // just stats
 u64 g_currentInputCount = 0, g_totalInputCount = 0; // just stats
 u64 g_recordingStartTime; // seconds since 1970 that recording started
+unsigned long g_startTime; // ms
+std::vector<double> g_FPS;
 bool bSaveConfig, bSkipIdle, bDualCore, bProgressive, bDSPHLE, bFastDiscSpeed = false;
 bool bMemcard, g_bClearSave, bSyncGPU = false;
 std::string videoBackend = "unknown";
@@ -67,6 +72,7 @@ bool g_bPolled = false;
 int g_currentSaveVersion = 0;
 
 std::string tmpStateFilename = "dtm.sav";
+std::string movieFilename;
 
 std::string g_InputDisplay[8];
 
@@ -171,8 +177,6 @@ void Init()
 
 	g_frameSkipCounter = g_framesToSkip;
 	memset(&g_padState, 0, sizeof(g_padState));
-	if (!tmpHeader.bFromSaveState || !IsPlayingInput())
-		Core::SetStateFileName("");
 
 	for (int i = 0; i < 8; ++i)
 		g_InputDisplay[i].clear();
@@ -245,6 +249,11 @@ void SetReadOnly(bool bEnabled)
 	g_bReadOnly = bEnabled;
 }
 
+void SetStartTime()
+{
+	g_startTime = Common::Timer::GetTimeMs();
+}
+
 void FrameSkipping()
 {
 	// Frameskipping will desync movie playback
@@ -293,6 +302,41 @@ bool IsReadOnly()
 u64 GetRecordingStartTime()
 {
 	return g_recordingStartTime;
+}
+
+// get ISO ID
+bool GetISOID(std::string &isoID_, std::string filename)
+{
+	DTMHeader header;
+
+	if (!filename.empty())
+	{
+		File::IOFile g_recordfd;
+		if (!g_recordfd.Open(filename, "rb"))
+		{
+			PanicAlertT("Can't open %s.", filename.c_str());
+			isoID_ = "";
+			return false;
+		}
+		g_recordfd.ReadArray(&header, 1);
+	}
+	else
+	{
+		header = tmpHeader;
+	}
+
+	char isoID[7];
+	memcpy(isoID, (char*)header.gameID, 6);
+	isoID[6] = '\0';
+	isoID_ = std::string(isoID);
+
+	if (isoID_.empty())
+	{
+		PanicAlertT("Can't find ISO ID in %s.", filename.c_str());
+		return false;
+	}
+
+	return true;
 }
 
 bool IsUsingPad(int controller)
@@ -706,6 +750,10 @@ bool PlayInput(const char *filename)
 	if (!g_recordfd.Open(filename, "rb"))
 		return false;
 
+	std::string fn, ext;
+	SplitPath(filename, NULL, &fn, &ext);
+	movieFilename = fn + ext;
+
 	g_recordfd.ReadArray(&tmpHeader, 1);
 	
 	if(tmpHeader.filetype[0] != 'D' || tmpHeader.filetype[1] != 'T' || tmpHeader.filetype[2] != 'M' || tmpHeader.filetype[3] != 0x1A) {
@@ -1066,6 +1114,84 @@ void EndPlayInput(bool cont)
 		//g_totalFrames = g_totalBytes = 0;
 		//delete tmpInput;
 		//tmpInput = NULL;
+
+		// report benchmark result
+		if (SConfig::GetInstance().m_LocalCoreStartupParameter.bBenchmark)
+		{
+			double totalTime = double(Common::Timer::GetTimeMs() - g_startTime) * 0.001;
+			// state loading and recompilation makes the first frames unfairly low
+			for(int i=0; i<3; i++) if (!g_FPS.empty()) g_FPS.erase(g_FPS.begin(),g_FPS.begin()+1);
+
+			fprintf(stderr, "Performance\n");
+			fprintf(stderr, "Frames:  %10llu\n", g_totalFrames);
+			fprintf(stderr, "Seconds: %10.2f\n", totalTime);
+			fprintf(stderr, "FPS:     %10.2f\n", g_totalFrames/totalTime);
+			if (!g_FPS.empty()) fprintf(stderr, "Min FPS: %10.2f\n", *std::min_element(g_FPS.begin(),g_FPS.end())); else fprintf(stderr, "Min FPS: %10s\n", "N/A");
+			if (!g_FPS.empty()) fprintf(stderr, "Max FPS: %10.2f\n", *std::max_element(g_FPS.begin(),g_FPS.end())); else fprintf(stderr, "Max FPS: %10s\n", "N/A");
+			fprintf(stderr, "\n");
+
+			fprintf(stderr, "Movie\n");
+			fprintf(stderr, "File: %s\n", movieFilename.c_str());
+			fprintf(stderr, "Program: %s\n", Core::g_CoreStartupParameter.m_strUniqueID.c_str());
+			fprintf(stderr, "\n");
+
+			fprintf(stderr, "System\n");
+			fprintf(stderr, "CPU: %s\n", cpu_info.brand_string);
+			fprintf(stderr, "\n");
+
+			fprintf(stderr, "CPU\n");
+			fprintf(stderr, "Recompile: %d\n", Core::g_CoreStartupParameter.iCPUCore);
+			fprintf(stderr, "Skip idle: %d\n", Core::g_CoreStartupParameter.bSkipIdle);
+			fprintf(stderr, "\n");
+
+			fprintf(stderr, "Video\n");
+			fprintf(stderr, "Backend: %s\n", Core::g_CoreStartupParameter.m_strVideoBackend.c_str());
+			fprintf(stderr, "Thread: %d\n", Core::g_CoreStartupParameter.bCPUThread);
+			fprintf(stderr, "Synchronized: %d\n", Core::g_CoreStartupParameter.bSyncGPU);
+			fprintf(stderr, "Resolution: %d\n", g_ActiveConfig.iEFBScale);
+			fprintf(stderr, "AA: %d\n", g_ActiveConfig.iMultisampleMode);
+			fprintf(stderr, "AF: %d\n", g_ActiveConfig.iMaxAnisotropy);
+			fprintf(stderr, "EFB scale: %d\n", g_ActiveConfig.bCopyEFBScaled);
+			fprintf(stderr, "\n");
+
+			fprintf(stderr, "EFB\n");
+			fprintf(stderr, "Access from CPU: %d\n", g_ActiveConfig.bEFBAccessEnable);
+			fprintf(stderr, "Emulate format changes: %d\n", g_ActiveConfig.bEFBEmulateFormatChanges);
+			fprintf(stderr, "\n");
+
+			fprintf(stderr, "EFB copy\n");
+			fprintf(stderr, "Enabled: %d\n", g_ActiveConfig.bEFBCopyEnable);
+			fprintf(stderr, "To texture: %d\n", g_ActiveConfig.bCopyEFBToTexture);
+			fprintf(stderr, "Cache: %d\n", g_ActiveConfig.bEFBCopyCacheEnable);
+			fprintf(stderr, "\n");
+
+			fprintf(stderr, "Texture cache\n");
+			fprintf(stderr, "Accuracy: %d\n", g_ActiveConfig.iSafeTextureCache_ColorSamples);
+			fprintf(stderr, "\n");
+
+			fprintf(stderr, "XFB\n");
+			fprintf(stderr, "Enabled: %d\n", g_ActiveConfig.bUseXFB);
+			fprintf(stderr, "Real: %d\n", g_ActiveConfig.bUseRealXFB);
+			fprintf(stderr, "\n");
+
+			fprintf(stderr, "Other\n");
+			fprintf(stderr, "Cache display list: %d\n", g_ActiveConfig.bDlistCachingEnable);
+			fprintf(stderr, "Destination alpha: %d\n", g_ActiveConfig.bDstAlphaPass);
+			fprintf(stderr, "OpenCL: %d\n", g_ActiveConfig.bEnableOpenCL);
+			fprintf(stderr, "OpenMP: %d\n", g_ActiveConfig.bOMPDecoder);
+			fprintf(stderr, "Hacked buffer upload: %d\n", g_ActiveConfig.bHackedBufferUpload);
+			fprintf(stderr, "Fast depth calculation: %d\n", g_ActiveConfig.bFastDepthCalc);
+			fprintf(stderr, "\n");
+
+			fprintf(stderr, "Audio\n");
+			fprintf(stderr, "Backend: %s\n", SConfig::GetInstance().sBackend.c_str());
+			fprintf(stderr, "Thread: %d\n", Core::g_CoreStartupParameter.bDSPThread);
+			fprintf(stderr, "HLE: %d\n", SConfig::GetInstance().m_LocalCoreStartupParameter.bDSPHLE);
+			fprintf(stderr, "Recompile: %d\n", SConfig::GetInstance().m_EnableJIT);
+			fprintf(stderr, "\n");
+
+			Host_Message(WM_USER_STOP);
+		}
 	}
 }
 

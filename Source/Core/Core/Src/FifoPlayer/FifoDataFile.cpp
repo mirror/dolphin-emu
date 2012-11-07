@@ -127,8 +127,12 @@ bool FifoDataFile::Save(const char *filename)
 	return true;
 }
 
-FifoDataFile *FifoDataFile::Load(const std::string &filename, bool flagsOnly)
+FifoDataFile *FifoDataFile::Load(const std::string &filename_, bool flagsOnly)
 {
+	// find the file
+	std::string filename = filename_;
+	if (!File::SearchStateDir(filename)) return NULL;
+
 	File::IOFile file;
 	file.Open(filename, "rb");
 	if (!file)

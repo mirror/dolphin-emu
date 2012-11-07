@@ -140,12 +140,6 @@ void DSPDebuggerLLE::OnChangeState(wxCommandEvent& event)
 	m_mgr.Update();
 }
 
-void Host_RefreshDSPDebuggerWindow()
-{
-	if (m_DebuggerFrame)
-		m_DebuggerFrame->Update();
-}
-
 void DSPDebuggerLLE::Update()
 {
 #if defined __WXGTK__

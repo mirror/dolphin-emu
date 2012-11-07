@@ -136,6 +136,7 @@
       <Filter>GUI</Filter>
     </ClCompile>
     <ClCompile Include="Src\GLInterface\WGL.cpp" />
+    <ClCompile Include="Src\CLI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Src\Main.h" />
@@ -268,6 +269,7 @@
     <ClInclude Include="Src\GLInterface.h" />
     <ClInclude Include="Src\GLInterface\InterfaceBase.h" />
     <ClInclude Include="Src\GLInterface\WGL.h" />
+    <ClInclude Include="Src\CLI.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="CMakeLists.txt" />

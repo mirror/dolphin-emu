@@ -25,10 +25,10 @@ struct StateHeader
 };
 
 void Init();
-
 void Shutdown();
 
 void EnableCompression(bool compression);
+bool GetISOID(std::string &isoID_, std::string filename);
 
 bool ReadHeader(const std::string filename, StateHeader& header);
 

@@ -63,6 +63,8 @@ extern u64 g_currentFrame, g_totalFrames;
 extern u64 g_currentLagCount, g_totalLagCount;
 extern u64 g_currentInputCount, g_totalInputCount;
 extern std::string g_discChange;
+extern unsigned long g_startTime;
+extern std::vector<double> g_FPS;
 
 extern u32 g_rerecords;
 
@@ -129,6 +131,7 @@ bool IsJustStartingPlayingInputFromSaveState();
 bool IsPlayingInput();
 bool IsReadOnly();
 u64 GetRecordingStartTime();
+bool GetISOID(std::string &isoID_, std::string filename = "");
 
 bool IsConfigSaved();
 bool IsDualCore();
@@ -152,6 +155,7 @@ void ChangeWiiPads(bool instantly = false);
 void DoFrameStep();
 void SetFrameStopping(bool bEnabled);
 void SetReadOnly(bool bEnabled);
+void SetStartTime();
 
 void SetFrameSkipping(unsigned int framesToSkip);
 void FrameSkipping();

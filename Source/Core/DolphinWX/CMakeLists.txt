@@ -45,6 +45,7 @@ if(wxWidgets_FOUND)
 				Src/ARCodeAddEdit.cpp
 				Src/AboutDolphin.cpp
 				Src/CheatsWindow.cpp
+				Src/CLI.cpp
 				Src/ConfigMain.cpp
 				Src/Debugger/BreakpointDlg.cpp
 				Src/Debugger/BreakpointView.cpp
@@ -95,7 +96,8 @@ else()
 			 Src/Android/ButtonManager.cpp
 			 Src/MainAndroid.cpp)
 	else()
-		set(SRCS Src/MainNoGUI.cpp)
+		set(SRCS	Src/CLI.cpp
+					Src/MainNoGUI.cpp)
 	endif()
 endif()
 

@@ -20,6 +20,7 @@
 
 SCoreStartupParameter::SCoreStartupParameter()
 : hInstance(0),
+  bBenchmark(false),
   bJITNoBlockCache(false), bJITBlockLinking(true),
   bJITOff(false),
   bJITLoadStoreOff(false), bJITLoadStorelXzOff(false),
@@ -106,7 +107,7 @@ bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2)
 			bool bootDrive = cdio_is_cdrom(m_strFilename);
 			// Check if the file exist, we may have gotten it from a --elf command line
 			// that gave an incorrect file name 
-			if (!bootDrive && !File::Exists(m_strFilename))
+			if (!bootDrive && !File::Exists(m_strFilename) && !m_strFilename.empty())
 			{
 				PanicAlertT("The specified file \"%s\" does not exist", m_strFilename.c_str());
 				return false;

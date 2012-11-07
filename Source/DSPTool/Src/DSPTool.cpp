@@ -8,6 +8,8 @@
 #include "DSP/DSPCodeUtil.h"
 #include "DSP/DSPTables.h"
 
+bool Host_IsCLI() { return true; }
+
 // Stub out the dsplib host stuff, since this is just a simple cmdline tools.
 u8 DSPHost_ReadHostMemory(u32 addr) { return 0; }
 void DSPHost_WriteHostMemory(u8 value, u32 addr) {}

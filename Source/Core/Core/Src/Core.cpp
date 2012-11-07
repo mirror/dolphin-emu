@@ -305,6 +305,7 @@ void CpuThread()
 
 	if (!g_stateFileName.empty())
 		State::LoadAs(g_stateFileName);
+	SetStateFileName("");
 
 	g_bStarted = true;
 
@@ -370,7 +371,7 @@ void EmuThread()
 
 	if (!g_video_backend->Initialize(g_pWindowHandle))
 	{
-		PanicAlert("Failed to initialize video backend!");
+		PanicAlert("Failed to initialize video backend '%s'!", g_video_backend->GetName().c_str());
 		Host_Message(WM_USER_STOP);
 		return;
 	}
@@ -677,6 +678,7 @@ void UpdateTitle()
 	if (ElapseTime == 0)
 		ElapseTime = 1;
 
+	double dFPS = Common::AtomicLoad(DrawnFrame) / (ElapseTime * 0.001);
 	u32 FPS = Common::AtomicLoad(DrawnFrame) * 1000 / ElapseTime;
 	u32 VPS = DrawnVideo * 1000 / ElapseTime;
 	u32 Speed = DrawnVideo * (100 * 1000) / (VideoInterface::TargetRefreshRate * ElapseTime);
@@ -713,7 +715,11 @@ void UpdateTitle()
 	#else	// Summary information
 	std::string SFPS;
 	if (Movie::IsPlayingInput())
+	{
 		SFPS = StringFromFormat("VI: %u/%u - Frame: %u/%u - FPS: %u - VPS: %u - %u%%", (u32)Movie::g_currentFrame, (u32)Movie::g_totalFrames, (u32)Movie::g_currentInputCount, (u32)Movie::g_totalInputCount, FPS, VPS, Speed);
+		if (SConfig::GetInstance().m_LocalCoreStartupParameter.bBenchmark)
+			Movie::g_FPS.push_back(dFPS);
+	}
 	else if (Movie::IsRecordingInput())
 		SFPS = StringFromFormat("VI: %u - Frame: %u - FPS: %u - VPS: %u - %u%%", (u32)Movie::g_currentFrame, (u32)Movie::g_currentInputCount, FPS, VPS, Speed);
 	else
