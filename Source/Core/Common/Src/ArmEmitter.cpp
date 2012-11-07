@@ -315,6 +315,22 @@ void ARMXEmitter::WriteInstruction (u32 Op, ARMReg Rd, ARMReg Rn, Operand2 Rm, b
 }
 
 // Data Operations
+void ARMXEmitter::WriteSignedMultiply(u32 Op, u32 Op2, u32 Op3, ARMReg dest, ARMReg r1, ARMReg r2)
+{
+	Write32(condition | (0x7 << 24) | (Op << 20) | (dest << 16) | (Op2 << 12) | (r1 << 8) | (Op3 << 5) | (1 << 4) | r2);
+}
+void ARMXEmitter::UDIV(ARMReg dest, ARMReg dividend, ARMReg divisor)
+{
+	if (!cpu_info.bIDIVa)
+		PanicAlert("Trying to use integer divide on hardware that doesn't support it. Bad programmer.");
+	WriteSignedMultiply(3, 0xF, 0, dest, divisor, dividend);
+}
+void ARMXEmitter::SDIV(ARMReg dest, ARMReg dividend, ARMReg divisor)
+{
+	if (!cpu_info.bIDIVa)
+		PanicAlert("Trying to use integer divide on hardware that doesn't support it. Bad programmer.");
+	WriteSignedMultiply(1, 0xF, 0, dest, divisor, dividend);
+}
 void ARMXEmitter::LSL (ARMReg dest, ARMReg src, Operand2 op2) { WriteShiftedDataOp(0, false, dest, src, op2);}
 void ARMXEmitter::LSLS(ARMReg dest, ARMReg src, Operand2 op2) { WriteShiftedDataOp(0, true, dest, src, op2);}
 void ARMXEmitter::LSL (ARMReg dest, ARMReg src, ARMReg op2)	  { WriteShiftedDataOp(1, false, dest, src, op2);} 

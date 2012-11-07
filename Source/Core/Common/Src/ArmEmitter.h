@@ -318,6 +318,7 @@ private:
 	void WriteRegStoreOp(u32 op, ARMReg dest, bool WriteBack, u16 RegList);
 	void WriteShiftedDataOp(u32 op, bool SetFlags, ARMReg dest, ARMReg src, ARMReg op2);
 	void WriteShiftedDataOp(u32 op, bool SetFlags, ARMReg dest, ARMReg src, Operand2 op2);
+	void WriteSignedMultiply(u32 Op, u32 Op2, u32 Op3, ARMReg dest, ARMReg r1, ARMReg r2);
 
 	// New Ops
 	void WriteInstruction(u32 op, ARMReg Rd, ARMReg Rn, Operand2 Rm, bool SetFlags = false);
@@ -410,6 +411,10 @@ public:
 	void MOVW(ARMReg dest, 			   Operand2 op2);
 	void MOVT(ARMReg dest, Operand2 op2, bool TopBits = false);
 
+	// UDIV and SDIV are only available on CPUs that have 
+	// the idiva hardare capacity
+	void UDIV(ARMReg dest, ARMReg dividend, ARMReg divisor);
+	void SDIV(ARMReg dest, ARMReg dividend, ARMReg divisor);
 
 	void MUL (ARMReg dest,	ARMReg src, ARMReg op2);
 	void MULS(ARMReg dest,	ARMReg src, ARMReg op2);
