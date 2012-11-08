@@ -47,6 +47,17 @@ void ARMXEmitter::ARMABI_CallFunctionCC(void *func, u32 Arg1, u32 Arg2)
 	POP(5, R0, R1, R2, R3, _LR);
 
 }
+void ARMXEmitter::ARMABI_CallFunctionCCC(void *func, u32 Arg1, u32 Arg2, u32 Arg3)
+{
+	ARMABI_MOVI2R(R14, Mem(func));	
+	PUSH(5, R0, R1, R2, R3, _LR);
+	ARMABI_MOVI2R(R0, Arg1);
+	ARMABI_MOVI2R(R1, Arg2);
+	ARMABI_MOVI2R(R2, Arg3);
+	BL(R14);
+	POP(5, R0, R1, R2, R3, _LR);
+
+}
 void ARMXEmitter::ARMABI_PushAllCalleeSavedRegsAndAdjustStack() {
 	// Note: 4 * 4 = 16 bytes, so alignment is preserved.
 	PUSH(4, R0, R1, R2, R3);

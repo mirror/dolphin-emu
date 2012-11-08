@@ -452,12 +452,15 @@ public:
 	// Some ASIMD instructions don't even have a conditional encoding.
 		
 	void VLDR(ARMReg dest, ARMReg Base, Operand2 op);
+	void VMOV(ARMReg Dest, ARMReg Src);
+
 	// Utility functions
 	// The difference between this and CALL is that this aligns the stack
 	// where appropriate.
 	void ARMABI_CallFunction(void *func);
 	void ARMABI_CallFunctionC(void *func, u32 Arg0);
 	void ARMABI_CallFunctionCC(void *func, u32 Arg1, u32 Arg2);
+	void ARMABI_CallFunctionCCC(void *func, u32 Arg1, u32 Arg2, u32 Arg3);
 	void ARMABI_PushAllCalleeSavedRegsAndAdjustStack(); 
 	void ARMABI_PopAllCalleeSavedRegsAndAdjustStack(); 
 	void ARMABI_MOVI2R(ARMReg reg, Operand2 val);

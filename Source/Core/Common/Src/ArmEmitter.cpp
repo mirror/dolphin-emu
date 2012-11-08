@@ -458,7 +458,84 @@ void ARMXEmitter::VLDR(ARMReg Dest, ARMReg Base, Operand2 op)
 	Write32(NO_COND | (13 << 24) | ((Dest & 0x10) << 18) | (1 << 20) | (Base << 16) \
 			| (5 << 9) | (!single_reg << 8) | op.Imm8());	
 }
+void ARMXEmitter::VMOV(ARMReg Dest, ARMReg Src)
+{
+	if (Dest > R15)
+	{
+		if (Src < S0)
+		{
+			if (Dest < D0)
+			{
+				// Moving to a Neon register FROM ARM Reg
+				Dest = (ARMReg)(Dest - S0); 
+				Write32(NO_COND | (0xE0 << 20) | ((Dest & 0x1E) << 15) | (Src << 12) \
+						| (0xA << 8) | ((Dest & 0x1) << 7) | (1 << 4));
+				return;
+			}
+			else
+			{
+				// Move 64bit from Arm reg
+				_assert_msg_(DYNA_REC, false, "This VMOV doesn't support moving 64bit ARM to NEON");
+			}
+		}
+	}
+	else
+	{
+		if (Src > R15)
+		{
+			if (Src < D0)
+			{
+				// Moving to ARM Reg from Neon Register
+				Src = (ARMReg)(Src - S0);
+				Write32(NO_COND | (0xE1 << 20) | ((Src & 0x1E) << 15) | (Dest << 12) \
+						| (0xA << 8) | ((Src & 0x1) << 7) | (1 << 4));
 
+				return;
+			}
+			else
+			{
+				// Move 64bit To Arm reg
+				_assert_msg_(DYNA_REC, false, "This VMOV doesn't support moving 64bit ARM From NEON");
+			}
+		}
+		else
+		{
+			// Move Arm reg to Arm reg
+			_assert_msg_(DYNA_REC, false, "VMOV doesn't support moving ARM registers");
+		}
+	}
+	// Moving NEON registers
+	int SrcSize = Src < D0 ? 1 : Src < Q0 ? 2 : 4;
+	int DestSize = Dest < D0 ? 1 : Dest < Q0 ? 2 : 4;
+	bool Single = DestSize == 1;
+	_assert_msg_(DYNA_REC, SrcSize == DestSize, "VMOV doesn't support moving different register sizes");
+	if (Single)
+	{
+		Dest = (ARMReg)(Dest - S0);
+		Src = (ARMReg)(Src - S0);
+		Write32(NO_COND | (0x1D << 23) | ((Dest & 0x1) << 22) | (0x3 << 20) | ((Dest & 0x1E) << 11) \
+				| (0x5 << 9) | (1 << 6) | ((Src & 0x1) << 5) | ((Src & 0x1E) >> 1));
+	}
+	else
+	{
+		// Double and quad
+		bool Quad = DestSize == 4;
+		if (Quad)
+		{
+			// Gets encoded as a Double register
+			Dest = (ARMReg)((Dest - Q0) * 2);
+			Src = (ARMReg)((Src - Q0) * 2);
+		}
+		else
+		{
+			Dest = (ARMReg)(Dest - D0);
+			Src = (ARMReg)(Src - D0);
+		}
+		Write32((0xF2 << 24) | ((Dest & 0x10) << 18) | (1 << 21) | ((Src & 0xF) << 16) \
+				| ((Dest & 0xF) << 12) | (1 << 8) | ((Src & 0x10) << 3) | (Quad << 6) \
+				| ((Src & 0x10) << 1) | (1 << 4) | (Src & 0xF));
+	}
+}
 
 // helper routines for setting pointers
 void ARMXEmitter::CallCdeclFunction3(void* fnptr, u32 arg0, u32 arg1, u32 arg2)
