@@ -100,7 +100,7 @@ bool GetISOID(std::string &isoID_, std::string filename)
 	return true;
 }
 
-void DoState(PointerWrap &p)
+u32 GetVersion(PointerWrap &p)
 {
 	u32 version = STATE_VERSION;
 	{
@@ -109,6 +109,12 @@ void DoState(PointerWrap &p)
 		p.Do(cookie);
 		version = cookie - COOKIE_BASE;
 	}
+	return version;
+}
+
+void DoState(PointerWrap &p)
+{
+	u32 version = GetVersion(p);
 
 	if (version != STATE_VERSION)
 	{
@@ -386,7 +392,7 @@ void LoadFileStateData(const std::string& filename, std::vector<u8>& ret_data)
 	StateHeader header;
 	f.ReadArray(&header, 1);
 	
-	if (memcmp(SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str(), header.gameID, 6)) 
+	if (Core::IsRunning() && memcmp(SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str(), header.gameID, 6))
 	{
 		Core::DisplayMessage(StringFromFormat("State belongs to a different game (ID %.*s)",
 			6, header.gameID), 2000);
@@ -526,6 +532,30 @@ void LoadAs(const std::string& filename)
 void SetOnAfterLoadCallback(CallbackFunc callback)
 {
 	g_onAfterLoadCb = callback;
+}
+
+bool IsCorrectVersion(const std::string filename)
+{
+	std::vector<u8> buffer;
+	LoadFileStateData(filename, buffer);
+
+	if (buffer.empty())
+	{
+		PanicAlertT("Can't read %s", filename.c_str());
+		return false;
+	}
+
+	u8 *ptr = &buffer[0];
+	PointerWrap p(&ptr, PointerWrap::MODE_READ);
+	u32 version = GetVersion(p);
+
+	if (version != STATE_VERSION)
+	{
+		CriticalAlertT("The savestate is version %u but the current version is %d.", version, STATE_VERSION);
+		return false;
+	}
+
+	return true;
 }
 
 void VerifyAt(const std::string& filename)

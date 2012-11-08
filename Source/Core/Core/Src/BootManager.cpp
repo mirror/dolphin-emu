@@ -174,6 +174,7 @@ bool BootCore(const std::string& _rFilename)
 		// find the file
 		if (!File::SearchStateDir(rFilename)) return false;
 		std::string stateFilename = rFilename;
+		if (!State::IsCorrectVersion(stateFilename)) return false;
 		if (!GetSaveStateISO(rFilename)) return false;
 		// schedule savestate
 		Core::SetStateFileName(stateFilename);
@@ -195,6 +196,7 @@ bool BootCore(const std::string& _rFilename)
 		if (Movie::IsRecordingInputFromSaveState())
 		{
 			std::string recordingFilename = rFilename;
+			if (!State::IsCorrectVersion(recordingFilename + ".sav")) return false;
 			if (!GetRecordingISO(rFilename)) return false;
 			if (!GetISOIDMatch(recordingFilename, recordingFilename + ".sav")) return false;
 		}

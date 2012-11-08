@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 
+#include "ChunkFile.h"
+
 namespace State
 {
 
@@ -44,6 +46,8 @@ void Verify(int slot);
 void SaveAs(const std::string &filename, bool wait = false);
 void LoadAs(const std::string &filename);
 void VerifyAt(const std::string &filename);
+u32 GetVersion(PointerWrap &p);
+bool IsCorrectVersion(const std::string filename);
 
 void SaveToBuffer(std::vector<u8>& buffer);
 void LoadFromBuffer(std::vector<u8>& buffer);
