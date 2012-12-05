@@ -57,7 +57,7 @@ public:
 
 	enum
 	{
-		COLUMN_PLATFORM = 0,
+		COLUMN_PLATFORM = 1,
 		COLUMN_BANNER,
 		COLUMN_TITLE,
 		COLUMN_NOTES,
@@ -99,6 +99,7 @@ private:
 	DECLARE_EVENT_TABLE()
 
 	// events
+	void OnPaintDrawImages(wxPaintEvent& event);
 	void OnLeftClick(wxMouseEvent& event);
 	void OnRightClick(wxMouseEvent& event);
 	void OnMouseMotion(wxMouseEvent& event);

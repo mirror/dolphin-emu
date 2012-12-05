@@ -17,7 +17,7 @@
 
 #include "Common.h"
 #include "AboutDolphin.h"
-#include "../resources/dolphin_logo.cpp"
+#include "../resources/dolphin_logo.h"
 #include "scmrev.h"
 
 AboutDolphin::AboutDolphin(wxWindow *parent, wxWindowID id,
