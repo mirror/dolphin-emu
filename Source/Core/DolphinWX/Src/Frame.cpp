@@ -196,6 +196,7 @@ EVT_MENU(IDM_LOAD_WII_MENU, CFrame::OnLoadWiiMenu)
 EVT_MENU(IDM_FIFOPLAYER, CFrame::OnFifoPlayer)
 
 EVT_MENU(IDM_TOGGLE_FULLSCREEN, CFrame::OnToggleFullscreen)
+EVT_MENU(IDM_CAPTURE_CURSOR, CFrame::CaptureCursor)
 EVT_MENU(IDM_TOGGLE_DUALCORE, CFrame::OnToggleDualCore)
 EVT_MENU(IDM_TOGGLE_SKIPIDLE, CFrame::OnToggleSkipIdle)
 EVT_MENU(IDM_TOGGLE_TOOLBAR, CFrame::OnToggleToolbar)
@@ -572,7 +573,7 @@ void CFrame::OnHostMessage(wxCommandEvent& event)
 		{
 			wxString caption = event.GetString().BeforeFirst(':');
 			wxString text = event.GetString().AfterFirst(':');
-			bPanicResult = (wxYES == wxMessageBox(text, 
+			bPanicResult = (wxYES == wxMessageBox(text,
 						caption, event.GetInt() ? wxYES_NO : wxOK, wxGetActiveWindow()));
 			panic_event.Set();
 		}
@@ -605,7 +606,7 @@ void CFrame::GetRenderWindowSize(int& x, int& y, int& width, int& height)
 void CFrame::OnRenderWindowSizeRequest(int width, int height)
 {
 	if (Core::GetState() == Core::CORE_UNINITIALIZED ||
-			!SConfig::GetInstance().m_LocalCoreStartupParameter.bRenderWindowAutoSize || 
+			!SConfig::GetInstance().m_LocalCoreStartupParameter.bRenderWindowAutoSize ||
 			RendererIsFullscreen() || m_RenderFrame->IsMaximized())
 		return;
 
@@ -732,6 +733,7 @@ int GetCmdForHotkey(unsigned int key)
 	case HK_EXPORT_RECORDING: return IDM_RECORDEXPORT;
 	case HK_READ_ONLY_MODE: return IDM_RECORDREADONLY;
 	case HK_FULLSCREEN: return IDM_TOGGLE_FULLSCREEN;
+	case HK_CAPTURE_CURSOR: return IDM_CAPTURE_CURSOR;
 	case HK_SCREENSHOT: return IDM_SCREENSHOT;
 	case HK_EXIT: return wxID_EXIT;
 
@@ -834,7 +836,7 @@ void CFrame::OnKeyDown(wxKeyEvent& event)
 					{
 						int cmd = GetCmdForHotkey(i);
 						if (cmd >= 0)
-						{ 
+						{
 							wxCommandEvent evt(wxEVT_COMMAND_MENU_SELECTED, cmd);
 							wxMenuItem *item = GetMenuBar()->FindItem(cmd);
 							if (item && item->IsCheckable())
@@ -952,6 +954,51 @@ void CFrame::DoFullscreen(bool bF)
 	else
 	{
 		m_RenderFrame->Raise();
+	}
+}
+
+void CFrame::CaptureCursor(wxCommandEvent& WXUNUSED (event))
+{
+	wxASSERT(m_RenderParent != NULL);
+
+#ifdef _WIN32
+	RECT r;
+	GetClipCursor(&r);
+	bool free = GetSystemMetrics(SM_CXSCREEN) == r.right
+		&& GetSystemMetrics(SM_CYSCREEN) == r.bottom;
+#elif defined(HAVE_X11) && HAVE_X11
+	Display *dpy = X11Utils::XDisplayFromHandle(m_RenderParent->GetHandle());
+	Window win = X11Utils::XWindowFromHandle(m_RenderParent->GetHandle());
+	bool free = !X11Utils::IsPointerGrabbed();
+#endif
+
+	if (free)
+	{
+#ifdef _WIN32
+		GetWindowRect((HWND)m_RenderParent->GetHandle(), &r);
+		ClipCursor(&r);
+#elif defined(HAVE_X11) && HAVE_X11
+		int result = XGrabPointer(dpy
+			, DefaultRootWindow(dpy)
+			, True
+			, 0
+			, GrabModeAsync
+			, GrabModeAsync
+			, win
+			, None
+			, CurrentTime);
+#endif
+		GetStatusBar()->SetStatusText(_("Cursor captured"), 1);
+	}
+
+	else
+	{
+#ifdef _WIN32
+		ClipCursor(NULL);
+#elif defined(HAVE_X11) && HAVE_X11
+		XUngrabPointer(dpy, CurrentTime);
+#endif
+		GetStatusBar()->SetStatusText(_("Cursor released"), 1);
 	}
 }
 

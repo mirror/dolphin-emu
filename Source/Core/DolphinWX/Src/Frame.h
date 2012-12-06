@@ -304,6 +304,7 @@ private:
 	void OnConfigHotkey(wxCommandEvent& event);
 
 	void OnToggleFullscreen(wxCommandEvent& event);
+	void CaptureCursor(wxCommandEvent& event);
 	void OnToggleDualCore(wxCommandEvent& event);
 	void OnToggleSkipIdle(wxCommandEvent& event);
 	void OnToggleThrottle(wxCommandEvent& event);
