@@ -86,7 +86,7 @@ std::string VideoBackend::GetName()
 	return "Direct3D9";
 }
 
-void InitBackendInfo()
+void VideoBackend::InitBackendInfo()
 {
 	DX9::D3D::Init();
 	const int shaderModel = ((DX9::D3D::GetCaps().PixelShaderVersion >> 8) & 0xFF);

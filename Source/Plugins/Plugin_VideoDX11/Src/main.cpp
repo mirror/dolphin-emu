@@ -78,7 +78,7 @@ std::string VideoBackend::GetName()
 	return "Direct3D11";
 }
 
-void InitBackendInfo()
+void VideoBackend::InitBackendInfo()
 {
 	HRESULT hr = DX11::D3D::LoadDXGI();
 	if (SUCCEEDED(hr)) hr = DX11::D3D::LoadD3D();

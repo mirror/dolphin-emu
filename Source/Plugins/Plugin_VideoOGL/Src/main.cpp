@@ -127,7 +127,7 @@ void GetShaders(std::vector<std::string> &shaders)
         }
 }
 
-void InitBackendInfo()
+void VideoBackend::InitBackendInfo()
 {
 	g_Config.backend_info.APIType = API_OPENGL;
 	g_Config.backend_info.bUseRGBATextures = false;
