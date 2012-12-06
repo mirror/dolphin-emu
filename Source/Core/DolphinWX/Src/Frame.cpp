@@ -810,6 +810,8 @@ int GetCmdForHotkey(unsigned int key)
 
 	if (key == HK_FULLSCREEN)
 		return IDM_TOGGLE_FULLSCREEN;
+	if (key == HK_CAPTURE_MOUSE)
+		return IDM_CAPTURE_MOUSE;
 	if (key == HK_SCREENSHOT)
 		return IDM_SCREENSHOT;
 
@@ -874,6 +876,9 @@ void CFrame::OnKeyDown(wxKeyEvent& event)
 		// Toggle fullscreen
 		if (IsHotkey(event, HK_FULLSCREEN))
 			DoFullscreen(!RendererIsFullscreen());
+		// Capture mouse
+		if (IsHotkey(event, HK_CAPTURE_MOUSE))
+			CaptureMouse(event);
 		// Send Debugger keys to CodeWindow
 		else if (g_pCodeWindow && (event.GetKeyCode() >= WXK_F9 && event.GetKeyCode() <= WXK_F11))
  			event.Skip();
@@ -1032,6 +1037,20 @@ void CFrame::DoFullscreen(bool bF)
 	}
 	else
 		m_RenderFrame->Raise();
+}
+
+void CFrame::CaptureMouse(wxKeyEvent& event)
+{
+#ifdef _WIN32
+	RECT r;
+	GetClipCursor(&r);
+	if(GetSystemMetrics(SM_CXSCREEN) == r.right && GetSystemMetrics(SM_CYSCREEN) == r.bottom) {
+		if(m_RenderParent) GetWindowRect(m_RenderParent->GetHandle(), &r);
+		ClipCursor(&r);		
+	}
+	else
+		ClipCursor(NULL);
+#endif
 }
 
 const CGameListCtrl *CFrame::GetGameListCtrl() const

@@ -69,6 +69,7 @@ static const struct {
 	{ "Readonlymode",	0,			0 /* wxMOD_NONE */ },
 
 	{ "ToggleFullscreen",	13 /* WXK_RETURN */,	1 /* wxMOD_ALT */ },
+	{ "CaptureMouse",	340 /* WXK_F1 */,	1 /* wxMOD_ALT */ },
 	{ "Screenshot",		348 /* WXK_F9 */,	0 /* wxMOD_NONE */ },
 
 	{ "Wiimote1Connect",	344 /* WXK_F5 */,	1 /* wxMOD_ALT */ },

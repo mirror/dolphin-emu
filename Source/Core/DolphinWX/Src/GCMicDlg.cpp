@@ -194,6 +194,7 @@ void GCMicDialog::CreateHotkeyGUIControls(void)
 		_("Read-only mode"),
 
 		_("Toggle Fullscreen"),
+		_("Capture Mouse"),
 		_("Take Screenshot"),
 
 		_("Connect Wiimote 1"),

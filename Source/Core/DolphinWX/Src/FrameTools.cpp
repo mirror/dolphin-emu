@@ -364,6 +364,9 @@ wxString CFrame::GetMenuLabel(int Id)
 		case HK_FULLSCREEN:
 			Label = _("&Fullscreen");
 			break;
+		case HK_CAPTURE_MOUSE:
+			Label = _("&Capture Mouse");
+			break;
 		case HK_SCREENSHOT:
 			Label = _("Take Screenshot");
 			break;
@@ -1568,7 +1571,7 @@ void CFrame::UpdateGUI()
 
 	// Update Menu Accelerators
 	for (unsigned int i = 0; i < NUM_HOTKEYS; i++)
-		GetMenuBar()->FindItem(GetCmdForHotkey(i))->SetItemLabel(GetMenuLabel(i));
+		if(GetMenuBar()->FindItem(GetCmdForHotkey(i))) GetMenuBar()->FindItem(GetCmdForHotkey(i))->SetItemLabel(GetMenuLabel(i));
 
 	GetMenuBar()->FindItem(IDM_LOADSTATE)->Enable(Initialized);
 	GetMenuBar()->FindItem(IDM_SAVESTATE)->Enable(Initialized);
