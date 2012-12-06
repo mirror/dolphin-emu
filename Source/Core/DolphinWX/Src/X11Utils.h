@@ -48,6 +48,7 @@ void SendClientEvent(Display *dpy, const char *message,
 void SendKeyEvent(Display *dpy, int key);
 void SendButtonEvent(Display *dpy, int button, int x, int y, bool pressed);
 void SendMotionEvent(Display *dpy, int x, int y);
+bool IsPointerGrabbed();
 void EWMH_Fullscreen(Display *dpy, int action);
 #if defined(HAVE_WX) && HAVE_WX
 Window XWindowFromHandle(void *Handle);

@@ -121,6 +121,8 @@ void CFrame::CreateMenu()
 	emulationMenu->AppendSeparator();
 	emulationMenu->Append(IDM_TOGGLE_FULLSCREEN, GetMenuLabel(HK_FULLSCREEN));
 	emulationMenu->AppendSeparator();
+	emulationMenu->Append(IDM_CAPTURE_CURSOR, GetMenuLabel(HK_CAPTURE_CURSOR));
+	emulationMenu->AppendSeparator();
 	emulationMenu->Append(IDM_RECORD, GetMenuLabel(HK_START_RECORDING));
 	emulationMenu->Append(IDM_PLAYRECORD, GetMenuLabel(HK_PLAY_RECORDING));
 	emulationMenu->Append(IDM_RECORDEXPORT, GetMenuLabel(HK_EXPORT_RECORDING));
@@ -355,6 +357,9 @@ wxString CFrame::GetMenuLabel(int Id)
 
 		case HK_FULLSCREEN:
 			Label = _("&Fullscreen");
+			break;
+		case HK_CAPTURE_CURSOR:
+			Label = _("C&apture Cursor");
 			break;
 		case HK_SCREENSHOT:
 			Label = _("Take Screenshot");
@@ -1558,9 +1563,10 @@ void CFrame::UpdateGUI()
 	GetMenuBar()->FindItem(IDM_FRAMESTEP)->Enable(Running || Paused);
 	GetMenuBar()->FindItem(IDM_SCREENSHOT)->Enable(Running || Paused);
 	GetMenuBar()->FindItem(IDM_TOGGLE_FULLSCREEN)->Enable(Running || Paused);
+	GetMenuBar()->FindItem(IDM_CAPTURE_CURSOR)->Enable(Running);
 
 	// Update Menu Accelerators
-	for (unsigned int i = 0; i < NUM_HOTKEYS; i++)
+	for (unsigned int i = 0; GetMenuBar()->FindItem(GetCmdForHotkey(i)) && i < NUM_HOTKEYS; i++)
 		GetMenuBar()->FindItem(GetCmdForHotkey(i))->SetItemLabel(GetMenuLabel(i));
 
 	GetMenuBar()->FindItem(IDM_LOADSTATE)->Enable(Initialized);

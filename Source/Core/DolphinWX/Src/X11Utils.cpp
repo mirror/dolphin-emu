@@ -99,6 +99,31 @@ void SendMotionEvent(Display *dpy, int x, int y)
 		ERROR_LOG(VIDEO, "Failed to send mouse button event to the emulator window.");
 }
 
+bool IsPointerGrabbed()
+{
+	Display *dpy = XOpenDisplay("");
+
+	int status = XGrabPointer(dpy
+		, RootWindow(dpy, DefaultScreen(dpy))
+		, True
+		, 0
+		, GrabModeAsync
+		, GrabModeAsync
+		, None
+		, None
+		, CurrentTime);
+
+	if (status == GrabSuccess)
+	{
+		XUngrabPointer(dpy, CurrentTime);
+		XFlush(dpy);
+	}
+
+	XCloseDisplay(dpy);
+
+	return status == AlreadyGrabbed;
+}
+
 void EWMH_Fullscreen(Display *dpy, int action)
 {
 	_assert_(action == _NET_WM_STATE_REMOVE || action == _NET_WM_STATE_ADD
