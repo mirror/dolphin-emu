@@ -97,8 +97,9 @@ bool CompilePixelShader(const char *code, int len, u8 **bytecode, int *bytecodel
 	// Someone:
 	// For some reason, I had this kind of errors : "Shader uses texture addressing operations
 	// in a dependency chain that is too complex for the target shader model (ps_2_0) to handle."
+	// NOTE: Due to a bug in D3DCompiler.dll, shader compilation crashes when optimizing certain shaders, cf. issue 5682
 	HRESULT hr = PD3DXCompileShader(code, len, 0, 0, "main", D3D::PixelShaderVersionString(), 
-				 		           0, &shaderBuffer, &errorBuffer, 0);
+				 		           D3DXSHADER_SKIPOPTIMIZATION, &shaderBuffer, &errorBuffer, 0);
 
 	if (FAILED(hr))
 	{
