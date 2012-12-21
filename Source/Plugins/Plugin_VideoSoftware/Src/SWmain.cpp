@@ -201,6 +201,7 @@ void VideoSoftware::Video_EnterLoop()
 		while (!emuRunningState && fifoStateRun)
 		{
 			g_video_backend->PeekMessages();
+			g_video_backend->RenderFrameWhilePaused();
 			m_csSWVidOccupied.unlock();
 			Common::SleepCurrentThread(1);
 			m_csSWVidOccupied.lock();
@@ -287,6 +288,11 @@ unsigned int VideoSoftware::PeekMessages()
 #else
 	return false;
 #endif
+}
+
+void VideoSoftware::RenderFrameWhilePaused()
+{
+	// TODO
 }
 
 // Show the current FPS

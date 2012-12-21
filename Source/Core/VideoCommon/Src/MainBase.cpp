@@ -208,6 +208,11 @@ void VideoBackendHardware::DoState(PointerWrap& p)
 	}
 }
 
+void VideoBackendHardware::RenderFrameWhilePaused()
+{
+	Renderer::RenderFrameWhilePaused();
+}
+
 void VideoBackendHardware::PauseAndLock(bool doLock, bool unpauseOnUnlock)
 {
 	Fifo_PauseAndLock(doLock, unpauseOnUnlock);
