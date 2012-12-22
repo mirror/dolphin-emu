@@ -69,7 +69,7 @@ namespace FPURoundMode
 
 	void SetPrecisionMode(u32 mode)
 	{
-		const char table[4] {
+		const unsigned short table[4] {
 			0 << 8, // FPU_PREC_24
 			2 << 8, // FPU_PREC_53
 			3 << 8, // FPU_PREC_64

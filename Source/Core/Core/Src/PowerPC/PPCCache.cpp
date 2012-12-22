@@ -20,6 +20,7 @@
 #include "PowerPC.h"
 #include "JitCommon/JitBase.h"
 #include "JitCommon/JitCache.h"
+#include "JitInterface.h"
 
 #ifdef _M_ARM
 #include "JitArm32/Jit.h"

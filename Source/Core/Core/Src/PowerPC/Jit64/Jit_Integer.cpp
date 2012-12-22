@@ -1695,6 +1695,8 @@ void Jit64::rlwinmx(UGeckoInstruction inst)
 			if (inst.Rc)
 			{
 				GenerateRC();
+			}
+		}
 		else if (inst.SH && inst.ME == 31 && inst.MB == 32 - inst.SH)
 		{
 			SHR(32, gpr.R(a), Imm8(inst.MB));

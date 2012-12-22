@@ -53,6 +53,9 @@
 #include "HW/Memmap.h"
 #include "PowerPC/PowerPC.h"
 #include "PowerPC/JitInterface.h"
+#ifndef _M_GENERIC
+#include "PowerPC/JitCommon/JitBase.h"
+#endif
 #include "x64Analyzer.h"
 
 namespace EMM
