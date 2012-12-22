@@ -143,11 +143,13 @@ bool DolphinApp::OnInit()
 			"Specify a video backend",
 			wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL
 		},
-		{
-			wxCMD_LINE_OPTION, "A", "audio_emulation",
-			"Low level (LLE) or high level (HLE) audio",
-			wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL
-		},
+
+		// TODO: Not supported, yet
+		//{
+		//	wxCMD_LINE_OPTION, "A", "audio_emulation",
+		//	"Low level (LLE) or high level (HLE) audio",
+		//	wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL
+		//},
 		{
 			wxCMD_LINE_NONE, NULL, NULL, NULL, wxCMD_LINE_VAL_NONE, 0
 		}
@@ -167,8 +169,7 @@ bool DolphinApp::OnInit()
 	selectVideoBackend = parser.Found(wxT("video_backend"),
 		&videoBackendName);
 	// TODO:  This currently has no effect.  Implement or delete.
-	//selectAudioEmulation = parser.Found(wxT("audio_emulation"),
-	//	&audioEmulationName);
+	//selectAudioEmulation = parser.Found(wxT("audio_emulation"), &audioEmulationName);
 #endif // wxUSE_CMDLINE_PARSER
 
 #if defined _DEBUG && defined _WIN32
