@@ -59,10 +59,10 @@ namespace FPURoundMode
 				FPU_ROUND_UP,
 				FPU_ROUND_DOWN
 			};
-			unsigned short mode;
-			asm ("fstcw %0" : "=m" (mode) : );
-			mode = (mode & ~FPU_ROUND_MASK) | table[mode];
-			asm ("fldcw %0" : : "m" (mode));
+			unsigned short _mode;
+			asm ("fstcw %0" : "=m" (_mode) : );
+			_mode = (_mode & ~FPU_ROUND_MASK) | table[mode];
+			asm ("fldcw %0" : : "m" (_mode));
 		#endif
 		#endif
 	}
