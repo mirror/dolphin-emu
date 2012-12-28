@@ -179,42 +179,8 @@ bool Renderer::CalculateTargetSize(unsigned int framebuffer_width, unsigned int 
 {
 	int newEFBWidth, newEFBHeight;
 
-	// TODO: Ugly. Clean up
-	switch (s_LastEFBScale)
-	{
-		case 2: // 1x
-			efb_scale_numeratorX = efb_scale_numeratorY = 1;
-			efb_scale_denominatorX = efb_scale_denominatorY = 1;
-			break;
-
-		case 3: // 1.5x
-			efb_scale_numeratorX = efb_scale_numeratorY = 3;
-			efb_scale_denominatorX = efb_scale_denominatorY = 2;
-			break;
-
-		case 4: // 2x
-			efb_scale_numeratorX = efb_scale_numeratorY = 2;
-			efb_scale_denominatorX = efb_scale_denominatorY = 1;
-			break;
-
-		case 5: // 2.5x
-			efb_scale_numeratorX = efb_scale_numeratorY = 5;
-			efb_scale_denominatorX = efb_scale_denominatorY = 2;
-			break;
-
-		case 6: // 3x
-			efb_scale_numeratorX = efb_scale_numeratorY = 3;
-			efb_scale_denominatorX = efb_scale_denominatorY = 1;
-			break;
-
-		case 7: // 4x
-			efb_scale_numeratorX = efb_scale_numeratorY = 4;
-			efb_scale_denominatorX = efb_scale_denominatorY = 1;
-			break;
-
-		default: // fractional & integral handled later
-			break;
-	}
+	efb_scale_numeratorX = efb_scale_numeratorY = g_ActiveConfig.iEFBScaleNumerator;
+	efb_scale_denominatorX = efb_scale_denominatorY = g_ActiveConfig.iEFBScaleDenominator;
 
 	switch (s_LastEFBScale)
 	{

@@ -79,6 +79,8 @@ void VideoConfig::Load(const char *ini_file)
 	
 	iniFile.Get("Settings", "MSAA", &iMultisampleMode, 0);
 	iniFile.Get("Settings", "EFBScale", &iEFBScale, 2); // native
+	iniFile.Get("Settings",	"EFBScaleNumerator", &iEFBScaleNumerator, 1);
+	iniFile.Get("Settings",	"EFBScaleDenominator", &iEFBScaleDenominator, 1);
 	
 	iniFile.Get("Settings", "DstAlphaPass", &bDstAlphaPass, false);
 	
@@ -141,6 +143,8 @@ void VideoConfig::GameIniLoad(const char *ini_file)
 	iniFile.GetIfExists("Video_Settings", "DisableFog", &bDisableFog);
 	iniFile.GetIfExists("Video_Settings", "EnableOpenCL", &bEnableOpenCL);
 	iniFile.GetIfExists("Video_Settings", "OMPDecoder", &bOMPDecoder);
+	iniFile.GetIfExists("Video_Settings", "EFBScaleNumerator", &iEFBScaleNumerator);
+	iniFile.GetIfExists("Video_Settings", "EFBScaleDenominator", &iEFBScaleDenominator);
 
 	iniFile.GetIfExists("Video_Enhancements", "ForceFiltering", &bForceFiltering);
 	iniFile.GetIfExists("Video_Enhancements", "MaxAnisotropy", &iMaxAnisotropy);  // NOTE - this is x in (1 << x)
@@ -214,6 +218,10 @@ void VideoConfig::Save(const char *ini_file)
 	iniFile.Set("Settings", "Wireframe", bWireFrame);
 	iniFile.Set("Settings", "DstAlphaPass", bDstAlphaPass);
 	iniFile.Set("Settings", "DisableFog", bDisableFog);
+
+	// TODO
+	//iniFile.Set("Settings",	"EFBScaleNumerator", &iEFBScaleNumerator);
+	//iniFile.Set("Settings",	"EFBScaleDenominator", &iEFBScaleDenominator);
 
 	iniFile.Set("Settings", "EnableOpenCL", bEnableOpenCL);
 	iniFile.Set("Settings", "OMPDecoder", bOMPDecoder);

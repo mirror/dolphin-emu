@@ -88,6 +88,8 @@ struct VideoConfig
 	bool bForceFiltering;
 	int iMaxAnisotropy;
 	std::string sPostProcessingShader;
+	int iEFBScaleNumerator;
+	int iEFBScaleDenominator;
 
 	// Information
 	bool bShowFPS;
