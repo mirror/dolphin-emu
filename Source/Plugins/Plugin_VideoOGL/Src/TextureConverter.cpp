@@ -310,8 +310,6 @@ void EncodeToRamUsingShader(GLuint srcTexture, const TargetRectangle& sourceRc,
 
 	glViewport(0, 0, (GLsizei)dstWidth, (GLsizei)dstHeight);
 
-	PixelShaderCache::SetCurrentShader(shader.glprogid);
-
 	GL_REPORT_ERRORD();
 	if(!(s_cached_sourceRc == sourceRc)) {
 		GLfloat vertices[] = {

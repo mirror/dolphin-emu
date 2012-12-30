@@ -1190,33 +1190,6 @@ void Renderer::Swap(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight,cons
 		// Render to the real buffer now.
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0); // switch to the window backbuffer
 		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, read_texture);
-		if (applyShader)
-		{
-			glBegin(GL_QUADS);
-			glTexCoord2f(targetRc.left, targetRc.bottom);
-			glMultiTexCoord2fARB(GL_TEXTURE1, 0, 0);
-			glVertex2f(-1, -1);
-
-			glTexCoord2f(targetRc.left, targetRc.top);
-			glMultiTexCoord2fARB(GL_TEXTURE1, 0, 1);
-			glVertex2f(-1,  1);
-
-			glTexCoord2f(targetRc.right, targetRc.top);
-			glMultiTexCoord2fARB(GL_TEXTURE1, 1, 1);
-			glVertex2f( 1,  1);
-
-			glTexCoord2f(targetRc.right, targetRc.bottom);
-			glMultiTexCoord2fARB(GL_TEXTURE1, 1, 0);
-			glVertex2f( 1, -1);
-			glEnd();
-			ProgramShaderCache::SetBothShaders(0, 0);
-		}
-		else
-		{
-			glBegin(GL_QUADS);
-			glTexCoord2f(targetRc.left, targetRc.bottom);
-			glVertex2f(-1, -1);
->>>>>>> Initial removal of Nvidia CG. Still some more cleanup to go
 
 		if(!( s_cached_targetRc == targetRc)) {
 			GLfloat vertices[] = {
@@ -1252,7 +1225,7 @@ void Renderer::Swap(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight,cons
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		
 		if(applyShader)
-			PixelShaderCache::DisableShader();
+			ProgramShaderCache::SetBothShaders(0, 0);
 	}
 
 	glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
