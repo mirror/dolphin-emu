@@ -23,15 +23,6 @@
 
 #define THUNK_ARENA_SIZE 1024*1024*1
 
-namespace
-{
-
-static u8 GC_ALIGNED32(saved_fp_state[16 * 4 * 4]);
-static u8 GC_ALIGNED32(saved_gpr_state[16 * 8]);
-static u16 saved_mxcsr;
-
-}  // namespace
-
 using namespace Gen;
 
 void ThunkManager::Init()
@@ -52,4 +43,5 @@ void ThunkManager::Shutdown()
 
 void *ThunkManager::ProtectFunction(void *function, int num_params)
 {
+	return 0;
 }

@@ -36,20 +36,20 @@ if(_M_ARM) #ARM
 				Src/ArmCPUDetect.cpp
 				Src/ArmEmitter.cpp
 				Src/ArmABI.cpp
-				Src/ThunkArm.cpp)
+				Src/ArmThunk.cpp)
 else()
 	if(NOT _M_GENERIC) #X86
 		set(SRCS	${SRCS}
-					Src/CPUDetect.cpp
-					Src/FPURoundModeX86.cpp
-					Src/ThunkX86.cpp
+					Src/x64CPUDetect.cpp
+					Src/x64FPURoundMode.cpp
+					Src/x64Thunk.cpp
 					)
 	endif()
 endif()
 if(_M_GENERIC) #Generic
 	set(SRCS	${SRCS}
-				Src/CPUDetect.cpp
-				Src/FPURoundModeGeneric.cpp)
+				Src/x64CPUDetect.cpp
+				Src/GenericFPURoundMode.cpp)
 endif()
 if(WIN32)
 	set(SRCS ${SRCS} Src/ExtendedTrace.cpp)

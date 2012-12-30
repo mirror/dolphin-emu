@@ -39,16 +39,12 @@ void Clear()
 void ProgressiveCleanup()
 {
 }
-
-static size_t GetSpaceLeft()
-{
-}
-
 }  // namespace
 
 // NOTE - outside the namespace on purpose.
 bool HandleDisplayList(u32 address, u32 size)
 {
+	return false;
 }
 
 void IncrementCheckContextId()

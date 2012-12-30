@@ -34,41 +34,25 @@
 
 using namespace ArmGen;
 
-//static int temp32; // unused?
-
 //TODO - make an option
 //#if _DEBUG
-static bool enableDebug = false; 
+//	bool enableDebug = false; 
 //#else
-//		bool enableDebug = false; 
+//	bool enableDebug = false; 
 //#endif
-
-//static bool enableStatistics = false; //unused?
-
-//GLOBAL STATIC ALLOCATIONS x86
-//EAX - ubiquitous scratch register - EVERYBODY scratches this
-
-//GLOBAL STATIC ALLOCATIONS x64
-//EAX - ubiquitous scratch register - EVERYBODY scratches this
-//RBX - Base pointer of memory
-//R15 - Pointer to array of block pointers 
 
 JitArmAsmRoutineManager asm_routines;
 
-// PLAN: no more block numbers - crazy opcodes just contain offset within
-// dynarec buffer
-// At this offset - 4, there is an int specifying the block number.
 void JitArmAsmRoutineManager::Generate()
 {
 	enterCode = GetCodePtr();
 	PUSH(2, R11, _LR); // R11 is frame pointer in Debug.
 
-	const u8* outerLoop = GetCodePtr();
 	ARMABI_MOVI2R(R0, (u32)&CoreTiming::downcount);
 
 	FixupBranch skipToRealDispatcher = B();
 	dispatcher = GetCodePtr();	
-	printf("Dispatcher is %08x\n", dispatcher);
+	printf("Dispatcher is %p\n", dispatcher);
 
 	// Downcount Check	
 	FixupBranch bail = B_CC(CC_MI);

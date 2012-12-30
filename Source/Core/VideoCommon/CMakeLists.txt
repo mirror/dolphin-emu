@@ -41,11 +41,11 @@ set(SRCS	Src/BPFunctions.cpp
 set(LIBS core)
 
 if(NOT _M_GENERIC)
-	set(SRCS ${SRCS}	Src/TextureDecoderX86.cpp
-						Src/DLCacheX86.cpp)
+	set(SRCS ${SRCS}	Src/x64TextureDecoder.cpp
+						Src/x64DLCache.cpp)
 else()
-	set(SRCS ${SRCS}	Src/TextureDecoderGeneric.cpp
-						Src/DLCacheGeneric.cpp)
+	set(SRCS ${SRCS}	Src/GenericTextureDecoder.cpp
+						Src/GenericDLCache.cpp)
 endif()
 if(NOT ${CL} STREQUAL CL-NOTFOUND)
 	list(APPEND LIBS ${CL})

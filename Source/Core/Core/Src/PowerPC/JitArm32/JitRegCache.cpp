@@ -91,6 +91,7 @@ ARMReg ArmRegCache::GetReg(bool AutoLock)
 		}
 	// Uh Oh, we have all them locked....
 	_assert_msg_(_DYNA_REC_, false, "All available registers are locked dumb dumb");
+	return R0;
 }
 void ArmRegCache::Lock(ARMReg Reg)
 {
@@ -117,7 +118,7 @@ void ArmRegCache::Unlock(ARMReg R0, ARMReg R1, ARMReg R2, ARMReg R3)
 	}
 }
 
-ARMReg ArmRegCache::R(int preg)
+ARMReg ArmRegCache::R(u32 preg)
 {
 	u32 HighestUsed = 0;
 	u8 Num = 0;

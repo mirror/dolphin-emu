@@ -208,6 +208,7 @@ public:
 				_assert_msg_(DYNA_REC, false, "GetData with Invalid Type");
 			break;
 		}
+		return 0;
 	}
 	const u32 IMMSR() // IMM shifted register
 	{

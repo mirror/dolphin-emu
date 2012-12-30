@@ -294,7 +294,7 @@ void ARMXEmitter::MOVT(ARMReg Rd, Operand2 Rm, bool TopBits) { WriteInstruction(
 
 void ARMXEmitter::WriteInstruction (u32 Op, ARMReg Rd, ARMReg Rn, Operand2 Rm, bool SetFlags) // This can get renamed later
 {
-	u32 op = InstOps[Op][Rm.GetType()]; // Type always decided by last operand
+	s32 op = InstOps[Op][Rm.GetType()]; // Type always decided by last operand
 	u32 Data = Rm.GetData();
 	if (Rm.GetType() == TYPE_IMM)
 	{

@@ -82,7 +82,7 @@ public:
 	void Unlock(ARMReg R0, ARMReg R1 = INVALID_REG, ARMReg R2 = INVALID_REG, ARMReg R3 =
 	INVALID_REG);
 	void Flush();
-	ARMReg R(int preg); // Returns a cached register
+	ARMReg R(u32 preg); // Returns a cached register
 
 };
 
