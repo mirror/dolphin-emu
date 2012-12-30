@@ -195,7 +195,7 @@ bool CWII_IPC_HLE_Device_FileIO::Seek(u32 _CommandAddress)
 		switch (Mode){
 			case 0:
 			{
-				if (SeekPosition >=0 && SeekPosition <= fileSize)
+				if (SeekPosition <= fileSize)
 				{
 					m_SeekPos = SeekPosition;
 					ReturnValue = m_SeekPos;
@@ -205,8 +205,8 @@ bool CWII_IPC_HLE_Device_FileIO::Seek(u32 _CommandAddress)
 			case 1:
 			{
 				u32 wantedPos = SeekPosition+m_SeekPos;
-				if (wantedPos >=0 && wantedPos <= fileSize)
-			{
+				if (wantedPos <= fileSize)
+				{
 					m_SeekPos = wantedPos;
 					ReturnValue = m_SeekPos;
 			}
@@ -215,7 +215,7 @@ bool CWII_IPC_HLE_Device_FileIO::Seek(u32 _CommandAddress)
 			case 2:
 			{
 				u64 wantedPos = fileSize+m_SeekPos;
-				if (wantedPos >=0 && wantedPos <= fileSize)
+				if (wantedPos <= fileSize)
 				{
 					m_SeekPos = wantedPos;
 					ReturnValue = m_SeekPos;
