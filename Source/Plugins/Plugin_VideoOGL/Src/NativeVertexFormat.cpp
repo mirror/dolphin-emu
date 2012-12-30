@@ -281,6 +281,7 @@ void GLVertexFormat::SetupVertexPointers() {
 					glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 			}
 
+		}
 		s_prevcomponents = m_components;
 	}
 }
