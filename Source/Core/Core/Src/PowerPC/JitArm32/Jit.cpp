@@ -48,10 +48,13 @@ void JitArm::Init()
 	AllocCodeSpace(CODE_SIZE);
 	blocks.Init();
 	asm_routines.Init();
+	// TODO: Investigate why the register cache crashes when only doing Init with
+	// the pointer to this. Seems for some reason it doesn't set the emitter pointer
+	// In the class for some reason?
 	gpr.Init(this);
+	gpr.SetEmitter(this);
 	jo.enableBlocklink = true;
 	jo.optimizeGatherPipe = false;
-	gpr.SetEmitter(this);
 }
 
 void JitArm::ClearCache() 
@@ -101,7 +104,6 @@ void JitArm::HLEFunction(UGeckoInstruction _inst)
 void JitArm::DoNothing(UGeckoInstruction _inst)
 {
 	// Yup, just don't do anything.
-
 }
 
 static const bool ImHereDebug = false;
@@ -250,7 +252,7 @@ void JitArm::Trace()
 	}
 #endif	
 
-	DEBUG_LOG(DYNA_REC, "JIT64 PC: %08x SRR0: %08x SRR1: %08x CRfast: %02x%02x%02x%02x%02x%02x%02x%02x FPSCR: %08x MSR: %08x LR: %08x %s %s", 
+	DEBUG_LOG(DYNA_REC, "JITARM PC: %08x SRR0: %08x SRR1: %08x CRfast: %02x%02x%02x%02x%02x%02x%02x%02x FPSCR: %08x MSR: %08x LR: %08x %s %s", 
 		PC, SRR0, SRR1, PowerPC::ppcState.cr_fast[0], PowerPC::ppcState.cr_fast[1], PowerPC::ppcState.cr_fast[2], PowerPC::ppcState.cr_fast[3], 
 		PowerPC::ppcState.cr_fast[4], PowerPC::ppcState.cr_fast[5], PowerPC::ppcState.cr_fast[6], PowerPC::ppcState.cr_fast[7], PowerPC::ppcState.fpscr, 
 		PowerPC::ppcState.msr, PowerPC::ppcState.spr[8], regs, fregs);
@@ -328,7 +330,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	}
 	PPCAnalyst::CodeOp *ops = code_buf->codebuffer;
 
-	const u8 *start = GetCodePtr(); // TODO: Test if this or AlignCode16 make a difference from GetCodePtr
+	const u8 *start = GetCodePtr(); 
 	b->checkedEntry = start;
 	b->runCount = 0;
 

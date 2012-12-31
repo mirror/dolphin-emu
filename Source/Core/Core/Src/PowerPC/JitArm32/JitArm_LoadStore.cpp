@@ -14,6 +14,7 @@
 
 // Official SVN repository and contact information can be found at
 // http://code.google.com/p/dolphin-emu/
+
 #include "Common.h"
 #include "Thunk.h"
 
@@ -31,6 +32,9 @@
 
 void JitArm::stw(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(LoadStore)
+
 	ARMReg RS = gpr.R(inst.RS);
 	ARMReg ValueReg = gpr.GetReg();
 	ARMReg Addr = gpr.GetReg();
@@ -53,11 +57,12 @@ void JitArm::stw(UGeckoInstruction inst)
 	BL(Function);
 	POP(4, R0, R1, R2, R3);
 	gpr.Unlock(ValueReg, Addr, Function);
-
-//Memory::Write_U32(m_GPR[_inst.RS], _inst.RA ? (m_GPR[_inst.RA] + _inst.SIMM_16) : (u32)_inst.SIMM_16);
 }
 void JitArm::stwu(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(LoadStore)
+
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RS = gpr.R(inst.RS);
 	ARMReg ValueReg = gpr.GetReg();
@@ -87,10 +92,12 @@ void JitArm::stwu(UGeckoInstruction inst)
 	POP(4, R0, R1, R2, R3);
 
 	gpr.Unlock(ValueReg, Addr, Function);
-	//Memory::Write_U32(m_GPR[_inst.RS], m_GPR[_inst.RA] + _inst.SIMM_16);
 }
 void JitArm::lhz(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(LoadStore)
+
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
 	ARMReg RD = gpr.R(inst.RD);
@@ -118,12 +125,12 @@ void JitArm::lhz(UGeckoInstruction inst)
 	MOV(RD, rA);
 	SetJumpTarget(DoNotLoad);
 	gpr.Unlock(rA, rB);
-//	u32 temp = (u32)(u16)Memory::Read_U16(_inst.RA ? (m_GPR[_inst.RA] + _inst.SIMM_16) : (u32)_inst.SIMM_16);
-//	if (!(PowerPC::ppcState.Exceptions & EXCEPTION_DSI))
-//		m_GPR[_inst.RD] = temp;
 }
 void JitArm::lwz(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(LoadStore)
+
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
 	ARMReg RD = gpr.R(inst.RD);
@@ -151,12 +158,10 @@ void JitArm::lwz(UGeckoInstruction inst)
 	MOV(RD, rA);
 	SetJumpTarget(DoNotLoad);
 	gpr.Unlock(rA, rB);
-//	u32 temp = Memory::Read_U32(_inst.RA ? (m_GPR[_inst.RA] + _inst.SIMM_16) : (u32)_inst.SIMM_16);
-//	if (!(PowerPC::ppcState.Exceptions & EXCEPTION_DSI))
-//		m_GPR[_inst.RD] = temp;
 }
 void JitArm::lwzx(UGeckoInstruction inst)
 {
+
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
 
@@ -186,8 +191,6 @@ void JitArm::lwzx(UGeckoInstruction inst)
 	SetJumpTarget(DoNotLoad);
 	gpr.Unlock(rA, rB);
 	////	u32 temp = Memory::Read_U32(_inst.RA ? (m_GPR[_inst.RA] + m_GPR[_inst.RB]) : m_GPR[_inst.RB]);
-//	if (!(PowerPC::ppcState.Exceptions & EXCEPTION_DSI))
-//		m_GPR[_inst.RD] = temp;
 }
 void JitArm::icbi(UGeckoInstruction inst)
 {

@@ -61,6 +61,9 @@ void JitArm::ComputeRC(int cr) {
 
 void JitArm::addi(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+
 	ARMReg RD = gpr.R(inst.RD);
 
 	if (inst.RA)
@@ -75,6 +78,9 @@ void JitArm::addi(UGeckoInstruction inst)
 }
 void JitArm::addis(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+	
 	ARMReg RD = gpr.R(inst.RD);
 	if (inst.RA)
 	{
@@ -88,6 +94,9 @@ void JitArm::addis(UGeckoInstruction inst)
 }
 void JitArm::addx(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RB = gpr.R(inst.RB);
 	ARMReg RD = gpr.R(inst.RD);
@@ -97,6 +106,9 @@ void JitArm::addx(UGeckoInstruction inst)
 // Wrong - 28/10/2012
 void JitArm::mulli(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+
 	Default(inst); return;
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RD = gpr.R(inst.RD);
@@ -107,6 +119,9 @@ void JitArm::mulli(UGeckoInstruction inst)
 }
 void JitArm::ori(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RS = gpr.R(inst.RS);
 	ARMReg rA = gpr.GetReg();
@@ -116,6 +131,9 @@ void JitArm::ori(UGeckoInstruction inst)
 }
 void JitArm::oris(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RS = gpr.R(inst.RS);
 	ARMReg rA = gpr.GetReg();
@@ -126,6 +144,9 @@ void JitArm::oris(UGeckoInstruction inst)
 // Wrong 28/12/2012 - Crashes SSBM
 void JitArm::extshx(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+
 	Default(inst); return;
 	INSTRUCTION_START
 	JITDISABLE(Integer)
@@ -141,6 +162,9 @@ void JitArm::extshx(UGeckoInstruction inst)
 // Wrong 28/12/2012 - Crashes SSBM
 void JitArm::extsbx(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+
 	Default(inst); return;
 	INSTRUCTION_START
 	JITDISABLE(Integer)
@@ -155,6 +179,9 @@ void JitArm::extsbx(UGeckoInstruction inst)
 }
 void JitArm::cmp (UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RB = gpr.R(inst.RB);
 	int crf = inst.CRFD;
@@ -163,6 +190,9 @@ void JitArm::cmp (UGeckoInstruction inst)
 }
 void JitArm::cmpi(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg rA = gpr.GetReg();
 	int crf = inst.CRFD;
@@ -173,6 +203,9 @@ void JitArm::cmpi(UGeckoInstruction inst)
 }
 void JitArm::cmpli(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg rA = gpr.GetReg();
 	int crf = inst.CRFD;
@@ -197,6 +230,7 @@ void JitArm::negx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(Integer)
+
 	Default(inst);return;
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RD = gpr.R(inst.RD);
@@ -214,6 +248,9 @@ void JitArm::negx(UGeckoInstruction inst)
 }
 void JitArm::orx(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+
 	ARMReg rA = gpr.R(inst.RA);
 	ARMReg rS = gpr.R(inst.RS);
 	ARMReg rB = gpr.R(inst.RB);
@@ -223,6 +260,9 @@ void JitArm::orx(UGeckoInstruction inst)
 }
 void JitArm::rlwimix(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+
 	u32 mask = Helper_Mask(inst.MB,inst.ME);
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RS = gpr.R(inst.RS);
@@ -248,6 +288,9 @@ void JitArm::rlwimix(UGeckoInstruction inst)
 }
 void JitArm::rlwinmx(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+
 	u32 mask = Helper_Mask(inst.MB,inst.ME);
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RS = gpr.R(inst.RS);
