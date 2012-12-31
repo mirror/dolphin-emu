@@ -154,7 +154,7 @@ void JitArm::extshx(UGeckoInstruction inst)
 	RA = gpr.R(inst.RA);
 	RS = gpr.R(inst.RS);
 	SXTH(RA, RS);
-	if (inst.RC){
+	if (inst.Rc){
 		CMP(RA, 0);
 		ComputeRC();
 	}
@@ -172,7 +172,7 @@ void JitArm::extsbx(UGeckoInstruction inst)
 	RA = gpr.R(inst.RA);
 	RS = gpr.R(inst.RS);
 	SXTB(RA, RS);
-	if (inst.RC){
+	if (inst.Rc){
 		CMP(RA, 0);
 		ComputeRC();
 	}
