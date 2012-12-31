@@ -38,6 +38,7 @@
 #include "LogManager.h"
 #include "HW/CPU.h"
 #include "PowerPC/PowerPC.h"
+#include "PowerPC/JitInterface.h"
 #include "Debugger/PPCDebugInterface.h"
 #include "Debugger/Debugger_SymbolMap.h"
 #include "PowerPC/PPCAnalyst.h"
@@ -262,8 +263,7 @@ void CCodeWindow::SingleStep()
 {
 	if (CCPU::IsStepping())
 	{
-		if (jit)
-			jit->GetBlockCache()->InvalidateICache(PC, 4);
+		JitInterface::InvalidateICache(PC, 4);
 		CCPU::StepOpcode(&sync_event);
 		wxThread::Sleep(20);
 		// need a short wait here
