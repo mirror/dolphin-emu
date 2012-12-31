@@ -52,85 +52,97 @@ void JitArmAsmRoutineManager::Generate()
 
 	FixupBranch skipToRealDispatcher = B();
 	dispatcher = GetCodePtr();	
-	printf("Dispatcher is %p\n", dispatcher);
+		printf("Dispatcher is %p\n", dispatcher);
 
-	// Downcount Check	
-	FixupBranch bail = B_CC(CC_MI);
+		// Downcount Check	
+		// The result of slice decrementation should be in flags if somebody jumped here
+		// IMPORTANT - We jump on negative, not carry!!!
+		FixupBranch bail = B_CC(CC_MI);
 
-	SetJumpTarget(skipToRealDispatcher); 
-	dispatcherNoCheck = GetCodePtr();
-	ARMABI_MOVI2R(R9, (u32)&PC);
-	LDR(R9, R9);// Load the current PC into R9
+		SetJumpTarget(skipToRealDispatcher); 
+		dispatcherNoCheck = GetCodePtr();
 
-	ARMABI_MOVI2R(R10, JIT_ICACHE_MASK); // Potential for optimization
-	AND(R9, R9, R10); // R9 contains PC & JIT_ICACHE_MASK here.
-	// Confirmed good to this point 08-03-12
+		// This block of code gets the address of the compiled block of code
+		// It runs though to the compiling portion if it isn't found
+			ARMABI_MOVI2R(R9, (u32)&PC);
+			LDR(R9, R9);// Load the current PC into R9
 
-	ARMABI_MOVI2R(R10, (u32)jitarm->GetBlockCache()->GetICache());
-	// Confirmed That this loads the base iCache Location correctly 08-04-12
+			ARMABI_MOVI2R(R10, JIT_ICACHE_MASK); // Potential for optimization
+			AND(R9, R9, R10); // R9 contains PC & JIT_ICACHE_MASK here.
+			// Confirmed good to this point 08-03-12
 
-	LDR(R9, R10, R9, true, true); // R9 contains iCache[PC & JIT_ICACHE_MASK] here
-	// R9 Confirmed this is the correct iCache Location loaded.
-	TST(R9, 0xFC); // Test  to see if it is a JIT block.
-	
+			ARMABI_MOVI2R(R10, (u32)jitarm->GetBlockCache()->GetICache());
+			// Confirmed That this loads the base iCache Location correctly 08-04-12
 
-	SetCC(CC_EQ); // Only run next part if R9 is zero
-	// Success, it is our Jitblock.
-	ARMABI_MOVI2R(R10, (u32)jitarm->GetBlockCache()->GetCodePointers());
-	// LDR R10 right here to get CodePointers()[0] pointer.
-	REV(R9, R9); // Reversing this gives us our JITblock.
-	LSL(R9, R9, 2); // Multiply by four because address locations are u32 in size 
-	LDR(R10, R10, R9, true, true); // Load the block address in to R10 
+			LDR(R9, R10, R9, true, true); // R9 contains iCache[PC & JIT_ICACHE_MASK] here
+			// R9 Confirmed this is the correct iCache Location loaded.
+			TST(R9, 0xFC); // Test  to see if it is a JIT block.
 
-	B(R10);
-	
-	FixupBranch End = B(); // Jump to the end
-	SetCC(); // Return to always executing codes
+			SetCC(CC_EQ); // Only run next part if R9 is zero
+			// Success, it is our Jitblock.
+			ARMABI_MOVI2R(R10, (u32)jitarm->GetBlockCache()->GetCodePointers());
+			// LDR R10 right here to get CodePointers()[0] pointer.
+			REV(R9, R9); // Reversing this gives us our JITblock.
+			LSL(R9, R9, 2); // Multiply by four because address locations are u32 in size 
+			LDR(R10, R10, R9, true, true); // Load the block address in to R10 
 
-	ARMABI_CallFunctionC((void*)&ArmJit, (u32)&PC);
-		
-	B(dispatcherNoCheck);
+			B(R10);
+			
+			FixupBranch NextBlock = B(); // Jump to end so we can start a new block
+			SetCC(); // Return to always executing codes
 
-	// Floating Point Exception Check, Jumped to if false
-	fpException = GetCodePtr();
-	ARMABI_MOVI2R(R0, (u32)&PowerPC::ppcState.Exceptions);
-	ARMABI_MOVI2R(R2, EXCEPTION_FPU_UNAVAILABLE); // Potentially can be optimized
-	LDREX(R1, R0);
-	ORR(R1, R1, R2);
-	STREX(R2, R0, R1);
-	ARMABI_CallFunction((void*)&PowerPC::CheckExceptions);
-	ARMABI_MOVI2R(R0, (u32)&NPC);
-	ARMABI_MOVI2R(R1, (u32)&PC);
-	LDR(R0, R0);
-	STR(R1, R0);
+		// If we get to this point, that means that we don't have the block cached to execute
+		// So call ArmJit to compile the block and then execute it.
+		ARMABI_CallFunctionC((void*)&ArmJit, (u32)&PC);
+			
+		B(dispatcherNoCheck);
+
+		// fpException()
+		// Floating Point Exception Check, Jumped to if false
+		fpException = GetCodePtr();
+			ARMABI_MOVI2R(R0, (u32)&PowerPC::ppcState.Exceptions);
+			ARMABI_MOVI2R(R2, EXCEPTION_FPU_UNAVAILABLE); // Potentially can be optimized
+			LDREX(R1, R0);
+			ORR(R1, R1, R2);
+			STREX(R2, R0, R1);
+				ARMABI_CallFunction((void*)&PowerPC::CheckExceptions);
+			ARMABI_MOVI2R(R0, (u32)&NPC);
+			ARMABI_MOVI2R(R1, (u32)&PC);
+			LDR(R0, R0);
+			STR(R1, R0);
+		B(dispatcher);
+
+		SetJumpTarget(bail);
+		doTiming = GetCodePtr();			
+		// XXX: In JIT64, Advance() gets called /after/ the exception checking
+		// once it jumps back to the start of outerLoop 
+		ARMABI_CallFunction((void*)&CoreTiming::Advance);
+
+		// Does exception checking 
+		testExceptions = GetCodePtr();
+			ARMABI_MOVI2R(R0, (u32)&PC);
+			ARMABI_MOVI2R(R1, (u32)&NPC);
+			LDR(R0, R0);
+			STR(R1, R0);
+				ARMABI_CallFunction((void*)&PowerPC::CheckExceptions);
+			ARMABI_MOVI2R(R0, (u32)&PC);
+			ARMABI_MOVI2R(R1, (u32)&NPC);
+			LDR(R1, R1);
+			STR(R0, R1);
+		// Check the state pointer to see if we are exiting
+		// Gets checked on every exception check
+			ARMABI_MOVI2R(R0, Mem((void*)PowerPC::GetStatePtr()));
+			ARMABI_MOVI2R(R1, IMM(0xFFFFFFFF));
+			LDR(R0, R0);
+			TST(R0, R1);
+			FixupBranch Exit = B_CC(CC_NEQ);
+
+		SetJumpTarget(NextBlock);
+
+		UpdateAPSR(true, 0, true, 0); // Clear our host register flags out.
 	B(dispatcher);
-
-	SetJumpTarget(bail);
-	doTiming = GetCodePtr();			
-	ARMABI_CallFunction((void*)&CoreTiming::Advance);
-
-	testExceptions = GetCodePtr();
-	ARMABI_MOVI2R(R0, (u32)&PC);
-	ARMABI_MOVI2R(R1, (u32)&NPC);
-	LDR(R0, R0);
-	STR(R1, R0);
-		ARMABI_CallFunction((void*)&PowerPC::CheckExceptions);
-	ARMABI_MOVI2R(R0, (u32)&PC);
-	ARMABI_MOVI2R(R1, (u32)&NPC);
-	LDR(R1, R1);
-	STR(R0, R1);
-	ARMABI_MOVI2R(R0, Mem((void*)PowerPC::GetStatePtr()));
-	ARMABI_MOVI2R(R1, IMM(0xFFFFFFFF));
-	LDR(R0, R0);
-	TST(R0, R1);
-	FixupBranch end = B_CC(CC_NEQ);
-
-	SetJumpTarget(End);
-
-	UpdateAPSR(true, 0, true, 0); // Clear our host register flags out.
-	B(dispatcher);
 	
-	SetJumpTarget(end);
+	SetJumpTarget(Exit);
 
 	POP(2, R11, _PC);
 	Flush();
