@@ -141,13 +141,8 @@ void JitArm::oris(UGeckoInstruction inst)
 	ORR(RA, RS, rA);
 	gpr.Unlock(rA);
 }
-// Wrong 28/12/2012 - Crashes SSBM
 void JitArm::extshx(UGeckoInstruction inst)
 {
-	INSTRUCTION_START
-	JITDISABLE(Integer)
-
-	Default(inst); return;
 	INSTRUCTION_START
 	JITDISABLE(Integer)
 	ARMReg RA, RS;
@@ -159,13 +154,8 @@ void JitArm::extshx(UGeckoInstruction inst)
 		ComputeRC();
 	}
 }
-// Wrong 28/12/2012 - Crashes SSBM
 void JitArm::extsbx(UGeckoInstruction inst)
 {
-	INSTRUCTION_START
-	JITDISABLE(Integer)
-
-	Default(inst); return;
 	INSTRUCTION_START
 	JITDISABLE(Integer)
 	ARMReg RA, RS;
