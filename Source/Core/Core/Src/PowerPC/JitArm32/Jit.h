@@ -36,7 +36,7 @@
 #include "JitArmCache.h"
 #include "JitRegCache.h"
 #include "JitAsm.h"
-
+#include "../JitCommon/JitBase.h"
 
 // Use these to control the instruction selection
 // #define INSTRUCTION_START Default(inst); return;
@@ -47,40 +47,13 @@
 	Core::g_CoreStartupParameter.bJIT##type##Off) \
 	{Default(inst); return;}
 
-
+#if 0
 class JitArm : public CPUCoreBase, public ArmGen::ARMXCodeBlock 
+#else
+class JitArm : public JitBase, public ArmGen::ARMXCodeBlock 
+#endif
 {
 private:
-	struct JitState
-	{
-		u32 compilerPC;
-		u32 next_compilerPC;
-		u32 blockStart;
-		bool cancel;
-		bool skipnext;
-		UGeckoInstruction next_inst;  // for easy peephole opt.
-		int blockSize;
-		int instructionNumber;
-		int downcountAmount;
-		int block_flags;
-
-		bool isLastInstruction;
-		bool memcheck;
-
-		int fifoBytesThisBlock;
-
-		PPCAnalyst::BlockStats st;
-		PPCAnalyst::BlockRegStats gpa;
-		PPCAnalyst::BlockRegStats fpa;
-		PPCAnalyst::CodeOp *op;
-
-		JitBlock *curBlock;
-	};
-	struct JitOptions
-	{
-		bool optimizeGatherPipe;
-		bool enableBlocklink;
-	};
 	JitArmBlockCache blocks;
 
 	JitArmAsmRoutineManager asm_routines;
@@ -99,8 +72,6 @@ public:
 	JitArm() : code_buffer(32000) {}
 	~JitArm() {}
 
-	JitState js;
-	JitOptions jo;
 	void Init();
 	void Shutdown();
 
@@ -108,15 +79,16 @@ public:
 
 	void Jit(u32 em_address);
 	const u8* DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlock *b);
-	JitArmBlockCache *GetBlockCache() { return &blocks; }
+	JitBaseBlockCache *GetBlockCache() { return &blocks; }
 
+	bool IsInCodeSpace(u8 *ptr) { return IsInCodeSpace(ptr); }
 
 	void Trace();
 
 	void ClearCache();
 
 	const u8 *GetDispatcher() {
-		return 0; 
+		return asm_routines.dispatcher; 
 	}
 	CommonAsmRoutinesBase *GetAsmRoutines() {
 		return &asm_routines; 

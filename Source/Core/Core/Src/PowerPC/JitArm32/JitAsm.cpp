@@ -23,7 +23,6 @@
 #include "MemoryUtil.h"
 
 #include "Jit.h"
-#include "ArmInterface.h"
 #include "../JitCommon/JitCache.h"
 
 #include "../../HW/GPFifo.h"
@@ -71,7 +70,7 @@ void JitArmAsmRoutineManager::Generate()
 			AND(R9, R9, R10); // R9 contains PC & JIT_ICACHE_MASK here.
 			// Confirmed good to this point 08-03-12
 
-			ARMABI_MOVI2R(R10, (u32)jitarm->GetBlockCache()->GetICache());
+			ARMABI_MOVI2R(R10, (u32)jit->GetBlockCache()->GetICache());
 			// Confirmed That this loads the base iCache Location correctly 08-04-12
 
 			LDR(R9, R10, R9, true, true); // R9 contains iCache[PC & JIT_ICACHE_MASK] here
@@ -80,7 +79,7 @@ void JitArmAsmRoutineManager::Generate()
 
 			SetCC(CC_EQ); // Only run next part if R9 is zero
 			// Success, it is our Jitblock.
-			ARMABI_MOVI2R(R10, (u32)jitarm->GetBlockCache()->GetCodePointers());
+			ARMABI_MOVI2R(R10, (u32)jit->GetBlockCache()->GetCodePointers());
 			// LDR R10 right here to get CodePointers()[0] pointer.
 			REV(R9, R9); // Reversing this gives us our JITblock.
 			LSL(R9, R9, 2); // Multiply by four because address locations are u32 in size 

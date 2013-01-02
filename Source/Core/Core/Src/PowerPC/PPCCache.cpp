@@ -25,7 +25,6 @@
 #ifdef _M_ARM
 #include "JitArm32/Jit.h"
 #include "JitArm32/JitArm_Tables.h"
-#include "JitArm32/ArmInterface.h"
 #endif
 
 namespace PowerPC

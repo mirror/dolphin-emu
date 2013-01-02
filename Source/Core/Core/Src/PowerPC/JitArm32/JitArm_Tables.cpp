@@ -385,6 +385,7 @@ namespace JitArmTables
 
 void CompileInstruction(PPCAnalyst::CodeOp & op)
 {
+	JitArm *jitarm = (JitArm *)jit;
 	(jitarm->*dynaOpTable[op.inst.OPCD])(op.inst);
 	GekkoOPInfo *info = op.opinfo;
 	if (info) {
@@ -394,7 +395,7 @@ void CompileInstruction(PPCAnalyst::CodeOp & op)
 		}
 #endif
 		info->compileCount++;
-		info->lastUse = jitarm->js.compilerPC;
+		info->lastUse = jit->js.compilerPC;
 	}
 }
 

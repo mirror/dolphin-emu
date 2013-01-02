@@ -199,7 +199,6 @@ endif()
 if(_M_ARM)
 	set(SRCS ${SRCS}
 			Src/PowerPC/JitArm32/Jit.cpp
-			Src/PowerPC/JitArm32/ArmInterface.cpp
 			Src/PowerPC/JitArm32/JitAsm.cpp
 			Src/PowerPC/JitArm32/JitArm_Tables.cpp
 			Src/PowerPC/JitArm32/JitArmCache.cpp

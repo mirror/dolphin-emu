@@ -479,5 +479,5 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 
 void ArmJit(u32 *em_address)
 {	
-	jitarm->Jit(*em_address);
+	jit->Jit(*em_address);
 }
