@@ -79,7 +79,10 @@ public:
 
 	void Jit(u32 em_address);
 	const u8* DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlock *b);
+	
 	JitBaseBlockCache *GetBlockCache() { return &blocks; }
+
+	const u8 *BackPatch(u8 *codePtr, int accessType, u32 em_address, void *ctx) { return NULL; };
 
 	bool IsInCodeSpace(u8 *ptr) { return IsInCodeSpace(ptr); }
 
