@@ -111,7 +111,7 @@ endif()
 
 # Enabling all warnings in MSVC spams too much
 if(NOT MSVC)
-	add_definitions(-Wall)
+	add_definitions(-Wall -Wshadow)
 endif(NOT MSVC)
 
 # gcc uses some optimizations which might break stuff without this flag

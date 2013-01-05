@@ -138,23 +138,23 @@ void JitArm::Cleanup()
 }
 void JitArm::DoDownCount()
 {
-	ARMReg A = gpr.GetReg();
-	ARMReg B = gpr.GetReg();
-	ARMABI_MOVI2R(A, Mem(&CoreTiming::downcount));
-	LDR(B, A);
+	ARMReg rA = gpr.GetReg();
+	ARMReg rB = gpr.GetReg();
+	ARMABI_MOVI2R(rA, Mem(&CoreTiming::downcount));
+	LDR(rB, rA);
 	if(js.downcountAmount < 255) // We can enlarge this if we used rotations
 	{
-		SUBS(B, B, js.downcountAmount);
-		STR(A, B);
+		SUBS(rB, rB, js.downcountAmount);
+		STR(rA, rB);
 	}
 	else
 	{
-		ARMReg C = gpr.GetReg(false);
-		ARMABI_MOVI2R(C, js.downcountAmount);
-		SUBS(B, B, C);
-		STR(A, B);
+		ARMReg rC = gpr.GetReg(false);
+		ARMABI_MOVI2R(rC, js.downcountAmount);
+		SUBS(rB, rB, rC);
+		STR(rA, rB);
 	}
-	gpr.Unlock(A, B);
+	gpr.Unlock(rA, rB);
 }
 void JitArm::WriteExitDestInR(ARMReg Reg) 
 {
@@ -258,6 +258,33 @@ void JitArm::Trace()
 		PowerPC::ppcState.msr, PowerPC::ppcState.spr[8], regs, fregs);
 }
 
+void JitArm::PrintDebug(UGeckoInstruction inst, u32 level)
+{
+	if (level > 0)
+	printf("Start: %08x OP '%s' Info\n", (u32)GetCodePtr(),  PPCTables::GetInstructionName(inst));
+	if (level > 1)
+	{
+		GekkoOPInfo* Info = GetOpInfo(inst.hex);
+		printf("\tOuts\n");
+		if (Info->flags & FL_OUT_A)
+			printf("\t-OUT_A: %x\n", inst.RA);
+		if(Info->flags & FL_OUT_D)
+			printf("\t-OUT_D: %x\n", inst.RD);
+		printf("\tIns\n");
+		// A, AO, B, C, S
+		if(Info->flags & FL_IN_A)
+			printf("\t-IN_A: %x\n", inst.RA);
+		if(Info->flags & FL_IN_A0)
+			printf("\t-IN_A0: %x\n", inst.RA);
+		if(Info->flags & FL_IN_B)
+			printf("\t-IN_B: %x\n", inst.RB);
+		if(Info->flags & FL_IN_C)
+			printf("\t-IN_C: %x\n", inst.RC);
+		if(Info->flags & FL_IN_S)
+			printf("\t-IN_S: %x\n", inst.RS);
+	}
+}
+
 void STACKALIGN JitArm::Jit(u32 em_address)
 {
 	if (GetSpaceLeft() < 0x10000 || blocks.IsFull() || Core::g_CoreStartupParameter.bJITNoBlockCache)
@@ -335,12 +362,14 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	b->runCount = 0;
 
 	// Downcount flag check, Only valid for linked blocks
-	FixupBranch skip = B_CC(CC_PL);
-	ARMABI_MOVI2M((u32)&PC, js.blockStart);
-	ARMReg rA = gpr.GetReg(false);
-	ARMABI_MOVI2R(rA, (u32)asm_routines.doTiming);
-	B(rA);
-	SetJumpTarget(skip);
+	{
+		FixupBranch skip = B_CC(CC_PL);
+		ARMABI_MOVI2M((u32)&PC, js.blockStart);
+		ARMReg rA = gpr.GetReg(false);
+		ARMABI_MOVI2R(rA, (u32)asm_routines.doTiming);
+		B(rA);
+		SetJumpTarget(skip);
+	}
 
 	const u8 *normalEntry = GetCodePtr();
 	b->normalEntry = normalEntry;
@@ -368,15 +397,15 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	}
 	// Conditionally add profiling code.
 	if (Profiler::g_ProfileBlocks) {
-		ARMReg A = gpr.GetReg();
-		ARMReg B = gpr.GetReg();
-		ARMABI_MOVI2R(A, (u32)&b->runCount); // Load in to register
-		LDR(B, A); // Load the actual value in to R11.
-		ADD(B, B, 1); // Add one to the value
-		STR(A, B); // Now store it back in the memory location 
+		ARMReg rA = gpr.GetReg();
+		ARMReg rB = gpr.GetReg();
+		ARMABI_MOVI2R(rA, (u32)&b->runCount); // Load in to register
+		LDR(rB, rA); // Load the actual value in to R11.
+		ADD(rB, rB, 1); // Add one to the value
+		STR(rA, rB); // Now store it back in the memory location 
 		// get start tic
 		PROFILER_QUERY_PERFORMANCE_COUNTER(&b->ticStart);
-		gpr.Unlock(A, B);
+		gpr.Unlock(rA, rB);
 	}
 	gpr.Start(js.gpa);
 	js.downcountAmount = 0;
@@ -430,25 +459,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		}
 		if (!ops[i].skip)
 		{
-			/*printf("Start: %08x OP '%s' Info\n",GetCodePtr(),  PPCTables::GetInstructionName(ops[i].inst));
-			GekkoOPInfo* Info = GetOpInfo(ops[i].inst.hex);
-				printf("\tOuts\n");
-				if (Info->flags & FL_OUT_A)
-					printf("\t-OUT_A: %x\n", ops[i].inst.RA);
-				if(Info->flags & FL_OUT_D)
-					printf("\t-OUT_D: %x\n", ops[i].inst.RD);
-				printf("\tIns\n");
-				// A, AO, B, C, S
-				if(Info->flags & FL_IN_A)
-					printf("\t-IN_A: %x\n", ops[i].inst.RA);
-				if(Info->flags & FL_IN_A0)
-					printf("\t-IN_A0: %x\n", ops[i].inst.RA);
-				if(Info->flags & FL_IN_B)
-					printf("\t-IN_B: %x\n", ops[i].inst.RB);
-				if(Info->flags & FL_IN_C)
-					printf("\t-IN_C: %x\n", ops[i].inst.RC);
-				if(Info->flags & FL_IN_S)
-					printf("\t-IN_S: %x\n", ops[i].inst.RS);*/
+				PrintDebug(ops[i].inst, 0);
 				if (js.memcheck && (opinfo->flags & FL_USE_FPU))
 				{
 					// Don't do this yet
@@ -469,7 +480,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		printf("Broken Block going to 0x%08x\n", nextPC);
 		WriteExit(nextPC, 0);
 	}
-			
+	
 	b->flags = js.block_flags;
 	b->codeSize = (u32)(GetCodePtr() - normalEntry);
 	b->originalSize = size;
@@ -477,7 +488,3 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	return start;
 }
 
-void ArmJit(u32 *em_address)
-{	
-	jit->Jit(*em_address);
-}

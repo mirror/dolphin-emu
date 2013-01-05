@@ -68,6 +68,7 @@ private:
 	PPCAnalyst::CodeBuffer code_buffer;
 	void DoDownCount();
 
+	void PrintDebug(UGeckoInstruction inst, u32 level);
 public:
 	JitArm() : code_buffer(32000) {}
 	~JitArm() {}
@@ -169,7 +170,5 @@ public:
 	void stw(UGeckoInstruction _inst);
 	void stwu(UGeckoInstruction _inst);
 };
-void ArmJit(u32 *em_address);
-
 
 #endif // _JIT64_H

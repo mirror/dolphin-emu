@@ -92,7 +92,10 @@ void JitArmAsmRoutineManager::Generate()
 
 		// If we get to this point, that means that we don't have the block cached to execute
 		// So call ArmJit to compile the block and then execute it.
-		ARMABI_CallFunctionC((void*)&ArmJit, (u32)&PC);
+		ARMABI_MOVI2R(R14, (u32)&Jit);	
+		ARMABI_MOVI2R(R0, (u32)&PC);
+		LDR(R0, R0);
+		BL(R14);
 			
 		B(dispatcherNoCheck);
 
