@@ -68,13 +68,7 @@ namespace FPURoundMode
 	}
 
 	void SetPrecisionMode(u32 mode)
-	{
-		const unsigned short table[4] = {
-			0 << 8, // FPU_PREC_24
-			2 << 8, // FPU_PREC_53
-			3 << 8, // FPU_PREC_64
-			3 << 8, // FPU_PREC_MASK
-		};
+	{	
 		#ifdef _M_IX86
 			// sets the floating-point lib to 53-bit
 			// PowerPC has a 53bit floating pipeline only
@@ -82,6 +76,12 @@ namespace FPURoundMode
 		#ifdef _WIN32
 			_control87(_PC_53, MCW_PC);
 		#else
+			const unsigned short table[4] = {
+				0 << 8, // FPU_PREC_24
+				2 << 8, // FPU_PREC_53
+				3 << 8, // FPU_PREC_64
+				3 << 8, // FPU_PREC_MASK
+			};
 			unsigned short _mode;
 			asm ("fstcw %0" : : "m" (_mode));
 			_mode = (_mode & ~table[4]) | table[mode];
