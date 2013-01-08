@@ -20,6 +20,7 @@
 
 #include "../../Core.h"
 #include "../PowerPC.h"
+#include "../../ConfigManager.h"
 #include "../../CoreTiming.h"
 #include "../PPCTables.h"
 #include "ArmEmitter.h"
@@ -158,9 +159,37 @@ void JitArm::lwz(UGeckoInstruction inst)
 	MOV(RD, rA);
 	SetJumpTarget(DoNotLoad);
 	gpr.Unlock(rA, rB);
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bSkipIdle &&
+		(inst.hex & 0xFFFF0000) == 0x800D0000 &&
+		(Memory::ReadUnchecked_U32(js.compilerPC + 4) == 0x28000000 ||
+		(SConfig::GetInstance().m_LocalCoreStartupParameter.bWii && Memory::ReadUnchecked_U32(js.compilerPC + 4) == 0x2C000000)) &&
+		Memory::ReadUnchecked_U32(js.compilerPC + 8) == 0x4182fff8)
+	{
+		gpr.Flush();
+		
+		// if it's still 0, we can wait until the next event
+		TST(RD, RD);
+		FixupBranch noIdle = B_CC(CC_NEQ);
+		rA = gpr.GetReg();	
+		
+		ARMABI_MOVI2R(rA, (u32)&PowerPC::OnIdle);
+		ARMABI_MOVI2R(R0, PowerPC::ppcState.gpr[inst.RA] + (s32)(s16)inst.SIMM_16); 
+		BL(rA);
+
+		gpr.Unlock(rA);
+		WriteExceptionExit();
+
+		SetJumpTarget(noIdle);
+
+		//js.compilerPC += 8;
+		return;
+	}
+
 }
 void JitArm::lwzx(UGeckoInstruction inst)
 {
+	INSTRUCTION_START
+	JITDISABLE(LoadStore)
 
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
