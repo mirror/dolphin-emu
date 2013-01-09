@@ -446,6 +446,8 @@ public:
 	// dest contains the result if the instruction managed to store the value
 	void STREX(ARMReg dest, ARMReg base, ARMReg op);
 	void DMB ();
+	
+	void SVC(Operand2 op);
 
 	// NEON and ASIMD instructions
 	// None of these will be created with conditional since ARM

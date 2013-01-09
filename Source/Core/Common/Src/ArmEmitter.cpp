@@ -402,6 +402,11 @@ void ARMXEmitter::DMB ()
 	Write32(0xF57FF05E);
 }
 
+void ARMXEmitter::SVC(Operand2 op)
+{
+	Write32(condition | (0xF << 24) | op.Imm24());
+}
+
 void ARMXEmitter::LDR (ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x41, src, dest, op);}
 void ARMXEmitter::LDRB(ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x45, src, dest, op);}
 
