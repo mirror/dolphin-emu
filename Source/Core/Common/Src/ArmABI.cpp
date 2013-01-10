@@ -66,13 +66,13 @@ void ARMXEmitter::ARMABI_PushAllCalleeSavedRegsAndAdjustStack() {
 void ARMXEmitter::ARMABI_PopAllCalleeSavedRegsAndAdjustStack() {
 	POP(4, R0, R1, R2, R3);
 }
-void ARMXEmitter::ARMABI_MOVI2R(ARMReg reg, Operand2 val)
+void ARMXEmitter::ARMABI_MOVI2R(ARMReg reg, Operand2 val, bool optimize)
 {
 	// TODO: There are more fancy ways to save calls if we check if 
 	// The imm can be rotated or shifted a certain way.
 	// Masks tend to be able to be moved in to a reg with one call
 	MOVW(reg, val); 
-	if(val.Value & 0xFFFF0000) 
+	if (!optimize || val.Value & 0xFFFF0000) 
 		MOVT(reg, val, true);
 }
 // Moves IMM to memory location

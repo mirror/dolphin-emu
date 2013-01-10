@@ -127,6 +127,25 @@ void JitArm::lhz(UGeckoInstruction inst)
 	SetJumpTarget(DoNotLoad);
 	gpr.Unlock(rA, rB);
 }
+void JitArm::LoadToReg(ARMReg dest, ARMReg addr, int accessSize, u32 offset)
+{
+	ARMReg rA = gpr.GetReg();
+	ARMABI_MOVI2R(rA, offset, false); // -3
+	ADD(addr, addr, rA); // - 1
+
+	// All this gets replaced on backpatch
+	ARMABI_MOVI2R(rA, Memory::MEMVIEW32_MASK, false); // 2 
+	AND(addr, addr, rA); // 3
+	ARMABI_MOVI2R(rA, (u32)Memory::base, false); // 5
+	ADD(addr, addr, rA); // 6
+	LDR(dest, addr); // 7
+	SetCC(CC_GT);
+	SVC((u32)dest); // 8
+	SetCC();
+	REV(dest, dest); // 9
+
+	gpr.Unlock(rA);
+}
 void JitArm::lwz(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
@@ -141,6 +160,21 @@ void JitArm::lwz(UGeckoInstruction inst)
 	CMP(rA, rB);
 	FixupBranch DoNotLoad = B_CC(CC_EQ);
 	
+#if 1
+	// Backpatch route
+	// Gets loaded in to RD
+	// Address is in R10
+	gpr.Unlock(rA, rB);
+	ARMReg _R10 = R10;
+	if (inst.RA)
+	{
+		ARMReg RA = gpr.R(inst.RA);
+		MOV(_R10, RA); // - 4
+	}
+	else
+		MOV(_R10, 0); // - 4
+	LoadToReg(RD, _R10, 32, (u32)inst.SIMM_16);	
+#else
 	if (inst.RA)
 	{
 		ARMABI_MOVI2R(rB, inst.SIMM_16);
@@ -149,7 +183,7 @@ void JitArm::lwz(UGeckoInstruction inst)
 	}
 	else
 		ARMABI_MOVI2R(rB, (u32)inst.SIMM_16);
-	
+
 	ARMABI_MOVI2R(rA, (u32)&Memory::Read_U32);	
 	PUSH(4, R0, R1, R2, R3);
 	MOV(R0, rB);
@@ -157,8 +191,9 @@ void JitArm::lwz(UGeckoInstruction inst)
 	MOV(rA, R0);
 	POP(4, R0, R1, R2, R3);
 	MOV(RD, rA);
-	SetJumpTarget(DoNotLoad);
 	gpr.Unlock(rA, rB);
+#endif
+	SetJumpTarget(DoNotLoad);
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bSkipIdle &&
 		(inst.hex & 0xFFFF0000) == 0x800D0000 &&
 		(Memory::ReadUnchecked_U32(js.compilerPC + 4) == 0x28000000 ||
@@ -184,7 +219,6 @@ void JitArm::lwz(UGeckoInstruction inst)
 		//js.compilerPC += 8;
 		return;
 	}
-
 }
 void JitArm::lwzx(UGeckoInstruction inst)
 {

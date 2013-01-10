@@ -466,7 +466,7 @@ public:
 	void ARMABI_CallFunctionCCC(void *func, u32 Arg1, u32 Arg2, u32 Arg3);
 	void ARMABI_PushAllCalleeSavedRegsAndAdjustStack(); 
 	void ARMABI_PopAllCalleeSavedRegsAndAdjustStack(); 
-	void ARMABI_MOVI2R(ARMReg reg, Operand2 val);
+	void ARMABI_MOVI2R(ARMReg reg, Operand2 val, bool optimize = true);
 	void ARMABI_MOVI2M(Operand2 op, Operand2 val);
 	void ARMABI_ShowConditions();
 
@@ -526,7 +526,7 @@ public:
 		region_size = 0;
 	}
 
-	bool IsInCodeSpace(u8 *ptr)
+	bool IsInSpace(u8 *ptr)
 	{
 		return ptr >= region && ptr < region + region_size;
 	}

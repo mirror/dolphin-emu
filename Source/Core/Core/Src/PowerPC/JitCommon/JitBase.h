@@ -104,7 +104,7 @@ public:
 	
 	const u8 *BackPatch(u8 *codePtr, int accessType, u32 em_address, void *ctx);
 
-	bool IsInCodeSpace(u8 *ptr) { return IsInCodeSpace(ptr); }
+	bool IsInCodeSpace(u8 *ptr) { return IsInSpace(ptr); }
 };
 
 extern JitBase *jit;

@@ -47,11 +47,7 @@
 	Core::g_CoreStartupParameter.bJIT##type##Off) \
 	{Default(inst); return;}
 
-#if 0
-class JitArm : public CPUCoreBase, public ArmGen::ARMXCodeBlock 
-#else
 class JitArm : public JitBase, public ArmGen::ARMXCodeBlock 
-#endif
 {
 private:
 	JitArmBlockCache blocks;
@@ -83,9 +79,9 @@ public:
 	
 	JitBaseBlockCache *GetBlockCache() { return &blocks; }
 
-	const u8 *BackPatch(u8 *codePtr, int accessType, u32 em_address, void *ctx) { return NULL; };
+	const u8 *BackPatch(u8 *codePtr, int accessType, u32 em_address, void *ctx);
 
-	bool IsInCodeSpace(u8 *ptr) { return IsInCodeSpace(ptr); }
+	bool IsInCodeSpace(u8 *ptr) { return IsInSpace(ptr); }
 
 	void Trace();
 
@@ -117,6 +113,9 @@ public:
 
 	void GenerateRC(int cr = 0);
 	void ComputeRC(int cr = 0);
+
+	// TODO: This shouldn't be here
+	void LoadToReg(ARMReg dest, ARMReg addr, int accessSize, u32 offset);
 
 	// OPCODES
 	void unknown_instruction(UGeckoInstruction _inst);

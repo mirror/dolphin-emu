@@ -457,6 +457,17 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 			// TODO: This needs thunkmanager for ARM
 			//ARMABI_CallFunction(thunks.ProtectFunction((void *)&GPFifo::CheckGatherPipe, 0));
 		}
+		if (!Core::g_CoreStartupParameter.bEnableDebugging)
+		{
+			// Add run count
+			ARMReg RA = gpr.GetReg();
+			ARMReg RB = gpr.GetReg();
+			ARMABI_MOVI2R(RA, (u32)&opinfo->runCount);
+			LDR(RB, RA);
+			ADD(RB, RB, 1);
+			STR(RA, RB);
+			gpr.Unlock(RA, RB);
+		}
 		if (!ops[i].skip)
 		{
 				PrintDebug(ops[i].inst, 0);

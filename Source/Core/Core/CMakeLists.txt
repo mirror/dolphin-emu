@@ -9,7 +9,6 @@ set(SRCS	Src/ActionReplay.cpp
 			Src/DSPEmulator.cpp
 			Src/GeckoCodeConfig.cpp
 			Src/GeckoCode.cpp
-			Src/MemTools.cpp
 			Src/Movie.cpp
 			Src/NetPlay.cpp
 			Src/NetPlayClient.cpp
@@ -198,8 +197,10 @@ if(NOT _M_GENERIC)
 endif()
 if(_M_ARM)
 	set(SRCS ${SRCS}
+			Src/ArmMemTools.cpp
 			Src/PowerPC/JitArm32/Jit.cpp
 			Src/PowerPC/JitArm32/JitAsm.cpp
+			Src/PowerPC/JitArm32/JitArm_BackPatch.cpp
 			Src/PowerPC/JitArm32/JitArm_Tables.cpp
 			Src/PowerPC/JitArm32/JitArmCache.cpp
 			Src/PowerPC/JitArm32/JitRegCache.cpp
@@ -207,6 +208,8 @@ if(_M_ARM)
 			Src/PowerPC/JitArm32/JitArm_Integer.cpp
 			Src/PowerPC/JitArm32/JitArm_LoadStore.cpp
 			Src/PowerPC/JitArm32/JitArm_SystemRegisters.cpp)
+else()
+	set(SRC ${SRC} Src/x64MemTools.cpp)
 endif()
 
 set(LIBS bdisasm inputcommon videosoftware sfml-network)

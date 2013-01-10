@@ -141,6 +141,19 @@ void JitArm::oris(UGeckoInstruction inst)
 	ORR(RA, RS, rA);
 	gpr.Unlock(rA);
 }
+void JitArm::orx(UGeckoInstruction inst)
+{
+	INSTRUCTION_START
+	JITDISABLE(Integer)
+
+	ARMReg rA = gpr.R(inst.RA);
+	ARMReg rS = gpr.R(inst.RS);
+	ARMReg rB = gpr.R(inst.RB);
+	ORRS(rA, rS, rB);
+	if (inst.Rc)
+		ComputeRC();
+}
+
 void JitArm::extshx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
@@ -235,18 +248,6 @@ void JitArm::negx(UGeckoInstruction inst)
 		BKPT(0x333);
 		//GenerateOverflow();
 	}
-}
-void JitArm::orx(UGeckoInstruction inst)
-{
-	INSTRUCTION_START
-	JITDISABLE(Integer)
-
-	ARMReg rA = gpr.R(inst.RA);
-	ARMReg rS = gpr.R(inst.RS);
-	ARMReg rB = gpr.R(inst.RB);
-	ORRS(rA, rS, rB);
-	if (inst.Rc)
-		ComputeRC();
 }
 void JitArm::rlwimix(UGeckoInstruction inst)
 {
