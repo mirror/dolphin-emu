@@ -397,13 +397,6 @@ void CompileInstruction(PPCAnalyst::CodeOp & op)
 		info->compileCount++;
 		info->lastUse = jit->js.compilerPC;
 	}
-	static int a = 0;
-	a++;
-	if (a > 70000)
-	{
-		PPCTables::LogCompiledInstructions();
-		exit(0);
-	}
 }
 
 void InitTables()
