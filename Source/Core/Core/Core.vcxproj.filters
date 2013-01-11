@@ -6,7 +6,7 @@
     <ClCompile Include="Src\Core.cpp" />
     <ClCompile Include="Src\CoreParameter.cpp" />
     <ClCompile Include="Src\CoreTiming.cpp" />
-    <ClCompile Include="Src\MemTools.cpp" />
+    <ClCompile Include="Src\x64MemTools.cpp" />
     <ClCompile Include="Src\PatchEngine.cpp" />
     <ClCompile Include="Src\DSPEmulator.cpp" />
     <ClCompile Include="Src\State.cpp" />

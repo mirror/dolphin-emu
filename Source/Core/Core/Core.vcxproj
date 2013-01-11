@@ -331,7 +331,7 @@
     <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE_Device_usb.cpp" />
     <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE_Device_usb_kbd.cpp" />
     <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE_WiiMote.cpp" />
-    <ClCompile Include="Src\MemTools.cpp" />
+    <ClCompile Include="Src\x64MemTools.cpp" />
     <ClCompile Include="Src\Movie.cpp" />
     <ClCompile Include="Src\NetPlay.cpp" />
     <ClCompile Include="Src\NetPlayClient.cpp" />
