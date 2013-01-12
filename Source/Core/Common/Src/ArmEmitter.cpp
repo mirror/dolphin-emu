@@ -361,6 +361,10 @@ void ARMXEmitter::REV (ARMReg dest, ARMReg src				)
 {
 	Write32(condition | (107 << 20) | (15 << 16) | (dest << 12) | (243 << 4) | src);
 }
+void ARMXEmitter::REV16(ARMReg dest, ARMReg src)
+{
+	Write32(condition | (0x3DF << 16) | (dest << 12) | (0xFD << 4) | src);
+}
 
 void ARMXEmitter::_MSR (bool nzcvq, bool g,		Operand2 op2)
 {
@@ -408,6 +412,11 @@ void ARMXEmitter::SVC(Operand2 op)
 }
 
 void ARMXEmitter::LDR (ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x41, src, dest, op);}
+void ARMXEmitter::LDRH(ARMReg dest, ARMReg src, Operand2 op) 
+{ 
+	u8 Imm = op.Imm8();
+	Write32(condition | (0x05 << 20) | (src << 16) | (dest << 12) | ((Imm >> 4) << 8) | (0xB << 4) | (Imm & 0x0F));
+}
 void ARMXEmitter::LDRB(ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x45, src, dest, op);}
 
 void ARMXEmitter::LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index,

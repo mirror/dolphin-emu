@@ -394,7 +394,9 @@ public:
 	void LSLS(ARMReg dest, ARMReg src, ARMReg op2);
 	void SBC (ARMReg dest, ARMReg src, Operand2 op2);
 	void SBCS(ARMReg dest, ARMReg src, Operand2 op2);
-	void REV (ARMReg dest, ARMReg src			   );
+	void REV (ARMReg dest, ARMReg src			);
+	void REV16 (ARMReg dest, ARMReg src			);
+
 	void RSC (ARMReg dest, ARMReg src, Operand2 op2);
 	void RSCS(ARMReg dest, ARMReg src, Operand2 op2);
 	void TST (             ARMReg src, Operand2 op2);
@@ -432,6 +434,7 @@ public:
 	void LDR (ARMReg dest, ARMReg src, Operand2 op2 = 0);
 	// Offset adds to the base register in LDR
 	void LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index, bool Add);
+	void LDRH(ARMReg dest, ARMReg src, Operand2 op = 0); 
 	void LDRB(ARMReg dest, ARMReg src, Operand2 op2 = 0);
 	void STR (ARMReg dest, ARMReg src, Operand2 op2 = 0);
 	// Offset adds on to the destination register in STR
