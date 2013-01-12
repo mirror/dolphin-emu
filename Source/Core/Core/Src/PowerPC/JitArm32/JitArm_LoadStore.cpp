@@ -122,7 +122,8 @@ void JitArm::LoadToReg(ARMReg dest, ARMReg addr, int accessSize, s32 offset)
 	// This can only be 24bits and currently contains:
 	// Bits 0-4: Dest Reg
 	// Bits 5-6: AccessSize
-	u32 value = (accessSize == 32 ? (0x02 << 4) : accessSize == 16 ? (0x01 << 4) : 0) | (dest & 0xF);
+	u32 value = (accessSize == 32 ? (0x02 << 4) : accessSize == 16 ? (0x01 << 4) : 0) | 
+		(dest & 0xF);
 	SVC(value); // 8
 	SetCC();
 	switch (accessSize)
@@ -330,7 +331,21 @@ void JitArm::lwzx(UGeckoInstruction inst)
 	ARMABI_MOVI2R(rB, EXCEPTION_DSI);
 	CMP(rA, rB);
 	FixupBranch DoNotLoad = B_CC(CC_EQ);
-	
+#if 1
+	// Backpatch route
+	// Gets loaded in to RD
+	// Address is in R10
+	gpr.Unlock(rA, rB);
+	ARMReg _R10 = R10;
+	if (inst.RA)
+	{
+		ARMReg RA = gpr.R(inst.RA);
+		ADD(_R10, RA, RB); // - 4
+	}
+	else
+		MOV(_R10, RB); // -4
+	LoadToReg(RD, _R10, 32, 0);	
+#else
 	if (inst.RA)
 	{
 		ARMReg RA = gpr.R(inst.RA);
@@ -346,8 +361,9 @@ void JitArm::lwzx(UGeckoInstruction inst)
 	MOV(rA, R0);
 	POP(4, R0, R1, R2, R3);
 	MOV(RD, rA);
-	SetJumpTarget(DoNotLoad);
 	gpr.Unlock(rA, rB);
+#endif
+	SetJumpTarget(DoNotLoad);
 	////	u32 temp = Memory::Read_U32(_inst.RA ? (m_GPR[_inst.RA] + m_GPR[_inst.RB]) : m_GPR[_inst.RB]);
 }
 void JitArm::icbi(UGeckoInstruction inst)
