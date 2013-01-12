@@ -37,10 +37,29 @@ void JitArm::stw(UGeckoInstruction inst)
 	JITDISABLE(LoadStore)
 
 	ARMReg RS = gpr.R(inst.RS);
+#if 0
+	// R10 contains the dest address
+	ARMReg _R10 = R10;
+	ARMReg Value = R11;
+
+	MOV(Value, RS);
+	if (inst.RA)
+	{
+		ARMABI_MOVI2R(_R10, inst.SIMM_16, false);
+		ARMReg RA = gpr.R(inst.RA);
+		ADD(_R10, _R10, RA);
+	}
+	else
+	{
+		ARMABI_MOVI2R(_R10, (u32)inst.SIMM_16, false);
+		NOP(1);
+	}
+	StoreFromReg(_R10, Value, 32, 0);
+#else
 	ARMReg ValueReg = gpr.GetReg();
 	ARMReg Addr = gpr.GetReg();
 	ARMReg Function = gpr.GetReg();
-	
+
 	MOV(ValueReg, RS);
 	if (inst.RA)
 	{
@@ -58,6 +77,7 @@ void JitArm::stw(UGeckoInstruction inst)
 	BL(Function);
 	POP(4, R0, R1, R2, R3);
 	gpr.Unlock(ValueReg, Addr, Function);
+#endif
 }
 void JitArm::stwu(UGeckoInstruction inst)
 {
@@ -94,6 +114,53 @@ void JitArm::stwu(UGeckoInstruction inst)
 
 	gpr.Unlock(ValueReg, Addr, Function);
 }
+void JitArm::StoreFromReg(ARMReg dest, ARMReg value, int accessSize, s32 offset)
+{
+	ARMReg rA = gpr.GetReg();
+	
+	// All this gets replaced on backpatch
+	ARMABI_MOVI2R(rA, Memory::MEMVIEW32_MASK, false); // 1-2 
+	AND(dest, dest, rA); // 3
+	ARMABI_MOVI2R(rA, (u32)Memory::base, false); // 4-5
+	ADD(dest, dest, rA); // 6
+	switch (accessSize)
+	{
+		case 32:
+			REV(value, value); // 7
+		break;
+		case 16:
+			REV16(value, value);
+		break;
+		case 8:
+		break;
+	}
+	switch (accessSize)
+	{
+		case 32:
+			STR(dest, value); // 8
+		break;
+		case 16:
+			// Not implemented
+		break;
+		case 8:
+			// Not implemented
+		break;
+	}
+	SetCC(CC_VS);
+	// Value contains some values for an easier time when we have to backpatch
+	// This can only be 24bits and currently contains:
+	// Dest address is always in reg 10
+	// Bits 0-4: Value Reg
+	// Bits 5-6: AccessSize
+	// Bit 7: AccessType 0 = Load, 1 = store
+	u32 SVCValue = (1 << 7) |
+		(accessSize == 32 ? (0x02 << 4) : accessSize == 16 ? (0x01 << 4) : 0) | 
+		(value & 0xF);
+	SVC(SVCValue); // 9
+	SetCC();
+	gpr.Unlock(rA);
+
+}
 void JitArm::LoadToReg(ARMReg dest, ARMReg addr, int accessSize, s32 offset)
 {
 	ARMReg rA = gpr.GetReg();
@@ -122,7 +189,9 @@ void JitArm::LoadToReg(ARMReg dest, ARMReg addr, int accessSize, s32 offset)
 	// This can only be 24bits and currently contains:
 	// Bits 0-4: Dest Reg
 	// Bits 5-6: AccessSize
-	u32 value = (accessSize == 32 ? (0x02 << 4) : accessSize == 16 ? (0x01 << 4) : 0) | 
+	// Bit 7: AccessType 0 = Load, 1 = store
+	u32 value = (0 << 7) |
+		(accessSize == 32 ? (0x02 << 4) : accessSize == 16 ? (0x01 << 4) : 0) | 
 		(dest & 0xF);
 	SVC(value); // 8
 	SetCC();

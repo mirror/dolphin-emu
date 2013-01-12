@@ -115,6 +115,7 @@ public:
 	void ComputeRC(int cr = 0);
 
 	// TODO: This shouldn't be here
+	void StoreFromReg(ARMReg dest, ARMReg value, int accessSize, s32 offset);
 	void LoadToReg(ARMReg dest, ARMReg addr, int accessSize, s32 offset);
 
 	// OPCODES

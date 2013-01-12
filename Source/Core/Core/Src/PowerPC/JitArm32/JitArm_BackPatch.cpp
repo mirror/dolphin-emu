@@ -52,31 +52,24 @@ const u8 *JitArm::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void *ct
 	// TODO: This ctx needs to be filled with our information
 	CONTEXT *ctx = (CONTEXT *)ctx_void;
 	
+	// We need to get the destination register before we start
+	u32 Value = (u32)*(codePtr + 4);
+	ARMReg rD = (ARMReg)(Value & 0xF);
+	int accessSize = (Value & 0x30) >> 4;
+	bool Store = (Value & 0x40) >> 6;
 	/*
-	if (info.isMemoryWrite) {
-		if (!Memory::IsRAMAddress(emAddress, true)) {
-			PanicAlert("Exception: Caught write to invalid address %08x", emAddress);
-			return;
-		}
-		BackPatchError("BackPatch - determined that MOV is write, not yet supported and should have been caught before",
-					   codePtr, emAddress);
+	u32 SVC = (Value & 0x0F000000) >> 24 ;
+	
+	if (SVC != 0x0F)
+	{
+		printf("Invalid backpatch at location 0x%08x, %08x\n", ctx->reg_pc, SVC);
+		return 0;
 	}*/
 
-	if (accessType == OP_ACCESS_WRITE)
-		PanicAlert("BackPatch : Currently only supporting reads."
-		           "\n\nAttempted to write to %08x.", emAddress);
-
-	// In the first iteration, we assume that all accesses are 32-bit. We also only deal with reads.
-	if (accessType == 0)
+	if (!Store)
 	{
-#define ARMREGOFFSET (4 * 6)
+		const u32 ARMREGOFFSET =  4 * 6;
 		ARMXEmitter emitter(codePtr - ARMREGOFFSET);
-		
-		// We need to get the destination register before we start
-		u32 Value = ((u32)*(codePtr + 4)) & 0x0FFFFFFF;
-		ARMReg rD = (ARMReg)(Value & 0xF);
-		int accessSize = (Value & 0x30) >> 4;
-		printf("AccessSize: %d\n", accessSize);
 		
 		switch (accessSize)
 		{
@@ -100,6 +93,38 @@ const u8 *JitArm::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void *ct
 		ctx->reg_pc -= ARMREGOFFSET + (4 * 4);
 		emitter.Flush();
 		return codePtr;
+	}
+	else
+	{
+		const u32 ARMREGOFFSET = 4 * 7;
+		ARMXEmitter emitter(codePtr - ARMREGOFFSET);
+		printf("Write AccessSize: %d, 0x%08x\n", accessSize, (u32)emitter.GetCodePtr());
+
+		switch (accessSize)
+		{
+			case 0: // 8bit
+				//emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Write_U8, false); // 1-2
+				return 0;
+			break;
+			case 1: // 16bit
+				//emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Write_U16, false); // 1-2
+				return 0;
+			break;
+			case 2: // 32bit
+				emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Write_U32, false); // 1-2
+			break;
+		}
+		emitter.PUSH(4, R0, R1, R2, R3); // 3
+		emitter.MOV(R0, rD); // Value - 4
+		emitter.MOV(R1, R10); // Addr- 5 
+		emitter.BL(R14); // 6
+		emitter.POP(4, R0, R1, R2, R3); // 7
+		emitter.NOP(2); // 8-9
+		u32 newPC = ctx->reg_pc - (ARMREGOFFSET + 4 * 4);
+		ctx->reg_pc = newPC;
+		emitter.Flush();
+		return codePtr;
+
 	}
 /*	else if (accessType == 1)
 	{
