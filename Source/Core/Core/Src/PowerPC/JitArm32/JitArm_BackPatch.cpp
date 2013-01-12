@@ -73,20 +73,32 @@ const u8 *JitArm::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void *ct
 		ARMXEmitter emitter(codePtr - ARMREGOFFSET);
 		
 		// We need to get the destination register before we start
-		u32 Reg = ((u32)*(codePtr + 4)) & 0x0FFFFFFF;
-		ARMReg rD = (ARMReg)Reg;
+		u32 Value = ((u32)*(codePtr + 4)) & 0x0FFFFFFF;
+		ARMReg rD = (ARMReg)(Value & 0xF);
+		int accessSize = (Value & 0x30) >> 4;
+		printf("AccessSize: %d\n", accessSize);
 		
-		emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Read_U32, false); // 2	
+		switch (accessSize)
+		{
+			case 0: // 8bit
+				emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Read_U8, false); // 2	
+			break;
+			case 1: // 16bit
+				emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Read_U16, false); // 2	
+			break;
+			case 2: // 32bit
+				emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Read_U32, false); // 2	
+			break;
+		}
 		emitter.PUSH(4, R0, R1, R2, R3); // 3
 		emitter.MOV(R0, R10); // 4
 		emitter.BL(R14); // 5
 		emitter.MOV(R14, R0); // 6
 		emitter.POP(4, R0, R1, R2, R3); // 7
 		emitter.MOV(rD, R14); // 8
-		emitter.NOP(1); // 9
+		emitter.NOP(2); // 9-10
 		ctx->reg_pc -= ARMREGOFFSET + (4 * 4);
 		emitter.Flush();
-
 		return codePtr;
 	}
 /*	else if (accessType == 1)

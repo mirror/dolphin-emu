@@ -115,7 +115,7 @@ public:
 	void ComputeRC(int cr = 0);
 
 	// TODO: This shouldn't be here
-	void LoadToReg(ARMReg dest, ARMReg addr, int accessSize, u32 offset);
+	void LoadToReg(ARMReg dest, ARMReg addr, int accessSize, s32 offset);
 
 	// OPCODES
 	void unknown_instruction(UGeckoInstruction _inst);
@@ -163,6 +163,7 @@ public:
 
 	// LoadStore
 	void icbi(UGeckoInstruction _inst);
+	void lbz(UGeckoInstruction _inst);
 	void lhz(UGeckoInstruction _inst);
 	void lwz(UGeckoInstruction _inst);
 	void lwzx(UGeckoInstruction _inst);

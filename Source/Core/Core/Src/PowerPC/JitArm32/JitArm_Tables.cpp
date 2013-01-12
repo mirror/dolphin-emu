@@ -80,7 +80,7 @@ static GekkoOPTemplate primarytable[] =
 
 	{32, &JitArm::lwz}, //"lwz",  OPTYPE_LOAD, FL_OUT_D | FL_IN_A}},
 	{33, &JitArm::Default}, //"lwzu", OPTYPE_LOAD, FL_OUT_D | FL_OUT_A | FL_IN_A}},
-	{34, &JitArm::Default}, //"lbz",  OPTYPE_LOAD, FL_OUT_D | FL_IN_A}},
+	{34, &JitArm::lbz}, //"lbz",  OPTYPE_LOAD, FL_OUT_D | FL_IN_A}},
 	{35, &JitArm::Default}, //"lbzu", OPTYPE_LOAD, FL_OUT_D | FL_OUT_A | FL_IN_A}},
 	{40, &JitArm::lhz}, //"lhz",  OPTYPE_LOAD, FL_OUT_D | FL_IN_A}},
 	{41, &JitArm::Default}, //"lhzu", OPTYPE_LOAD, FL_OUT_D | FL_OUT_A | FL_IN_A}},
