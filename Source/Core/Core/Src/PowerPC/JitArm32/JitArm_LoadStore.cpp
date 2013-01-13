@@ -37,16 +37,18 @@ void JitArm::stw(UGeckoInstruction inst)
 	JITDISABLE(LoadStore)
 
 	ARMReg RS = gpr.R(inst.RS);
-#if 0
+#if 1
 	// R10 contains the dest address
 	ARMReg _R10 = R10;
 	ARMReg Value = R11;
+	ARMReg RA;
+	if (inst.RA)
+		RA = gpr.R(inst.RA);
 
 	MOV(Value, RS);
 	if (inst.RA)
 	{
 		ARMABI_MOVI2R(_R10, inst.SIMM_16, false);
-		ARMReg RA = gpr.R(inst.RA);
 		ADD(_R10, _R10, RA);
 	}
 	else
@@ -117,7 +119,7 @@ void JitArm::stwu(UGeckoInstruction inst)
 void JitArm::StoreFromReg(ARMReg dest, ARMReg value, int accessSize, s32 offset)
 {
 	ARMReg rA = gpr.GetReg();
-	
+
 	// All this gets replaced on backpatch
 	ARMABI_MOVI2R(rA, Memory::MEMVIEW32_MASK, false); // 1-2 
 	AND(dest, dest, rA); // 3
@@ -132,6 +134,7 @@ void JitArm::StoreFromReg(ARMReg dest, ARMReg value, int accessSize, s32 offset)
 			REV16(value, value);
 		break;
 		case 8:
+			NOP(1);
 		break;
 	}
 	switch (accessSize)
@@ -150,16 +153,15 @@ void JitArm::StoreFromReg(ARMReg dest, ARMReg value, int accessSize, s32 offset)
 	// Value contains some values for an easier time when we have to backpatch
 	// This can only be 24bits and currently contains:
 	// Dest address is always in reg 10
-	// Bits 0-4: Value Reg
-	// Bits 5-6: AccessSize
-	// Bit 7: AccessType 0 = Load, 1 = store
-	u32 SVCValue = (1 << 7) |
+	// Bits 0-3: Value Reg
+	// Bits 4-5: AccessSize
+	// Bit 6: AccessType 0 = Load, 1 = store
+	u32 SVCValue = (1 << 6) |
 		(accessSize == 32 ? (0x02 << 4) : accessSize == 16 ? (0x01 << 4) : 0) | 
 		(value & 0xF);
 	SVC(SVCValue); // 9
 	SetCC();
 	gpr.Unlock(rA);
-
 }
 void JitArm::LoadToReg(ARMReg dest, ARMReg addr, int accessSize, s32 offset)
 {
@@ -184,29 +186,26 @@ void JitArm::LoadToReg(ARMReg dest, ARMReg addr, int accessSize, s32 offset)
 			LDRB(dest, addr);
 		break;
 	}
-	SetCC(CC_GT);
+	SetCC(CC_VS);
 	// Value contains some values for an easier time when we have to backpatch
 	// This can only be 24bits and currently contains:
-	// Bits 0-4: Dest Reg
-	// Bits 5-6: AccessSize
-	// Bit 7: AccessType 0 = Load, 1 = store
-	u32 value = (0 << 7) |
-		(accessSize == 32 ? (0x02 << 4) : accessSize == 16 ? (0x01 << 4) : 0) | 
-		(dest & 0xF);
+	// Bits 0-3: Dest Reg
+	// Bits 4-5: AccessSize
+	// Bit 6: AccessType 0 = Load, 1 = store
+	u32 value = 0;
+	value = (accessSize == 32 ? (0x02 << 4) : accessSize == 16 ? (0x01 << 4) : 0) | (dest & 0xF);
 	SVC(value); // 8
 	SetCC();
 	switch (accessSize)
 	{
 		case 32:
 			REV(dest, dest); // 9
-			NOP(1); // 10
 		break;
 		case 16:
 			REV16(dest, dest);
-			NOP(1);
 		break;
 		case 8:
-			NOP(2);
+			NOP(1);
 		break;
 
 	}
@@ -225,7 +224,7 @@ void JitArm::lbz(UGeckoInstruction inst)
 	ARMABI_MOVI2R(rB, EXCEPTION_DSI);
 	CMP(rA, rB);
 	FixupBranch DoNotLoad = B_CC(CC_EQ);
-#if 0
+#if 1
 	// Backpatch route
 	// Gets loaded in to RD
 	// Address is in R10
@@ -284,10 +283,14 @@ void JitArm::lhz(UGeckoInstruction inst)
 	if (inst.RA)
 	{
 		ARMReg RA = gpr.R(inst.RA);
+		printf("lhz jump to here: 0x%08x\n", (u32)GetCodePtr());
 		MOV(_R10, RA); // - 4
 	}
 	else
+	{
+		printf("lhz jump to here: 0x%08x\n", (u32)GetCodePtr());
 		MOV(_R10, 0); // - 4
+	}
 	LoadToReg(RD, _R10, 16, (u32)inst.SIMM_16);	
 #else
 

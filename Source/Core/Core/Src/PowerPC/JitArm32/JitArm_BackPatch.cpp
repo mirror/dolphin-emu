@@ -53,53 +53,24 @@ const u8 *JitArm::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void *ct
 	CONTEXT *ctx = (CONTEXT *)ctx_void;
 	
 	// We need to get the destination register before we start
-	u32 Value = (u32)*(codePtr + 4);
+	u8* pValue = codePtr + 4;
+	u32 Value = *(u32*)pValue; 
 	ARMReg rD = (ARMReg)(Value & 0xF);
-	int accessSize = (Value & 0x30) >> 4;
-	bool Store = (Value & 0x40) >> 6;
-	/*
-	u32 SVC = (Value & 0x0F000000) >> 24 ;
+	u8 accessSize = (Value & 0x30) >> 4;
+	u8 Store = (Value & 0x40) >> 6;
+
+	u32 SVC = (Value & 0x0F000000) >> 24;
 	
 	if (SVC != 0x0F)
 	{
-		printf("Invalid backpatch at location 0x%08x, %08x\n", ctx->reg_pc, SVC);
-		return 0;
-	}*/
-
-	if (!Store)
-	{
-		const u32 ARMREGOFFSET =  4 * 6;
-		ARMXEmitter emitter(codePtr - ARMREGOFFSET);
-		
-		switch (accessSize)
-		{
-			case 0: // 8bit
-				emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Read_U8, false); // 2	
-			break;
-			case 1: // 16bit
-				emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Read_U16, false); // 2	
-			break;
-			case 2: // 32bit
-				emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Read_U32, false); // 2	
-			break;
-		}
-		emitter.PUSH(4, R0, R1, R2, R3); // 3
-		emitter.MOV(R0, R10); // 4
-		emitter.BL(R14); // 5
-		emitter.MOV(R14, R0); // 6
-		emitter.POP(4, R0, R1, R2, R3); // 7
-		emitter.MOV(rD, R14); // 8
-		emitter.NOP(2); // 9-10
-		ctx->reg_pc -= ARMREGOFFSET + (4 * 4);
-		emitter.Flush();
-		return codePtr;
+		printf("Invalid backpatch at location 0x%08x\n", ctx->reg_pc);
+		exit(0);
 	}
-	else
+
+	if (Store == 1)
 	{
 		const u32 ARMREGOFFSET = 4 * 7;
 		ARMXEmitter emitter(codePtr - ARMREGOFFSET);
-		printf("Write AccessSize: %d, 0x%08x\n", accessSize, (u32)emitter.GetCodePtr());
-
 		switch (accessSize)
 		{
 			case 0: // 8bit
@@ -124,23 +95,34 @@ const u8 *JitArm::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void *ct
 		ctx->reg_pc = newPC;
 		emitter.Flush();
 		return codePtr;
-
 	}
-/*	else if (accessType == 1)
+	else
 	{
-		// TODO: special case FIFO writes. Also, support 32-bit mode.
-		// Also, debug this so that it actually works correctly :P
-		XEmitter emitter(codePtr - 2);
-		// We know it's EAX so the BSWAP before will be two byte. Overwrite it.
-		const u8 *trampoline = trampolines.GetWriteTrampoline(info);
-		emitter.CALL((void *)trampoline);
-		emitter.NOP((int)info.instructionSize - 3);
-		if (info.instructionSize < 3)
-			PanicAlert("instruction too small");
-		// We entered here with a BSWAP-ed EAX. We'll have to swap it back.
-		ctx->Rax = Common::swap32((u32)ctx->Rax);
-		return codePtr - 2;
-	}*/
+		const u32 ARMREGOFFSET = 4 * 6;
+		ARMXEmitter emitter(codePtr - ARMREGOFFSET);
+		switch (accessSize)
+		{
+			case 0: // 8bit
+				emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Read_U8, false); // 2	
+			break;
+			case 1: // 16bit
+				emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Read_U16, false); // 2	
+			break;
+			case 2: // 32bit
+				emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Read_U32, false); // 2	
+			break;
+		}
+		emitter.PUSH(4, R0, R1, R2, R3); // 3
+		emitter.MOV(R0, R10); // 4
+		emitter.BL(R14); // 5
+		emitter.MOV(R14, R0); // 6
+		emitter.POP(4, R0, R1, R2, R3); // 7
+		emitter.MOV(rD, R14); // 8
+		emitter.NOP(1);
+		ctx->reg_pc -= ARMREGOFFSET + (4 * 4);
+		emitter.Flush();
+		return codePtr;
+	}
 	return 0;
 }
 
