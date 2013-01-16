@@ -76,8 +76,7 @@ void cX11Window::XEventThread()
 						case XK_3:
 							OSDChoice = 1;
 							// Toggle native resolution
-							g_Config.iEFBScale = g_Config.iEFBScale + 1;
-							if (g_Config.iEFBScale > 7) g_Config.iEFBScale = 0;
+							//TODO: what do
 							break;
 						case XK_4:
 							OSDChoice = 2;
