@@ -389,7 +389,8 @@ Renderer::Renderer()
 
 	UpdateDrawRectangle(s_backbuffer_width, s_backbuffer_height);
 
-	s_LastEFBScale = g_ActiveConfig.iEFBScale;
+	s_LastEFBScaleNum = g_ActiveConfig.iEFBScaleNumerator;
+	s_LastEFBScaleDen = g_ActiveConfig.iEFBScaleDenominator;
 	CalculateTargetSize(s_backbuffer_width, s_backbuffer_height);
 
 	// Because of the fixed framebuffer size we need to disable the resolution
@@ -1445,12 +1446,14 @@ void Renderer::Swap(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight,cons
 	bool WindowResized = false;
 	int W = (int)GLInterface->GetBackBufferWidth();
 	int H = (int)GLInterface->GetBackBufferHeight();
-	if (W != s_backbuffer_width || H != s_backbuffer_height || s_LastEFBScale != g_ActiveConfig.iEFBScale)
+	if (W != s_backbuffer_width || H != s_backbuffer_height || s_LastEFBScaleNum != g_ActiveConfig.iEFBScaleNumerator ||
+		s_LastEFBScaleDen != g_ActiveConfig.iEFBScaleDenominator)
 	{
 		WindowResized = true;
 		s_backbuffer_width = W;
 		s_backbuffer_height = H;
-		s_LastEFBScale = g_ActiveConfig.iEFBScale;
+		s_LastEFBScaleNum = g_ActiveConfig.iEFBScaleNumerator;
+		s_LastEFBScaleDen = g_ActiveConfig.iEFBScaleDenominator;
 	}
 
 	if (xfbchanged || WindowResized || (s_LastMultisampleMode != g_ActiveConfig.iMultisampleMode))

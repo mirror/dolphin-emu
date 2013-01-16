@@ -78,7 +78,6 @@ void VideoConfig::Load(const char *ini_file)
 	iniFile.Get("Settings", "EnablePerPixelDepth", &bEnablePerPixelDepth, 0);
 	
 	iniFile.Get("Settings", "MSAA", &iMultisampleMode, 0);
-	iniFile.Get("Settings", "EFBScale", &iEFBScale, 2); // native
 	iniFile.Get("Settings",	"EFBScaleNumerator", &iEFBScaleNumerator, 1);
 	iniFile.Get("Settings",	"EFBScaleDenominator", &iEFBScaleDenominator, 1);
 	
@@ -138,7 +137,6 @@ void VideoConfig::GameIniLoad(const char *ini_file)
 	iniFile.GetIfExists("Video_Settings", "EnablePixelLighting", &bEnablePixelLighting);
 	iniFile.GetIfExists("Video_Settings", "EnablePerPixelDepth", &bEnablePerPixelDepth);
 	iniFile.GetIfExists("Video_Settings", "MSAA", &iMultisampleMode);
-	iniFile.GetIfExists("Video_Settings", "EFBScale", &iEFBScale); // integral
 	iniFile.GetIfExists("Video_Settings", "DstAlphaPass", &bDstAlphaPass);
 	iniFile.GetIfExists("Video_Settings", "DisableFog", &bDisableFog);
 	iniFile.GetIfExists("Video_Settings", "EnableOpenCL", &bEnableOpenCL);
@@ -212,14 +210,12 @@ void VideoConfig::Save(const char *ini_file)
 
 	iniFile.Set("Settings", "ShowEFBCopyRegions", bShowEFBCopyRegions);
 	iniFile.Set("Settings", "MSAA", iMultisampleMode);
-	iniFile.Set("Settings", "EFBScale", iEFBScale);
 	iniFile.Set("Settings", "TexFmtOverlayEnable", bTexFmtOverlayEnable);
 	iniFile.Set("Settings", "TexFmtOverlayCenter", bTexFmtOverlayCenter);
 	iniFile.Set("Settings", "Wireframe", bWireFrame);
 	iniFile.Set("Settings", "DstAlphaPass", bDstAlphaPass);
 	iniFile.Set("Settings", "DisableFog", bDisableFog);
 
-	// TODO
 	iniFile.Set("Settings",	"EFBScaleNumerator", iEFBScaleNumerator);
 	iniFile.Set("Settings",	"EFBScaleDenominator", iEFBScaleDenominator);
 
@@ -279,7 +275,8 @@ void VideoConfig::GameIniSave(const char* default_ini, const char* game_ini)
 	SET_IF_DIFFERS("Video_Settings", "EnablePixelLighting", bEnablePixelLighting);
 	SET_IF_DIFFERS("Video_Settings", "EnablePerPixelDepth", bEnablePerPixelDepth);
 	SET_IF_DIFFERS("Video_Settings", "MSAA", iMultisampleMode);
-	SET_IF_DIFFERS("Video_Settings", "EFBScale", iEFBScale); // integral
+	SET_IF_DIFFERS("Video_Settings", "EFBScaleNumerator", iEFBScaleNumerator);
+	SET_IF_DIFFERS("Video_Settings", "EFBScaleDenominator", iEFBScaleDenominator);
 	SET_IF_DIFFERS("Video_Settings", "DstAlphaPass", bDstAlphaPass);
 	SET_IF_DIFFERS("Video_Settings", "DisableFog", bDisableFog);
 	SET_IF_DIFFERS("Video_Settings", "EnableOpenCL", bEnableOpenCL);

@@ -334,7 +334,7 @@ VideoConfigDiag::VideoConfigDiag(wxWindow* parent, const std::string &title, con
 	wxPanel* const page_enh = new wxPanel(notebook, -1, wxDefaultPosition);
 	notebook->AddPage(page_enh, _("Enhancements"));
 	wxBoxSizer* const szr_enh_main = new wxBoxSizer(wxVERTICAL);
-	wxBoxSizer* const szr_IR = new wxBoxSizer(wxHORIZONTAL);
+	wxStaticBoxSizer* const szr_IR = new wxStaticBoxSizer(wxHORIZONTAL, page_enh, _("Internal Resolution"));
 
 	// - enhancements
 	wxFlexGridSizer* const szr_enh = new wxFlexGridSizer(2, 5, 5);
@@ -347,10 +347,11 @@ VideoConfigDiag::VideoConfigDiag(wxWindow* parent, const std::string &title, con
 	spinIRDen = new wxSpinCtrl(page_enh, wxID_ANY, "", wxDefaultPosition, wxSize(60,-1),
 	632 	+ 	wxSP_ARROW_KEYS, 0, 99999);
 
-	szr_IR->Add(new wxStaticText(page_enh, wxID_ANY, _("Internal Resolution:")), 1, wxALIGN_CENTER_VERTICAL, 0);
+	//szr_IR->Add(new wxStaticText(page_enh, wxID_ANY, _("Internal Resolution:")), 1, wxALIGN_CENTER_VERTICAL, 0);
 	szr_IR->Add(spinIRNum);
 	szr_IR->Add(new wxStaticText(page_enh, wxID_ANY, _(" / ")), 1, wxALIGN_CENTER_VERTICAL, 0);
 	szr_IR->Add(spinIRDen);
+	szr_IR->AddStretchSpacer(1);
 	szr_enh->Add(szr_IR);
 	}
 

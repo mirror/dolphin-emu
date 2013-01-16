@@ -142,7 +142,8 @@ private:
 		bool s_copy_efb_to_texture;
 		bool s_copy_efb_scaled;
 		bool s_copy_efb;
-		int s_efb_scale;
+		int s_efb_scale_num;
+		int s_efb_scale_den;
 		bool s_texfmt_overlay;
 		bool s_texfmt_overlay_center;
 		bool s_hires_textures;

@@ -290,7 +290,9 @@ Renderer::Renderer()
 	s_LastAA = g_ActiveConfig.iMultisampleMode;
 	int SupersampleCoeficient = (s_LastAA % 3) + 1;
 
-	s_LastEFBScale = g_ActiveConfig.iEFBScale;
+	s_LastEFBScaleNum = g_ActiveConfig.iEFBScaleNumerator;
+	s_LastEFBScaleDen = g_ActiveConfig.iEFBScaleDenominator;
+
 	CalculateTargetSize(s_backbuffer_width, s_backbuffer_height, SupersampleCoeficient);
 
 	// Make sure to use valid texture sizes
@@ -1147,7 +1149,8 @@ void Renderer::Swap(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight,cons
 
 	u32 newAA = g_ActiveConfig.iMultisampleMode;
 
-	if (xfbchanged || windowResized || s_LastEFBScale != g_ActiveConfig.iEFBScale || s_LastAA != newAA)
+	if (xfbchanged || windowResized || s_LastEFBScaleNum != g_ActiveConfig.iEFBScaleNumerator ||
+		s_LastEFBScaleDen != g_ActiveConfig.iEFBScaleDenominator ||	s_LastAA != newAA)
 	{
 		s_LastAA = newAA;
 
@@ -1155,7 +1158,8 @@ void Renderer::Swap(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight,cons
 		
 		int SupersampleCoeficient = (s_LastAA % 3) + 1;
 
-		s_LastEFBScale = g_ActiveConfig.iEFBScale;
+		s_LastEFBScaleNum = g_ActiveConfig.iEFBScaleNumerator;
+		s_LastEFBScaleDen = g_ActiveConfig.iEFBScaleDenominator;
 		CalculateTargetSize(s_backbuffer_width, s_backbuffer_height, SupersampleCoeficient);
 
 		D3D::dev->SetRenderTarget(0, D3D::GetBackBufferSurface());

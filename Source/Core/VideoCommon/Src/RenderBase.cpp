@@ -69,7 +69,8 @@ int Renderer::s_backbuffer_height;
 
 TargetRectangle Renderer::target_rc;
 
-int Renderer::s_LastEFBScale;
+int Renderer::s_LastEFBScaleNum;
+int Renderer::s_LastEFBScaleDen;
 
 bool Renderer::s_skipSwap;
 bool Renderer::XFBWrited;
@@ -138,40 +139,19 @@ void Renderer::RenderToXFB(u32 xfbAddr, u32 fbWidth, u32 fbHeight, const EFBRect
 
 int Renderer::EFBToScaledX(int x)
 {
-	switch (g_ActiveConfig.iEFBScale)
-	{
-		case 0: // fractional
-			return (int)ssaa_multiplier * FramebufferManagerBase::ScaleToVirtualXfbWidth(x, s_backbuffer_width);
-
-		default:
-			return x * (int)ssaa_multiplier * (int)efb_scale_numeratorX / (int)efb_scale_denominatorX;
-	};
+	return x * (int)ssaa_multiplier * (int)efb_scale_numeratorX / (int)efb_scale_denominatorX;
+	
 }
 
 int Renderer::EFBToScaledY(int y)
 {
-	switch (g_ActiveConfig.iEFBScale)
-	{
-		case 0: // fractional
-			return (int)ssaa_multiplier * FramebufferManagerBase::ScaleToVirtualXfbHeight(y, s_backbuffer_height);
-
-		default:
-			return y * (int)ssaa_multiplier * (int)efb_scale_numeratorY / (int)efb_scale_denominatorY;
-	};
+		return y * (int)ssaa_multiplier * (int)efb_scale_numeratorY / (int)efb_scale_denominatorY;
 }
 
 void Renderer::CalculateTargetScale(int x, int y, int &scaledX, int &scaledY)
 {
-	if (g_ActiveConfig.iEFBScale == 0 || g_ActiveConfig.iEFBScale == 1)
-	{
-		scaledX = x;
-		scaledY = y;
-	}
-	else
-	{
 		scaledX = x * (int)efb_scale_numeratorX / (int)efb_scale_denominatorX;
 		scaledY = y * (int)efb_scale_numeratorY / (int)efb_scale_denominatorY;
-	}
 }
 
 // return true if target size changed
@@ -182,28 +162,13 @@ bool Renderer::CalculateTargetSize(unsigned int framebuffer_width, unsigned int 
 	efb_scale_numeratorX = efb_scale_numeratorY = g_ActiveConfig.iEFBScaleNumerator;
 	efb_scale_denominatorX = efb_scale_denominatorY = g_ActiveConfig.iEFBScaleDenominator;
 
-	switch (s_LastEFBScale)
-	{
-		case 0: // fractional
-		case 1: // integral
-			newEFBWidth = FramebufferManagerBase::ScaleToVirtualXfbWidth(EFB_WIDTH, framebuffer_width);
-			newEFBHeight = FramebufferManagerBase::ScaleToVirtualXfbHeight(EFB_HEIGHT, framebuffer_height);
+	newEFBWidth = FramebufferManagerBase::ScaleToVirtualXfbWidth(EFB_WIDTH, framebuffer_width);
+	newEFBHeight = FramebufferManagerBase::ScaleToVirtualXfbHeight(EFB_HEIGHT, framebuffer_height);
 
-			if (s_LastEFBScale == 1)
-			{
-				newEFBWidth = ((newEFBWidth-1) / EFB_WIDTH + 1) * EFB_WIDTH;
-				newEFBHeight = ((newEFBHeight-1) / EFB_HEIGHT + 1) * EFB_HEIGHT;
-			}
-			efb_scale_numeratorX = newEFBWidth;
-			efb_scale_denominatorX = EFB_WIDTH;
-			efb_scale_numeratorY = newEFBHeight;
-			efb_scale_denominatorY = EFB_HEIGHT;
-			break;
-
-		default:
-			CalculateTargetScale(EFB_WIDTH, EFB_HEIGHT, newEFBWidth, newEFBHeight);
-			break;
-	}
+	efb_scale_numeratorX = newEFBWidth;
+	efb_scale_denominatorX = EFB_WIDTH;
+	efb_scale_numeratorY = newEFBHeight;
+	efb_scale_denominatorY = EFB_HEIGHT;
 
 	newEFBWidth *= multiplier;
 	newEFBHeight *= multiplier;
@@ -239,34 +204,8 @@ void Renderer::DrawDebugText()
 		}
 		if ((u32)OSDTime > Common::Timer::GetTimeMs())
 		{
-			const char* res_text = "";
-			switch (g_ActiveConfig.iEFBScale)
-			{
-			case 0:
-				res_text = "Auto (fractional)";
-				break;
-			case 1:
-				res_text = "Auto (integral)";
-				break;
-			case 2:
-				res_text = "Native";
-				break;
-			case 3:
-				res_text = "1.5x";
-				break;
-			case 4:
-				res_text = "2x";
-				break;
-			case 5:
-				res_text = "2.5x";
-				break;
-			case 6:
-				res_text = "3x";
-				break;
-			case 7:
-				res_text = "4x";
-				break;
-			}
+			char* res_text = "";
+			sprintf(res_text, "%d/%d",g_ActiveConfig.iEFBScaleNumerator, g_ActiveConfig.iEFBScaleDenominator);
 
 			const char* ar_text = "";
 			switch(g_ActiveConfig.iAspectRatio)
