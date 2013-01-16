@@ -164,11 +164,7 @@ bool Renderer::CalculateTargetSize(unsigned int framebuffer_width, unsigned int 
 	newEFBWidth = FramebufferManagerBase::ScaleToVirtualXfbWidth(EFB_WIDTH, framebuffer_width);
 	newEFBHeight = FramebufferManagerBase::ScaleToVirtualXfbHeight(EFB_HEIGHT, framebuffer_height);
 
-	efb_scale_numeratorX = newEFBWidth;
-	efb_scale_denominatorX = EFB_WIDTH;
-	efb_scale_numeratorY = newEFBHeight;
-	efb_scale_denominatorY = EFB_HEIGHT;
-
+	CalculateTargetScale(EFB_WIDTH, EFB_HEIGHT, newEFBWidth, newEFBHeight);
 	newEFBWidth *= multiplier;
 	newEFBHeight *= multiplier;
 	ssaa_multiplier = multiplier;
