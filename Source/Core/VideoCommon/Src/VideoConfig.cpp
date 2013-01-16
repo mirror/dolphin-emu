@@ -220,8 +220,8 @@ void VideoConfig::Save(const char *ini_file)
 	iniFile.Set("Settings", "DisableFog", bDisableFog);
 
 	// TODO
-	//iniFile.Set("Settings",	"EFBScaleNumerator", &iEFBScaleNumerator);
-	//iniFile.Set("Settings",	"EFBScaleDenominator", &iEFBScaleDenominator);
+	iniFile.Set("Settings",	"EFBScaleNumerator", iEFBScaleNumerator);
+	iniFile.Set("Settings",	"EFBScaleDenominator", iEFBScaleDenominator);
 
 	iniFile.Set("Settings", "EnableOpenCL", bEnableOpenCL);
 	iniFile.Set("Settings", "OMPDecoder", bOMPDecoder);

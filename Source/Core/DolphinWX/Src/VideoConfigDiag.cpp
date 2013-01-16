@@ -63,6 +63,8 @@ void VideoConfigDiag::Event_ClickClose(wxCommandEvent&)
 
 void VideoConfigDiag::Event_Close(wxCloseEvent& ev)
 {
+	g_Config.iEFBScaleNumerator = spinIRNum->GetValue();
+	g_Config.iEFBScaleDenominator = spinIRDen->GetValue();
 	g_Config.Save((File::GetUserPath(D_CONFIG_IDX) + ininame + ".ini").c_str());
 
 	EndModal(wxID_OK);
@@ -332,22 +334,28 @@ VideoConfigDiag::VideoConfigDiag(wxWindow* parent, const std::string &title, con
 	wxPanel* const page_enh = new wxPanel(notebook, -1, wxDefaultPosition);
 	notebook->AddPage(page_enh, _("Enhancements"));
 	wxBoxSizer* const szr_enh_main = new wxBoxSizer(wxVERTICAL);
+	wxBoxSizer* const szr_IR = new wxBoxSizer(wxHORIZONTAL);
 
 	// - enhancements
 	wxFlexGridSizer* const szr_enh = new wxFlexGridSizer(2, 5, 5);
 
 	// Internal resolution
 	{
-	const wxString efbscale_choices[] = { _("Auto (Window Size)"), _("Auto (Multiple of 640x528)"),
-		wxT("1x Native (640x528)"), wxT("1.5x Native (960x792)"), wxT("2x Native (1280x1056)"), 
-		wxT("2.5x Native (1600x1320)"), wxT("3x Native (1920x1584)"), wxT("4x Native (2560x2112)") };
 
-	wxChoice *const choice_efbscale = CreateChoice(page_enh,
-		vconfig.iEFBScale, wxGetTranslation(internal_res_desc), sizeof(efbscale_choices)/sizeof(*efbscale_choices), efbscale_choices);
+	spinIRNum = new wxSpinCtrl(page_enh, wxID_ANY, "", wxDefaultPosition, wxSize(60,-1),
+	632 	+ 	wxSP_ARROW_KEYS, 0, 99999);
+	spinIRDen = new wxSpinCtrl(page_enh, wxID_ANY, "", wxDefaultPosition, wxSize(60,-1),
+	632 	+ 	wxSP_ARROW_KEYS, 0, 99999);
 
-	szr_enh->Add(new wxStaticText(page_enh, wxID_ANY, _("Internal Resolution:")), 1, wxALIGN_CENTER_VERTICAL, 0);
-	szr_enh->Add(choice_efbscale);
+	szr_IR->Add(new wxStaticText(page_enh, wxID_ANY, _("Internal Resolution:")), 1, wxALIGN_CENTER_VERTICAL, 0);
+	szr_IR->Add(spinIRNum);
+	szr_IR->Add(new wxStaticText(page_enh, wxID_ANY, _(" / ")), 1, wxALIGN_CENTER_VERTICAL, 0);
+	szr_IR->Add(spinIRDen);
+	szr_enh->Add(szr_IR);
 	}
+
+	spinIRNum->SetValue(vconfig.iEFBScaleNumerator);
+	spinIRDen->SetValue(vconfig.iEFBScaleDenominator);
 
 	// AA
 	{

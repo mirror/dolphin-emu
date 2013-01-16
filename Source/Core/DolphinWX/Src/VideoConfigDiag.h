@@ -185,6 +185,9 @@ protected:
 	wxStaticText* text_aamode;
 	SettingChoice* choice_aamode;
 
+	wxSpinCtrl*	spinIRNum;
+	wxSpinCtrl*	spinIRDen;
+
 	SettingCheckBox* pixel_lighting;
 
 	SettingCheckBox* _3d_vision;
