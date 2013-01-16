@@ -140,18 +140,17 @@ void Renderer::RenderToXFB(u32 xfbAddr, u32 fbWidth, u32 fbHeight, const EFBRect
 int Renderer::EFBToScaledX(int x)
 {
 	return x * (int)ssaa_multiplier * (int)efb_scale_numeratorX / (int)efb_scale_denominatorX;
-	
 }
 
 int Renderer::EFBToScaledY(int y)
 {
-		return y * (int)ssaa_multiplier * (int)efb_scale_numeratorY / (int)efb_scale_denominatorY;
+	return y * (int)ssaa_multiplier * (int)efb_scale_numeratorY / (int)efb_scale_denominatorY;
 }
 
 void Renderer::CalculateTargetScale(int x, int y, int &scaledX, int &scaledY)
 {
-		scaledX = x * (int)efb_scale_numeratorX / (int)efb_scale_denominatorX;
-		scaledY = y * (int)efb_scale_numeratorY / (int)efb_scale_denominatorY;
+	scaledX = x * (int)efb_scale_numeratorX / (int)efb_scale_denominatorX;
+	scaledY = y * (int)efb_scale_numeratorY / (int)efb_scale_denominatorY;
 }
 
 // return true if target size changed
@@ -204,7 +203,7 @@ void Renderer::DrawDebugText()
 		}
 		if ((u32)OSDTime > Common::Timer::GetTimeMs())
 		{
-			char* res_text = "";
+			char res_text[32];
 			sprintf(res_text, "%d/%d",g_ActiveConfig.iEFBScaleNumerator, g_ActiveConfig.iEFBScaleDenominator);
 
 			const char* ar_text = "";
