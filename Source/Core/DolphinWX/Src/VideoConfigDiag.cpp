@@ -63,8 +63,6 @@ void VideoConfigDiag::Event_ClickClose(wxCommandEvent&)
 
 void VideoConfigDiag::Event_Close(wxCloseEvent& ev)
 {
-	g_Config.iEFBScaleNumerator = spinIRNum->GetValue();
-	g_Config.iEFBScaleDenominator = spinIRDen->GetValue();
 	g_Config.Save((File::GetUserPath(D_CONFIG_IDX) + ininame + ".ini").c_str());
 
 	EndModal(wxID_OK);
@@ -343,8 +341,11 @@ VideoConfigDiag::VideoConfigDiag(wxWindow* parent, const std::string &title, con
 	wxBoxSizer* const szr_IR = new wxBoxSizer(wxHORIZONTAL);
 	spinIRNum = new wxSpinCtrl(page_enh, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
 		wxSP_ARROW_KEYS, 1, 99999);
+	spinIRNum->Bind(wxEVT_COMMAND_SPINCTRL_UPDATED, &VideoConfigDiag::Event_IR, this);
+
 	spinIRDen = new wxSpinCtrl(page_enh, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
 		wxSP_ARROW_KEYS, 1, 99999);
+	spinIRDen->Bind(wxEVT_COMMAND_SPINCTRL_UPDATED, &VideoConfigDiag::Event_IR, this);
 
 	szr_IR->Add(spinIRNum);
 	szr_IR->Add(new wxStaticText(page_enh, wxID_ANY, _(" / ")), 1, wxALIGN_CENTER_VERTICAL, 0);

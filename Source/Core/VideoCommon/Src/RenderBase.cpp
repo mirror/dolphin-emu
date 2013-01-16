@@ -156,15 +156,12 @@ void Renderer::CalculateTargetScale(int x, int y, int &scaledX, int &scaledY)
 // return true if target size changed
 bool Renderer::CalculateTargetSize(unsigned int framebuffer_width, unsigned int framebuffer_height, int multiplier)
 {
-	int newEFBWidth, newEFBHeight;
-
 	efb_scale_numeratorX = efb_scale_numeratorY = g_ActiveConfig.iEFBScaleNumerator;
 	efb_scale_denominatorX = efb_scale_denominatorY = g_ActiveConfig.iEFBScaleDenominator;
 
-	newEFBWidth = FramebufferManagerBase::ScaleToVirtualXfbWidth(EFB_WIDTH, framebuffer_width);
-	newEFBHeight = FramebufferManagerBase::ScaleToVirtualXfbHeight(EFB_HEIGHT, framebuffer_height);
-
+	int newEFBWidth, newEFBHeight;
 	CalculateTargetScale(EFB_WIDTH, EFB_HEIGHT, newEFBWidth, newEFBHeight);
+
 	newEFBWidth *= multiplier;
 	newEFBHeight *= multiplier;
 	ssaa_multiplier = multiplier;

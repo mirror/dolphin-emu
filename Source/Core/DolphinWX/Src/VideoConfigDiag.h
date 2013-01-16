@@ -136,6 +136,12 @@ protected:
 		ev.Skip();
 	}
 
+	void Event_IR(wxEvent&)
+	{
+		g_Config.iEFBScaleNumerator = spinIRNum->GetValue();
+		g_Config.iEFBScaleDenominator = spinIRDen->GetValue();
+	}
+
 	void Event_ClickClose(wxCommandEvent&);
 	void Event_Close(wxCloseEvent&);
 
