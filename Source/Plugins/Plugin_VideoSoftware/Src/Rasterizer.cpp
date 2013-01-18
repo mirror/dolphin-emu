@@ -234,7 +234,7 @@ inline void CalculateLOD(s32 &lod, bool &linear, u32 texmap, u32 texcoord)
 		sDelta = fabsf(uv0[0] - uv1[0]);
 		tDelta = fabsf(uv0[1] - uv1[1]);
 	}
-/*	else
+	else
 	{
 		float *uv0 = rasterBlock.Pixel[0][0].Uv[texcoord];
 		float *uv1 = rasterBlock.Pixel[1][0].Uv[texcoord];
@@ -242,14 +242,14 @@ inline void CalculateLOD(s32 &lod, bool &linear, u32 texmap, u32 texcoord)
 
 		sDelta = max(fabsf(uv0[0] - uv1[0]), fabsf(uv0[0] - uv2[0]));
 		tDelta = max(fabsf(uv0[1] - uv1[1]), fabsf(uv0[1] - uv2[1]));
-	}*/
+	}
 
 	// get LOD in s28.4
 	lod = FixedLog2(max(sDelta, tDelta));
 
 	// bias is s2.5
 	int bias = tm0.lod_bias;
-//	bias >>= 1;
+	bias >>= 1;
 	lod += bias;
 
 	linear = ((lod > 0 && (tm0.min_filter & 4)) || (lod <= 0 && tm0.mag_filter));
@@ -401,6 +401,15 @@ void DrawTriangleFrontFace(OutputVertexData *v0, OutputVertexData *v1, OutputVer
 	{
 		for(int comp = 0; comp < 3; comp++)
 			InitSlope(&TexSlopes[i][comp], v0->texCoords[i][comp] * w[0], v1->texCoords[i][comp] * w[1], v2->texCoords[i][comp] * w[2], fltdx31, fltdx12, fltdy12, fltdy31);
+	}
+	else
+	{
+/*		static Slope old_slope;  
+		if (memcmp(&old_slope, &ZSlope, sizeof(ZSlope)) != 0)
+		{
+			printf("New frozen ZSlope: df/dx %f, df/dy %f, f0 %f\n", ZSlope.dfdx, ZSlope.dfdy, ZSlope.f0);
+			memcpy(&old_slope, &ZSlope, sizeof(ZSlope));
+		}*/
 	}
 
 	// Start in corner of 8x8 block

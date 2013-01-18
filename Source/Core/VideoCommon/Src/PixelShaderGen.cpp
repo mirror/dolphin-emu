@@ -660,7 +660,7 @@ static void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_TYPE Api
 		uid_data.zfreeze = bpmem.genMode.zfreeze;
 		if (bpmem.genMode.zfreeze)
 		{
-//			out.Write("depth = " I_ZSLOPE".z + " I_ZSLOPE".x * rawpos.x + " I_ZSLOPE".y * rawpos.y;\n");
+			out.Write("depth = " I_ZSLOPE".z + " I_ZSLOPE".x * rawpos.x + " I_ZSLOPE".y * rawpos.y;\n");
 		}
 	}
 

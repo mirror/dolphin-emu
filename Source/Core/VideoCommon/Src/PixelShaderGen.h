@@ -17,9 +17,9 @@
 #define I_INDTEXSCALE "cindscale"
 #define I_INDTEXMTX   "cindmtx"
 #define I_FOG         "cfog"
-#define I_PLIGHTS     "cPLights"
-#define I_PMATERIALS  "cPmtrl"
-#define I_ZSLOPE      "czslope"
+#define I_PLIGHTS	  "cLights"
+#define I_PMATERIALS   "cmtrl"
+#define I_ZSLOPE       "czslope"
 
 #define C_COLORMATRIX	0						// 0
 #define C_COLORS		0						// 0
