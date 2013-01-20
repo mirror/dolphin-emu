@@ -28,22 +28,19 @@ soundtouch::SoundTouch soundTouch;
 //
 bool OpenALStream::Start()
 {
-	ALDeviceList *pDeviceList = NULL;
-	ALCcontext *pContext = NULL;
-	ALCdevice *pDevice = NULL;
 	bool bReturn = false;
 
-	pDeviceList = new ALDeviceList();
-	if ((pDeviceList) && (pDeviceList->GetNumDevices()))
+	ALDeviceList device_list;
+	if (device_list.GetNumDevices())
 	{
-		char *defDevName = pDeviceList->GetDeviceName(pDeviceList->GetDefaultDevice());
+		const char* defDevName = device_list.GetDeviceName(device_list.GetDefaultDevice());
 
 		WARN_LOG(AUDIO, "Found OpenAL device %s", defDevName);
 
-		pDevice = alcOpenDevice(defDevName);
+		ALCdevice* pDevice = alcOpenDevice(defDevName);
 		if (pDevice)
 		{
-			pContext = alcCreateContext(pDevice, NULL);
+			ALCcontext* pContext = alcCreateContext(pDevice, NULL);
 			if (pContext)
 			{
 				// Used to determine an appropriate period size (2x period = total buffer size)
@@ -65,7 +62,6 @@ bool OpenALStream::Start()
 		{
 			PanicAlertT("OpenAL: can't open device %s", defDevName);
 		}
-		delete pDeviceList;
 	}
 	else
 	{
