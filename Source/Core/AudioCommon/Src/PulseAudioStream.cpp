@@ -64,8 +64,8 @@ void PulseAudio::SoundLoop()
 	{
 		while (run_thread)
 		{
-			m_mixer->Mix(&mix_buffer[0], mix_buffer.size() / CHANNEL_COUNT);
-			Write(&mix_buffer[0], mix_buffer.size() * sizeof(s16));
+			auto count = GetSamples(&mix_buffer[0], mix_buffer.size() / CHANNEL_COUNT);
+			Write(&mix_buffer[0], count * CHANNEL_COUNT * sizeof(s16));
 		}
 
 		PulseShutdown();
@@ -104,7 +104,7 @@ void PulseAudio::PulseShutdown()
 void PulseAudio::Write(const void *data, size_t length)
 {
 	int error;
-	if (pa_simple_write(pa, data, length, &error) < 0)
+	if (length != 0 && pa_simple_write(pa, data, length, &error) < 0)
 	{
 		ERROR_LOG(AUDIO, "PulseAudio failed to write data: %s",
 			pa_strerror(error));

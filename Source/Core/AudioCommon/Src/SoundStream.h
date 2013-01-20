@@ -18,9 +18,14 @@
 #ifndef _SOUNDSTREAM_H_
 #define _SOUNDSTREAM_H_
 
+#include <vector>
+
 #include "Common.h"
 #include "Mixer.h"
 #include "WaveFile.h"
+
+#include <soundtouch/SoundTouch.h>
+#include <soundtouch/STTypes.h>
 
 class SoundStream
 {
@@ -34,8 +39,11 @@ protected:
 	WaveFileWriter g_wave_writer;
 	bool m_muted;
 
+	u32 GetSamples(s16* samples, u32 frame_count);
+
 public:   
- SoundStream(CMixer *mixer) : m_mixer(mixer), threadData(0), m_logAudio(false), m_muted(false) {}
+	SoundStream(CMixer *mixer);
+
 	virtual ~SoundStream() { delete m_mixer;}
     
 	static  bool isValid() { return false; }  
@@ -67,6 +75,10 @@ public:
 			WARN_LOG(DSPHLE, "Audio logging already stopped");
 		}
 	}
+
+private:
+	soundtouch::SoundTouch m_sound_touch;
+	std::vector<soundtouch::SAMPLETYPE> m_sample_buffer;
 };
 
 #endif // _SOUNDSTREAM_H_

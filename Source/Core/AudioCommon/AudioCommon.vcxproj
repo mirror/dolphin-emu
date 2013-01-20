@@ -196,6 +196,7 @@
     <ClCompile Include="Src\Mixer.cpp" />
     <ClCompile Include="Src\NullSoundStream.cpp" />
     <ClCompile Include="Src\OpenALStream.cpp" />
+    <ClCompile Include="Src\SoundStream.cpp" />
     <ClCompile Include="Src\WaveFile.cpp" />
     <ClCompile Include="Src\XAudio2Stream.cpp" />
   </ItemGroup>

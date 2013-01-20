@@ -22,6 +22,8 @@
 #include <alsa/asoundlib.h>
 #endif
 
+#include <vector>
+
 #include "Common.h"
 #include "SoundStream.h"
 
@@ -32,7 +34,6 @@ class AlsaSound : public SoundStream
 #if defined(HAVE_ALSA) && HAVE_ALSA
 public:
 	AlsaSound(CMixer *mixer);
-	virtual ~AlsaSound();
 
 	virtual bool Start();
 	virtual void SoundLoop();
@@ -51,7 +52,6 @@ private:
 	bool AlsaInit();
 	void AlsaShutdown();
 
-	u8 *mix_buffer;
 	std::thread thread;
 	// 0 = continue
 	// 1 = shutdown
@@ -60,6 +60,8 @@ private:
 
 	snd_pcm_t *handle;
 	int frames_to_deliver;
+
+	std::vector<s16> mix_buffer;
 #else
 public:
 	AlsaSound(CMixer *mixer) : SoundStream(mixer) {}

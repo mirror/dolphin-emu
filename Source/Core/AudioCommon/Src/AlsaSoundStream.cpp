@@ -25,15 +25,13 @@
 #define BUFFER_SIZE_MAX 8192
 #define BUFFER_SIZE_BYTES (BUFFER_SIZE_MAX*2*2)
 
-AlsaSound::AlsaSound(CMixer *mixer) : SoundStream(mixer), thread_data(0), handle(NULL), frames_to_deliver(FRAME_COUNT_MIN)
-{
-	mix_buffer = new u8[BUFFER_SIZE_BYTES];
-}
-
-AlsaSound::~AlsaSound()
-{
-	delete [] mix_buffer;
-}
+AlsaSound::AlsaSound(CMixer *mixer)
+	: SoundStream(mixer)
+	, thread_data(0)
+	, handle(NULL)
+	, frames_to_deliver(FRAME_COUNT_MIN)
+	, mix_buffer(BUFFER_SIZE_BYTES / sizeof(s16))
+{}
 
 bool AlsaSound::Start()
 {
@@ -63,8 +61,8 @@ void AlsaSound::SoundLoop()
 	Common::SetCurrentThreadName("Audio thread - alsa");
 	while (!thread_data)
 	{
-		m_mixer->Mix(reinterpret_cast<short *>(mix_buffer), frames_to_deliver);
-		int rc = m_muted ? 1337 : snd_pcm_writei(handle, mix_buffer, frames_to_deliver);
+		auto count = GetSamples(&mix_buffer[0], frames_to_deliver);
+		int rc = m_muted ? 1337 : snd_pcm_writei(handle, &mix_buffer[0], count);
 		if (rc == -EPIPE)
 		{
 			// Underrun
