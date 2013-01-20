@@ -83,7 +83,7 @@ static const float fractionTable[32] = {
 	1.0f / (1U << 24), 1.0f / (1U << 25), 1.0f / (1U << 26), 1.0f / (1U << 27),
 	1.0f / (1U << 28), 1.0f / (1U << 29), 1.0f / (1U << 30), 1.0f / (1U << 31),
 };
-#ifndef _M_GENERIC
+#ifdef USE_JIT
 using namespace Gen;
 #endif
 
@@ -184,17 +184,17 @@ VertexLoader::VertexLoader(const TVtxDesc &vtx_desc, const VAT &vtx_attr)
 	m_VtxDesc = vtx_desc;
 	SetVAT(vtx_attr.g0.Hex, vtx_attr.g1.Hex, vtx_attr.g2.Hex);
 
-
-	CompileVertexTranslator();
-	#ifndef _M_GENERIC
+	#ifdef USE_JIT
 	AllocCodeSpace(COMPILED_CODE_SIZE);
+	CompileVertexTranslator();
 	WriteProtect();
 	#endif
+
 }
 
 VertexLoader::~VertexLoader() 
 {
-	#ifndef _M_GENERIC
+	#ifdef USE_JIT
 	FreeCodeSpace();
 	#endif
 	delete m_NativeFmt;
