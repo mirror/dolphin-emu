@@ -31,13 +31,18 @@
 #include "JitRegCache.h"
 #include "JitAsm.h"
 
+#ifdef ANDROID
+#define FASTMEM 0
+#else
+#define FASTMEM 1
+#endif
 void JitArm::stw(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(LoadStore)
 
 	ARMReg RS = gpr.R(inst.RS);
-#if 1
+#if FASTMEM
 	// R10 contains the dest address
 	ARMReg _R10 = R10;
 	ARMReg Value = R11;
@@ -224,7 +229,7 @@ void JitArm::lbz(UGeckoInstruction inst)
 	ARMABI_MOVI2R(rB, EXCEPTION_DSI);
 	CMP(rA, rB);
 	FixupBranch DoNotLoad = B_CC(CC_EQ);
-#if 1
+#if FASTMEM
 	// Backpatch route
 	// Gets loaded in to RD
 	// Address is in R10
@@ -274,7 +279,7 @@ void JitArm::lhz(UGeckoInstruction inst)
 	ARMABI_MOVI2R(rB, EXCEPTION_DSI);
 	CMP(rA, rB);
 	FixupBranch DoNotLoad = B_CC(CC_EQ);
-#if 0
+#if 0 // FASTMEM
 	// Backpatch route
 	// Gets loaded in to RD
 	// Address is in R10
@@ -328,7 +333,7 @@ void JitArm::lwz(UGeckoInstruction inst)
 	CMP(rA, rB);
 	FixupBranch DoNotLoad = B_CC(CC_EQ);
 	
-#if 1
+#if FASTMEM
 	// Backpatch route
 	// Gets loaded in to RD
 	// Address is in R10
@@ -403,7 +408,7 @@ void JitArm::lwzx(UGeckoInstruction inst)
 	ARMABI_MOVI2R(rB, EXCEPTION_DSI);
 	CMP(rA, rB);
 	FixupBranch DoNotLoad = B_CC(CC_EQ);
-#if 1
+#if FASTMEM
 	// Backpatch route
 	// Gets loaded in to RD
 	// Address is in R10

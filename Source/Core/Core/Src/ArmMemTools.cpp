@@ -18,9 +18,10 @@
 
 #include <stdio.h>
 #include <signal.h>
+#ifndef ANDROID
 #include <sys/ucontext.h>   // Look in here for the context definition.
-
-#include <vector>
+#include <execinfo.h>
+#endif
 
 #include "Common.h"
 #include "MemTools.h"
@@ -31,8 +32,7 @@
 
 namespace EMM
 {
-
-#include <execinfo.h>
+#ifndef ANDROID
 void print_trace(const char * msg)
 {
 	void *array[100];
@@ -103,4 +103,9 @@ void InstallExceptionHandler()
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGSEGV, &sa, NULL);
 }
+#else
+void InstallExceptionHandler()
+{
+}
+#endif
 }  // namespace

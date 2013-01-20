@@ -117,8 +117,11 @@ void* AllocateAlignedMemory(size_t size,size_t alignment)
 	void* ptr =  _aligned_malloc(size,alignment);
 #else
 	void* ptr = NULL;
+#ifdef ANDROID
+	ptr = memalign(alignment, size);
+#else
 	posix_memalign(&ptr, alignment, size);
-;
+#endif
 #endif
 
 	// printf("Mapped memory at %p (size %ld)\n", ptr,

@@ -18,9 +18,10 @@
 #define _GLINTERFACE_H_
 
 #include "Thread.h"
-
-#if defined(USE_EGL) && USE_EGL
+#if defined(ANDROID)
 #include "GLInterface/EGL.h"
+#elif defined(USE_EGL) && USE_EGL
+#include "GLInterface/EGL_X11.h"
 #elif defined(USE_WX) && USE_WX
 #include "GLInterface/WX.h"
 #elif defined(__APPLE__)
@@ -29,10 +30,20 @@
 #include "GLInterface/WGL.h"
 #elif defined(HAVE_X11) && HAVE_X11
 #include "GLInterface/GLX.h"
+#else
+#error Platform doesnt have a GLInterface
 #endif
 
 typedef struct {
-#if defined(USE_EGL) && USE_EGL // This is currently a X11/EGL implementation for desktop
+#if defined(ANDROID)
+	int screen;
+	EGLSurface egl_surf;
+	EGLContext egl_ctx;
+	EGLDisplay egl_dpy;
+	std::thread xEventThread;
+	int x, y;
+	unsigned int width, height;
+#elif defined(USE_EGL) && USE_EGL // This is currently a X11/EGL implementation for desktop
 	int screen;
 	Display *dpy;
 	Display *evdpy;

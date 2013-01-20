@@ -24,7 +24,7 @@
 // Show the current FPS
 void cInterfaceEGL::UpdateFPSDisplay(const char *text)
 {
-	// XXX
+	XStoreName(GLWin.dpy, GLWin.win, text);
 }
 void cInterfaceEGL::Swap()
 {
@@ -45,7 +45,14 @@ bool cInterfaceEGL::Create(void *&window_handle)
 	const char *s;
    EGLint egl_major, egl_minor;
 
-   GLWin.egl_dpy = eglGetDisplay(0);
+   GLWin.dpy = XOpenDisplay(NULL);
+
+   if (!GLWin.dpy) {
+      printf("Error: couldn't open display\n");
+      return false;
+   }
+
+   GLWin.egl_dpy = eglGetDisplay(GLWin.dpy);
    if (!GLWin.egl_dpy) {
       printf("Error: eglGetDisplay() failed\n");
       return false;
@@ -75,14 +82,28 @@ bool cInterfaceEGL::Create(void *&window_handle)
 		EGL_GREEN_SIZE, 8,
 		EGL_BLUE_SIZE, 8,
 		EGL_DEPTH_SIZE, 24,
+#ifdef USE_GLES
 		EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+#else
+		EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+#endif
 		EGL_NONE };
 
 	static const EGLint ctx_attribs[] = {
+#ifdef USE_GLES
 		EGL_CONTEXT_CLIENT_VERSION, 2,
+#endif
 		EGL_NONE
 	};
 	
+	GLWin.evdpy = XOpenDisplay(NULL);
+	GLWin.parent = (Window)window_handle;
+	GLWin.screen = DefaultScreen(GLWin.dpy);
+	if (GLWin.parent == 0)
+		GLWin.parent = RootWindow(GLWin.dpy, GLWin.screen);
+
+   XVisualInfo  visTemplate;
+   int num_visuals;
    EGLConfig config;
    EGLint num_configs;
    EGLint vid;
@@ -97,19 +118,32 @@ bool cInterfaceEGL::Create(void *&window_handle)
       exit(1);
    }
 
+   /* The X window visual must match the EGL config */
+   visTemplate.visualid = vid;
+   GLWin.vi = XGetVisualInfo(GLWin.dpy, VisualIDMask, &visTemplate, &num_visuals);
+   if (!GLWin.vi) {
+      printf("Error: couldn't get X visual\n");
+      exit(1);
+   }
+	
 	GLWin.x = _tx;
 	GLWin.y = _ty;
 	GLWin.width = _twidth;
 	GLWin.height = _theight;
 
+	XWindow.CreateXWindow();
+#ifdef USE_GLES
 	eglBindAPI(EGL_OPENGL_ES_API);
+#else
+	eglBindAPI(EGL_OPENGL_API);
+#endif
 	GLWin.egl_ctx = eglCreateContext(GLWin.egl_dpy, config, EGL_NO_CONTEXT, ctx_attribs );
    if (!GLWin.egl_ctx) {
       printf("Error: eglCreateContext failed\n");
       exit(1);
    }
 
-   //GLWin.egl_surf = eglCreateWindowSurface(GLWin.egl_dpy, config, GLWin.win, NULL);
+   GLWin.egl_surf = eglCreateWindowSurface(GLWin.egl_dpy, config, GLWin.win, NULL);
    if (!GLWin.egl_surf) {
       printf("Error: eglCreateWindowSurface failed\n");
       exit(1);
@@ -131,6 +165,7 @@ bool cInterfaceEGL::Create(void *&window_handle)
     * first appears.
     */
 	glViewport(0, 0, (GLint) _twidth, (GLint) _theight);
+	window_handle = (void *)GLWin.win;
 	return true;
 }
 
@@ -141,6 +176,7 @@ bool cInterfaceEGL::MakeCurrent()
 // Close backend
 void cInterfaceEGL::Shutdown()
 {
+	XWindow.DestroyXWindow();
 	if (GLWin.egl_ctx && !eglMakeCurrent(GLWin.egl_dpy, GLWin.egl_surf, GLWin.egl_surf, GLWin.egl_ctx))
 		NOTICE_LOG(VIDEO, "Could not release drawing context.");
 	if (GLWin.egl_ctx)
