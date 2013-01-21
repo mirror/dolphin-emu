@@ -29,8 +29,6 @@ u32 SoundStream::GetSamples(s16* samples, u32 frame_count)
 	u64 audio_dma_period = SystemTimers::GetTicksPerSecond() / (AudioInterface::GetAIDSampleRate() * stereo_16_bit_size / dma_length);
 	u32 num_samples_to_render = (audio_dma_period * ais_samples_per_second) / SystemTimers::GetTicksPerSecond();
 
-	//frame_count = std::min(frame_count, num_samples_to_render);
-
 	auto count = m_mixer->Mix(samples, num_samples_to_render);
 
 	// Convert the samples from short to float
@@ -47,7 +45,9 @@ u32 SoundStream::GetSamples(s16* samples, u32 frame_count)
 		rate = m_mixer->GetCurrentSpeed();;
 	}
 
-	rate = std::max(0.1f, rate);
+	// Slower than 10%, don't bother time stretching
+	if (rate < 0.1f)
+		rate = 1.f;
 
 	//m_sound_touch.setSetting(SETTING_SEQUENCE_MS, (int)(1 / (rate * rate)));
 	m_sound_touch.setTempo(rate);

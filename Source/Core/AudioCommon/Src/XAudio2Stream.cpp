@@ -35,8 +35,9 @@ void StreamingVoiceContext::SubmitBuffer(PBYTE buf_data, u32 bytes)
 	m_source_voice->SubmitSourceBuffer(&buf);
 }
 
-StreamingVoiceContext::StreamingVoiceContext(IXAudio2 *pXAudio2, CMixer *pMixer, Common::Event& pSyncEvent)
+StreamingVoiceContext::StreamingVoiceContext(IXAudio2 *pXAudio2, CMixer *pMixer, SoundStream* stream, Common::Event& pSyncEvent)
 	: m_mixer(pMixer)
+	, m_stream(stream)
 	, m_sound_sync_event(pSyncEvent)
 	, xaudio_buffer(new BYTE[NUM_BUFFERS * BUFFER_SIZE_BYTES]())
 {
@@ -99,7 +100,7 @@ void StreamingVoiceContext::OnBufferEnd(void* context)
 	//m_sound_sync_event->Wait(); // sync
 	//m_sound_sync_event->Spin(); // or tight sync
 		
-	auto count = GetSamples(static_cast<short*>(context), SAMPLES_PER_BUFFER);
+	auto count = m_stream->GetSamples(static_cast<short*>(context), SAMPLES_PER_BUFFER);
 	SubmitBuffer(static_cast<BYTE*>(context), count * sizeof(s16) * NUM_CHANNELS);
 }
 
@@ -130,7 +131,7 @@ bool XAudio2::Start()
 	m_mastering_voice->SetVolume(m_volume);
 
 	m_voice_context = std::unique_ptr<StreamingVoiceContext>
-		(new StreamingVoiceContext(m_xaudio2.get(), m_mixer, m_sound_sync_event));
+		(new StreamingVoiceContext(m_xaudio2.get(), m_mixer, this, m_sound_sync_event));
 
 	return true;
 }

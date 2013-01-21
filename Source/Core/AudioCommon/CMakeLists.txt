@@ -6,6 +6,7 @@ set(SRCS	Src/AudioCommon.cpp
 			Src/NullSoundStream.cpp)
 
 set(LIBS "")
+set(LIBS SoundTouch)
 
 if(ALSA_FOUND)
 	set(SRCS ${SRCS} Src/AlsaSoundStream.cpp)
@@ -19,7 +20,7 @@ endif(AO_FOUND)
 
 if(OPENAL_FOUND)
 	set(SRCS ${SRCS} Src/OpenALStream.cpp Src/aldlist.cpp)
-	set(LIBS ${LIBS} ${OPENAL_LIBRARY} SoundTouch )
+	set(LIBS ${LIBS} ${OPENAL_LIBRARY})
 endif(OPENAL_FOUND)
 
 if(PULSEAUDIO_FOUND)

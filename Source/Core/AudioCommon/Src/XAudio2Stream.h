@@ -29,6 +29,8 @@ struct StreamingVoiceContext : public IXAudio2VoiceCallback
 {
 private:
 	CMixer* const m_mixer;
+	SoundStream* const m_stream;
+	// TODO: this Event not used
 	Common::Event& m_sound_sync_event;
 	IXAudio2SourceVoice* m_source_voice;
 	std::unique_ptr<BYTE[]> xaudio_buffer;
@@ -36,7 +38,7 @@ private:
 	void SubmitBuffer(PBYTE buf_data, u32 bytes);
 
 public:
-	StreamingVoiceContext(IXAudio2 *pXAudio2, CMixer *pMixer, Common::Event& pSyncEvent);
+	StreamingVoiceContext(IXAudio2 *pXAudio2, CMixer *pMixer, SoundStream* stream, Common::Event& pSyncEvent);
 	
 	~StreamingVoiceContext();
 	
