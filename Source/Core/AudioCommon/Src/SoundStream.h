@@ -39,14 +39,14 @@ protected:
 	WaveFileWriter g_wave_writer;
 	bool m_muted;
 
-	u32 GetSamples(s16* samples, u32 frame_count);
-
-public:   
+public:
 	SoundStream(CMixer *mixer);
 
 	virtual ~SoundStream() { delete m_mixer;}
     
-	static  bool isValid() { return false; }  
+	u32 GetSamples(s16* samples, u32 frame_count);
+
+	static  bool isValid() { return false; }
 	virtual CMixer *GetMixer() const { return m_mixer; }
 	virtual bool Start() { return false; }
 	virtual void SetVolume(int) {}
