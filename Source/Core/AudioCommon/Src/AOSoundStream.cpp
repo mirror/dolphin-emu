@@ -16,6 +16,7 @@
 // http://code.google.com/p/dolphin-emu/
 
 #include <functional>
+#include <vector>
 #include <string.h>
 
 #include "AOSoundStream.h"
@@ -27,7 +28,6 @@ void AOSound::SoundLoop()
 {
 	Common::SetCurrentThreadName("Audio thread - ao");
 
-	uint_32 numBytesToRender = 256;
 	ao_initialize();
 	default_driver = ao_default_driver_id();
 	format.bits = 16;
@@ -44,42 +44,30 @@ void AOSound::SoundLoop()
 		return;
 	}
 
-	buf_size = format.bits/8 * format.channels * format.rate;
+	uint_32 const frame_count = 256;
+	std::vector<s16> buffer(frame_count * 2);
 
 	while (!threadData)
 	{
-		m_mixer->Mix(realtimeBuffer, numBytesToRender >> 2);
-		
-		{
-		std::lock_guard<std::mutex> lk(soundCriticalSection);
-		ao_play(device, (char*)realtimeBuffer, numBytesToRender);
-		}
-
-		soundSyncEvent.Wait();
+		auto count = GetSamples(&buffer[0], buffer.size() / 2);
+		ao_play(device, (char*)&buffer[0], count * sizeof(s16) * 2);
 	}
 }
 
 bool AOSound::Start()
 {
-	memset(realtimeBuffer, 0, sizeof(realtimeBuffer));
-	
 	thread = std::thread(std::mem_fun(&AOSound::SoundLoop), this);
 	return true;
 }
 
 void AOSound::Update()
 {
-	soundSyncEvent.Set();
+	// nothing	
 }
 
 void AOSound::Stop()
 {
 	threadData = 1;
-	soundSyncEvent.Set();
-
-	{
-	std::lock_guard<std::mutex> lk(soundCriticalSection);
-	thread.join();
 
 	if (device)
 		ao_close(device);
@@ -87,7 +75,6 @@ void AOSound::Stop()
 	ao_shutdown();
 
 	device = NULL;
-	}
 }
 
 AOSound::~AOSound()
