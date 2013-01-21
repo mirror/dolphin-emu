@@ -214,6 +214,54 @@ bool g_bDiscInside = false;
 bool g_bStream = false;
 int  tc = 0;
 
+namespace
+{
+std::condition_variable read_thread_condition;
+std::mutex read_thread_lock;
+std::thread read_thread;
+
+volatile bool is_read_done;
+volatile bool read_thread_stop;
+volatile u32 read_thread_iDVDOffset;
+volatile u32 read_thread_iRamAddress;
+volatile u32 read_thread_iLength;
+}
+
+void ReadDVDThreadFunc()
+{
+	while (true)
+	{
+		std::unique_lock<std::mutex> lk(read_thread_lock);
+		read_thread_condition.wait(lk, []{ return !is_read_done || read_thread_stop; });
+
+		if (read_thread_stop)
+			break;
+	
+		if (!DVDRead(read_thread_iDVDOffset, read_thread_iRamAddress, read_thread_iLength))
+			PanicAlertT("Cant read from DVD_Plugin - DVD-Interface: Fatal Error");
+	
+		is_read_done = true;
+		read_thread_condition.notify_one();
+	}
+}
+
+void AsyncDVDRead(u32 offset, u32 addr, u32 len)
+{
+	read_thread_iDVDOffset = offset;
+	read_thread_iRamAddress = addr;
+	read_thread_iLength	= len;
+
+	std::unique_lock<std::mutex> lk(read_thread_lock);
+	is_read_done = false;
+	read_thread_condition.notify_one();
+}
+
+void AsyncDVDReadWait()
+{
+	std::unique_lock<std::mutex> lk(read_thread_lock);
+	read_thread_condition.wait(lk, []{ return is_read_done; });
+}
+
 // GC-AM only
 static unsigned char media_buffer[0x40];
 
@@ -254,10 +302,18 @@ void DoState(PointerWrap &p)
 	p.Do(CurrentLength);
 }
 
-void TransferComplete(u64 userdata, int cyclesLate)
+void TransferComplete(u64, int)
 {
 	if (m_DICR.TSTART)
-		ExecuteCommand(m_DICR);
+	{
+		AsyncDVDReadWait();
+
+		// transfer is done
+		m_DICR.TSTART = 0;
+		m_DILENGTH.Length = 0;
+		GenerateDIInterrupt(INT_TCINT);
+		g_ErrorCode = 0;
+	}
 }
 
 void Init()
@@ -286,10 +342,21 @@ void Init()
 	insertDisc = CoreTiming::RegisterEvent("InsertDisc", InsertDiscCallback);
 
 	tc = CoreTiming::RegisterEvent("TransferComplete", TransferComplete);
+
+	is_read_done = true;
+	read_thread_stop = false;
+	read_thread = std::thread(ReadDVDThreadFunc);
 }
 
 void Shutdown()
 {
+	{
+	std::unique_lock<std::mutex> lk(read_thread_lock);
+	read_thread_stop = true;
+	read_thread_condition.notify_one();
+	}
+
+	read_thread.join();
 }
 
 void SetDiscInside(bool _DiscInside)
@@ -498,16 +565,19 @@ void Write32(const u32 _iValue, const u32 _iAddress)
 			m_DICR.Hex = _iValue & 7;
 			if (m_DICR.TSTART)
 			{
+				ExecuteCommand(m_DICR);
+
 				if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bFastDiscSpeed)
 				{
-					u64 ticksUntilTC = m_DILENGTH.Length * 
+					u64 ticksUntilTC = m_DILENGTH.Length *
 						(SystemTimers::GetTicksPerSecond() / (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii?DISC_TRANSFER_RATE_WII:DISC_TRANSFER_RATE_GC)) + 
 						(SystemTimers::GetTicksPerSecond() * DISC_ACCESS_TIME_MS / 1000);
+
 					CoreTiming::ScheduleEvent((int)ticksUntilTC, tc);
 				}
 				else
 				{
-					ExecuteCommand(m_DICR);
+					TransferComplete(0, 0);
 				}
 			}
 		}
@@ -674,10 +744,7 @@ void ExecuteCommand(UDICR& _DICR)
 					}
 
 					// Here is the actual Disk Reading
-					if (!DVDRead(iDVDOffset, m_DIMAR.Address, m_DILENGTH.Length))
-					{
-						PanicAlertT("Cant read from DVD_Plugin - DVD-Interface: Fatal Error");
-					}
+					AsyncDVDRead(iDVDOffset, m_DIMAR.Address, m_DILENGTH.Length);
 				}
 				break;
 
@@ -685,8 +752,7 @@ void ExecuteCommand(UDICR& _DICR)
 				_dbg_assert_(DVDINTERFACE, m_DICMDBUF[1].Hex == 0);
 				_dbg_assert_(DVDINTERFACE, m_DICMDBUF[2].Hex == m_DILENGTH.Length);
 				_dbg_assert_(DVDINTERFACE, m_DILENGTH.Length == 0x20);
-				if (!DVDRead(m_DICMDBUF[1].Hex, m_DIMAR.Address, m_DILENGTH.Length))
-					PanicAlertT("Cant read from DVD_Plugin - DVD-Interface: Fatal Error");
+				AsyncDVDRead(m_DICMDBUF[1].Hex, m_DIMAR.Address, m_DILENGTH.Length);
 				WARN_LOG(DVDINTERFACE, "Read DiscID %08x", Memory::Read_U32(m_DIMAR.Address));
 				break;
 
@@ -972,12 +1038,6 @@ void ExecuteCommand(UDICR& _DICR)
 		_dbg_assert_(DVDINTERFACE, 0);
 		break;
 	}
-
-	// transfer is done
-	_DICR.TSTART = 0;
-	m_DILENGTH.Length = 0;
-	GenerateDIInterrupt(INT_TCINT);
-	g_ErrorCode = 0;
 }
 
 }  // namespace
