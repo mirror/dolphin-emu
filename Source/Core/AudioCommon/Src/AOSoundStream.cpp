@@ -68,6 +68,7 @@ void AOSound::Update()
 void AOSound::Stop()
 {
 	threadData = 1;
+	thread.join();
 
 	if (device)
 		ao_close(device);
