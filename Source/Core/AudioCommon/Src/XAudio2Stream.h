@@ -33,7 +33,7 @@ private:
 	IXAudio2SourceVoice* m_source_voice;
 	std::unique_ptr<BYTE[]> xaudio_buffer;
 
-	void SubmitBuffer(PBYTE buf_data);
+	void SubmitBuffer(PBYTE buf_data, u32 bytes);
 
 public:
 	StreamingVoiceContext(IXAudio2 *pXAudio2, CMixer *pMixer, Common::Event& pSyncEvent);

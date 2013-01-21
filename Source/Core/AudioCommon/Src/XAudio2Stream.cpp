@@ -25,10 +25,10 @@ const int NUM_CHANNELS = 2;
 const int BUFFER_SIZE = SAMPLES_PER_BUFFER * NUM_CHANNELS;
 const int BUFFER_SIZE_BYTES = BUFFER_SIZE * sizeof(s16);
 
-void StreamingVoiceContext::SubmitBuffer(PBYTE buf_data)
+void StreamingVoiceContext::SubmitBuffer(PBYTE buf_data, u32 bytes)
 {
 	XAUDIO2_BUFFER buf = {};
-	buf.AudioBytes = BUFFER_SIZE_BYTES;
+	buf.AudioBytes = bytes;
 	buf.pContext = buf_data;
 	buf.pAudioData = buf_data;
 
@@ -65,7 +65,7 @@ StreamingVoiceContext::StreamingVoiceContext(IXAudio2 *pXAudio2, CMixer *pMixer,
 
 	// start buffers with silence
 	for (int i = 0; i != NUM_BUFFERS; ++i)
-		SubmitBuffer(xaudio_buffer.get() + (i * BUFFER_SIZE_BYTES));
+		SubmitBuffer(xaudio_buffer.get() + (i * BUFFER_SIZE_BYTES), BUFFER_SIZE_BYTES);
 }
 
 StreamingVoiceContext::~StreamingVoiceContext()
@@ -99,8 +99,8 @@ void StreamingVoiceContext::OnBufferEnd(void* context)
 	//m_sound_sync_event->Wait(); // sync
 	//m_sound_sync_event->Spin(); // or tight sync
 		
-	m_mixer->Mix(static_cast<short*>(context), SAMPLES_PER_BUFFER);
-	SubmitBuffer(static_cast<BYTE*>(context));
+	auto count = GetSamples(static_cast<short*>(context), SAMPLES_PER_BUFFER);
+	SubmitBuffer(static_cast<BYTE*>(context), count * sizeof(s16) * NUM_CHANNELS);
 }
 
 bool XAudio2::Start()
