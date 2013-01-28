@@ -93,7 +93,7 @@ const u8 *JitArm::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void *ct
 		emitter.NOP(2); // 8-9
 		u32 newPC = ctx->reg_pc - (ARMREGOFFSET + 4 * 4);
 		ctx->reg_pc = newPC;
-		emitter.Flush();
+		emitter.FlushIcache();
 		return codePtr;
 	}
 	else
@@ -120,7 +120,7 @@ const u8 *JitArm::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void *ct
 		emitter.MOV(rD, R14); // 8
 		emitter.NOP(1);
 		ctx->reg_pc -= ARMREGOFFSET + (4 * 4);
-		emitter.Flush();
+		emitter.FlushIcache();
 		return codePtr;
 	}
 	return 0;

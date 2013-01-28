@@ -94,7 +94,9 @@ void JitArm::HLEFunction(UGeckoInstruction _inst)
 {
 	gpr.Flush();
 //	fpr.Flush(FLUSH_ALL);
-	ARMABI_CallFunctionCC((void*)&HLE::Execute, js.compilerPC, _inst.hex);
+	ARMABI_MOVI2R(R0, js.compilerPC);
+	ARMABI_MOVI2R(R1, _inst.hex);
+	QuickCallFunction(R14, (void*)&HLE::Execute); 
 	ARMReg rA = gpr.GetReg();
 	ARMABI_MOVI2R(rA, (u32)&NPC);
 	LDR(rA, rA);
@@ -134,13 +136,13 @@ static void ImHere()
 void JitArm::Cleanup()
 {
 	if (jo.optimizeGatherPipe && js.fifoBytesThisBlock > 0)
-		ARMABI_CallFunction((void *)&GPFifo::CheckGatherPipe);
+		QuickCallFunction(R14, (void*)&GPFifo::CheckGatherPipe);
 }
 void JitArm::DoDownCount()
 {
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
-	ARMABI_MOVI2R(rA, Mem(&CoreTiming::downcount));
+	ARMABI_MOVI2R(rA, (u32)&CoreTiming::downcount);
 	LDR(rB, rA);
 	if(js.downcountAmount < 255) // We can enlarge this if we used rotations
 	{
@@ -375,7 +377,8 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	b->normalEntry = normalEntry;
 
 	if(ImHereDebug)
-		ARMABI_CallFunction((void *)&ImHere); //Used to get a trace of the last few blocks before a crash, sometimes VERY useful
+		QuickCallFunction(R14, (void *)&ImHere); //Used to get a trace of the last few blocks before a crash, sometimes VERY useful
+
 	if (js.fpa.any)
 	{
 		// This block uses FPU - needs to add FP exception bailout
@@ -495,7 +498,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	b->flags = js.block_flags;
 	b->codeSize = (u32)(GetCodePtr() - normalEntry);
 	b->originalSize = size;
-	Flush();
+	FlushIcache();
 	return start;
 }
 

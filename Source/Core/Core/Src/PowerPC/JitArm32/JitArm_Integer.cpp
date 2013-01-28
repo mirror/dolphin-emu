@@ -261,7 +261,7 @@ void JitArm::rlwimix(UGeckoInstruction inst)
 	ARMReg rB = gpr.GetReg();
 	ARMABI_MOVI2R(rA, mask);
 
-	Operand2 Shift(32 - inst.SH, ROR, RS); // This rotates left, while ARM has only rotate right, so swap it.
+	Operand2 Shift(32 - inst.SH, ST_ROR, RS); // This rotates left, while ARM has only rotate right, so swap it.
 	if (inst.Rc)
 	{
 		BIC (rB, RA, rA); // RA & ~mask
@@ -288,7 +288,7 @@ void JitArm::rlwinmx(UGeckoInstruction inst)
 	ARMReg rA = gpr.GetReg();
 	ARMABI_MOVI2R(rA, mask);
 
-	Operand2 Shift(32 - inst.SH, ROR, RS); // This rotates left, while ARM has only rotate right, so swap it.
+	Operand2 Shift(32 - inst.SH, ST_ROR, RS); // This rotates left, while ARM has only rotate right, so swap it.
 	if (inst.Rc)
 	{
 		ANDS(RA, rA, Shift);

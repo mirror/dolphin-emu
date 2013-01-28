@@ -124,6 +124,13 @@ void CPUInfo::Detect()
 	// These two are ARMv8 specific.
 	bFP = CheckCPUFeature("fp");
 	bASIMD = CheckCPUFeature("asimd");
+
+
+#if defined(__ARM_ARCH_7A__)
+	bArmV7 = true;
+#else
+	bArmV7 = false;
+#endif
 }
 
 // Turn the cpu info into a string we can show

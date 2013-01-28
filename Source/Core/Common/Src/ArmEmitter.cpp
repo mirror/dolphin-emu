@@ -22,8 +22,125 @@
 #include <assert.h>
 #include <stdarg.h>
 
+// For cache flushing on Symbian/Blackberry
+#ifdef __SYMBIAN32__
+#include <e32std.h>
+#endif
+
+#ifdef BLACKBERRY
+#include <sys/mman.h>
+#endif
+
 namespace ArmGen
 {
+
+inline u32 RotR(u32 a, int amount) {
+	if (!amount) return a;
+	return (a >> amount) | (a << (32 - amount));
+}
+
+inline u32 RotL(u32 a, int amount) {
+	if (!amount) return a;
+	return (a << amount) | (a >> (32 - amount));
+}
+
+bool TryMakeOperand2(u32 imm, Operand2 &op2) {
+	// Just brute force it.
+	for (int i = 0; i < 16; i++) {
+		int mask = RotR(0xFF, i * 2);
+		if ((imm & mask) == imm) {
+			op2 = Operand2((u8)(RotL(imm, i * 2)), (u8)i);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool TryMakeOperand2_AllowInverse(u32 imm, Operand2 &op2, bool *inverse)
+{
+	if (!TryMakeOperand2(imm, op2)) {
+		*inverse = true;
+		return TryMakeOperand2(~imm, op2);
+	} else {
+		*inverse = false;
+		return true;
+	}
+}
+
+bool TryMakeOperand2_AllowNegation(s32 imm, Operand2 &op2, bool *negated)
+{
+	if (!TryMakeOperand2(imm, op2)) {
+		*negated = true;
+		return TryMakeOperand2(-imm, op2);
+	} else {
+		*negated = false;
+		return true;
+	}
+}
+
+void ARMXEmitter::ARMABI_MOVI2R(ARMReg reg, u32 val, bool optimize)
+{
+	Operand2 op2;
+	bool inverse;
+	if (!optimize)
+	{
+		// Only used in backpatch atm
+		// Only support ARMv7 right now
+		if (cpu_info.bArmV7) {
+			MOVW(reg, val & 0xFFFF);
+			MOVT(reg, val, true);
+		}
+		else
+		{
+			// ARMv6 version won't use backpatch for now
+			// Run again with optimizations
+			ARMABI_MOVI2R(reg, val);
+		}
+	} else if (TryMakeOperand2_AllowInverse(val, op2, &inverse)) {
+		if (!inverse)
+			MOV(reg, op2);
+		else
+			MVN(reg, op2);
+	} else {
+		if (cpu_info.bArmV7) {
+			// ARMv7 - can use MOVT/MOVW, best choice
+			MOVW(reg, val & 0xFFFF);
+			if(val & 0xFFFF0000)
+				MOVT(reg, val, true);
+		} else {
+			// ARMv6 - fallback sequence.
+			// TODO: Optimize further. Can for example choose negation etc.
+			// Literal pools is another way to do this but much more complicated
+			// so I can't really be bothered for an outdated CPU architecture like ARMv6.
+			bool first = true;
+			int shift = 16;
+			for (int i = 0; i < 4; i++) {
+				if (val & 0xFF) {
+					if (first) {
+						MOV(reg, Operand2((u8)val, (u8)(shift & 0xF)));
+						first = false;
+					} else {
+						ORR(reg, reg, Operand2((u8)val, (u8)(shift & 0xF)));
+					}
+				}
+				shift -= 4;
+				val >>= 8;
+			}
+		}
+	}
+}
+// Moves IMM to memory location
+void ARMXEmitter::ARMABI_MOVI2M(Operand2 op, Operand2 val)
+{
+	// This moves imm to a memory location
+	MOVW(R14, val); MOVT(R14, val, true);
+	MOVW(R12, op); MOVT(R12, op, true);
+	STR(R12, R14); // R10 is what we want to store
+}
+void ARMXEmitter::QuickCallFunction(ARMReg reg, void *func) {
+	ARMABI_MOVI2R(reg, (u32)(func));
+	BL(reg);
+}
 
 void ARMXEmitter::SetCodePtr(u8 *ptr)
 {
@@ -59,11 +176,25 @@ const u8 *ARMXEmitter::AlignCodePage()
 	return code;
 }
 
-void ARMXEmitter::Flush()
+void ARMXEmitter::FlushIcache()
 {
-	__clear_cache (startcode, code);
-	SLEEP(0);
+	FlushIcacheSection(lastCacheFlushEnd, code);
+	lastCacheFlushEnd = code;
 }
+
+void ARMXEmitter::FlushIcacheSection(u8 *start, u8 *end)
+{
+#ifdef __SYMBIAN32__
+	User::IMB_Range( start, end);
+#elif defined(BLACKBERRY)
+	msync(start, end - start, MS_SYNC | MS_INVALIDATE_ICACHE);
+#else
+#ifndef _WIN32
+	__builtin___clear_cache (start, end);
+#endif
+#endif
+}
+
 void ARMXEmitter::SetCC(CCFlags cond)
 {
 	condition = cond << 28;
@@ -166,7 +297,7 @@ void ARMXEmitter::B (const void *fnptr)
 
 void ARMXEmitter::B(ARMReg src)
 {
-	Write32(condition | (18 << 20) | (0xFFF << 8) | (1 << 4) | src);
+	Write32(condition | 0x12FFF10 | src);
 }
 
 void ARMXEmitter::BL(const void *fnptr)
@@ -366,23 +497,22 @@ void ARMXEmitter::REV16(ARMReg dest, ARMReg src)
 	Write32(condition | (0x3DF << 16) | (dest << 12) | (0xFD << 4) | src);
 }
 
-void ARMXEmitter::_MSR (bool nzcvq, bool g,		Operand2 op2)
+void ARMXEmitter::_MSR (bool write_nzcvq, bool write_g,		Operand2 op2)
 {
-	Write32(condition | (0x320F << 12) | (nzcvq << 19) | (g << 18) | op2.Imm12Mod());
+	Write32(condition | (0x320F << 12) | (write_nzcvq << 19) | (write_g << 18) | op2.Imm12Mod());
 }
-void ARMXEmitter::_MSR (bool nzcvq, bool g,		ARMReg src)
+void ARMXEmitter::_MSR (bool write_nzcvq, bool write_g,		ARMReg src)
 {
-	Write32(condition | (0x120F << 12) | (nzcvq << 19) | (g << 18) | src);
+	Write32(condition | (0x120F << 12) | (write_nzcvq << 19) | (write_g << 18) | src);
 }
 void ARMXEmitter::MRS (ARMReg dest)
 {
 	Write32(condition | (16 << 20) | (15 << 16) | (dest << 12));
 }
-
 void ARMXEmitter::WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2)
 {
 	if (op2.GetData() == 0) // Don't index
-		Write32(condition | (op << 20) | (dest << 16) | (src << 12) | op2.Imm12());
+		Write32(condition | 0x00800000 | (op << 20) | (dest << 16) | (src << 12) | op2.Imm12());
 	else
 		Write32(condition | (op << 20) | (3 << 23) | (dest << 16) | (src << 12) | op2.Imm12()); 
 }
@@ -405,22 +535,20 @@ void ARMXEmitter::DMB ()
 {
 	Write32(0xF57FF05E);
 }
-
 void ARMXEmitter::SVC(Operand2 op)
 {
 	Write32(condition | (0x0F << 24) | op.Imm24());
 }
 
 void ARMXEmitter::LDR (ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x41, src, dest, op);}
-void ARMXEmitter::LDRH(ARMReg dest, ARMReg src, Operand2 op) 
-{ 
+void ARMXEmitter::LDRH(ARMReg dest, ARMReg src, Operand2 op)
+{
 	u8 Imm = op.Imm8();
 	Write32(condition | (0x05 << 20) | (src << 16) | (dest << 12) | ((Imm >> 4) << 8) | (0xB << 4) | (Imm & 0x0F));
 }
 void ARMXEmitter::LDRB(ARMReg dest, ARMReg src, Operand2 op) { WriteStoreOp(0x45, src, dest, op);}
 
-void ARMXEmitter::LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index,
-bool Add)
+void ARMXEmitter::LDR (ARMReg dest, ARMReg base, ARMReg offset, bool Index, bool Add)
 {
 	Write32(condition | (0x61 << 20) | (Index << 24) | (Add << 23) | (base << 16) | (dest << 12) | offset);
 }
@@ -551,20 +679,4 @@ void ARMXEmitter::VMOV(ARMReg Dest, ARMReg Src)
 	}
 }
 
-// helper routines for setting pointers
-void ARMXEmitter::CallCdeclFunction3(void* fnptr, u32 arg0, u32 arg1, u32 arg2)
-{
-}
-
-void ARMXEmitter::CallCdeclFunction4(void* fnptr, u32 arg0, u32 arg1, u32 arg2, u32 arg3)
-{
-}
-
-void ARMXEmitter::CallCdeclFunction5(void* fnptr, u32 arg0, u32 arg1, u32 arg2, u32 arg3, u32 arg4)
-{
-}
-
-void ARMXEmitter::CallCdeclFunction6(void* fnptr, u32 arg0, u32 arg1, u32 arg2, u32 arg3, u32 arg4, u32 arg5)
-{
-}
 }

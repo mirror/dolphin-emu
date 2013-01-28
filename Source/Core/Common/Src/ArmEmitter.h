@@ -22,10 +22,18 @@
 
 #include "Common.h"
 #include "MemoryUtil.h"
+#if defined(__SYMBIAN32__) || defined(PANDORA)
+#include <signal.h>
+#endif
+
+#undef _IP
+#undef R0
+#undef _SP
+#undef _LR
+#undef _PC
 
 namespace ArmGen
 {
-
 enum ARMReg
 {
 	// GPRs
@@ -75,19 +83,19 @@ enum CCFlags
 	CC_GT, // Signed greater than
 	CC_LE, // Signed less than or equal
 	CC_AL, // Always (unconditional) 14
-	CC_HS = 2, // Alias of CC_CS
-	CC_LO = 3, // Alias of CC_CC
+	CC_HS = CC_CS, // Alias of CC_CS  Unsigned higher or same
+	CC_LO = CC_CC, // Alias of CC_CC  Unsigned lower
 };
 const u32 NO_COND = 0xE0000000;
 
 enum ShiftType
 {
-	LSL = 0,
-	ASL = 0,
-	LSR = 1,
-	ASR = 2,
-	ROR = 3,
-	RRX = 4
+	ST_LSL = 0,
+	ST_ASL = 0,
+	ST_LSR = 1,
+	ST_ASR = 2,
+	ST_ROR = 3,
+	ST_RRX = 4
 };
 
 enum
@@ -106,6 +114,7 @@ enum OpType
 	TYPE_MEM
 };
 
+// This is no longer a proper operand2 class. Need to split up.
 class Operand2
 {
 	friend class ARMXEmitter;
@@ -149,7 +158,7 @@ public:
 	Operand2(ARMReg base, ShiftType type, ARMReg shift) // RSR
 	{
 		Type = TYPE_RSR;
-		_assert_msg_(DYNA_REC, type != RRX, "Invalid Operand2: RRX does not take a register shift amount");
+		_assert_msg_(DYNA_REC, type != ST_RRX, "Invalid Operand2: RRX does not take a register shift amount");
 		IndexOrShift = shift;
 		Shift = type;
 		Value = base;
@@ -160,31 +169,31 @@ public:
 		if(shift == 32) shift = 0;
 		switch (type)
 		{
-		case LSL:
+		case ST_LSL:
 			_assert_msg_(DYNA_REC, shift < 32, "Invalid Operand2: LSL %u", shift);
 			break;
-		case LSR:
+		case ST_LSR:
 			_assert_msg_(DYNA_REC, shift <= 32, "Invalid Operand2: LSR %u", shift);
 			if (!shift)
-				type = LSL;
+				type = ST_LSL;
 			if (shift == 32)
 				shift = 0;
 			break;
-		case ASR:
+		case ST_ASR:
 			_assert_msg_(DYNA_REC, shift < 32, "Invalid Operand2: LSR %u", shift);
 			if (!shift)
-				type = LSL;
+				type = ST_LSL;
 			if (shift == 32)
 				shift = 0;
 			break;
-		case ROR:
+		case ST_ROR:
 			_assert_msg_(DYNA_REC, shift < 32, "Invalid Operand2: ROR %u", shift);
 			if (!shift)
-				type = LSL;
+				type = ST_LSL;
 			break;
-		case RRX:
+		case ST_RRX:
 			_assert_msg_(DYNA_REC, shift == 0, "Invalid Operand2: RRX does not take an immediate shift amount");
-			type = ROR;
+			type = ST_ROR;
 			break;
 		}
 		IndexOrShift = shift;
@@ -196,19 +205,18 @@ public:
 	{
 		switch(Type)
 		{
-			case TYPE_IMM:
+		case TYPE_IMM:
 			return Imm12Mod(); // This'll need to be changed later
-			case TYPE_REG:
+		case TYPE_REG:
 			return Rm();
-			case TYPE_IMMSREG:
+		case TYPE_IMMSREG:
 			return IMMSR();
-			case TYPE_RSR:
+		case TYPE_RSR:
 			return RSR();
-			default:
-				_assert_msg_(DYNA_REC, false, "GetData with Invalid Type");
-			break;
+		default:
+			_assert_msg_(DYNA_REC, false, "GetData with Invalid Type");
+			return 0;
 		}
-		return 0;
 	}
 	const u32 IMMSR() // IMM shifted register
 	{
@@ -288,16 +296,19 @@ public:
 		_assert_msg_(DYNA_REC, (Type == TYPE_IMM), "Imm8VFP not IMM");
 		return ((Value & 0xF0) << 12) | (Value & 0xF);
 	}
-	
-
 };
+
+// Use these when you don't know if an imm can be represented as an operand2.
+// This lets you generate both an optimal and a fallback solution by checking
+// the return value, which will be false if these fail to find a Operand2 that
+// represents your 32-bit imm value.
+bool TryMakeOperand2(u32 imm, Operand2 &op2);
+bool TryMakeOperand2_AllowInverse(u32 imm, Operand2 &op2, bool *inverse);
+bool TryMakeOperand2_AllowNegation(s32 imm, Operand2 &op2, bool *negated);
+
 inline Operand2 R(ARMReg Reg)	{ return Operand2(Reg, TYPE_REG); }
 inline Operand2 IMM(u32 Imm)	{ return Operand2(Imm, TYPE_IMM); }
 inline Operand2 Mem(void *ptr)	{ return Operand2((u32)ptr, TYPE_IMM); }
-//usage: int a[]; ARRAY_OFFSET(a,10)
-#define ARRAY_OFFSET(array,index) ((u32)((u64)&(array)[index]-(u64)&(array)[0]))
-//usage: struct {int e;} s; STRUCT_OFFSET(s,e)
-#define STRUCT_OFFSET(str,elem) ((u32)((u64)&(str).elem-(u64)&(str)))
 
 struct FixupBranch
 {
@@ -313,6 +324,7 @@ class ARMXEmitter
 	friend struct OpArg;  // for Write8 etc
 private:
 	u8 *code, *startcode;
+	u8 *lastCacheFlushEnd;
 	u32 condition;
 
 	void WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2);
@@ -328,8 +340,15 @@ protected:
 	inline void Write32(u32 value) {*(u32*)code = value; code+=4;}
 
 public:
-	ARMXEmitter() { code = NULL; startcode = NULL; condition = CC_AL << 28;}
-	ARMXEmitter(u8 *code_ptr) { code = code_ptr; startcode = code_ptr; condition = CC_AL << 28;}
+	ARMXEmitter() : code(0), startcode(0), lastCacheFlushEnd(0) {
+		condition = CC_AL << 28;
+	}
+	ARMXEmitter(u8 *code_ptr) {
+		code = code_ptr;
+		lastCacheFlushEnd = code_ptr;
+		startcode = code_ptr;
+		condition = CC_AL << 28;
+	}
 	virtual ~ARMXEmitter() {}
 
 	void SetCodePtr(u8 *ptr);
@@ -337,7 +356,8 @@ public:
 	const u8 *AlignCode16();
 	const u8 *AlignCodePage();
 	const u8 *GetCodePtr() const;
-	void Flush();
+	void FlushIcache();
+	void FlushIcacheSection(u8 *start, u8 *end);
 	u8 *GetWritableCodePtr();
 
 	void SetCC(CCFlags cond = CC_AL);
@@ -394,9 +414,8 @@ public:
 	void LSLS(ARMReg dest, ARMReg src, ARMReg op2);
 	void SBC (ARMReg dest, ARMReg src, Operand2 op2);
 	void SBCS(ARMReg dest, ARMReg src, Operand2 op2);
-	void REV (ARMReg dest, ARMReg src			);
-	void REV16 (ARMReg dest, ARMReg src			);
-
+	void REV (ARMReg dest, ARMReg src);
+	void REV16 (ARMReg dest, ARMReg src);
 	void RSC (ARMReg dest, ARMReg src, Operand2 op2);
 	void RSCS(ARMReg dest, ARMReg src, Operand2 op2);
 	void TST (             ARMReg src, Operand2 op2);
@@ -407,7 +426,7 @@ public:
 	void ORRS(ARMReg dest, ARMReg src, Operand2 op2);
 	void MOV (ARMReg dest,             Operand2 op2);
 	void MOVS(ARMReg dest,             Operand2 op2);
-	void BIC (ARMReg dest, ARMReg src, Operand2 op2);
+	void BIC (ARMReg dest, ARMReg src, Operand2 op2);   // BIC = ANDN
 	void BICS(ARMReg dest, ARMReg src, Operand2 op2);
 	void MVN (ARMReg dest,             Operand2 op2);
 	void MVNS(ARMReg dest,             Operand2 op2);
@@ -424,9 +443,9 @@ public:
 	void SXTB(ARMReg dest, ARMReg op2);
 	void SXTH(ARMReg dest, ARMReg op2, u8 rotation = 0);
 	void SXTAH(ARMReg dest, ARMReg src, ARMReg op2, u8 rotation = 0);
-	// Using just MSR here messes with our defines on the PPC side of stuff
+	// Using just MSR here messes with our defines on the PPC side of stuff (when this code was in dolphin...)
 	// Just need to put an underscore here, bit annoying.
-	void _MSR (bool nzcvq, bool g,	   Operand2 op2);
+	void _MSR (bool nzcvq, bool g, Operand2 op2);
 	void _MSR (bool nzcvq, bool g, ARMReg src	   );
 	void MRS  (ARMReg dest);
 
@@ -449,7 +468,6 @@ public:
 	// dest contains the result if the instruction managed to store the value
 	void STREX(ARMReg dest, ARMReg base, ARMReg op);
 	void DMB ();
-	
 	void SVC(Operand2 op);
 
 	// NEON and ASIMD instructions
@@ -460,34 +478,10 @@ public:
 	void VLDR(ARMReg dest, ARMReg Base, Operand2 op);
 	void VMOV(ARMReg Dest, ARMReg Src);
 
+	void QuickCallFunction(ARMReg scratchreg, void *func);
 	// Utility functions
-	// The difference between this and CALL is that this aligns the stack
-	// where appropriate.
-	void ARMABI_CallFunction(void *func);
-	void ARMABI_CallFunctionC(void *func, u32 Arg0);
-	void ARMABI_CallFunctionCC(void *func, u32 Arg1, u32 Arg2);
-	void ARMABI_CallFunctionCCC(void *func, u32 Arg1, u32 Arg2, u32 Arg3);
-	void ARMABI_PushAllCalleeSavedRegsAndAdjustStack(); 
-	void ARMABI_PopAllCalleeSavedRegsAndAdjustStack(); 
-	void ARMABI_MOVI2R(ARMReg reg, Operand2 val, bool optimize = true);
-	void ARMABI_MOVI2M(Operand2 op, Operand2 val);
-	void ARMABI_ShowConditions();
-
-	void UpdateAPSR(bool NZCVQ, u8 Flags, bool GE, u8 GEval);
-
-
-	// Strange call wrappers.
-	void CallCdeclFunction3(void* fnptr, u32 arg0, u32 arg1, u32 arg2);
-	void CallCdeclFunction4(void* fnptr, u32 arg0, u32 arg1, u32 arg2, u32 arg3);
-	void CallCdeclFunction5(void* fnptr, u32 arg0, u32 arg1, u32 arg2, u32 arg3, u32 arg4);
-	void CallCdeclFunction6(void* fnptr, u32 arg0, u32 arg1, u32 arg2, u32 arg3, u32 arg4, u32 arg5);
-	#define CallCdeclFunction3_I(a,b,c,d) CallCdeclFunction3((void *)(a), (b), (c), (d))
-	#define CallCdeclFunction4_I(a,b,c,d,e) CallCdeclFunction4((void *)(a), (b), (c), (d), (e)) 
-	#define CallCdeclFunction5_I(a,b,c,d,e,f) CallCdeclFunction5((void *)(a), (b), (c), (d), (e), (f)) 
-	#define CallCdeclFunction6_I(a,b,c,d,e,f,g) CallCdeclFunction6((void *)(a), (b), (c), (d), (e), (f), (g)) 
-
-	#define DECLARE_IMPORT(x)
-
+	void ARMABI_MOVI2R(ARMReg reg, u32 val, bool optimize = true);
+	void ARMABI_MOVI2M(Operand2 op, Operand2 val);	
 };  // class ARMXEmitter
 
 

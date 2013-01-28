@@ -34,9 +34,7 @@ set(SRCS	Src/BreakPoints.cpp
 if(_M_ARM) #ARM
 	set(SRCS	${SRCS}
 				Src/ArmCPUDetect.cpp
-				Src/ArmEmitter.cpp
-				Src/ArmABI.cpp
-				Src/ArmThunk.cpp)
+				Src/ArmEmitter.cpp)
 else()
 	if(NOT _M_GENERIC) #X86
 		set(SRCS	${SRCS}

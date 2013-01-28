@@ -28,7 +28,6 @@
 #include "../../HW/GPFifo.h"
 #include "../../Core.h"
 #include "JitAsm.h"
-#include "ArmABI.h"
 #include "ArmEmitter.h"
 
 using namespace ArmGen;
@@ -107,7 +106,7 @@ void JitArmAsmRoutineManager::Generate()
 			LDREX(R1, R0);
 			ORR(R1, R1, R2);
 			STREX(R2, R0, R1);
-				ARMABI_CallFunction((void*)&PowerPC::CheckExceptions);
+				QuickCallFunction(R14, (void*)&PowerPC::CheckExceptions);
 			ARMABI_MOVI2R(R0, (u32)&NPC);
 			ARMABI_MOVI2R(R1, (u32)&PC);
 			LDR(R0, R0);
@@ -118,7 +117,7 @@ void JitArmAsmRoutineManager::Generate()
 		doTiming = GetCodePtr();			
 		// XXX: In JIT64, Advance() gets called /after/ the exception checking
 		// once it jumps back to the start of outerLoop 
-		ARMABI_CallFunction((void*)&CoreTiming::Advance);
+		QuickCallFunction(R14, (void*)&CoreTiming::Advance);
 
 		// Does exception checking 
 		testExceptions = GetCodePtr();
@@ -126,28 +125,26 @@ void JitArmAsmRoutineManager::Generate()
 			ARMABI_MOVI2R(R1, (u32)&NPC);
 			LDR(R0, R0);
 			STR(R1, R0);
-				ARMABI_CallFunction((void*)&PowerPC::CheckExceptions);
+				QuickCallFunction(R14, (void*)&PowerPC::CheckExceptions);
 			ARMABI_MOVI2R(R0, (u32)&PC);
 			ARMABI_MOVI2R(R1, (u32)&NPC);
 			LDR(R1, R1);
 			STR(R0, R1);
 		// Check the state pointer to see if we are exiting
 		// Gets checked on every exception check
-			ARMABI_MOVI2R(R0, Mem((void*)PowerPC::GetStatePtr()));
-			ARMABI_MOVI2R(R1, IMM(0xFFFFFFFF));
+			ARMABI_MOVI2R(R0, (u32)PowerPC::GetStatePtr());
+			MVN(R1, 0);
 			LDR(R0, R0);
 			TST(R0, R1);
 			FixupBranch Exit = B_CC(CC_NEQ);
 
 		SetJumpTarget(NextBlock);
-
-		UpdateAPSR(true, 0, true, 0); // Clear our host register flags out.
 	B(dispatcher);
 	
 	SetJumpTarget(Exit);
 
 	POP(2, R11, _PC);
-	Flush();
+	FlushIcache();
 }
 
 void JitArmAsmRoutineManager::GenerateCommon()
