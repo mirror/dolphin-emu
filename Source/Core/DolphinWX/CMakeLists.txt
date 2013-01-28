@@ -10,7 +10,6 @@ set(LIBS	core
 			${GTK2_LIBRARIES}
 			${XRANDR_LIBRARIES}
 			${X11_LIBRARIES})
-
 if(NOT ANDROID)
 	if(SDL2_FOUND)
 		# Using shared SDL2
@@ -80,8 +79,11 @@ if(wxWidgets_FOUND)
 
 	set(WXLIBS ${wxWidgets_LIBRARIES})
 else()
-	set(SRCS 		
-		Src/MainNoGUI.cpp)
+	if(ANDROID)
+		set(SRCS Src/MainAndroid.cpp)
+	else()
+		set(SRCS Src/MainNoGUI.cpp)
+	endif()
 endif()
 
 if(USE_EGL)
@@ -155,7 +157,13 @@ endif()
 
 if(ANDROID)
 	add_library(${DOLPHIN_EXE} SHARED ${SRCS})
-	target_link_libraries(${DOLPHIN_EXE} ${LIBS} ${WXLIBS})
+	target_link_libraries(${DOLPHIN_EXE} 
+	log
+	android
+	"-Wl,--whole-archive"
+	${LIBS}
+	"-Wl,--no-whole-archive"
+	)
 else()
 	add_executable(${DOLPHIN_EXE} ${SRCS})
 	target_link_libraries(${DOLPHIN_EXE} ${LIBS} ${WXLIBS})
