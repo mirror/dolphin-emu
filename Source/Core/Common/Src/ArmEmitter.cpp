@@ -512,7 +512,7 @@ void ARMXEmitter::MRS (ARMReg dest)
 void ARMXEmitter::WriteStoreOp(u32 op, ARMReg dest, ARMReg src, Operand2 op2)
 {
 	if (op2.GetData() == 0) // Don't index
-		Write32(condition | 0x00800000 | (op << 20) | (dest << 16) | (src << 12) | op2.Imm12());
+		Write32(condition | 0x01800000 | (op << 20) | (dest << 16) | (src << 12) | op2.Imm12());
 	else
 		Write32(condition | (op << 20) | (3 << 23) | (dest << 16) | (src << 12) | op2.Imm12()); 
 }
