@@ -62,7 +62,7 @@ ARMReg *ArmRegCache::GetPPCAllocationOrder(int &count)
 	// the ppc side.
 	static ARMReg allocationOrder[] = 
 	{
-		R0, R1, R2, R3, R4, R5, R6, R7, R8, R9
+		R0, R1, R2, R3, R4, R5, R6, R7, R8
 	};
 	count = sizeof(allocationOrder) / sizeof(const int);
 	return allocationOrder;
@@ -141,17 +141,14 @@ ARMReg ArmRegCache::R(u32 preg)
 	for (u8 a = 0; a < NUMPPCREG; ++a)
 		if (ArmCRegs[a].PPCReg == 33)
 		{
-			emit->ARMABI_MOVI2R(ArmCRegs[a].Reg, (u32)&PowerPC::ppcState.gpr);
-			emit->LDR(ArmCRegs[a].Reg, ArmCRegs[a].Reg, preg * 4);
+			emit->LDR(ArmCRegs[a].Reg, R9, STRUCT_OFFSET(PowerPC::ppcState, gpr) + preg * 4);
 			ArmCRegs[a].PPCReg = preg;
 			ArmCRegs[a].LastLoad = 0;
 			return ArmCRegs[a].Reg;
 		}
 	// Alright, we couldn't get a free space, dump that least used register
-	ARMReg rA = GetReg(false);
-	emit->ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.gpr);
-	emit->STR(rA, ArmCRegs[Num].Reg, ArmCRegs[Num].PPCReg * 4);
-	emit->LDR(ArmCRegs[Num].Reg, rA, preg * 4);
+	emit->STR(R9, ArmCRegs[Num].Reg, STRUCT_OFFSET(PowerPC::ppcState, gpr) + ArmCRegs[Num].PPCReg * 4);
+	emit->LDR(ArmCRegs[Num].Reg, R9, STRUCT_OFFSET(PowerPC::ppcState, gpr) + preg * 4);
 	ArmCRegs[Num].PPCReg = preg;
 	ArmCRegs[Num].LastLoad = 0;
 	return ArmCRegs[Num].Reg;		 
@@ -159,13 +156,10 @@ ARMReg ArmRegCache::R(u32 preg)
 
 void ArmRegCache::Flush()
 {
-	emit->MOVW(R14, (u32)&PowerPC::ppcState.gpr);
-	emit->MOVT(R14, (u32)&PowerPC::ppcState.gpr, true);
-	
 	for(u8 a = 0; a < NUMPPCREG; ++a)
 		if (ArmCRegs[a].PPCReg != 33)
 		{
-			emit->STR(R14, ArmCRegs[a].Reg, ArmCRegs[a].PPCReg * 4);
+			emit->STR(R9, ArmCRegs[a].Reg, STRUCT_OFFSET(PowerPC::ppcState, gpr) + ArmCRegs[a].PPCReg * 4);
 			ArmCRegs[a].PPCReg = 33;
 			ArmCRegs[a].LastLoad = 0;
 		}

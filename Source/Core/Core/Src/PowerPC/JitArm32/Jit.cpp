@@ -98,8 +98,7 @@ void JitArm::HLEFunction(UGeckoInstruction _inst)
 	ARMABI_MOVI2R(R1, _inst.hex);
 	QuickCallFunction(R14, (void*)&HLE::Execute); 
 	ARMReg rA = gpr.GetReg();
-	ARMABI_MOVI2R(rA, (u32)&NPC);
-	LDR(rA, rA);
+	LDR(rA, R9, STRUCT_OFFSET(PowerPC::ppcState, npc));
 	WriteExitDestInR(rA);
 }
 
@@ -160,35 +159,34 @@ void JitArm::DoDownCount()
 }
 void JitArm::WriteExitDestInR(ARMReg Reg) 
 {
-	ARMReg A = gpr.GetReg();
-	ARMABI_MOVI2R(A, (u32)&PC);
-	STR(A, Reg);
+	STR(R9, Reg, STRUCT_OFFSET(PowerPC::ppcState, pc));
 	gpr.Unlock(Reg); // This was locked in the instruction beforehand.
 	Cleanup();
 	DoDownCount();
+
+	ARMReg A = gpr.GetReg();
 	ARMABI_MOVI2R(A, (u32)asm_routines.dispatcher);
 	B(A);
 	gpr.Unlock(A);
 }
 void JitArm::WriteRfiExitDestInR(ARMReg Reg) 
 {
-	ARMReg A = gpr.GetReg();
-	ARMABI_MOVI2R(A, (u32)&PC);
-	STR(A, Reg);
+	STR(R9, Reg, STRUCT_OFFSET(PowerPC::ppcState, pc));
 	gpr.Unlock(Reg); // This was locked in the instruction beforehand
 	Cleanup();
 	DoDownCount();
 
+	ARMReg A = gpr.GetReg();
 	ARMABI_MOVI2R(A, (u32)asm_routines.testExceptions);
 	B(A);
 	gpr.Unlock(A);
 }
 void JitArm::WriteExceptionExit()
 {
-	ARMReg A = gpr.GetReg(false);
 	Cleanup();
 	DoDownCount();
 
+	ARMReg A = gpr.GetReg(false);
 	ARMABI_MOVI2R(A, (u32)asm_routines.testExceptions);
 	B(A);
 }
@@ -212,8 +210,9 @@ void JitArm::WriteExit(u32 destination, int exit_num)
 	}
 	else 
 	{
-		ARMABI_MOVI2M((u32)&PC, destination); // Watch out! This uses R14 and R12!
 		ARMReg A = gpr.GetReg(false);
+		ARMABI_MOVI2R(A, destination);
+		STR(R9, A, STRUCT_OFFSET(PowerPC::ppcState, pc));
 		ARMABI_MOVI2R(A, (u32)asm_routines.dispatcher);
 		B(A);	
 	}
@@ -366,8 +365,9 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	// Downcount flag check, Only valid for linked blocks
 	{
 		FixupBranch skip = B_CC(CC_PL);
-		ARMABI_MOVI2M((u32)&PC, js.blockStart);
 		ARMReg rA = gpr.GetReg(false);
+		ARMABI_MOVI2R(rA, js.blockStart);
+		STR(R9, rA, STRUCT_OFFSET(PowerPC::ppcState, pc));
 		ARMABI_MOVI2R(rA, (u32)asm_routines.doTiming);
 		B(rA);
 		SetJumpTarget(skip);
@@ -383,20 +383,17 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	{
 		// This block uses FPU - needs to add FP exception bailout
 		ARMReg A = gpr.GetReg();
-		ARMReg RB = gpr.GetReg();
 		ARMReg C = gpr.GetReg();
-		ARMABI_MOVI2R(A, (u32)&PowerPC::ppcState.msr); // R0
-		ARMABI_MOVI2R(RB, (u32)&PC); // R1
 		Operand2 Shift(2, 10); // 1 << 13
 		ARMABI_MOVI2R(C, js.blockStart); // R3
-		LDR(A, A);
+		LDR(A, R9, STRUCT_OFFSET(PowerPC::ppcState, msr));
 		TST(A, Shift);
 		FixupBranch b1 = B_CC(CC_NEQ);
-		STR(RB, C);
+		STR(R9, C, STRUCT_OFFSET(PowerPC::ppcState, pc));
 		ARMABI_MOVI2R(A, (u32)asm_routines.fpException);
 		B(A);
 		SetJumpTarget(b1);
-		gpr.Unlock(A, RB, C);	
+		gpr.Unlock(A, C);	
 	}
 	// Conditionally add profiling code.
 	if (Profiler::g_ProfileBlocks) {

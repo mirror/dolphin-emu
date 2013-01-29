@@ -33,30 +33,26 @@ extern u32 Helper_Mask(u8 mb, u8 me);
 // Jit64 ComputerRC is signed
 // JIT64 GenerateRC is unsigned
 void JitArm::GenerateRC(int cr) {
-	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
-	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[cr]);
 
 	MOV(rB, 0x4); // Result > 0
 	SetCC(CC_EQ); MOV(rB, 0x2); // Result == 0
 	SetCC(CC_MI); MOV(rB, 0x8); // Result < 0
 	SetCC();
 
-	STRB(rA, rB, 0);
-	gpr.Unlock(rA, rB);
+	STRB(R9, rB, STRUCT_OFFSET(PowerPC::ppcState, cr_fast) + cr);
+	gpr.Unlock(rB);
 }
 void JitArm::ComputeRC(int cr) {
-	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
-	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[cr]);
 
 	MOV(rB, 0x2); // Result == 0
 	SetCC(CC_LT); MOV(rB, 0x8); // Result < 0
 	SetCC(CC_GT); MOV(rB, 0x4); // Result > 0
 	SetCC();
 
-	STRB(rA, rB, 0);
-	gpr.Unlock(rA, rB);
+	STRB(R9, rB, STRUCT_OFFSET(PowerPC::ppcState, cr_fast) + cr);
+	gpr.Unlock(rB);
 }
 
 void JitArm::addi(UGeckoInstruction inst)
@@ -217,14 +213,13 @@ void JitArm::cmpli(UGeckoInstruction inst)
 
 	// Unsigned GenerateRC()
 	ARMReg rB = gpr.GetReg();
-	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast);
 	
 	MOV(rB, 0x2); // Result == 0
 	SetCC(CC_LO); MOV(rB, 0x8); // Result < 0
 	SetCC(CC_HI); MOV(rB, 0x4); // Result > 0
 	SetCC();
 
-	STRB(rA, rB, crf);
+	STRB(R9, rB, STRUCT_OFFSET(PowerPC::ppcState, cr_fast) + crf);
 	gpr.Unlock(rA, rB);
 
 }

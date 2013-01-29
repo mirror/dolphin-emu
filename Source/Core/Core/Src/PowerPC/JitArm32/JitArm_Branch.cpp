@@ -47,14 +47,16 @@ void JitArm::sc(UGeckoInstruction inst)
 
 	gpr.Flush();
 	//fpr.Flush(FLUSH_ALL);
-	ARMABI_MOVI2M((u32)&PC, js.compilerPC + 4); // Destroys R12 and R14
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
 	ARMReg rC = gpr.GetReg();
-	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.Exceptions);
-	LDREX(rB, rA);
+	
+	ARMABI_MOVI2R(rA, js.compilerPC + 4);
+	STR(R9, rA, STRUCT_OFFSET(PowerPC::ppcState, pc));
+
+	LDR(rB, R9, STRUCT_OFFSET(PowerPC::ppcState, Exceptions));
 	ORR(rB, rB, EXCEPTION_SYSCALL);
-	STREX(rC, rA, rB);
+	STR(R9, rB, STRUCT_OFFSET(PowerPC::ppcState, Exceptions));
 	DMB();
 	gpr.Unlock(rA, rB, rC);
 
@@ -70,7 +72,7 @@ void JitArm::rfi(UGeckoInstruction inst)
 	//fpr.Flush(FLUSH_ALL);
  	// See Interpreter rfi for details
 	const u32 mask = 0x87C0FFFF;
-		const u32 clearMSR13 = 0xFFFBFFFF; // Mask used to clear the bit MSR[13]
+	const u32 clearMSR13 = 0xFFFBFFFF; // Mask used to clear the bit MSR[13]
 	// MSR = ((MSR & ~mask) | (SRR1 & mask)) & clearMSR13;
 	// R0 = MSR location
 	// R1 = MSR contents
@@ -180,8 +182,7 @@ void JitArm::bcx(UGeckoInstruction inst)
 	FixupBranch pConditionDontBranch;
 	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)  // Test a CR bit
 	{
-		ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
-		LDRB(rA, rA);
+		LDRB(rA, R9, STRUCT_OFFSET(PowerPC::ppcState, cr_fast) + inst.BI >> 2);
 		MOV(rB, 8 >> (inst.BI & 3));
 		TST(rA, rB);
 
@@ -245,9 +246,8 @@ void JitArm::bcctrx(UGeckoInstruction inst)
 		ARMReg rA = gpr.GetReg();
 		ARMReg rB = gpr.GetReg();
 		
-		ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
 		MOV(rB, 8 >> (inst.BI & 3));
-		LDR(rA, rA);
+		LDRB(rA, R9, STRUCT_OFFSET(PowerPC::ppcState, cr_fast) + inst.BI >> 2);
 		TST(rA, rB);
 		CCFlags branch;
 		if (inst.BO_2 & BO_BRANCH_IF_TRUE)
@@ -311,9 +311,8 @@ void JitArm::bclrx(UGeckoInstruction inst)
 	FixupBranch pConditionDontBranch;
 	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)  // Test a CR bit
 	{
-		ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
 		MOV(rB, 8 >> (inst.BI & 3));
-		LDR(rA, rA);
+		LDRB(rA, R9, STRUCT_OFFSET(PowerPC::ppcState, cr_fast) + inst.BI >> 2);
 		TST(rA, rB);
 		//TEST(8, M(&PowerPC::ppcState.cr_fast[inst.BI >> 2]), Imm8(8 >> (inst.BI & 3)));
 		if (inst.BO & BO_BRANCH_IF_TRUE)  // Conditional branch 
