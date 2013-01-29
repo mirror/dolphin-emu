@@ -49,7 +49,7 @@ u32 SoundStream::GetSamples(s16* samples, u32 frame_count)
 	if (rate < 0.1f)
 		rate = 1.f;
 
-	//m_sound_touch.setSetting(SETTING_SEQUENCE_MS, (int)(1 / (rate * rate)));
+	m_sound_touch.setSetting(SETTING_SEQUENCE_MS, (int)(1 / (rate * rate)));
 	m_sound_touch.setTempo(rate);
 
 	m_sample_buffer.resize(frame_count * 2);
