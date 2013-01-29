@@ -115,7 +115,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>SoundTouchD.lib;OpenAL32.lib;dsound.lib;dxerr.lib</AdditionalDependencies>
+      <AdditionalDependencies>SoundTouch.lib;OpenAL32.lib;dsound.lib;dxerr.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\Externals\OpenAL\Win32;..\..\..\Externals\SoundTouch\Win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>
@@ -127,7 +127,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>SoundTouchD.lib;OpenAL32.lib;dsound.lib;dxerr.lib</AdditionalDependencies>
+      <AdditionalDependencies>SoundTouch.lib;OpenAL32.lib;dsound.lib;dxerr.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\Externals\OpenAL\Win64;..\..\..\Externals\SoundTouch\Win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Lib>
   </ItemDefinitionGroup>

@@ -21,6 +21,7 @@
       <Filter>SoundStreams</Filter>
     </ClCompile>
     <ClCompile Include="Src\DPL2Decoder.cpp" />
+    <ClCompile Include="Src\SoundStream.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Src\aldlist.h" />

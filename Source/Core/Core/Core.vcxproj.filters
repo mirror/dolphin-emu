@@ -5,7 +5,6 @@
     <ClCompile Include="Src\Console.cpp" />
     <ClCompile Include="Src\Core.cpp" />
     <ClCompile Include="Src\CoreParameter.cpp" />
-    <ClCompile Include="Src\CoreRerecording.cpp" />
     <ClCompile Include="Src\CoreTiming.cpp" />
     <ClCompile Include="Src\MemTools.cpp" />
     <ClCompile Include="Src\PatchEngine.cpp" />
