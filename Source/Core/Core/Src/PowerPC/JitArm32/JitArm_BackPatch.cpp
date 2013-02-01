@@ -74,15 +74,15 @@ const u8 *JitArm::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void *ct
 		switch (accessSize)
 		{
 			case 0: // 8bit
-				//emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Write_U8, false); // 1-2
+				//emitter.MOVI2R(R14, (u32)&Memory::Write_U8, false); // 1-2
 				return 0;
 			break;
 			case 1: // 16bit
-				//emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Write_U16, false); // 1-2
+				//emitter.MOVI2R(R14, (u32)&Memory::Write_U16, false); // 1-2
 				return 0;
 			break;
 			case 2: // 32bit
-				emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Write_U32, false); // 1-2
+				emitter.MOVI2R(R14, (u32)&Memory::Write_U32, false); // 1-2
 			break;
 		}
 		emitter.PUSH(4, R0, R1, R2, R3); // 3
@@ -103,13 +103,13 @@ const u8 *JitArm::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void *ct
 		switch (accessSize)
 		{
 			case 0: // 8bit
-				emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Read_U8, false); // 2	
+				emitter.MOVI2R(R14, (u32)&Memory::Read_U8, false); // 2	
 			break;
 			case 1: // 16bit
-				emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Read_U16, false); // 2	
+				emitter.MOVI2R(R14, (u32)&Memory::Read_U16, false); // 2	
 			break;
 			case 2: // 32bit
-				emitter.ARMABI_MOVI2R(R14, (u32)&Memory::Read_U32, false); // 2	
+				emitter.MOVI2R(R14, (u32)&Memory::Read_U32, false); // 2	
 			break;
 		}
 		emitter.PUSH(4, R0, R1, R2, R3); // 3

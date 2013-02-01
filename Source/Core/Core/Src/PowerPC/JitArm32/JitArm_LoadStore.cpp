@@ -53,12 +53,12 @@ void JitArm::stw(UGeckoInstruction inst)
 	MOV(Value, RS);
 	if (inst.RA)
 	{
-		ARMABI_MOVI2R(_R10, inst.SIMM_16, false);
+		MOVI2R(_R10, inst.SIMM_16, false);
 		ADD(_R10, _R10, RA);
 	}
 	else
 	{
-		ARMABI_MOVI2R(_R10, (u32)inst.SIMM_16, false);
+		MOVI2R(_R10, (u32)inst.SIMM_16, false);
 		NOP(1);
 	}
 	StoreFromReg(_R10, Value, 32, 0);
@@ -70,14 +70,14 @@ void JitArm::stw(UGeckoInstruction inst)
 	MOV(ValueReg, RS);
 	if (inst.RA)
 	{
-		ARMABI_MOVI2R(Addr, inst.SIMM_16);
+		MOVI2R(Addr, inst.SIMM_16);
 		ARMReg RA = gpr.R(inst.RA);
 		ADD(Addr, Addr, RA);
 	}
 	else
-		ARMABI_MOVI2R(Addr, (u32)inst.SIMM_16);
+		MOVI2R(Addr, (u32)inst.SIMM_16);
 	
-	ARMABI_MOVI2R(Function, (u32)&Memory::Write_U32);	
+	MOVI2R(Function, (u32)&Memory::Write_U32);	
 	PUSH(4, R0, R1, R2, R3);
 	MOV(R0, ValueReg);
 	MOV(R1, Addr);
@@ -97,7 +97,7 @@ void JitArm::stwu(UGeckoInstruction inst)
 	ARMReg Addr = gpr.GetReg();
 	ARMReg Function = gpr.GetReg();
 	
-	ARMABI_MOVI2R(Addr, inst.SIMM_16);
+	MOVI2R(Addr, inst.SIMM_16);
 	ADD(Addr, Addr, RA);
 
 	// Check and set the update before writing since calling a function can
@@ -110,7 +110,7 @@ void JitArm::stwu(UGeckoInstruction inst)
 
 	MOV(ValueReg, RS);
 	
-	ARMABI_MOVI2R(Function, (u32)&Memory::Write_U32);	
+	MOVI2R(Function, (u32)&Memory::Write_U32);	
 	PUSH(4, R0, R1, R2, R3);
 	MOV(R0, ValueReg);
 	MOV(R1, Addr);
@@ -124,9 +124,9 @@ void JitArm::StoreFromReg(ARMReg dest, ARMReg value, int accessSize, s32 offset)
 	ARMReg rA = gpr.GetReg();
 
 	// All this gets replaced on backpatch
-	ARMABI_MOVI2R(rA, Memory::MEMVIEW32_MASK, false); // 1-2 
+	MOVI2R(rA, Memory::MEMVIEW32_MASK, false); // 1-2 
 	AND(dest, dest, rA); // 3
-	ARMABI_MOVI2R(rA, (u32)Memory::base, false); // 4-5
+	MOVI2R(rA, (u32)Memory::base, false); // 4-5
 	ADD(dest, dest, rA); // 6
 	switch (accessSize)
 	{
@@ -169,13 +169,13 @@ void JitArm::StoreFromReg(ARMReg dest, ARMReg value, int accessSize, s32 offset)
 void JitArm::LoadToReg(ARMReg dest, ARMReg addr, int accessSize, s32 offset)
 {
 	ARMReg rA = gpr.GetReg();
-	ARMABI_MOVI2R(rA, offset, false); // -3
+	MOVI2R(rA, offset, false); // -3
 	ADD(addr, addr, rA); // - 1
 
 	// All this gets replaced on backpatch
-	ARMABI_MOVI2R(rA, Memory::MEMVIEW32_MASK, false); // 2 
+	MOVI2R(rA, Memory::MEMVIEW32_MASK, false); // 2 
 	AND(addr, addr, rA); // 3
-	ARMABI_MOVI2R(rA, (u32)Memory::base, false); // 5
+	MOVI2R(rA, (u32)Memory::base, false); // 5
 	ADD(addr, addr, rA); // 6
 	switch (accessSize)
 	{
@@ -243,14 +243,14 @@ void JitArm::lbz(UGeckoInstruction inst)
 
 	if (inst.RA)
 	{
-		ARMABI_MOVI2R(rB, inst.SIMM_16);
+		MOVI2R(rB, inst.SIMM_16);
 		ARMReg RA = gpr.R(inst.RA);
 		ADD(rB, rB, RA);
 	}
 	else	
-		ARMABI_MOVI2R(rB, (u32)inst.SIMM_16);
+		MOVI2R(rB, (u32)inst.SIMM_16);
 	
-	ARMABI_MOVI2R(rA, (u32)&Memory::Read_U8);	
+	MOVI2R(rA, (u32)&Memory::Read_U8);	
 	PUSH(4, R0, R1, R2, R3);
 	MOV(R0, rB);
 	BL(rA);
@@ -295,14 +295,14 @@ void JitArm::lhz(UGeckoInstruction inst)
 
 	if (inst.RA)
 	{
-		ARMABI_MOVI2R(rB, inst.SIMM_16);
+		MOVI2R(rB, inst.SIMM_16);
 		ARMReg RA = gpr.R(inst.RA);
 		ADD(rB, rB, RA);
 	}
 	else	
-		ARMABI_MOVI2R(rB, (u32)inst.SIMM_16);
+		MOVI2R(rB, (u32)inst.SIMM_16);
 	
-	ARMABI_MOVI2R(rA, (u32)&Memory::Read_U16);	
+	MOVI2R(rA, (u32)&Memory::Read_U16);	
 	PUSH(4, R0, R1, R2, R3);
 	MOV(R0, rB);
 	BL(rA);
@@ -342,14 +342,14 @@ void JitArm::lwz(UGeckoInstruction inst)
 #else
 	if (inst.RA)
 	{
-		ARMABI_MOVI2R(rB, inst.SIMM_16);
+		MOVI2R(rB, inst.SIMM_16);
 		ARMReg RA = gpr.R(inst.RA);
 		ADD(rB, rB, RA);
 	}
 	else
-		ARMABI_MOVI2R(rB, (u32)inst.SIMM_16);
+		MOVI2R(rB, (u32)inst.SIMM_16);
 
-	ARMABI_MOVI2R(rA, (u32)&Memory::Read_U32);	
+	MOVI2R(rA, (u32)&Memory::Read_U32);	
 	PUSH(4, R0, R1, R2, R3);
 	MOV(R0, rB);
 	BL(rA);
@@ -372,8 +372,8 @@ void JitArm::lwz(UGeckoInstruction inst)
 		FixupBranch noIdle = B_CC(CC_NEQ);
 		rA = gpr.GetReg();	
 		
-		ARMABI_MOVI2R(rA, (u32)&PowerPC::OnIdle);
-		ARMABI_MOVI2R(R0, PowerPC::ppcState.gpr[inst.RA] + (s32)(s16)inst.SIMM_16); 
+		MOVI2R(rA, (u32)&PowerPC::OnIdle);
+		MOVI2R(R0, PowerPC::ppcState.gpr[inst.RA] + (s32)(s16)inst.SIMM_16); 
 		BL(rA);
 
 		gpr.Unlock(rA);
@@ -421,7 +421,7 @@ void JitArm::lwzx(UGeckoInstruction inst)
 	else
 		MOV(rB, RB);
 	
-	ARMABI_MOVI2R(rA, (u32)&Memory::Read_U32);	
+	MOVI2R(rA, (u32)&Memory::Read_U32);	
 	PUSH(4, R0, R1, R2, R3);
 	MOV(R0, rB);
 	BL(rA);
