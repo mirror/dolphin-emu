@@ -76,8 +76,8 @@ void JitArm::WriteCallInterpreter(UGeckoInstruction inst)
 	gpr.Flush();
 	//fpr.Flush(FLUSH_ALL);
 	Interpreter::_interpreterInstruction instr = GetInterpreterOp(inst);
-	ARMABI_MOVI2R(R0, inst.hex);
-	ARMABI_MOVI2R(R12, (u32)instr);
+	MOVI2R(R0, inst.hex);
+	MOVI2R(R12, (u32)instr);
 	BL(R12);
 }
 void JitArm::unknown_instruction(UGeckoInstruction inst)
@@ -94,8 +94,8 @@ void JitArm::HLEFunction(UGeckoInstruction _inst)
 {
 	gpr.Flush();
 //	fpr.Flush(FLUSH_ALL);
-	ARMABI_MOVI2R(R0, js.compilerPC);
-	ARMABI_MOVI2R(R1, _inst.hex);
+	MOVI2R(R0, js.compilerPC);
+	MOVI2R(R1, _inst.hex);
 	QuickCallFunction(R14, (void*)&HLE::Execute); 
 	ARMReg rA = gpr.GetReg();
 	LDR(rA, R9, STRUCT_OFF(PowerPC::ppcState, npc));
@@ -141,7 +141,7 @@ void JitArm::DoDownCount()
 {
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
-	ARMABI_MOVI2R(rA, (u32)&CoreTiming::downcount);
+	MOVI2R(rA, (u32)&CoreTiming::downcount);
 	LDR(rB, rA);
 	if(js.downcountAmount < 255) // We can enlarge this if we used rotations
 	{
@@ -151,7 +151,7 @@ void JitArm::DoDownCount()
 	else
 	{
 		ARMReg rC = gpr.GetReg(false);
-		ARMABI_MOVI2R(rC, js.downcountAmount);
+		MOVI2R(rC, js.downcountAmount);
 		SUBS(rB, rB, rC);
 		STR(rA, rB);
 	}
@@ -162,7 +162,7 @@ void JitArm::WriteExitDestInR(ARMReg Reg)
 	STR(R9, Reg, STRUCT_OFF(PowerPC::ppcState, pc));
 	Cleanup();
 	DoDownCount();
-	ARMABI_MOVI2R(Reg, (u32)asm_routines.dispatcher);
+	MOVI2R(Reg, (u32)asm_routines.dispatcher);
 	B(Reg);
 	gpr.Unlock(Reg);
 }
@@ -172,7 +172,7 @@ void JitArm::WriteRfiExitDestInR(ARMReg Reg)
 	Cleanup();
 	DoDownCount();
 
-	ARMABI_MOVI2R(Reg, (u32)asm_routines.testExceptions);
+	MOVI2R(Reg, (u32)asm_routines.testExceptions);
 	B(Reg);
 	gpr.Unlock(Reg); // This was locked in the instruction beforehand
 }
@@ -182,7 +182,7 @@ void JitArm::WriteExceptionExit()
 	Cleanup();
 	DoDownCount();
 
-	ARMABI_MOVI2R(A, (u32)asm_routines.testExceptions);
+	MOVI2R(A, (u32)asm_routines.testExceptions);
 	B(A);
 }
 void JitArm::WriteExit(u32 destination, int exit_num)
@@ -206,9 +206,9 @@ void JitArm::WriteExit(u32 destination, int exit_num)
 	else 
 	{
 		ARMReg A = gpr.GetReg(false);
-		ARMABI_MOVI2R(A, destination);
+		MOVI2R(A, destination);
 		STR(R9, A, STRUCT_OFF(PowerPC::ppcState, pc));
-		ARMABI_MOVI2R(A, (u32)asm_routines.dispatcher);
+		MOVI2R(A, (u32)asm_routines.dispatcher);
 		B(A);	
 	}
 }
@@ -362,7 +362,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		FixupBranch skip = B_CC(CC_PL);
 		ARMABI_MOVI2M((u32)&PC, js.blockStart);
 		ARMReg rA = gpr.GetReg(false);
-		ARMABI_MOVI2R(rA, (u32)asm_routines.doTiming);
+		MOVI2R(rA, (u32)asm_routines.doTiming);
 		B(rA);
 		SetJumpTarget(skip);
 	}
@@ -379,12 +379,12 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		ARMReg A = gpr.GetReg();
 		ARMReg C = gpr.GetReg();
 		Operand2 Shift(2, 10); // 1 << 13
-		ARMABI_MOVI2R(C, js.blockStart); // R3
+		MOVI2R(C, js.blockStart); // R3
 		LDR(A, R9, STRUCT_OFF(PowerPC::ppcState, msr));
 		TST(A, Shift);
 		FixupBranch b1 = B_CC(CC_NEQ);
 		STR(R9, C, STRUCT_OFF(PowerPC::ppcState, pc));
-		ARMABI_MOVI2R(A, (u32)asm_routines.fpException);
+		MOVI2R(A, (u32)asm_routines.fpException);
 		B(A);
 		SetJumpTarget(b1);
 		gpr.Unlock(A, C);	
@@ -393,7 +393,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	if (Profiler::g_ProfileBlocks) {
 		ARMReg rA = gpr.GetReg();
 		ARMReg rB = gpr.GetReg();
-		ARMABI_MOVI2R(rA, (u32)&b->runCount); // Load in to register
+		MOVI2R(rA, (u32)&b->runCount); // Load in to register
 		LDR(rB, rA); // Load the actual value in to R11.
 		ADD(rB, rB, 1); // Add one to the value
 		STR(rA, rB); // Now store it back in the memory location 
@@ -456,7 +456,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 			// Add run count
 			ARMReg RA = gpr.GetReg();
 			ARMReg RB = gpr.GetReg();
-			ARMABI_MOVI2R(RA, (u32)&opinfo->runCount);
+			MOVI2R(RA, (u32)&opinfo->runCount);
 			LDR(RB, RA);
 			ADD(RB, RB, 1);
 			STR(RA, RB);

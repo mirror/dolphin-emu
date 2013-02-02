@@ -66,11 +66,11 @@ void JitArm::addi(UGeckoInstruction inst)
 	{
 		ARMReg rA = gpr.GetReg(false);
 		ARMReg RA = gpr.R(inst.RA);
-		ARMABI_MOVI2R(rA, (u32)inst.SIMM_16);
+		MOVI2R(rA, (u32)inst.SIMM_16);
 		ADD(RD, RA, rA);
 	}
 	else
-		ARMABI_MOVI2R(RD, inst.SIMM_16);
+		MOVI2R(RD, inst.SIMM_16);
 }
 void JitArm::addis(UGeckoInstruction inst)
 {
@@ -82,11 +82,11 @@ void JitArm::addis(UGeckoInstruction inst)
 	{
 		ARMReg rA = gpr.GetReg(false);
 		ARMReg RA = gpr.R(inst.RA);
-		ARMABI_MOVI2R(rA, inst.SIMM_16 << 16);
+		MOVI2R(rA, inst.SIMM_16 << 16);
 		ADD(RD, RA, rA);
 	}
 	else
-		ARMABI_MOVI2R(RD, inst.SIMM_16 << 16);
+		MOVI2R(RD, inst.SIMM_16 << 16);
 }
 void JitArm::addx(UGeckoInstruction inst)
 {
@@ -109,7 +109,7 @@ void JitArm::mulli(UGeckoInstruction inst)
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RD = gpr.R(inst.RD);
 	ARMReg rA = gpr.GetReg();
-	ARMABI_MOVI2R(rA, inst.SIMM_16);
+	MOVI2R(rA, inst.SIMM_16);
 	MUL(RD, RA, rA);
 	gpr.Unlock(rA);
 }
@@ -121,7 +121,7 @@ void JitArm::ori(UGeckoInstruction inst)
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RS = gpr.R(inst.RS);
 	ARMReg rA = gpr.GetReg();
-	ARMABI_MOVI2R(rA, inst.UIMM);
+	MOVI2R(rA, inst.UIMM);
 	ORR(RA, RS, rA);
 	gpr.Unlock(rA);
 }
@@ -133,7 +133,7 @@ void JitArm::oris(UGeckoInstruction inst)
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RS = gpr.R(inst.RS);
 	ARMReg rA = gpr.GetReg();
-	ARMABI_MOVI2R(rA, inst.UIMM << 16);
+	MOVI2R(rA, inst.UIMM << 16);
 	ORR(RA, RS, rA);
 	gpr.Unlock(rA);
 }
@@ -195,7 +195,7 @@ void JitArm::cmpi(UGeckoInstruction inst)
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg rA = gpr.GetReg();
 	int crf = inst.CRFD;
-	ARMABI_MOVI2R(rA, inst.SIMM_16);
+	MOVI2R(rA, inst.SIMM_16);
 	CMP(RA, rA);
 	gpr.Unlock(rA);
 	ComputeRC(crf);
@@ -208,7 +208,7 @@ void JitArm::cmpli(UGeckoInstruction inst)
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg rA = gpr.GetReg();
 	int crf = inst.CRFD;
-	ARMABI_MOVI2R(rA, (u32)inst.UIMM);
+	MOVI2R(rA, (u32)inst.UIMM);
 	CMP(RA, rA);
 
 	// Unsigned GenerateRC()
@@ -253,7 +253,7 @@ void JitArm::rlwimix(UGeckoInstruction inst)
 	ARMReg RS = gpr.R(inst.RS);
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
-	ARMABI_MOVI2R(rA, mask);
+	MOVI2R(rA, mask);
 
 	Operand2 Shift(32 - inst.SH, ST_ROR, RS); // This rotates left, while ARM has only rotate right, so swap it.
 	if (inst.Rc)
@@ -280,7 +280,7 @@ void JitArm::rlwinmx(UGeckoInstruction inst)
 	ARMReg RA = gpr.R(inst.RA);
 	ARMReg RS = gpr.R(inst.RS);
 	ARMReg rA = gpr.GetReg();
-	ARMABI_MOVI2R(rA, mask);
+	MOVI2R(rA, mask);
 
 	Operand2 Shift(32 - inst.SH, ST_ROR, RS); // This rotates left, while ARM has only rotate right, so swap it.
 	if (inst.Rc)

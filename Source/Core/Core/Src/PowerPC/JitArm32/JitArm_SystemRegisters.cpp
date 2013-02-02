@@ -71,7 +71,7 @@ void JitArm::mtspr(UGeckoInstruction inst)
 
 	// OK, this is easy.
 	ARMReg rA = gpr.GetReg(false);
-	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.spr);
+	MOVI2R(rA, (u32)&PowerPC::ppcState.spr);
 	STR(rA, RD, iIndex * 4);
 }
 
@@ -92,7 +92,7 @@ void JitArm::mfspr(UGeckoInstruction inst)
 		return;
 	default:
 		ARMReg rA = gpr.GetReg(false);
-		ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.spr);
+		MOVI2R(rA, (u32)&PowerPC::ppcState.spr);
 		LDR(RD, rA, iIndex * 4);
 		break;
 	}
@@ -104,7 +104,7 @@ void JitArm::mtmsr(UGeckoInstruction inst)
 	//JITDISABLE(SystemRegisters)
 	
 	ARMReg rA = gpr.GetReg();
-	ARMABI_MOVI2R(rA, (u32)&MSR);
+	MOVI2R(rA, (u32)&MSR);
 	STR(rA, gpr.R(inst.RS));
 	gpr.Unlock(rA);
 	WriteExit(js.compilerPC + 4, 0);

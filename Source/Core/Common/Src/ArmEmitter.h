@@ -483,7 +483,7 @@ public:
 
 	void QuickCallFunction(ARMReg scratchreg, void *func);
 	// Utility functions
-	void ARMABI_MOVI2R(ARMReg reg, u32 val, bool optimize = true);
+	void MOVI2R(ARMReg reg, u32 val, bool optimize = true);
 	void ARMABI_MOVI2M(Operand2 op, Operand2 val);	
 };  // class ARMXEmitter
 

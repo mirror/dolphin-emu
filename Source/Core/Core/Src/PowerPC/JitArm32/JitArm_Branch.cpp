@@ -76,16 +76,16 @@ void JitArm::rfi(UGeckoInstruction inst)
 	ARMReg rB = gpr.GetReg();
 	ARMReg rC = gpr.GetReg();
 	ARMReg rD = gpr.GetReg();
-	ARMABI_MOVI2R(rA, (u32)&MSR);
-	ARMABI_MOVI2R(rB, (~mask) & clearMSR13);
-	ARMABI_MOVI2R(rC, mask & clearMSR13);
+	MOVI2R(rA, (u32)&MSR);
+	MOVI2R(rB, (~mask) & clearMSR13);
+	MOVI2R(rC, mask & clearMSR13);
 
 	LDR(rD, rA);
 
 	AND(rD, rD, rB); // rD = Masked MSR
 	STR(rA, rD);
 
-	ARMABI_MOVI2R(rB, (u32)&SRR1);
+	MOVI2R(rB, (u32)&SRR1);
 	LDR(rB, rB); // rB contains SRR1 here
 
 	AND(rB, rB, rC); // rB contains masked SRR1 here
@@ -93,7 +93,7 @@ void JitArm::rfi(UGeckoInstruction inst)
 
 	STR(rA, rB); // STR rB in to rA
 
-	ARMABI_MOVI2R(rA, (u32)&SRR0);
+	MOVI2R(rA, (u32)&SRR0);
 	LDR(rA, rA);
 	
 	gpr.Unlock(rB, rC, rD);
@@ -161,7 +161,7 @@ void JitArm::bcx(UGeckoInstruction inst)
 	FixupBranch pCTRDontBranch;
 	if ((inst.BO & BO_DONT_DECREMENT_FLAG) == 0)  // Decrement and test CTR
 	{
-		ARMABI_MOVI2R(rA, (u32)&CTR);
+		MOVI2R(rA, (u32)&CTR);
 		LDR(rB, rA);
 		SUBS(rB, rB, 1);
 		STR(rA, rB);
@@ -223,7 +223,7 @@ void JitArm::bcctrx(UGeckoInstruction inst)
 			ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
 		ARMReg rA = gpr.GetReg();
 		ARMReg rB = gpr.GetReg();
-		ARMABI_MOVI2R(rA, (u32)&CTR);
+		MOVI2R(rA, (u32)&CTR);
 		MVN(rB, 0x3); // 0xFFFFFFFC
 		LDR(rA, rA);
 		AND(rA, rA, rB);
@@ -248,7 +248,7 @@ void JitArm::bcctrx(UGeckoInstruction inst)
 			branch = CC_NEQ;
 		FixupBranch b = B_CC(branch);
 
-		ARMABI_MOVI2R(rA, (u32)&CTR);
+		MOVI2R(rA, (u32)&CTR);
 		LDR(rA, rA);
 		MVN(rB, 0x3); // 0xFFFFFFFC
 		AND(rA, rA, rB);
@@ -256,7 +256,7 @@ void JitArm::bcctrx(UGeckoInstruction inst)
 		if (inst.LK_3){
 			ARMReg rC = gpr.GetReg(false);
 			u32 Jumpto = js.compilerPC + 4;
-			ARMABI_MOVI2R(rB, (u32)&LR);
+			MOVI2R(rB, (u32)&LR);
 			MOVW(rC, Jumpto);
 			MOVT(rC, Jumpto, true);
 			STR(rB, rC);
@@ -288,7 +288,7 @@ void JitArm::bclrx(UGeckoInstruction inst)
 	FixupBranch pCTRDontBranch;
 	if ((inst.BO & BO_DONT_DECREMENT_FLAG) == 0)  // Decrement and test CTR
 	{
-		ARMABI_MOVI2R(rA, (u32)&CTR);
+		MOVI2R(rA, (u32)&CTR);
 		LDR(rB, rA);
 		SUBS(rB, rB, 1);
 		STR(rA, rB);
@@ -321,14 +321,14 @@ void JitArm::bclrx(UGeckoInstruction inst)
 
 	//MOV(32, R(EAX), M(&LR));	
 	//AND(32, R(EAX), Imm32(0xFFFFFFFC));
-	ARMABI_MOVI2R(rA, (u32)&LR);
+	MOVI2R(rA, (u32)&LR);
 	MVN(rB, 0x3); // 0xFFFFFFFC
 	LDR(rA, rA);
 	AND(rA, rA, rB);
 	if (inst.LK){
 		ARMReg rC = gpr.GetReg(false);
 		u32 Jumpto = js.compilerPC + 4;
-		ARMABI_MOVI2R(rB, (u32)&LR);
+		MOVI2R(rB, (u32)&LR);
 		MOVW(rC, Jumpto);
 		MOVT(rC, Jumpto, true);
 		STR(rB, rC);
