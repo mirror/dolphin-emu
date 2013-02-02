@@ -36,9 +36,9 @@ using namespace ArmGen;
 	void JitArmBlockCache::WriteDestroyBlock(const u8* location, u32 address)
 	{
 		ARMXEmitter emit((u8 *)location);
-		emit.MOVI2R(R10, (u32)&PC);
-		emit.MOVI2R(R11, address);
-		emit.MOVI2R(R12, (u32)jit->GetAsmRoutines()->dispatcher);
+		emit.ARMABI_MOVI2R(R10, (u32)&PC);
+		emit.ARMABI_MOVI2R(R11, address);
+		emit.ARMABI_MOVI2R(R12, (u32)jit->GetAsmRoutines()->dispatcher);
 		emit.STR(R10, R11);
 		emit.B(R12);
 	}

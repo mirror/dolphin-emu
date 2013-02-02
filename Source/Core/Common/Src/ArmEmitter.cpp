@@ -78,7 +78,7 @@ bool TryMakeOperand2_AllowNegation(s32 imm, Operand2 &op2, bool *negated)
 	}
 }
 
-void ARMXEmitter::MOVI2R(ARMReg reg, u32 val, bool optimize)
+void ARMXEmitter::ARMABI_MOVI2R(ARMReg reg, u32 val, bool optimize)
 {
 	Operand2 op2;
 	bool inverse;
@@ -94,7 +94,7 @@ void ARMXEmitter::MOVI2R(ARMReg reg, u32 val, bool optimize)
 		{
 			// ARMv6 version won't use backpatch for now
 			// Run again with optimizations
-			MOVI2R(reg, val);
+			ARMABI_MOVI2R(reg, val);
 		}
 	} else if (TryMakeOperand2_AllowInverse(val, op2, &inverse)) {
 		if (!inverse)
@@ -130,7 +130,7 @@ void ARMXEmitter::MOVI2R(ARMReg reg, u32 val, bool optimize)
 	}
 }
 // Moves IMM to memory location
-void ARMXEmitter::MOVI2M(Operand2 op, Operand2 val)
+void ARMXEmitter::ARMABI_MOVI2M(Operand2 op, Operand2 val)
 {
 	// This moves imm to a memory location
 	MOVW(R14, val); MOVT(R14, val, true);
@@ -138,7 +138,7 @@ void ARMXEmitter::MOVI2M(Operand2 op, Operand2 val)
 	STR(R12, R14); // R10 is what we want to store
 }
 void ARMXEmitter::QuickCallFunction(ARMReg reg, void *func) {
-	MOVI2R(reg, (u32)(func));
+	ARMABI_MOVI2R(reg, (u32)(func));
 	BL(reg);
 }
 

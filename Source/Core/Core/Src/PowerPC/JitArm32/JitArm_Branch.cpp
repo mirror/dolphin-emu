@@ -51,7 +51,7 @@ void JitArm::sc(UGeckoInstruction inst)
 	ARMReg rB = gpr.GetReg();
 	ARMReg rC = gpr.GetReg();
 	
-	MOVI2R(rA, js.compilerPC + 4);
+	ARMABI_MOVI2R(rA, js.compilerPC + 4);
 	STR(R9, rA, STRUCT_OFFSET(PowerPC::ppcState, pc));
 
 	LDR(rB, R9, STRUCT_OFFSET(PowerPC::ppcState, Exceptions));
@@ -82,16 +82,16 @@ void JitArm::rfi(UGeckoInstruction inst)
 	ARMReg rB = gpr.GetReg();
 	ARMReg rC = gpr.GetReg();
 	ARMReg rD = gpr.GetReg();
-	MOVI2R(rA, (u32)&MSR);
-	MOVI2R(rB, (~mask) & clearMSR13);
-	MOVI2R(rC, mask & clearMSR13);
+	ARMABI_MOVI2R(rA, (u32)&MSR);
+	ARMABI_MOVI2R(rB, (~mask) & clearMSR13);
+	ARMABI_MOVI2R(rC, mask & clearMSR13);
 
 	LDR(rD, rA);
 
 	AND(rD, rD, rB); // rD = Masked MSR
 	STR(rA, rD);
 
-	MOVI2R(rB, (u32)&SRR1);
+	ARMABI_MOVI2R(rB, (u32)&SRR1);
 	LDR(rB, rB); // rB contains SRR1 here
 
 	AND(rB, rB, rC); // rB contains masked SRR1 here
@@ -99,7 +99,7 @@ void JitArm::rfi(UGeckoInstruction inst)
 
 	STR(rA, rB); // STR rB in to rA
 
-	MOVI2R(rA, (u32)&SRR0);
+	ARMABI_MOVI2R(rA, (u32)&SRR0);
 	LDR(rA, rA);
 	
 	gpr.Unlock(rB, rC, rD);
@@ -120,7 +120,7 @@ void JitArm::bx(UGeckoInstruction inst)
 	// We must always process the following sentence
 	// even if the blocks are merged by PPCAnalyst::Flatten().
 	if (inst.LK)
-		MOVI2M((u32)&LR, js.compilerPC + 4);
+		ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
 
 	// If this is not the last instruction of a block,
 	// we will skip the rest process.
@@ -167,7 +167,7 @@ void JitArm::bcx(UGeckoInstruction inst)
 	FixupBranch pCTRDontBranch;
 	if ((inst.BO & BO_DONT_DECREMENT_FLAG) == 0)  // Decrement and test CTR
 	{
-		MOVI2R(rA, (u32)&CTR);
+		ARMABI_MOVI2R(rA, (u32)&CTR);
 		LDR(rB, rA);
 		SUBS(rB, rB, 1);
 		STR(rA, rB);
@@ -194,7 +194,7 @@ void JitArm::bcx(UGeckoInstruction inst)
 	}
 	gpr.Unlock(rA, rB);
 	if (inst.LK)
-		MOVI2M((u32)&LR, js.compilerPC + 4); // Careful, destroys R14, R12
+		ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4); // Careful, destroys R14, R12
 	
 	u32 destination;
 	if(inst.AA)
@@ -227,10 +227,10 @@ void JitArm::bcctrx(UGeckoInstruction inst)
 
 		//NPC = CTR & 0xfffffffc;
 		if(inst.LK_3)
-			MOVI2M((u32)&LR, js.compilerPC + 4);
+			ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
 		ARMReg rA = gpr.GetReg();
 		ARMReg rB = gpr.GetReg();
-		MOVI2R(rA, (u32)&CTR);
+		ARMABI_MOVI2R(rA, (u32)&CTR);
 		MVN(rB, 0x3); // 0xFFFFFFFC
 		LDR(rA, rA);
 		AND(rA, rA, rB);
@@ -256,7 +256,7 @@ void JitArm::bcctrx(UGeckoInstruction inst)
 			branch = CC_NEQ;
 		FixupBranch b = B_CC(branch);
 
-		MOVI2R(rA, (u32)&CTR);
+		ARMABI_MOVI2R(rA, (u32)&CTR);
 		LDR(rA, rA);
 		MVN(rB, 0x3); // 0xFFFFFFFC
 		AND(rA, rA, rB);
@@ -264,11 +264,11 @@ void JitArm::bcctrx(UGeckoInstruction inst)
 		if (inst.LK_3){
 			ARMReg rC = gpr.GetReg(false);
 			u32 Jumpto = js.compilerPC + 4;
-			MOVI2R(rB, (u32)&LR);
+			ARMABI_MOVI2R(rB, (u32)&LR);
 			MOVW(rC, Jumpto);
 			MOVT(rC, Jumpto, true);
 			STR(rB, rC);
-			//MOVI2M((u32)&LR, js.compilerPC + 4);
+			//ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
 		}
 		gpr.Unlock(rB); // rA gets unlocked in WriteExitDestInR
 		WriteExitDestInR(rA);
@@ -285,7 +285,7 @@ void JitArm::bclrx(UGeckoInstruction inst)
 		(inst.BO & (1 << 4)) && (inst.BO & (1 << 2))) {
 		if (inst.LK)
 		{
-			MOVI2M((u32)&LR, js.compilerPC + 4);
+			ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
 		}
 		return;
 	}
@@ -296,7 +296,7 @@ void JitArm::bclrx(UGeckoInstruction inst)
 	FixupBranch pCTRDontBranch;
 	if ((inst.BO & BO_DONT_DECREMENT_FLAG) == 0)  // Decrement and test CTR
 	{
-		MOVI2R(rA, (u32)&CTR);
+		ARMABI_MOVI2R(rA, (u32)&CTR);
 		LDR(rB, rA);
 		SUBS(rB, rB, 1);
 		STR(rA, rB);
@@ -330,18 +330,18 @@ void JitArm::bclrx(UGeckoInstruction inst)
 
 	//MOV(32, R(EAX), M(&LR));	
 	//AND(32, R(EAX), Imm32(0xFFFFFFFC));
-	MOVI2R(rA, (u32)&LR);
+	ARMABI_MOVI2R(rA, (u32)&LR);
 	MVN(rB, 0x3); // 0xFFFFFFFC
 	LDR(rA, rA);
 	AND(rA, rA, rB);
 	if (inst.LK){
 		ARMReg rC = gpr.GetReg(false);
 		u32 Jumpto = js.compilerPC + 4;
-		MOVI2R(rB, (u32)&LR);
+		ARMABI_MOVI2R(rB, (u32)&LR);
 		MOVW(rC, Jumpto);
 		MOVT(rC, Jumpto, true);
 		STR(rB, rC);
-		//MOVI2M((u32)&LR, js.compilerPC + 4);
+		//ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
 	}
 	gpr.Unlock(rB); // rA gets unlocked in WriteExitDestInR
 	WriteExitDestInR(rA);

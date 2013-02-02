@@ -76,8 +76,8 @@ void JitArm::WriteCallInterpreter(UGeckoInstruction inst)
 	gpr.Flush();
 	//fpr.Flush(FLUSH_ALL);
 	Interpreter::_interpreterInstruction instr = GetInterpreterOp(inst);
-	MOVI2R(R0, inst.hex);
-	MOVI2R(R12, (u32)instr);
+	ARMABI_MOVI2R(R0, inst.hex);
+	ARMABI_MOVI2R(R12, (u32)instr);
 	BL(R12);
 }
 void JitArm::unknown_instruction(UGeckoInstruction inst)
@@ -94,8 +94,8 @@ void JitArm::HLEFunction(UGeckoInstruction _inst)
 {
 	gpr.Flush();
 //	fpr.Flush(FLUSH_ALL);
-	MOVI2R(R0, js.compilerPC);
-	MOVI2R(R1, _inst.hex);
+	ARMABI_MOVI2R(R0, js.compilerPC);
+	ARMABI_MOVI2R(R1, _inst.hex);
 	QuickCallFunction(R14, (void*)&HLE::Execute); 
 	ARMReg rA = gpr.GetReg();
 	LDR(rA, R9, STRUCT_OFF(PowerPC::ppcState, npc));
@@ -141,7 +141,7 @@ void JitArm::DoDownCount()
 {
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
-	MOVI2R(rA, (u32)&CoreTiming::downcount);
+	ARMABI_MOVI2R(rA, (u32)&CoreTiming::downcount);
 	LDR(rB, rA);
 	if(js.downcountAmount < 255) // We can enlarge this if we used rotations
 	{
@@ -151,7 +151,7 @@ void JitArm::DoDownCount()
 	else
 	{
 		ARMReg rC = gpr.GetReg(false);
-		MOVI2R(rC, js.downcountAmount);
+		ARMABI_MOVI2R(rC, js.downcountAmount);
 		SUBS(rB, rB, rC);
 		STR(rA, rB);
 	}
@@ -165,7 +165,7 @@ void JitArm::WriteExitDestInR(ARMReg Reg)
 	DoDownCount();
 
 	ARMReg A = gpr.GetReg();
-	MOVI2R(A, (u32)asm_routines.dispatcher);
+	ARMABI_MOVI2R(A, (u32)asm_routines.dispatcher);
 	B(A);
 	gpr.Unlock(A);
 }
@@ -177,7 +177,7 @@ void JitArm::WriteRfiExitDestInR(ARMReg Reg)
 	DoDownCount();
 
 	ARMReg A = gpr.GetReg();
-	MOVI2R(A, (u32)asm_routines.testExceptions);
+	ARMABI_MOVI2R(A, (u32)asm_routines.testExceptions);
 	B(A);
 	gpr.Unlock(A);
 }
@@ -187,7 +187,7 @@ void JitArm::WriteExceptionExit()
 	DoDownCount();
 
 	ARMReg A = gpr.GetReg(false);
-	MOVI2R(A, (u32)asm_routines.testExceptions);
+	ARMABI_MOVI2R(A, (u32)asm_routines.testExceptions);
 	B(A);
 }
 void JitArm::WriteExit(u32 destination, int exit_num)
@@ -211,9 +211,9 @@ void JitArm::WriteExit(u32 destination, int exit_num)
 	else 
 	{
 		ARMReg A = gpr.GetReg(false);
-		MOVI2R(A, destination);
+		ARMABI_MOVI2R(A, destination);
 		STR(R9, A, STRUCT_OFF(PowerPC::ppcState, pc));
-		MOVI2R(A, (u32)asm_routines.dispatcher);
+		ARMABI_MOVI2R(A, (u32)asm_routines.dispatcher);
 		B(A);	
 	}
 }
@@ -366,9 +366,9 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	{
 		FixupBranch skip = B_CC(CC_PL);
 		ARMReg rA = gpr.GetReg(false);
-		MOVI2R(rA, js.blockStart);
+		ARMABI_MOVI2R(rA, js.blockStart);
 		STR(R9, rA, STRUCT_OFF(PowerPC::ppcState, pc));
-		MOVI2R(rA, (u32)asm_routines.doTiming);
+		ARMABI_MOVI2R(rA, (u32)asm_routines.doTiming);
 		B(rA);
 		SetJumpTarget(skip);
 	}
@@ -385,12 +385,12 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		ARMReg A = gpr.GetReg();
 		ARMReg C = gpr.GetReg();
 		Operand2 Shift(2, 10); // 1 << 13
-		MOVI2R(C, js.blockStart); // R3
+		ARMABI_MOVI2R(C, js.blockStart); // R3
 		LDR(A, R9, STRUCT_OFF(PowerPC::ppcState, msr));
 		TST(A, Shift);
 		FixupBranch b1 = B_CC(CC_NEQ);
 		STR(R9, C, STRUCT_OFF(PowerPC::ppcState, pc));
-		MOVI2R(A, (u32)asm_routines.fpException);
+		ARMABI_MOVI2R(A, (u32)asm_routines.fpException);
 		B(A);
 		SetJumpTarget(b1);
 		gpr.Unlock(A, C);	
@@ -399,7 +399,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	if (Profiler::g_ProfileBlocks) {
 		ARMReg rA = gpr.GetReg();
 		ARMReg rB = gpr.GetReg();
-		MOVI2R(rA, (u32)&b->runCount); // Load in to register
+		ARMABI_MOVI2R(rA, (u32)&b->runCount); // Load in to register
 		LDR(rB, rA); // Load the actual value in to R11.
 		ADD(rB, rB, 1); // Add one to the value
 		STR(rA, rB); // Now store it back in the memory location 
@@ -462,7 +462,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 			// Add run count
 			ARMReg RA = gpr.GetReg();
 			ARMReg RB = gpr.GetReg();
-			MOVI2R(RA, (u32)&opinfo->runCount);
+			ARMABI_MOVI2R(RA, (u32)&opinfo->runCount);
 			LDR(RB, RA);
 			ADD(RB, RB, 1);
 			STR(RA, RB);
