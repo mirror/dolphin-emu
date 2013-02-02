@@ -47,6 +47,7 @@ void JitArmAsmRoutineManager::Generate()
 	PUSH(2, R11, _LR); // R11 is frame pointer in Debug.
 
 	ARMABI_MOVI2R(R0, (u32)&CoreTiming::downcount);
+	ARMABI_MOVI2R(R9, (u32)&PowerPC::ppcState);
 
 	FixupBranch skipToRealDispatcher = B();
 	dispatcher = GetCodePtr();	
@@ -62,29 +63,28 @@ void JitArmAsmRoutineManager::Generate()
 
 		// This block of code gets the address of the compiled block of code
 		// It runs though to the compiling portion if it isn't found
-			ARMABI_MOVI2R(R9, (u32)&PC);
-			LDR(R9, R9);// Load the current PC into R9
+			LDR(R12, R9, STRUCT_OFF(PowerPC::ppcState, pc));// Load the current PC into R12
 
-			ARMABI_MOVI2R(R10, JIT_ICACHE_MASK); // Potential for optimization
-			AND(R9, R9, R10); // R9 contains PC & JIT_ICACHE_MASK here.
+			ARMABI_MOVI2R(R14, JIT_ICACHE_MASK); // Potential for optimization
+			AND(R12, R12, R14); // R12 contains PC & JIT_ICACHE_MASK here.
 			// Confirmed good to this point 08-03-12
 
-			ARMABI_MOVI2R(R10, (u32)jit->GetBlockCache()->GetICache());
+			ARMABI_MOVI2R(R14, (u32)jit->GetBlockCache()->GetICache());
 			// Confirmed That this loads the base iCache Location correctly 08-04-12
 
-			LDR(R9, R10, R9, true, true); // R9 contains iCache[PC & JIT_ICACHE_MASK] here
-			// R9 Confirmed this is the correct iCache Location loaded.
-			TST(R9, 0xFC); // Test  to see if it is a JIT block.
+			LDR(R12, R14, R12, true, true); // R12 contains iCache[PC & JIT_ICACHE_MASK] here
+			// R12 Confirmed this is the correct iCache Location loaded.
+			TST(R12, 0xFC); // Test  to see if it is a JIT block.
 
-			SetCC(CC_EQ); // Only run next part if R9 is zero
+			SetCC(CC_EQ); // Only run next part if R12 is zero
 			// Success, it is our Jitblock.
-			ARMABI_MOVI2R(R10, (u32)jit->GetBlockCache()->GetCodePointers());
-			// LDR R10 right here to get CodePointers()[0] pointer.
-			REV(R9, R9); // Reversing this gives us our JITblock.
-			LSL(R9, R9, 2); // Multiply by four because address locations are u32 in size 
-			LDR(R10, R10, R9, true, true); // Load the block address in to R10 
+			ARMABI_MOVI2R(R14, (u32)jit->GetBlockCache()->GetCodePointers());
+			// LDR R14 right here to get CodePointers()[0] pointer.
+			REV(R12, R12); // Reversing this gives us our JITblock.
+			LSL(R12, R12, 2); // Multiply by four because address locations are u32 in size 
+			LDR(R14, R14, R12, true, true); // Load the block address in to R14 
 
-			B(R10);
+			B(R14);
 			
 			FixupBranch NextBlock = B(); // Jump to end so we can start a new block
 			SetCC(); // Return to always executing codes
@@ -92,8 +92,7 @@ void JitArmAsmRoutineManager::Generate()
 		// If we get to this point, that means that we don't have the block cached to execute
 		// So call ArmJit to compile the block and then execute it.
 		ARMABI_MOVI2R(R14, (u32)&Jit);	
-		ARMABI_MOVI2R(R0, (u32)&PC);
-		LDR(R0, R0);
+		LDR(R0, R9, STRUCT_OFF(PowerPC::ppcState, pc));
 		BL(R14);
 			
 		B(dispatcherNoCheck);
@@ -101,16 +100,12 @@ void JitArmAsmRoutineManager::Generate()
 		// fpException()
 		// Floating Point Exception Check, Jumped to if false
 		fpException = GetCodePtr();
-			ARMABI_MOVI2R(R0, (u32)&PowerPC::ppcState.Exceptions);
-			ARMABI_MOVI2R(R2, EXCEPTION_FPU_UNAVAILABLE); // Potentially can be optimized
-			LDREX(R1, R0);
-			ORR(R1, R1, R2);
-			STREX(R2, R0, R1);
+			LDR(R0, R9, STRUCT_OFF(PowerPC::ppcState, Exceptions));
+			ORR(R0, R0, EXCEPTION_FPU_UNAVAILABLE);
+			STR(R9, R0, STRUCT_OFF(PowerPC::ppcState, Exceptions));
 				QuickCallFunction(R14, (void*)&PowerPC::CheckExceptions);
-			ARMABI_MOVI2R(R0, (u32)&NPC);
-			ARMABI_MOVI2R(R1, (u32)&PC);
-			LDR(R0, R0);
-			STR(R1, R0);
+			LDR(R0, R9, STRUCT_OFF(PowerPC::ppcState, npc));
+			STR(R9, R0, STRUCT_OFF(PowerPC::ppcState, pc));
 		B(dispatcher);
 
 		SetJumpTarget(bail);
@@ -121,15 +116,11 @@ void JitArmAsmRoutineManager::Generate()
 
 		// Does exception checking 
 		testExceptions = GetCodePtr();
-			ARMABI_MOVI2R(R0, (u32)&PC);
-			ARMABI_MOVI2R(R1, (u32)&NPC);
-			LDR(R0, R0);
-			STR(R1, R0);
+			LDR(R0, R9, STRUCT_OFF(PowerPC::ppcState, pc));
+			STR(R9, R0, STRUCT_OFF(PowerPC::ppcState, npc));
 				QuickCallFunction(R14, (void*)&PowerPC::CheckExceptions);
-			ARMABI_MOVI2R(R0, (u32)&PC);
-			ARMABI_MOVI2R(R1, (u32)&NPC);
-			LDR(R1, R1);
-			STR(R0, R1);
+			LDR(R0, R9, STRUCT_OFF(PowerPC::ppcState, npc));
+			STR(R9, R0, STRUCT_OFF(PowerPC::ppcState, pc));
 		// Check the state pointer to see if we are exiting
 		// Gets checked on every exception check
 			ARMABI_MOVI2R(R0, (u32)PowerPC::GetStatePtr());

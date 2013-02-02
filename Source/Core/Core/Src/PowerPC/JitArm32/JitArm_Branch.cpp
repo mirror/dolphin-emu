@@ -49,14 +49,10 @@ void JitArm::sc(UGeckoInstruction inst)
 	//fpr.Flush(FLUSH_ALL);
 	ARMABI_MOVI2M((u32)&PC, js.compilerPC + 4); // Destroys R12 and R14
 	ARMReg rA = gpr.GetReg();
-	ARMReg rB = gpr.GetReg();
-	ARMReg rC = gpr.GetReg();
-	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.Exceptions);
-	LDREX(rB, rA);
-	ORR(rB, rB, EXCEPTION_SYSCALL);
-	STREX(rC, rA, rB);
-	DMB();
-	gpr.Unlock(rA, rB, rC);
+	LDR(rA, R9, STRUCT_OFF(PowerPC::ppcState, Exceptions));
+	ORR(rA, rA, EXCEPTION_SYSCALL);
+	STR(R9, rA, STRUCT_OFF(PowerPC::ppcState, Exceptions));
+	gpr.Unlock(rA);
 
 	WriteExceptionExit();
 }
@@ -180,10 +176,8 @@ void JitArm::bcx(UGeckoInstruction inst)
 	FixupBranch pConditionDontBranch;
 	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)  // Test a CR bit
 	{
-		ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
-		LDRB(rA, rA);
-		MOV(rB, 8 >> (inst.BI & 3));
-		TST(rA, rB);
+		LDRB(rA, R9, STRUCT_OFF(PowerPC::ppcState, cr_fast) + (inst.BI >> 2));
+		TST(rA, 8 >> (inst.BI & 3));
 
 		//TEST(8, M(&PowerPC::ppcState.cr_fast[inst.BI >> 2]), Imm8(8 >> (inst.BI & 3)));
 		if (inst.BO & BO_BRANCH_IF_TRUE)  // Conditional branch 
@@ -245,10 +239,8 @@ void JitArm::bcctrx(UGeckoInstruction inst)
 		ARMReg rA = gpr.GetReg();
 		ARMReg rB = gpr.GetReg();
 		
-		ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
-		MOV(rB, 8 >> (inst.BI & 3));
-		LDR(rA, rA);
-		TST(rA, rB);
+		LDRB(rA, R9, STRUCT_OFF(PowerPC::ppcState, cr_fast) + (inst.BI >> 2));
+		TST(rA, 8 >> (inst.BI & 3));
 		CCFlags branch;
 		if (inst.BO_2 & BO_BRANCH_IF_TRUE)
 			branch = CC_EQ;
@@ -311,10 +303,8 @@ void JitArm::bclrx(UGeckoInstruction inst)
 	FixupBranch pConditionDontBranch;
 	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)  // Test a CR bit
 	{
-		ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.cr_fast[inst.BI >> 2]); 
-		MOV(rB, 8 >> (inst.BI & 3));
-		LDR(rA, rA);
-		TST(rA, rB);
+		LDRB(rA, R9, STRUCT_OFF(PowerPC::ppcState, cr_fast) + (inst.BI >> 2));
+		TST(rA, 8 >> (inst.BI & 3));
 		//TEST(8, M(&PowerPC::ppcState.cr_fast[inst.BI >> 2]), Imm8(8 >> (inst.BI & 3)));
 		if (inst.BO & BO_BRANCH_IF_TRUE)  // Conditional branch 
 			pConditionDontBranch = B_CC(CC_EQ); // Zero
