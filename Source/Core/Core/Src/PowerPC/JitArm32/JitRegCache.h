@@ -29,14 +29,11 @@ using namespace ArmGen;
 // use of PPC Registers.
 // Allocation order as follows
 #define ARMREGS 16
-// Allocate R0 to R8 for PPC first.
+// Allocate R0 to R9 for PPC first.
 // For General registers on the host side, start with R14 and go down as we go
 // R13 is reserved for our stack pointer, don't ever use that. Unless you save
 // it
 // So we have R14, R12, R11, R10 to work with instructions
-
-// STATIC REGISTER ALLOCATION
-// R9 - ppcState
 
 struct PPCCachedReg
 {

@@ -102,8 +102,10 @@ void JitArm::stwu(UGeckoInstruction inst)
 
 	// Check and set the update before writing since calling a function can
 	// mess with the "special registers R11+ which may cause some issues.
-	LDR(Function, R9, STRUCT_OFFSET(PowerPC::ppcState, Exceptions));
-	CMP(Function, EXCEPTION_DSI);
+	ARMABI_MOVI2R(Function, (u32)&PowerPC::ppcState.Exceptions);
+	LDR(Function, Function);
+	ARMABI_MOVI2R(ValueReg, EXCEPTION_DSI);
+	CMP(Function, ValueReg);
 	FixupBranch DoNotWrite = B_CC(CC_EQ);
 	MOV(RA, Addr);
 	SetJumpTarget(DoNotWrite);
@@ -222,8 +224,10 @@ void JitArm::lbz(UGeckoInstruction inst)
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
 	ARMReg RD = gpr.R(inst.RD);
-	LDR(rA, R9, STRUCT_OFFSET(PowerPC::ppcState, Exceptions));
-	CMP(rA, EXCEPTION_DSI);
+	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.Exceptions);
+	LDR(rA, rA);
+	ARMABI_MOVI2R(rB, EXCEPTION_DSI);
+	CMP(rA, rB);
 	FixupBranch DoNotLoad = B_CC(CC_EQ);
 #if FASTMEM
 	// Backpatch route
@@ -270,8 +274,10 @@ void JitArm::lhz(UGeckoInstruction inst)
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
 	ARMReg RD = gpr.R(inst.RD);
-	LDR(rA, R9, STRUCT_OFFSET(PowerPC::ppcState, Exceptions));
-	CMP(rA, EXCEPTION_DSI);
+	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.Exceptions);
+	LDR(rA, rA);
+	ARMABI_MOVI2R(rB, EXCEPTION_DSI);
+	CMP(rA, rB);
 	FixupBranch DoNotLoad = B_CC(CC_EQ);
 #if 0 // FASTMEM
 	// Backpatch route
@@ -321,8 +327,10 @@ void JitArm::lwz(UGeckoInstruction inst)
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
 	ARMReg RD = gpr.R(inst.RD);
-	LDR(rA, R9, STRUCT_OFFSET(PowerPC::ppcState, Exceptions));
-	CMP(rA, EXCEPTION_DSI);
+	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.Exceptions);
+	LDR(rA, rA);
+	ARMABI_MOVI2R(rB, EXCEPTION_DSI);
+	CMP(rA, rB);
 	FixupBranch DoNotLoad = B_CC(CC_EQ);
 	
 #if FASTMEM
@@ -395,8 +403,10 @@ void JitArm::lwzx(UGeckoInstruction inst)
 
 	ARMReg RB = gpr.R(inst.RB);
 	ARMReg RD = gpr.R(inst.RD);
-	LDR(rA, R9, STRUCT_OFFSET(PowerPC::ppcState, Exceptions));
-	CMP(rA, EXCEPTION_DSI);
+	ARMABI_MOVI2R(rA, (u32)&PowerPC::ppcState.Exceptions);
+	LDR(rA, rA);
+	ARMABI_MOVI2R(rB, EXCEPTION_DSI);
+	CMP(rA, rB);
 	FixupBranch DoNotLoad = B_CC(CC_EQ);
 #if FASTMEM
 	// Backpatch route
