@@ -698,18 +698,22 @@ void ARMXEmitter::VMOV(ARMReg Dest, ARMReg Src)
 		bool Quad = DestSize == 4;
 		if (Quad)
 		{
+			_assert_msg_(DYNA_REC, cpu_info.bNEON, "Trying to use quad registers when you don't support ASIMD."); 
 			// Gets encoded as a Double register
 			Dest = (ARMReg)((Dest - Q0) * 2);
 			Src = (ARMReg)((Src - Q0) * 2);
+			Write32((0xF2 << 24) | ((Dest & 0x10) << 18) | (1 << 21) | ((Src & 0xF) << 16) \
+				| ((Dest & 0xF) << 12) | (1 << 8) | ((Src & 0x10) << 3) | (Quad << 6) \
+				| ((Src & 0x10) << 1) | (1 << 4) | (Src & 0xF));
+
 		}
 		else
 		{
 			Dest = (ARMReg)(Dest - D0);
 			Src = (ARMReg)(Src - D0);
+			Write32(NO_COND | (0x1D << 23) | ((Dest & 0x1) << 22) | (0x3 << 20) | ((Dest & 0x1E) << 11) \
+				| (0x5 << 9) | (5 << 6) | ((Src & 0x1) << 5) | ((Src & 0x1E) >> 1));
 		}
-		Write32((0xF2 << 24) | ((Dest & 0x10) << 18) | (1 << 21) | ((Src & 0xF) << 16) \
-				| ((Dest & 0xF) << 12) | (1 << 8) | ((Src & 0x10) << 3) | (Quad << 6) \
-				| ((Src & 0x10) << 1) | (1 << 4) | (Src & 0xF));
 	}
 }
 
