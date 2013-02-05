@@ -478,7 +478,8 @@ public:
 	// is deprecating conditional execution of ASIMD instructions.
 	// Some ASIMD instructions don't even have a conditional encoding.
 		
-	void VLDR(ARMReg dest, ARMReg Base, Operand2 op);
+	void VLDR(ARMReg Dest, ARMReg Base, Operand2 op);
+	void VSTR(ARMReg Src,  ARMReg Base, Operand2 op);
 	void VMOV(ARMReg Dest, ARMReg Src);
 
 	void QuickCallFunction(ARMReg scratchreg, void *func);
