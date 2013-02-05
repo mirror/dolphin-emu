@@ -484,7 +484,9 @@ public:
 	// None of these will be created with conditional since ARM
 	// is deprecating conditional execution of ASIMD instructions.
 	// ASIMD instructions don't even have a conditional encoding.
-	
+
+	// Subtracts the base from the register to give us the real one
+	ARMReg SubBase(ARMReg Reg);	
 	// NEON Only
 	void VADD(IntegerSize Size, ARMReg Vd, ARMReg Vn, ARMReg Vm);
 	void VSUB(IntegerSize Size, ARMReg Vd, ARMReg Vn, ARMReg Vm);
@@ -492,6 +494,9 @@ public:
 	// VFP Only
 	void VLDR(ARMReg Dest, ARMReg Base, Operand2 op);
 	void VSTR(ARMReg Src,  ARMReg Base, Operand2 op)
+	void VCMP(ARMReg Vd, ARMReg Vm);
+	// Compares against zero
+	void VCMP(ARMReg Vd);
 	void VDIV(ARMReg Vd, ARMReg Vn, ARMReg Vm);
 	void VSQRT(ARMReg Vd, ARMReg Vm);
 	
