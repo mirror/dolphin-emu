@@ -477,9 +477,15 @@ public:
 	// None of these will be created with conditional since ARM
 	// is deprecating conditional execution of ASIMD instructions.
 	// Some ASIMD instructions don't even have a conditional encoding.
+	
+	// NEON Only
 		
+	// VFP Only
 	void VLDR(ARMReg Dest, ARMReg Base, Operand2 op);
-	void VSTR(ARMReg Src,  ARMReg Base, Operand2 op);
+	void VSTR(ARMReg Src,  ARMReg Base, Operand2 op)
+	
+	// NEON and VFP
+	void VADD(ARMReg Vd, ARMReg Vn, ARMReg Vm);
 	void VMOV(ARMReg Dest, ARMReg Src);
 
 	void QuickCallFunction(ARMReg scratchreg, void *func);

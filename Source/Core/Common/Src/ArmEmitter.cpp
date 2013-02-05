@@ -634,6 +634,48 @@ void ARMXEmitter::VSTR(ARMReg Src, ARMReg Base, Operand2 op)
 }
 
 // VFP and ASIMD
+void ARMXEmitter::VADD(ARMReg Vd, ARMReg Vn, ARMReg Vm)
+{
+	_assert_msg_(DYNA_REC, Vd >= S0, "Passed invalid dest register to VADD");
+	_assert_msg_(DYNA_REC, Vn >= S0, "Passed invalid Vn to VADD");
+	_assert_msg_(DYNA_REC, Vm >= S0, "Passed invalid Vm to VADD");
+	bool single_reg = Vd < D0;
+	if (single_reg)
+	{
+		Vd = (ARMReg)(Vd - S0);
+		Vn = (ARMReg)(Vn - S0);
+		Vm = (ARMReg)(Vm - S0);
+		Write32(NO_COND | (0x1C << 23) | ((Vd & 0x1) << 22) | (0x3 << 20) \
+			| ((Vn & 0x1E) << 15) | ((Vd & 0x1E) << 12) | (0x5 << 9) \
+			| ((Vn & 0x1) << 7) | ((Vm & 0x1) << 5) | (Vm >> 1);
+	}
+	else
+	{
+		bool double_reg = Vd < Q0;
+		if (double_reg)
+		{
+			Vd = (ARMReg)(Vd - D0);
+			Vn = (ARMReg)(Vn - D0);
+			Vm = (ARMReg)(Vm - D0);
+
+			Write32(NO_COND | (0x1C << 23) | ((Vd & 0x10) << 18) | (0x3 << 20) \
+				| ((Vn & 0xF) << 16) | ((Vd & 0xF) << 12) | (0xB << 8) \
+				| ((Vn & 0x10) << 3) | ((Vm & 0x10) << 2) | (Vm & 0xF));
+		}
+		else
+		{
+			_assert_msg_(DYNA_REC, cpu_info.bNEON, "Trying to use VADD with Quad Reg without support!");
+			// Gets encoded as a double register
+			Vd = (ARMReg)((Vd - Q0) * 2);
+			Vn = (ARMReg)((Vn - Q0) * 2);
+			Vm = (ARMReg)((Vm - Q0) * 2);
+
+			WRITE32((0xF2 << 24) | ((Vd & 0x10) << 18) | ((Vn & 0xF) << 16) \
+				| ((Vd & 0xF) << 12) | (0xD << 8) | ((Vn & 0x10) << 3) | \
+				| (1 << 6) | ((Vm & 0x10) << 2) | (Vm & 0xF));
+		}
+	}
+}
 void ARMXEmitter::VMOV(ARMReg Dest, ARMReg Src)
 {
 	if (Dest > R15)
