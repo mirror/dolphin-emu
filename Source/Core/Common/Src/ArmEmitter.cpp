@@ -589,7 +589,20 @@ void ARMXEmitter::LDMFD(ARMReg dest, bool WriteBack, const int Regnum, ...)
 
 
 // NEON Specific
+void ARMXEmitter::VADD(IntegerSize Size, ARMReg Vd, ARMReg Vn, ARMReg Vm)
+{
+	_assert_msg_(DYNA_REC, Vd >= Q0, "Pass invalid register to VADDi");
+	_assert_msg_(DYNA_REC, cpu_info.bNEON, "Can't use VADDi when CPU doesn't support it");
+	// Gets encoded as a double register
+	Vd = (ARMReg)((Vd - Q0) * 2);
+	Vn = (ARMReg)((Vn - Q0) * 2);
+	Vm = (ARMReg)((Vm - Q0) * 2);
 
+	Write32((0xF2 << 24) | ((Vd & 0x10) << 18) | (Size << 20) | ((Vn & 0xF) << 16) \
+		| ((Vd & 0xF) << 12) | (0x8 << 8) | ((Vn & 0x10) << 3) | (1 << 6) \
+		| ((Vm & 0x10) << 2) | (Vm & 0xF)); 
+
+}
 // VFP Specific
 
 void ARMXEmitter::VLDR(ARMReg Dest, ARMReg Base, Operand2 op)

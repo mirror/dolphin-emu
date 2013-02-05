@@ -97,6 +97,13 @@ enum ShiftType
 	ST_ROR = 3,
 	ST_RRX = 4
 };
+enum IntegerSize
+{
+	I_I8 = 0, 
+	I_I16,
+	I_I32,
+	I_I64
+};
 
 enum
 {
@@ -479,6 +486,7 @@ public:
 	// Some ASIMD instructions don't even have a conditional encoding.
 	
 	// NEON Only
+	void VADD(IntegerSize Size, ARMReg Vd, ARMReg Vn, ARMReg Vm);
 		
 	// VFP Only
 	void VLDR(ARMReg Dest, ARMReg Base, Operand2 op);
