@@ -587,45 +587,53 @@ void ARMXEmitter::LDMFD(ARMReg dest, bool WriteBack, const int Regnum, ...)
 	WriteRegStoreOp(0x89, dest, WriteBack, RegList);
 }
 
-// NEON and ASIMD
+
+// NEON Specific
+
+// VFP Specific
+
 void ARMXEmitter::VLDR(ARMReg Dest, ARMReg Base, Operand2 op)
 {
 	_assert_msg_(DYNA_REC, Dest >= S0 && Dest <= D31, "Passed Invalid dest register to VLDR"); 
 	_assert_msg_(DYNA_REC, Base <= R15, "Passed invalid Base register to VLDR");
+	_assert_msg_(DYNA_REC, !(op.Imm12() & 4), "Offset needs to be word aligned");
 	bool single_reg = Dest < D0;
 	if (single_reg)
 	{
 		Dest = (ARMReg)(Dest - S0);
 		Write32(NO_COND | (0x1B << 23) | ((Dest & 0x1) << 22) | (1 << 20) | (Base << 16) \
-			((Dest & 0x1E) << 11) | (10 << 8) | op.Imm8());	
+			((Dest & 0x1E) << 11) | (10 << 8) | (op.Imm12() >> 2));	
 
 	}
 	else
 	{
 		Dest = (ARMReg)(Dest - D0);
 		Write32(NO_COND | (0x1B << 23) | ((Dest & 0x10) << 18) | (1 << 20) | (Base << 16) \
-			((Dest & 0xF) << 12) | (11 << 8) | op.Imm8());	
+			((Dest & 0xF) << 12) | (11 << 8) | (op.Imm12() >> 2));	
 	}
 }
 void ARMXEmitter::VSTR(ARMReg Src, ARMReg Base, Operand2 op)
 {
 	_assert_msg_(DYNA_REC, Src >= S0 && Src <= D31, "Passed invalid src register to VSTR");
 	_assert_msg_(DYNA_REC, Base <= R15, "Passed invalid base register to VSTR");
+	_assert_msg_(DYNA_REC, !(op.Imm12() & 4), "Offset needs to be word aligned");
 	bool single_reg = Src < D0;
 	if (single_reg)
 	{
 		Src = (ARMReg)(Src - S0);
 		Write32(NO_COND | (0x1B << 23) | ((Src & 0x1) << 22) | (Base << 16) \
-			((Src & 0x1E) << 11) | (10 << 8) | op.Imm8());	
+			((Src & 0x1E) << 11) | (10 << 8) | (op.Imm12() >> 2));	
 
 	}
 	else
 	{
 		Src = (ARMReg)(Src - D0);
 		Write32(NO_COND | (0x1B << 23) | ((Src & 0x10) << 18) | (Base << 16) \
-			((Src & 0xF) << 12) | (11 << 8) | op.Imm8());	
+			((Src & 0xF) << 12) | (11 << 8) | (op.Imm12() >> 2));	
 	}
 }
+
+// VFP and ASIMD
 void ARMXEmitter::VMOV(ARMReg Dest, ARMReg Src)
 {
 	if (Dest > R15)
