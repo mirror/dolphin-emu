@@ -492,6 +492,7 @@ public:
 	// VFP Only
 	void VLDR(ARMReg Dest, ARMReg Base, Operand2 op);
 	void VSTR(ARMReg Src,  ARMReg Base, Operand2 op)
+	void VDIV(ARMReg Vd, ARMReg Vn, ARMReg Vm);
 	void VSQRT(ARMReg Vd, ARMReg Vm);
 	
 	// NEON and VFP

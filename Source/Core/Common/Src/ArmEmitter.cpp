@@ -660,6 +660,25 @@ void ARMXEmitter::VSTR(ARMReg Src, ARMReg Base, Operand2 op)
 			((Src & 0xF) << 12) | (11 << 8) | (op.Imm12() >> 2));	
 	}
 }
+void ARMXEmitter::VDIV(ARMReg Vd, ARMReg Vn, ARMReg Vm)
+{
+	_assert_msg_(DYNA_REC, Vd < Q0, "Pased invalid dest register to VSQRT");
+	_assert_msg_(DYNA_REC, Vn < Q0, "Passed invalid Vn to VSQRT");
+	_assert_msg_(DYNA_REC, Vm < Q0, "Passed invalid Vm to VSQRT");
+	bool single_reg = Vd < D0;
+	if (single_reg)
+	{
+		Write32(NO_COND | (0x1D << 23) | ((Vd & 0x1) << 22) | ((Vn & 0x1E) << 16) \
+			| ((Vd & 0x1E) << 11) | (0xA << 8) | ((Vn & 0x1) << 7) | ((Vm & 0x1) << 5) \
+			| (Vm >> 1));
+	}
+	else
+	{
+		Write32(NO_COND | (0x1D << 23) | ((Vd & 0x10) << 18) | ((Vn & 0xF) << 16) \
+			| ((Vd & 0xF) << 12) | (0xB << 8) | ((Vn & 0x10) << 3) | ((Vm & 0x10) << 2) \
+			| (Vm & 0xF));
+	}
+}
 void ARMXEmitter::VSQRT(ARMReg Vd, ARMReg Vm)
 {
 	_assert_msg_(DYNA_REC, Vd < Q0, "Pased invalid dest register to VSQRT");
