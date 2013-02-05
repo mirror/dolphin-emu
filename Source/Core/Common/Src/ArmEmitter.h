@@ -488,11 +488,11 @@ public:
 	// NEON Only
 	void VADD(IntegerSize Size, ARMReg Vd, ARMReg Vn, ARMReg Vm);
 	void VSUB(IntegerSize Size, ARMReg Vd, ARMReg Vn, ARMReg Vm);
-
 		
 	// VFP Only
 	void VLDR(ARMReg Dest, ARMReg Base, Operand2 op);
 	void VSTR(ARMReg Src,  ARMReg Base, Operand2 op)
+	void VSQRT(ARMReg Vd, ARMReg Vm);
 	
 	// NEON and VFP
 	void VADD(ARMReg Vd, ARMReg Vn, ARMReg Vm);
