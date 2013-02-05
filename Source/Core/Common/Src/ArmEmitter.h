@@ -483,10 +483,12 @@ public:
 	// NEON and ASIMD instructions
 	// None of these will be created with conditional since ARM
 	// is deprecating conditional execution of ASIMD instructions.
-	// Some ASIMD instructions don't even have a conditional encoding.
+	// ASIMD instructions don't even have a conditional encoding.
 	
 	// NEON Only
 	void VADD(IntegerSize Size, ARMReg Vd, ARMReg Vn, ARMReg Vm);
+	void VSUB(IntegerSize Size, ARMReg Vd, ARMReg Vn, ARMReg Vm);
+
 		
 	// VFP Only
 	void VLDR(ARMReg Dest, ARMReg Base, Operand2 op);
