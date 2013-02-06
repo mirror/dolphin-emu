@@ -589,7 +589,6 @@ void ARMXEmitter::LDMFD(ARMReg dest, bool WriteBack, const int Regnum, ...)
 
 ARMReg ARMXEmitter::SubBase(ARMReg Reg)
 {
-	_assert_msg_(DYNA_REC, Reg >= S0, "Can't pass regular ARM Reg to SubBase");
 	if (Reg >= S0)
 	{
 		if (Reg >= D0)
@@ -600,6 +599,7 @@ ARMReg ARMXEmitter::SubBase(ARMReg Reg)
 		}
 		return (ARMReg)(Reg - S0);
 	}
+	return Reg;
 }
 // NEON Specific
 void ARMXEmitter::VADD(IntegerSize Size, ARMReg Vd, ARMReg Vn, ARMReg Vm)
@@ -647,13 +647,13 @@ void ARMXEmitter::VLDR(ARMReg Dest, ARMReg Base, Operand2 op)
 	if (single_reg)
 	{
 		Write32(NO_COND | (0x1B << 23) | ((Dest & 0x1) << 22) | (1 << 20) | (Base << 16) \
-			((Dest & 0x1E) << 11) | (10 << 8) | (op.Imm12() >> 2));	
+			| ((Dest & 0x1E) << 11) | (10 << 8) | (op.Imm12() >> 2));	
 
 	}
 	else
 	{
 		Write32(NO_COND | (0x1B << 23) | ((Dest & 0x10) << 18) | (1 << 20) | (Base << 16) \
-			((Dest & 0xF) << 12) | (11 << 8) | (op.Imm12() >> 2));	
+			| ((Dest & 0xF) << 12) | (11 << 8) | (op.Imm12() >> 2));	
 	}
 }
 void ARMXEmitter::VSTR(ARMReg Src, ARMReg Base, Operand2 op)
@@ -668,13 +668,13 @@ void ARMXEmitter::VSTR(ARMReg Src, ARMReg Base, Operand2 op)
 	if (single_reg)
 	{
 		Write32(NO_COND | (0x1B << 23) | ((Src & 0x1) << 22) | (Base << 16) \
-			((Src & 0x1E) << 11) | (10 << 8) | (op.Imm12() >> 2));	
+			| ((Src & 0x1E) << 11) | (10 << 8) | (op.Imm12() >> 2));	
 
 	}
 	else
 	{
 		Write32(NO_COND | (0x1B << 23) | ((Src & 0x10) << 18) | (Base << 16) \
-			((Src & 0xF) << 12) | (11 << 8) | (op.Imm12() >> 2));	
+			| ((Src & 0xF) << 12) | (11 << 8) | (op.Imm12() >> 2));	
 	}
 }
 void ARMXEmitter::VCMP(ARMReg Vd, ARMReg Vm)
@@ -749,12 +749,12 @@ void ARMXEmitter::VSQRT(ARMReg Vd, ARMReg Vm)
 
 	if (single_reg)
 	{
-		Write32(NO_COND | (0xE1 << 23) | ((Vd & 0x1) << 22) | (0x21 << 16) \
+		Write32(NO_COND | (0x1D << 23) | ((Vd & 0x1) << 22) | (0x31 << 16) \
 			| ((Vd & 0x1E) << 11) | (0x2B << 6) | ((Vm & 0x1) << 5) | (Vm >> 1));
 	}
 	else
 	{
-		Write32(NO_COND | (0xE1 << 23) | ((Vd & 0x10) << 18) | (0x21 << 16) \
+		Write32(NO_COND | (0x1D << 23) | ((Vd & 0x10) << 18) | (0x31 << 16) \
 			| ((Vd & 0xF) << 12) | (0x2F << 6) | ((Vm & 0x10) << 2) | (Vm & 0xF));
 	}
 }
@@ -775,7 +775,7 @@ void ARMXEmitter::VADD(ARMReg Vd, ARMReg Vn, ARMReg Vm)
 	{
 		Write32(NO_COND | (0x1C << 23) | ((Vd & 0x1) << 22) | (0x3 << 20) \
 			| ((Vn & 0x1E) << 15) | ((Vd & 0x1E) << 12) | (0x5 << 9) \
-			| ((Vn & 0x1) << 7) | ((Vm & 0x1) << 5) | (Vm >> 1);
+			| ((Vn & 0x1) << 7) | ((Vm & 0x1) << 5) | (Vm >> 1));
 	}
 	else
 	{
@@ -788,8 +788,8 @@ void ARMXEmitter::VADD(ARMReg Vd, ARMReg Vn, ARMReg Vm)
 		else
 		{
 			_assert_msg_(DYNA_REC, cpu_info.bNEON, "Trying to use VADD with Quad Reg without support!");
-			WRITE32((0xF2 << 24) | ((Vd & 0x10) << 18) | ((Vn & 0xF) << 16) \
-				| ((Vd & 0xF) << 12) | (0xD << 8) | ((Vn & 0x10) << 3) | \
+			Write32((0xF2 << 24) | ((Vd & 0x10) << 18) | ((Vn & 0xF) << 16) \
+				| ((Vd & 0xF) << 12) | (0xD << 8) | ((Vn & 0x10) << 3) \
 				| (1 << 6) | ((Vm & 0x10) << 2) | (Vm & 0xF));
 		}
 	}
@@ -810,7 +810,7 @@ void ARMXEmitter::VSUB(ARMReg Vd, ARMReg Vn, ARMReg Vm)
 	{
 		Write32(NO_COND | (0x1C << 23) | ((Vd & 0x1) << 22) | (0x3 << 20) \
 			| ((Vn & 0x1E) << 15) | ((Vd & 0x1E) << 12) | (0x5 << 9) \
-			| ((Vn & 0x1) << 7) | (1 << 6) | ((Vm & 0x1) << 5) | (Vm >> 1);
+			| ((Vn & 0x1) << 7) | (1 << 6) | ((Vm & 0x1) << 5) | (Vm >> 1));
 	}
 	else
 	{
@@ -823,8 +823,8 @@ void ARMXEmitter::VSUB(ARMReg Vd, ARMReg Vn, ARMReg Vm)
 		else
 		{
 			_assert_msg_(DYNA_REC, cpu_info.bNEON, "Trying to use VADD with Quad Reg without support!");
-			WRITE32((0xF2 << 24) | (1 << 21) | ((Vd & 0x10) << 18) | ((Vn & 0xF) << 16) \
-				| ((Vd & 0xF) << 12) | (0xD << 8) | ((Vn & 0x10) << 3) | \
+			Write32((0xF2 << 24) | (1 << 21) | ((Vd & 0x10) << 18) | ((Vn & 0xF) << 16) \
+				| ((Vd & 0xF) << 12) | (0xD << 8) | ((Vn & 0x10) << 3) \
 				| (1 << 6) | ((Vm & 0x10) << 2) | (Vm & 0xF));
 		}
 	}
@@ -848,6 +848,7 @@ void ARMXEmitter::VMOV(ARMReg Dest, ARMReg Src)
 			{
 				// Move 64bit from Arm reg
 				_assert_msg_(DYNA_REC, false, "This VMOV doesn't support moving 64bit ARM to NEON");
+				return;
 			}
 		}
 	}
@@ -867,6 +868,7 @@ void ARMXEmitter::VMOV(ARMReg Dest, ARMReg Src)
 			{
 				// Move 64bit To Arm reg
 				_assert_msg_(DYNA_REC, false, "This VMOV doesn't support moving 64bit ARM From NEON");
+				return;
 			}
 		}
 		else
@@ -898,15 +900,15 @@ void ARMXEmitter::VMOV(ARMReg Dest, ARMReg Src)
 		{
 			_assert_msg_(DYNA_REC, cpu_info.bNEON, "Trying to use quad registers when you don't support ASIMD."); 
 			// Gets encoded as a Double register
-			Write32((0xF2 << 24) | ((Dest & 0x10) << 18) | (1 << 21) | ((Src & 0xF) << 16) \
-				| ((Dest & 0xF) << 12) | (1 << 8) | ((Src & 0x10) << 3) | (Quad << 6) \
+			Write32((0xF2 << 24) | ((Dest & 0x10) << 18) | (2 << 20) | ((Src & 0xF) << 16) \
+				| ((Dest & 0xF) << 12) | (1 << 8) | ((Src & 0x10) << 3) | (1 << 6) \
 				| ((Src & 0x10) << 1) | (1 << 4) | (Src & 0xF));
 
 		}
 		else
 		{
-			Write32(NO_COND | (0x1D << 23) | ((Dest & 0x1) << 22) | (0x3 << 20) | ((Dest & 0x1E) << 11) \
-				| (0x5 << 9) | (5 << 6) | ((Src & 0x1) << 5) | ((Src & 0x1E) >> 1));
+			Write32(NO_COND | (0x1D << 23) | ((Dest & 0x10) << 18) | (0x3 << 20) | ((Dest & 0xF) << 12) \
+				| (0x2D << 6) | ((Src & 0x10) << 1) | (Src & 0xF));
 		}
 	}
 }

@@ -493,7 +493,7 @@ public:
 		
 	// VFP Only
 	void VLDR(ARMReg Dest, ARMReg Base, Operand2 op);
-	void VSTR(ARMReg Src,  ARMReg Base, Operand2 op)
+	void VSTR(ARMReg Src,  ARMReg Base, Operand2 op);
 	void VCMP(ARMReg Vd, ARMReg Vm);
 	// Compares against zero
 	void VCMP(ARMReg Vd);
