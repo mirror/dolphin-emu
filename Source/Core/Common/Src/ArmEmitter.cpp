@@ -190,7 +190,12 @@ void ARMXEmitter::FlushIcacheSection(u8 *start, u8 *end)
 	msync(start, end - start, MS_SYNC | MS_INVALIDATE_ICACHE);
 #else
 #ifndef _WIN32
+#ifdef ANDROID
 	__builtin___clear_cache (start, end);
+#else
+	// If on Linux, we HAVE to clear from start addr or else everything gets /really/ unstable
+	__builtin___clear_cache (startcode, end); 
+#endif
 #endif
 #endif
 }
