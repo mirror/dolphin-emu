@@ -1167,8 +1167,8 @@ void Renderer::ApplyState(bool bUseDstAlpha)
 
 	if (bUseDstAlpha)
 	{
-		// restore actual state
-		SetBlendMode(false);
+		// restore actual state - TODO: Is this necessary at all?
+		SetBlendMode(true);
 		SetLogicOpMode();
 	}
 
