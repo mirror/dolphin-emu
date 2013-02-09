@@ -87,9 +87,7 @@ else()
 endif()
 
 if(USE_EGL)
-	if(ANDROID)
-		set(SRCS ${SRCS} Src/GLInterface/EGL.cpp)
-	else()
+	if(NOT ANDROID)
 		set(SRCS ${SRCS} Src/GLInterface/EGL_X11.cpp
 			Src/GLInterface/X11_Util.cpp)
 	endif()

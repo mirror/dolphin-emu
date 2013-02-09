@@ -18,8 +18,9 @@
 #define _GLINTERFACE_H_
 
 #include "Thread.h"
-#if defined(ANDROID)
-#include "GLInterface/EGL.h"
+#ifdef ANDROID
+#include <GLES2/gl2.h>
+#include <GLInterface/InterfaceBase.h>
 #elif defined(USE_EGL) && USE_EGL
 #include "GLInterface/EGL_X11.h"
 #elif defined(USE_WX) && USE_WX
@@ -35,14 +36,7 @@
 #endif
 
 typedef struct {
-#if defined(ANDROID)
-	int screen;
-	EGLSurface egl_surf;
-	EGLContext egl_ctx;
-	EGLDisplay egl_dpy;
-	std::thread xEventThread;
-	int x, y;
-	unsigned int width, height;
+#ifdef ANDROID
 #elif defined(USE_EGL) && USE_EGL // This is currently a X11/EGL implementation for desktop
 	int screen;
 	Display *dpy;
