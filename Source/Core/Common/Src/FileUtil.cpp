@@ -651,17 +651,13 @@ std::string &GetUserPath(const unsigned int DirIDX, const std::string &newPath)
 #ifdef _WIN32
 		paths[D_USER_IDX] = GetExeDirectory() + DIR_SEP USERDATA_DIR DIR_SEP;
 #else
-#ifdef ANDROID
-		// XXX: Get an actual path
-		paths[D_USER_IDX] = ROOT_DIR DIR_SEP USERDATA_DIR DIR_SEP;
-#else
 		if (File::Exists(ROOT_DIR DIR_SEP USERDATA_DIR))
 			paths[D_USER_IDX] = ROOT_DIR DIR_SEP USERDATA_DIR DIR_SEP;
 		else
-			paths[D_USER_IDX] = std::string(getenv("HOME") ? getenv("HOME") : getenv("PWD")) + DIR_SEP DOLPHIN_DATA_DIR DIR_SEP;
+			paths[D_USER_IDX] = std::string(getenv("HOME") ? 
+				getenv("HOME") : getenv("PWD") ? 
+				getenv("PWD") : "") + DIR_SEP DOLPHIN_DATA_DIR DIR_SEP;
 #endif
-#endif
-		INFO_LOG(COMMON, "GetUserPath: Setting user directory to %s:", paths[D_USER_IDX].c_str());
 
 		paths[D_GCUSER_IDX]			= paths[D_USER_IDX] + GC_USER_DIR DIR_SEP;
 		paths[D_WIIROOT_IDX]		= paths[D_USER_IDX] + WII_USER_DIR;
