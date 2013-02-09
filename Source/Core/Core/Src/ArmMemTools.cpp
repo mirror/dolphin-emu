@@ -18,7 +18,9 @@
 
 #include <stdio.h>
 #include <signal.h>
-#ifndef ANDROID
+#ifdef ANDROID
+#include <asm/sigcontext.h>
+#else
 #include <sys/ucontext.h>   // Look in here for the context definition.
 #include <execinfo.h>
 #endif
@@ -32,21 +34,16 @@
 
 namespace EMM
 {
-#ifndef ANDROID
-void print_trace(const char * msg)
-{
-	void *array[100];
-	size_t size;
-	char **strings;
-	size_t i;
-
-	size = backtrace(array, 100);
-	strings = backtrace_symbols(array, size);
-	printf("%s Obtained %u stack frames.\n", msg, (unsigned int)size);
-	for (i = 0; i < size; i++)
-		printf("--> %s\n", strings[i]);
-	free(strings);
-}
+#ifdef ANDROID
+typedef struct sigcontext mcontext_t;
+typedef struct ucontext {
+	uint32_t uc_flags;
+	struct ucontext* uc_link;
+	stack_t uc_stack;
+	mcontext_t uc_mcontext;
+	// Other fields are not used by Google Breakpad. Don't define them.
+} ucontext_t;
+#endif
 
 void sigsegv_handler(int signal, siginfo_t *info, void *raw_context)
 {
@@ -103,9 +100,4 @@ void InstallExceptionHandler()
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGSEGV, &sa, NULL);
 }
-#else
-void InstallExceptionHandler()
-{
-}
-#endif
 }  // namespace
