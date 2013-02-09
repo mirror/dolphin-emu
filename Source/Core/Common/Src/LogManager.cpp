@@ -17,6 +17,7 @@
 
 #include <algorithm>
 
+#include "Host.h"
 #include "LogManager.h"
 #include "ConsoleListener.h"
 #include "Timer.h"
@@ -132,7 +133,9 @@ void LogManager::Log(LogTypes::LOG_LEVELS level, LogTypes::LOG_TYPE type,
 		Common::Timer::GetTimeFormatted().c_str(),
 		file, line, level_to_char[(int)level],
 		log->GetShortName(), temp);
-
+#ifdef ANDROID
+	Host_SysMessage(msg);	
+#endif
 	log->Trigger(level, msg);
 }
 
