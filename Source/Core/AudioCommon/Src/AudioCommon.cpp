@@ -26,6 +26,7 @@
 #include "CoreAudioSoundStream.h"
 #include "OpenALStream.h"
 #include "PulseAudioStream.h"
+#include "OpenSLESStream.h"
 #include "../../Core/Src/Movie.h"
 
 namespace AudioCommon 
@@ -51,7 +52,8 @@ namespace AudioCommon
 			soundStream = new CoreAudioSound(mixer);
 		else if (backend == BACKEND_PULSEAUDIO  && PulseAudio::isValid())
 			soundStream = new PulseAudio(mixer);
-
+		else if (backend == BACKEND_OPENSLES && OpenSLESStream::isValid())
+			soundStream = new OpenSLESStream(mixer);
 		if (soundStream != NULL)
 		{
 			ac_Config.Update();
@@ -112,7 +114,9 @@ namespace AudioCommon
 			backends.push_back(BACKEND_COREAUDIO);
 		if (PulseAudio::isValid()) 
 			backends.push_back(BACKEND_PULSEAUDIO);
-	   
+		if (OpenSLESStream::isValid())
+			backends.push_back(BACKEND_OPENSLES);
+		   
 		return backends;
 	}
 

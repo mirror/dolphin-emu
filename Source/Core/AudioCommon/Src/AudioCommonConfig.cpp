@@ -39,6 +39,8 @@ void AudioCommonConfig::Load()
 	file.Get("Config", "Backend", &sBackend, BACKEND_COREAUDIO);
 #elif defined _WIN32
 	file.Get("Config", "Backend", &sBackend, BACKEND_DIRECTSOUND);
+#elif defined ANDROID
+	file.Get("Config", "Backend", &sBackend, BACKEND_OPENSLES);
 #else
 	file.Get("Config", "Backend", &sBackend, BACKEND_NULLSOUND);
 #endif
