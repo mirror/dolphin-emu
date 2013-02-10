@@ -44,24 +44,22 @@ void JitArm::stw(UGeckoInstruction inst)
 	ARMReg RS = gpr.R(inst.RS);
 #if FASTMEM
 	// R10 contains the dest address
-	ARMReg _R10 = R10;
 	ARMReg Value = R11;
 	ARMReg RA;
 	if (inst.RA)
 		RA = gpr.R(inst.RA);
-
 	MOV(Value, RS);
 	if (inst.RA)
 	{
-		MOVI2R(_R10, inst.SIMM_16, false);
-		ADD(_R10, _R10, RA);
+		MOVI2R(R10, inst.SIMM_16, false);
+		ADD(R10, R10, RA);
 	}
 	else
 	{
-		MOVI2R(_R10, (u32)inst.SIMM_16, false);
+		MOVI2R(R10, (u32)inst.SIMM_16, false);
 		NOP(1);
 	}
-	StoreFromReg(_R10, Value, 32, 0);
+	StoreFromReg(R10, Value, 32, 0);
 #else
 	ARMReg ValueReg = gpr.GetReg();
 	ARMReg Addr = gpr.GetReg();
@@ -152,18 +150,6 @@ void JitArm::StoreFromReg(ARMReg dest, ARMReg value, int accessSize, s32 offset)
 			// Not implemented
 		break;
 	}
-	SetCC(CC_VS);
-	// Value contains some values for an easier time when we have to backpatch
-	// This can only be 24bits and currently contains:
-	// Dest address is always in reg 10
-	// Bits 0-3: Value Reg
-	// Bits 4-5: AccessSize
-	// Bit 6: AccessType 0 = Load, 1 = store
-	u32 SVCValue = (1 << 6) |
-		(accessSize == 32 ? (0x02 << 4) : accessSize == 16 ? (0x01 << 4) : 0) | 
-		(value & 0xF);
-	SVC(SVCValue); // 9
-	SetCC();
 	gpr.Unlock(rA);
 }
 void JitArm::LoadToReg(ARMReg dest, ARMReg addr, int accessSize, s32 offset)
@@ -189,16 +175,6 @@ void JitArm::LoadToReg(ARMReg dest, ARMReg addr, int accessSize, s32 offset)
 			LDRB(dest, addr);
 		break;
 	}
-	SetCC(CC_VS);
-	// Value contains some values for an easier time when we have to backpatch
-	// This can only be 24bits and currently contains:
-	// Bits 0-3: Dest Reg
-	// Bits 4-5: AccessSize
-	// Bit 6: AccessType 0 = Load, 1 = store
-	u32 value = 0;
-	value = (accessSize == 32 ? (0x02 << 4) : accessSize == 16 ? (0x01 << 4) : 0) | (dest & 0xF);
-	SVC(value); // 8
-	SetCC();
 	switch (accessSize)
 	{
 		case 32:
@@ -330,15 +306,14 @@ void JitArm::lwz(UGeckoInstruction inst)
 	// Gets loaded in to RD
 	// Address is in R10
 	gpr.Unlock(rA, rB);
-	ARMReg _R10 = R10;
 	if (inst.RA)
 	{
 		ARMReg RA = gpr.R(inst.RA);
-		MOV(_R10, RA); // - 4
+		MOV(R10, RA); // - 4
 	}
 	else
-		MOV(_R10, 0); // - 4
-	LoadToReg(RD, _R10, 32, (u32)inst.SIMM_16);	
+		MOV(R10, 0); // - 4
+	LoadToReg(RD, R10, 32, (u32)inst.SIMM_16);	
 #else
 	if (inst.RA)
 	{

@@ -47,41 +47,66 @@ static void BackPatchError(const std::string &text, u8 *codePtr, u32 emAddress) 
 // 1) It's really necessary. We don't know anything about the context.
 // 2) It doesn't really hurt. Only instructions that access I/O will get these, and there won't be 
 //    that many of them in a typical program/game.
+bool DisamLoadStore(const u32 inst, ARMReg &rD, u8 &accessSize, bool &Store)
+{
+	u8 op = (inst >> 20) & 0xFF;
+	printf("op: 0x%08x\n", op);
+	switch (op)
+	{
+		case 0x58: // STR
+		{
+			rD = (ARMReg)((inst >> 16) & 0xF);
+			Store = true;
+			accessSize = 32;
+		}
+		break;
+		case 0x44 + 0x18: // STRB
+		case 0x59: // LDR
+		{
+			rD = (ARMReg)((inst >> 16) & 0xF);
+			Store = false;
+			accessSize = 32;
+		}
+		break;
+		case 0x05 + 0x18: // LDRH
+		case 0x45 + 0x18: // LDRB
+		default:
+			return false;
+	}
+	return true;
+}
 const u8 *JitArm::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void *ctx_void)
 {
 	// TODO: This ctx needs to be filled with our information
 	CONTEXT *ctx = (CONTEXT *)ctx_void;
 	
 	// We need to get the destination register before we start
-	u8* pValue = codePtr + 4;
-	u32 Value = *(u32*)pValue; 
-	ARMReg rD = (ARMReg)(Value & 0xF);
-	u8 accessSize = (Value & 0x30) >> 4;
-	u8 Store = (Value & 0x40) >> 6;
+	u32 Value = *(u32*)codePtr;
+	ARMReg rD;
+	u8 accessSize;
+	bool Store;
 
-	u32 SVC = (Value & 0x0F000000) >> 24;
-	
-	if (SVC != 0x0F)
+	if (!DisamLoadStore(Value, rD, accessSize, Store))
 	{
-		printf("Invalid backpatch at location 0x%08x\n", ctx->reg_pc);
+		printf("Invalid backpatch at location 0x%08x(0x%08x)\n", ctx->reg_pc, Value);
 		exit(0);
 	}
 
-	if (Store == 1)
+	if (Store)
 	{
 		const u32 ARMREGOFFSET = 4 * 7;
 		ARMXEmitter emitter(codePtr - ARMREGOFFSET);
 		switch (accessSize)
 		{
-			case 0: // 8bit
+			case 8: // 8bit
 				//emitter.MOVI2R(R14, (u32)&Memory::Write_U8, false); // 1-2
 				return 0;
 			break;
-			case 1: // 16bit
+			case 16: // 16bit
 				//emitter.MOVI2R(R14, (u32)&Memory::Write_U16, false); // 1-2
 				return 0;
 			break;
-			case 2: // 32bit
+			case 32: // 32bit
 				emitter.MOVI2R(R14, (u32)&Memory::Write_U32, false); // 1-2
 			break;
 		}
@@ -90,7 +115,7 @@ const u8 *JitArm::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void *ct
 		emitter.MOV(R1, R10); // Addr- 5 
 		emitter.BL(R14); // 6
 		emitter.POP(4, R0, R1, R2, R3); // 7
-		emitter.NOP(2); // 8-9
+		emitter.NOP(1); // 8
 		u32 newPC = ctx->reg_pc - (ARMREGOFFSET + 4 * 4);
 		ctx->reg_pc = newPC;
 		emitter.FlushIcache();
@@ -102,13 +127,13 @@ const u8 *JitArm::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void *ct
 		ARMXEmitter emitter(codePtr - ARMREGOFFSET);
 		switch (accessSize)
 		{
-			case 0: // 8bit
+			case 8: // 8bit
 				emitter.MOVI2R(R14, (u32)&Memory::Read_U8, false); // 2	
 			break;
-			case 1: // 16bit
+			case 16: // 16bit
 				emitter.MOVI2R(R14, (u32)&Memory::Read_U16, false); // 2	
 			break;
-			case 2: // 32bit
+			case 32: // 32bit
 				emitter.MOVI2R(R14, (u32)&Memory::Read_U32, false); // 2	
 			break;
 		}
@@ -118,7 +143,6 @@ const u8 *JitArm::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void *ct
 		emitter.MOV(R14, R0); // 6
 		emitter.POP(4, R0, R1, R2, R3); // 7
 		emitter.MOV(rD, R14); // 8
-		emitter.NOP(1);
 		ctx->reg_pc -= ARMREGOFFSET + (4 * 4);
 		emitter.FlushIcache();
 		return codePtr;
