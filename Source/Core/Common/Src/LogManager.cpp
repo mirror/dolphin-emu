@@ -17,7 +17,9 @@
 
 #include <algorithm>
 
+#ifdef ANDROID
 #include "Host.h"
+#endif
 #include "LogManager.h"
 #include "ConsoleListener.h"
 #include "Timer.h"
