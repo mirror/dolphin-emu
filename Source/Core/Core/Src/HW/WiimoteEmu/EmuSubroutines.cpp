@@ -608,7 +608,7 @@ void Wiimote::DoState(PointerWrap& p)
 	p.Do(m_reporting_auto);
 	p.Do(m_reporting_mode);
 	p.Do(m_reporting_channel);
-	p.Do(m_shake_step);
+	p.DoArray(m_shake_step, sizeof(m_shake_step));
 	p.Do(m_sensor_bar_on_top);
 	p.Do(m_status);
 	p.Do(m_adpcm_state);
