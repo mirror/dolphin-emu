@@ -748,7 +748,7 @@ void ARMXEmitter::VDIV(ARMReg Vd, ARMReg Vn, ARMReg Vm)
 
 	if (single_reg)
 	{
-		Write32(NO_COND | (0x1D << 23) | ((Vd & 0x1) << 22) | ((Vn & 0x1E) << 16) \
+		Write32(NO_COND | (0x1D << 23) | ((Vd & 0x1) << 22) | ((Vn & 0x1E) << 15) \
 			| ((Vd & 0x1E) << 11) | (0xA << 8) | ((Vn & 0x1) << 7) | ((Vm & 0x1) << 5) \
 			| (Vm >> 1));
 	}
