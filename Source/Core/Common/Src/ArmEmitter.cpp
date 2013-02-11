@@ -660,7 +660,7 @@ void ARMXEmitter::VLDR(ARMReg Dest, ARMReg Base, Operand2 op)
 {
 	_assert_msg_(DYNA_REC, Dest >= S0 && Dest <= D31, "Passed Invalid dest register to VLDR"); 
 	_assert_msg_(DYNA_REC, Base <= R15, "Passed invalid Base register to VLDR");
-	_assert_msg_(DYNA_REC, !(op.Imm12() & 4), "Offset needs to be word aligned");
+	_assert_msg_(DYNA_REC, !(op.Imm12() & 3), "Offset needs to be word aligned");
 	bool single_reg = Dest < D0;
 
 	Dest = SubBase(Dest);
