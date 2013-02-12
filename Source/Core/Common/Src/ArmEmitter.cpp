@@ -626,7 +626,7 @@ void ARMXEmitter::VADD(IntegerSize Size, ARMReg Vd, ARMReg Vn, ARMReg Vm)
 	_assert_msg_(DYNA_REC, Vd >= D0, "Pass invalid register to VADD(integer)");
 	_assert_msg_(DYNA_REC, cpu_info.bNEON, "Can't use VADD(integer) when CPU doesn't support it");
 
-	bool register_quad = vD >= Q0;
+	bool register_quad = Vd >= Q0;
 		
 	// Gets encoded as a double register
 	Vd = SubBase(Vd);
@@ -681,7 +681,7 @@ void ARMXEmitter::VSTR(ARMReg Src, ARMReg Base, Operand2 op)
 {
 	_assert_msg_(DYNA_REC, Src >= S0 && Src <= D31, "Passed invalid src register to VSTR");
 	_assert_msg_(DYNA_REC, Base <= R15, "Passed invalid base register to VSTR");
-	_assert_msg_(DYNA_REC, !(op.Imm12() & 4), "Offset needs to be word aligned");
+	_assert_msg_(DYNA_REC, !(op.Imm12() & 3), "Offset needs to be word aligned");
 	bool single_reg = Src < D0;
 
 	Src = SubBase(Src);
@@ -851,6 +851,16 @@ void ARMXEmitter::VSUB(ARMReg Vd, ARMReg Vn, ARMReg Vm)
 	}
 }
 
+void ARMXEmitter::VMOV(ARMReg Dest, ARMReg Src, bool high)
+{
+	_assert_msg_(DYNA_REC, Src < S0, "This VMOV doesn't support SRC other than ARM Reg");
+	_assert_msg_(DYNA_REC, Dest >= D0, "This VMOV doesn't support DEST other than VFP");
+
+	Dest = SubBase(Dest);
+
+	Write32(NO_COND | (0xE << 24) | (high << 21) | ((Dest & 0xF) << 16) | (Src << 12) \
+		| (11 << 8) | ((Dest & 0x10) << 3) | (1 << 4));
+}
 void ARMXEmitter::VMOV(ARMReg Dest, ARMReg Src)
 {
 	if (Dest > R15)
