@@ -60,7 +60,6 @@ bool DisamLoadStore(const u32 inst, ARMReg &rD, u8 &accessSize, bool &Store)
 			accessSize = 32;
 		}
 		break;
-		case 0x44 + 0x18: // STRB
 		case 0x59: // LDR
 		{
 			rD = (ARMReg)((inst >> 16) & 0xF);
@@ -68,8 +67,21 @@ bool DisamLoadStore(const u32 inst, ARMReg &rD, u8 &accessSize, bool &Store)
 			accessSize = 32;
 		}
 		break;
-		case 0x05 + 0x18: // LDRH
+		case 0x05: // LDRH
+		{
+			rD = (ARMReg)((inst >> 16) & 0xF);
+			Store = false;
+			accessSize = 16;
+		}
+		break;
 		case 0x45 + 0x18: // LDRB
+		{
+			rD = (ARMReg)((inst >> 16) & 0xF);
+			Store = false;
+			accessSize  = 8;
+		}
+		break;
+		case 0x44 + 0x18: // STRB
 		default:
 			return false;
 	}
