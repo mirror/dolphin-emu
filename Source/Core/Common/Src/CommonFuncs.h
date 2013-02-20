@@ -65,7 +65,6 @@ _mm_shuffle_epi8(__m128i a, __m128i mask)
 	#else
 		#define Crash() {asm ("int $3");}
 	#endif
-	#define ARRAYSIZE(A) (sizeof(A)/sizeof((A)[0]))
 
 inline u32 _rotl(u32 x, int shift) {
 	shift &= 31;
@@ -208,5 +207,10 @@ inline T FromBigEndian(T data)
 }
 
 }  // Namespace Common
+
+// This will fail to compile if used on a non-array.
+template <typename T, size_t N>
+size_t ARRAYSIZE(T(&)[N])
+{ return N; }
 
 #endif // _COMMONFUNCS_H_
