@@ -498,8 +498,8 @@ public:
 	void VSUB(IntegerSize Size, ARMReg Vd, ARMReg Vn, ARMReg Vm);
 		
 	// VFP Only
-	void VLDR(ARMReg Dest, ARMReg Base, Operand2 op);
-	void VSTR(ARMReg Src,  ARMReg Base, Operand2 op);
+	void VLDR(ARMReg Dest, ARMReg Base, u16 op);
+	void VSTR(ARMReg Src,  ARMReg Base, u16 op);
 	void VCMP(ARMReg Vd, ARMReg Vm);
 	// Compares against zero
 	void VCMP(ARMReg Vd);
@@ -507,6 +507,7 @@ public:
 	void VSQRT(ARMReg Vd, ARMReg Vm);
 	
 	// NEON and VFP
+	void VABS(ARMReg Vd, ARMReg Vm);
 	void VADD(ARMReg Vd, ARMReg Vn, ARMReg Vm);
 	void VSUB(ARMReg Vd, ARMReg Vn, ARMReg Vm);
 

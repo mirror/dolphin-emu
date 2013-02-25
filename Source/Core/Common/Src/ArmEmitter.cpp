@@ -656,11 +656,11 @@ void ARMXEmitter::VSUB(IntegerSize Size, ARMReg Vd, ARMReg Vn, ARMReg Vm)
 
 // VFP Specific
 
-void ARMXEmitter::VLDR(ARMReg Dest, ARMReg Base, Operand2 op)
+void ARMXEmitter::VLDR(ARMReg Dest, ARMReg Base, u16 op)
 {
 	_assert_msg_(DYNA_REC, Dest >= S0 && Dest <= D31, "Passed Invalid dest register to VLDR"); 
 	_assert_msg_(DYNA_REC, Base <= R15, "Passed invalid Base register to VLDR");
-	_assert_msg_(DYNA_REC, !(op.Imm12() & 3), "Offset needs to be word aligned");
+	_assert_msg_(DYNA_REC, !(op & 3), "Offset needs to be word aligned");
 	bool single_reg = Dest < D0;
 
 	Dest = SubBase(Dest);
@@ -668,20 +668,20 @@ void ARMXEmitter::VLDR(ARMReg Dest, ARMReg Base, Operand2 op)
 	if (single_reg)
 	{
 		Write32(NO_COND | (0x1B << 23) | ((Dest & 0x1) << 22) | (1 << 20) | (Base << 16) \
-			| ((Dest & 0x1E) << 11) | (10 << 8) | (op.Imm12() >> 2));	
+			| ((Dest & 0x1E) << 11) | (10 << 8) | (op >> 2));	
 
 	}
 	else
 	{
 		Write32(NO_COND | (0x1B << 23) | ((Dest & 0x10) << 18) | (1 << 20) | (Base << 16) \
-			| ((Dest & 0xF) << 12) | (11 << 8) | (op.Imm12() >> 2));	
+			| ((Dest & 0xF) << 12) | (11 << 8) | (op >> 2));	
 	}
 }
-void ARMXEmitter::VSTR(ARMReg Src, ARMReg Base, Operand2 op)
+void ARMXEmitter::VSTR(ARMReg Src, ARMReg Base, u16 op)
 {
 	_assert_msg_(DYNA_REC, Src >= S0 && Src <= D31, "Passed invalid src register to VSTR");
 	_assert_msg_(DYNA_REC, Base <= R15, "Passed invalid base register to VSTR");
-	_assert_msg_(DYNA_REC, !(op.Imm12() & 3), "Offset needs to be word aligned");
+	_assert_msg_(DYNA_REC, !(op & 3), "Offset needs to be word aligned");
 	bool single_reg = Src < D0;
 
 	Src = SubBase(Src);
@@ -689,13 +689,13 @@ void ARMXEmitter::VSTR(ARMReg Src, ARMReg Base, Operand2 op)
 	if (single_reg)
 	{
 		Write32(NO_COND | (0x1B << 23) | ((Src & 0x1) << 22) | (Base << 16) \
-			| ((Src & 0x1E) << 11) | (10 << 8) | (op.Imm12() >> 2));	
+			| ((Src & 0x1E) << 11) | (10 << 8) | (op >> 2));	
 
 	}
 	else
 	{
 		Write32(NO_COND | (0x1B << 23) | ((Src & 0x10) << 18) | (Base << 16) \
-			| ((Src & 0xF) << 12) | (11 << 8) | (op.Imm12() >> 2));	
+			| ((Src & 0xF) << 12) | (11 << 8) | (op >> 2));	
 	}
 }
 void ARMXEmitter::VCMP(ARMReg Vd, ARMReg Vm)
@@ -780,6 +780,26 @@ void ARMXEmitter::VSQRT(ARMReg Vd, ARMReg Vm)
 	}
 }
 // VFP and ASIMD
+void ARMXEmitter::VABS(ARMReg Vd, ARMReg Vm)
+{
+	_assert_msg_(DYNA_REC, Vd < Q0, "VABS doesn't currently support Quad reg");
+	_assert_msg_(DYNA_REC, Vd >= S0, "VABS doesn't support ARM Regs");
+	bool single_reg = Vd < D0;
+
+	Vd = SubBase(Vd);
+	Vm = SubBase(Vm);
+
+	if (single_reg)
+	{
+		Write32(NO_COND | (0xEB << 20) | ((Vd & 0x1) << 6) | ((Vd & 0x1E) << 11) \
+			| (0xAC << 4) | ((Vm & 0x1) << 5) | (Vm >> 1));
+	}
+	else
+	{
+		Write32(NO_COND | (0xEB << 20) | ((Vd & 0x10) << 18) | ((Vd & 0xF) << 12) \
+			| (0xBC << 4) | ((Vm & 0x10) << 1) | (Vm & 0xF));
+	}
+}
 void ARMXEmitter::VADD(ARMReg Vd, ARMReg Vn, ARMReg Vm)
 {
 	_assert_msg_(DYNA_REC, Vd >= S0, "Passed invalid dest register to VADD");
