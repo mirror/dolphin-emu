@@ -53,6 +53,8 @@ void JitArm::Init()
 	// In the class for some reason?
 	gpr.Init(this);
 	gpr.SetEmitter(this);
+	fpr.Init(this);
+	fpr.SetEmitter(this);
 	jo.enableBlocklink = true;
 	jo.optimizeGatherPipe = false;
 }
@@ -74,7 +76,7 @@ void JitArm::Shutdown()
 void JitArm::WriteCallInterpreter(UGeckoInstruction inst)
 {
 	gpr.Flush();
-	//fpr.Flush(FLUSH_ALL);
+	fpr.Flush();
 	Interpreter::_interpreterInstruction instr = GetInterpreterOp(inst);
 	MOVI2R(R0, inst.hex);
 	MOVI2R(R12, (u32)instr);
@@ -93,7 +95,7 @@ void JitArm::Default(UGeckoInstruction _inst)
 void JitArm::HLEFunction(UGeckoInstruction _inst)
 {
 	gpr.Flush();
-//	fpr.Flush(FLUSH_ALL);
+	fpr.Flush();
 	MOVI2R(R0, js.compilerPC);
 	MOVI2R(R1, _inst.hex);
 	QuickCallFunction(R14, (void*)&HLE::Execute); 
@@ -402,6 +404,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 		gpr.Unlock(rA, rB);
 	}
 	gpr.Start(js.gpa);
+	fpr.Start(js.fpa);
 	js.downcountAmount = 0;
 	if (!Core::g_CoreStartupParameter.bEnableDebugging)
 	{

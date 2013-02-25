@@ -46,7 +46,8 @@ void JitArm::sc(UGeckoInstruction inst)
 	JITDISABLE(Branch)
 
 	gpr.Flush();
-	//fpr.Flush(FLUSH_ALL);
+	fpr.Flush();
+
 	ARMABI_MOVI2M((u32)&PC, js.compilerPC + 4); // Destroys R12 and R14
 	ARMReg rA = gpr.GetReg();
 	LDR(rA, R9, STRUCT_OFF(PowerPC::ppcState, Exceptions));
@@ -63,7 +64,8 @@ void JitArm::rfi(UGeckoInstruction inst)
 	JITDISABLE(Branch)
 
 	gpr.Flush();
-	//fpr.Flush(FLUSH_ALL);
+	fpr.Flush();
+	
  	// See Interpreter rfi for details
 	const u32 mask = 0x87C0FFFF;
 		const u32 clearMSR13 = 0xFFFBFFFF; // Mask used to clear the bit MSR[13]
@@ -124,7 +126,7 @@ void JitArm::bx(UGeckoInstruction inst)
 	}
 
 	gpr.Flush();
-	//fpr.Flush(FLUSH_ALL);
+	fpr.Flush();
 
 	u32 destination;
 	if (inst.AA)
@@ -155,7 +157,8 @@ void JitArm::bcx(UGeckoInstruction inst)
 	_assert_msg_(DYNA_REC, js.isLastInstruction, "bcx not last instruction of block");
 
 	gpr.Flush();
-	//fpr.Flush(FLUSH_ALL);
+	fpr.Flush();
+
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
 	FixupBranch pCTRDontBranch;
@@ -209,7 +212,7 @@ void JitArm::bcctrx(UGeckoInstruction inst)
 	JITDISABLE(Branch)
 
 	gpr.Flush();
-	//fpr.Flush(FLUSH_ALL);
+	fpr.Flush();
 
 	// bcctrx doesn't decrement and/or test CTR
 	_dbg_assert_msg_(POWERPC, inst.BO_2 & BO_DONT_DECREMENT_FLAG, "bcctrx with decrement and test CTR option is invalid!");
@@ -282,7 +285,8 @@ void JitArm::bclrx(UGeckoInstruction inst)
 		return;
 	}
 	gpr.Flush();
-	//fpr.Flush(FLUSH_ALL);
+	fpr.Flush();
+
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
 	FixupBranch pCTRDontBranch;

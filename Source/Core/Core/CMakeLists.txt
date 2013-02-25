@@ -204,10 +204,13 @@ if(_M_ARM)
 			Src/PowerPC/JitArm32/JitArm_Tables.cpp
 			Src/PowerPC/JitArm32/JitArmCache.cpp
 			Src/PowerPC/JitArm32/JitRegCache.cpp
+			Src/PowerPC/JitArm32/JitFPRCache.cpp
 			Src/PowerPC/JitArm32/JitArm_Branch.cpp
 			Src/PowerPC/JitArm32/JitArm_Integer.cpp
 			Src/PowerPC/JitArm32/JitArm_LoadStore.cpp
-			Src/PowerPC/JitArm32/JitArm_SystemRegisters.cpp)
+			Src/PowerPC/JitArm32/JitArm_FloatingPoint.cpp
+			Src/PowerPC/JitArm32/JitArm_SystemRegisters.cpp
+			Src/PowerPC/JitArm32/JitArm_LoadStoreFloating.cpp)
 else()
 	set(SRC ${SRC} Src/x64MemTools.cpp)
 endif()

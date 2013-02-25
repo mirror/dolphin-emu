@@ -35,6 +35,7 @@
 #include "../PPCAnalyst.h"
 #include "JitArmCache.h"
 #include "JitRegCache.h"
+#include "JitFPRCache.h"
 #include "JitAsm.h"
 #include "../JitCommon/JitBase.h"
 
@@ -59,12 +60,14 @@ private:
 	// and keep the registers in a cache. Will burn this bridge when we get to
 	// it.
 	ArmRegCache gpr;
-	//FPURegCache fpr;
+	ArmFPRCache fpr;
 
 	PPCAnalyst::CodeBuffer code_buffer;
 	void DoDownCount();
 
 	void PrintDebug(UGeckoInstruction inst, u32 level);
+
+	void Helper_UpdateCR1(ARMReg value);
 public:
 	JitArm() : code_buffer(32000) {}
 	~JitArm() {}
@@ -170,6 +173,14 @@ public:
 	void lwzx(UGeckoInstruction _inst);
 	void stw(UGeckoInstruction _inst);
 	void stwu(UGeckoInstruction _inst);
+
+	// Floating point
+	void fabsx(UGeckoInstruction _inst);
+	void faddx(UGeckoInstruction _inst);
+	void fmrx(UGeckoInstruction _inst);
+
+	// Floating point loadStore
+	void lfs(UGeckoInstruction _inst);
 };
 
 #endif // _JIT64_H

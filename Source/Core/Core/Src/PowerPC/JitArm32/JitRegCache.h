@@ -43,6 +43,7 @@ struct PPCCachedReg
 struct JRCPPC
 {
 	u32 PPCReg; // Tied to which PPC Register
+	bool PS1;
 	ARMReg Reg; // Tied to which ARM Register
 	u32 LastLoad;
 };
