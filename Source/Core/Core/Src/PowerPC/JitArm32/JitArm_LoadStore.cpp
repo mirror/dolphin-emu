@@ -206,15 +206,14 @@ void JitArm::lbz(UGeckoInstruction inst)
 	// Gets loaded in to RD
 	// Address is in R10
 	gpr.Unlock(rA, rB);
-	ARMReg _R10 = R10;
 	if (inst.RA)
 	{
 		ARMReg RA = gpr.R(inst.RA);
-		MOV(_R10, RA); // - 4
+		MOV(R10, RA); // - 4
 	}
 	else
-		MOV(_R10, 0); // - 4
-	LoadToReg(RD, _R10, 8, inst.SIMM_16);	
+		MOV(R10, 0); // - 4
+	LoadToReg(RD, R10, 8, inst.SIMM_16);	
 #else
 
 	if (inst.RA)
@@ -254,19 +253,18 @@ void JitArm::lhz(UGeckoInstruction inst)
 	// Gets loaded in to RD
 	// Address is in R10
 	gpr.Unlock(rA, rB);
-	ARMReg _R10 = R10;
 	if (inst.RA)
 	{
 		ARMReg RA = gpr.R(inst.RA);
 		printf("lhz jump to here: 0x%08x\n", (u32)GetCodePtr());
-		MOV(_R10, RA); // - 4
+		MOV(R10, RA); // - 4
 	}
 	else
 	{
 		printf("lhz jump to here: 0x%08x\n", (u32)GetCodePtr());
-		MOV(_R10, 0); // - 4
+		MOV(R10, 0); // - 4
 	}
-	LoadToReg(RD, _R10, 16, (u32)inst.SIMM_16);	
+	LoadToReg(RD, R10, 16, (u32)inst.SIMM_16);	
 #else
 
 	if (inst.RA)
@@ -341,6 +339,7 @@ void JitArm::lwz(UGeckoInstruction inst)
 		Memory::ReadUnchecked_U32(js.compilerPC + 8) == 0x4182fff8)
 	{
 		gpr.Flush();
+		fpr.Flush();
 		
 		// if it's still 0, we can wait until the next event
 		TST(RD, RD);
@@ -378,15 +377,14 @@ void JitArm::lwzx(UGeckoInstruction inst)
 	// Gets loaded in to RD
 	// Address is in R10
 	gpr.Unlock(rA, rB);
-	ARMReg _R10 = R10;
 	if (inst.RA)
 	{
 		ARMReg RA = gpr.R(inst.RA);
-		ADD(_R10, RA, RB); // - 4
+		ADD(R10, RA, RB); // - 4
 	}
 	else
-		MOV(_R10, RB); // -4
-	LoadToReg(RD, _R10, 32, 0);	
+		MOV(R10, RB); // -4
+	LoadToReg(RD, R10, 32, 0);	
 #else
 	if (inst.RA)
 	{
