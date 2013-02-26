@@ -260,8 +260,7 @@ void JitArm::bcctrx(UGeckoInstruction inst)
 			ARMReg rC = gpr.GetReg(false);
 			u32 Jumpto = js.compilerPC + 4;
 			MOVI2R(rB, (u32)&LR);
-			MOVW(rC, Jumpto);
-			MOVT(rC, Jumpto, true);
+			MOVI2R(rC, Jumpto);
 			STR(rB, rC);
 			//ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
 		}
@@ -333,8 +332,7 @@ void JitArm::bclrx(UGeckoInstruction inst)
 		ARMReg rC = gpr.GetReg(false);
 		u32 Jumpto = js.compilerPC + 4;
 		MOVI2R(rB, (u32)&LR);
-		MOVW(rC, Jumpto);
-		MOVT(rC, Jumpto, true);
+		MOVI2R(rC, Jumpto);
 		STR(rB, rC);
 		//ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
 	}
