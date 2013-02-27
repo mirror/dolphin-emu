@@ -157,11 +157,7 @@ bool cInterfaceEGL::Create(void *&window_handle)
 	INFO_LOG(VIDEO, "GL_VERSION: %s\n", glGetString(GL_VERSION));
 	INFO_LOG(VIDEO, "GL_EXTENSIONS: %s\n", glGetString(GL_EXTENSIONS));
 	window_handle = (void *)GLWin.win;
-	return true;
-}
 
-bool cInterfaceEGL::MakeCurrent()
-{
 	return eglMakeCurrent(GLWin.egl_dpy, GLWin.egl_surf, GLWin.egl_surf, GLWin.egl_ctx);
 }
 // Close backend

@@ -173,8 +173,6 @@ bool VideoBackend::Initialize(void *&window_handle)
 	
 	OSD::AddMessage(("Dolphin " + GetName() + " Video Backend.").c_str(), 5000);
 
-	GLInterface->MakeCurrent();
-
 	g_renderer = new Renderer;
 
 	s_efbAccessRequested = false;

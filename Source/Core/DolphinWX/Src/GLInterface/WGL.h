@@ -32,7 +32,6 @@ public:
 	void Swap();
 	void UpdateFPSDisplay(const char *Text);
 	bool Create(void *&window_handle);
-	bool MakeCurrent();
 	void Shutdown(); 
 
 	void Update();

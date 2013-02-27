@@ -123,11 +123,7 @@ bool cInterfaceWGL::Create(void *&window_handle)
 		PanicAlert("(4) Can't create an OpenGL rendering context.");
 		return false;
 	}
-	return true;
-}
 
-bool cInterfaceWGL::MakeCurrent()
-{
 	return wglMakeCurrent(hDC, hRC) ? true : false;
 }
 

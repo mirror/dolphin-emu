@@ -127,11 +127,7 @@ bool cInterfaceGLX::Create(void *&window_handle)
 
 	XWindow.CreateXWindow();
 	window_handle = (void *)GLWin.win;
-	return true;
-}
 
-bool cInterfaceGLX::MakeCurrent()
-{
 	// connect the glx-context to the window
 	#if defined(HAVE_WX) && (HAVE_WX)
 	Host_GetRenderWindowSize(GLWin.x, GLWin.y,

@@ -87,11 +87,6 @@ bool cInterfaceAGL::Create(void *&window_handle)
 	[GLWin.cocoaCtx setView: [GLWin.cocoaWin contentView]];
 	[GLWin.cocoaWin makeKeyAndOrderFront: nil];
 
-	return true;
-}
-
-bool cInterfaceAGL::MakeCurrent()
-{
 	int width, height;
 
 	width = [[GLWin.cocoaWin contentView] frame].size.width;
@@ -104,7 +99,7 @@ bool cInterfaceAGL::MakeCurrent()
 	[GLWin.cocoaCtx makeCurrentContext];
 	s_backbuffer_width = width;
 	s_backbuffer_height = height;
-  return true;
+	return true;
 }
 
 // Close backend

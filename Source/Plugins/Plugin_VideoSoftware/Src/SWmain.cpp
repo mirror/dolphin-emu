@@ -92,8 +92,7 @@ bool VideoSoftware::Initialize(void *&window_handle)
 	DebugUtil::Init();
 	
 	OSD::AddMessage(("Dolphin " + GetName() + " Video Backend.").c_str(), 5000);
-
-	GLInterface->MakeCurrent();
+	
 	// Init extension support.
 #ifndef USE_GLES
 #ifdef __APPLE__
