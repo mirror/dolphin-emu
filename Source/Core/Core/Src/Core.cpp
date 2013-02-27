@@ -307,6 +307,14 @@ void CpuThread()
 	else
 	{
 		Common::SetCurrentThreadName("CPU-GPU thread");
+		
+		if (!g_video_backend->Initialize(g_pWindowHandle))
+		{
+			PanicAlert("Failed to initialize video backend!");
+			Host_Message(WM_USER_STOP);
+			return;
+		}
+		OSD::AddMessage(("Dolphin " + g_video_backend->GetName() + " Video Backend.").c_str(), 5000);
 		g_video_backend->Video_Prepare();
 	}
 
@@ -340,6 +348,13 @@ void FifoPlayerThread()
 	}
 	else
 	{
+		if (!g_video_backend->Initialize(g_pWindowHandle))
+		{
+			PanicAlert("Failed to initialize video backend!");
+			Host_Message(WM_USER_STOP);
+			return;
+		}
+		OSD::AddMessage(("Dolphin " + g_video_backend->GetName() + " Video Backend.").c_str(), 5000);
 		g_video_backend->Video_Prepare();
 		Common::SetCurrentThreadName("FIFO-GPU thread");
 	}
@@ -377,22 +392,12 @@ void EmuThread()
 
 	Movie::Init();
 
-	HW::Init();	
-
-	if (!g_video_backend->Initialize(g_pWindowHandle))
-	{
-		PanicAlert("Failed to initialize video backend!");
-		Host_Message(WM_USER_STOP);
-		return;
-	}
-
-	OSD::AddMessage(("Dolphin " + g_video_backend->GetName() + " Video Backend.").c_str(), 5000);
+	HW::Init();
 
 	if (!DSP::GetDSPEmulator()->Initialize(g_pWindowHandle,
 				_CoreParameter.bWii, _CoreParameter.bDSPThread))
 	{
 		HW::Shutdown();
-		g_video_backend->Shutdown();
 		PanicAlert("Failed to initialize DSP emulator!");
 		Host_Message(WM_USER_STOP);
 		return;
@@ -447,6 +452,13 @@ void EmuThread()
 		// thread, and then takes over and becomes the video thread
 		Common::SetCurrentThreadName("Video thread");
 
+		if (!g_video_backend->Initialize(g_pWindowHandle))
+		{
+			PanicAlert("Failed to initialize video backend!");
+			Host_Message(WM_USER_STOP);
+			return;
+		}
+		OSD::AddMessage(("Dolphin " + g_video_backend->GetName() + " Video Backend.").c_str(), 5000);
 		g_video_backend->Video_Prepare();
 
 		// Spawn the CPU thread
