@@ -169,12 +169,9 @@ bool VideoBackend::Initialize(void *&window_handle)
 	}
 
 	s_BackendInitialized = true;
+	
+	OSD::AddMessage(("Dolphin " + GetName() + " Video Backend.").c_str(), 5000);
 
-	return true;
-}
-
-void VideoBackend::Video_Prepare()
-{
 	// Better be safe...
 	s_efbAccessRequested = FALSE;
 	s_FifoShuttingDown = FALSE;
@@ -201,6 +198,8 @@ void VideoBackend::Video_Prepare()
 
 	// Tell the host that the window is ready
 	Host_Message(WM_USER_CREATE);
+	
+	return true;
 }
 
 void VideoBackend::Shutdown()

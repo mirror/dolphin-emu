@@ -170,14 +170,9 @@ bool VideoBackend::Initialize(void *&window_handle)
 		return false;
 
 	s_BackendInitialized = true;
+	
+	OSD::AddMessage(("Dolphin " + GetName() + " Video Backend.").c_str(), 5000);
 
-	return true;
-}
-
-// This is called after Initialize() from the Core
-// Run from the graphics thread
-void VideoBackend::Video_Prepare()
-{
 	GLInterface->MakeCurrent();
 
 	g_renderer = new Renderer;
@@ -207,6 +202,8 @@ void VideoBackend::Video_Prepare()
 
 	// Notify the core that the video backend is ready
 	Host_Message(WM_USER_CREATE);
+	
+	return true;
 }
 
 void VideoBackend::Shutdown()

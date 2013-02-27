@@ -14,8 +14,6 @@ class VideoBackend : public VideoBackendHardware
 
 	std::string GetName();
 
-	void Video_Prepare();
-
 	void ShowConfig(void* parent);
 
 	void UpdateFPSDisplay(const char*);

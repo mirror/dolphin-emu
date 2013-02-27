@@ -39,6 +39,7 @@
 #include "FileUtil.h"
 #include "VideoBackend.h"
 #include "Core.h"
+#include "OnScreenDisplay.h"
 
 #define VSYNC_ENABLED 0
 
@@ -89,7 +90,28 @@ bool VideoSoftware::Initialize(void *&window_handle)
 	HwRasterizer::Init();
 	SWRenderer::Init();
 	DebugUtil::Init();
+	
+	OSD::AddMessage(("Dolphin " + GetName() + " Video Backend.").c_str(), 5000);
 
+	GLInterface->MakeCurrent();
+	// Init extension support.
+#ifndef USE_GLES
+#ifdef __APPLE__
+	glewExperimental = 1;
+#endif
+	if (glewInit() != GLEW_OK) {
+		ERROR_LOG(VIDEO, "glewInit() failed!Does your video card support OpenGL 2.x?");
+		return false;
+	}
+#endif
+	// Handle VSync on/off
+	GLInterface->SwapInterval(VSYNC_ENABLED);
+
+	HwRasterizer::Prepare();
+	SWRenderer::Prepare();
+
+	INFO_LOG(VIDEO, "Video backend initialized.");
+	
 	return true;
 }
 
@@ -135,29 +157,6 @@ void VideoSoftware::Shutdown()
 	HwRasterizer::Shutdown();
 	SWRenderer::Shutdown();
 	GLInterface->Shutdown();
-}
-
-// This is called after Video_Initialize() from the Core
-void VideoSoftware::Video_Prepare()
-{
-	GLInterface->MakeCurrent();
-	// Init extension support.
-#ifndef USE_GLES
-#ifdef __APPLE__
-	glewExperimental = 1;
-#endif
-	if (glewInit() != GLEW_OK) {
-		ERROR_LOG(VIDEO, "glewInit() failed!Does your video card support OpenGL 2.x?");
-		return;
-	}
-#endif
-	// Handle VSync on/off
-	GLInterface->SwapInterval(VSYNC_ENABLED);
-
-	HwRasterizer::Prepare();
-	SWRenderer::Prepare();
-
-	INFO_LOG(VIDEO, "Video backend initialized.");
 }
 
 // Run from the CPU thread (from VideoInterface.cpp)

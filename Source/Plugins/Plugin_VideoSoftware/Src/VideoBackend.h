@@ -20,8 +20,6 @@ class VideoSoftware : public VideoBackend
 
 	void ShowConfig(void* parent);
 
-	void Video_Prepare();
-
 	void Video_EnterLoop();
 	void Video_ExitLoop();
 	void Video_BeginField(u32, FieldType, u32, u32);

@@ -314,8 +314,6 @@ void CpuThread()
 			Host_Message(WM_USER_STOP);
 			return;
 		}
-		OSD::AddMessage(("Dolphin " + g_video_backend->GetName() + " Video Backend.").c_str(), 5000);
-		g_video_backend->Video_Prepare();
 	}
 
 	#if defined(_M_X64)
@@ -355,8 +353,6 @@ void FifoPlayerThread()
 			return;
 		}
 		OSD::AddMessage(("Dolphin " + g_video_backend->GetName() + " Video Backend.").c_str(), 5000);
-		g_video_backend->Video_Prepare();
-		Common::SetCurrentThreadName("FIFO-GPU thread");
 	}
 
 	g_bStarted = true;
@@ -458,8 +454,6 @@ void EmuThread()
 			Host_Message(WM_USER_STOP);
 			return;
 		}
-		OSD::AddMessage(("Dolphin " + g_video_backend->GetName() + " Video Backend.").c_str(), 5000);
-		g_video_backend->Video_Prepare();
 
 		// Spawn the CPU thread
 		g_cpu_thread = std::thread(cpuThreadFunc);
