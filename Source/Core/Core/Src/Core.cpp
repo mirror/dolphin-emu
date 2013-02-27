@@ -324,8 +324,8 @@ void CpuThread()
 
 	g_bStarted = false;
 	
-	if (!_CoreParameter.bCPUThread)
-		g_video_backend->Video_Cleanup();
+	if(!_CoreParameter.bCPUThread)
+		g_video_backend->Shutdown();
 
 	return;
 }
@@ -356,7 +356,7 @@ void FifoPlayerThread()
 	g_bStarted = false;
 	
 	if(!_CoreParameter.bCPUThread)
-		g_video_backend->Video_Cleanup();
+		g_video_backend->Shutdown();
 
 	return;
 }
@@ -483,9 +483,6 @@ void EmuThread()
 	g_cpu_thread.join();
 
 	INFO_LOG(CONSOLE, "%s", StopMessage(true, "CPU thread stopped.").c_str());
-	
-	if(_CoreParameter.bCPUThread)
-		g_video_backend->Video_Cleanup();
 
 	VolumeHandler::EjectVolume();
 	FileMon::Close();
@@ -501,7 +498,9 @@ void EmuThread()
 	INFO_LOG(CONSOLE, "%s", StopMessage(false, "HW shutdown").c_str());
 	Pad::Shutdown();
 	Wiimote::Shutdown();
-	g_video_backend->Shutdown();
+	
+	if(_CoreParameter.bCPUThread)
+		g_video_backend->Shutdown();
 }
 
 // Set or get the running state

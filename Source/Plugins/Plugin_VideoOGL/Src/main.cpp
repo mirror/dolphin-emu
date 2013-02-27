@@ -212,11 +212,7 @@ void VideoBackend::Video_Prepare()
 void VideoBackend::Shutdown()
 {
 	s_BackendInitialized = false;
-	GLInterface->Shutdown();
-}
 
-void VideoBackend::Video_Cleanup() {
-	
 	if (g_renderer)
 	{
 		s_efbAccessRequested = false;
@@ -244,6 +240,7 @@ void VideoBackend::Video_Cleanup() {
 		delete g_renderer;
 		g_renderer = NULL;
 	}
+	GLInterface->Shutdown();
 }
 
 }

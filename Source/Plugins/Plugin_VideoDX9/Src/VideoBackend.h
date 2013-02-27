@@ -15,7 +15,6 @@ class VideoBackend : public VideoBackendHardware
 	std::string GetName();
 
 	void Video_Prepare();
-	void Video_Cleanup();
 
 	void ShowConfig(void* parent);
 
