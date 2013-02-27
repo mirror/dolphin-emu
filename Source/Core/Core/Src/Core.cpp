@@ -94,7 +94,7 @@ void Stop();
 
 bool g_bStopping = false;
 bool g_bHwInit = false;
-bool g_bStarted = false;
+volatile bool g_bStarted = false;
 bool g_bRealWiimote = false;
 void *g_pWindowHandle = NULL;
 std::string g_stateFileName;
@@ -475,6 +475,9 @@ void EmuThread()
 
 		// Spawn the CPU+GPU thread
 		g_cpu_thread = std::thread(cpuThreadFunc);
+		
+		// Wait for the cpu/gpu thread to initialize the video backend
+		while(!g_bStarted);
 
 		while (PowerPC::GetState() != PowerPC::CPU_POWERDOWN)
 		{
