@@ -811,7 +811,11 @@ const char *GeneratePixelShaderCode(DSTALPHA_MODE dstAlphaMode, API_TYPE ApiType
 
 	
 	// the screen space depth value = far z + (clip z / clip w) * z range
-	WRITE(p, "float zCoord = rawpos.z;\n");
+	if(ApiType == API_OPENGL || ApiType == API_D3D11)
+		WRITE(p, "float zCoord = rawpos.z;\n");
+	else
+		// dx9 doesn't support 4 component position, so we have to calculate it again
+		WRITE(p, "float zCoord = " I_ZBIAS"[1].x + (clipPos.z / clipPos.w) * " I_ZBIAS"[1].y;\n");
 	
 	// Note: depth textures are disabled if early depth test is enabled
 	if (depthTextureEnable)
