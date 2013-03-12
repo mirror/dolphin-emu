@@ -45,7 +45,7 @@
 // doesn't want to use APIs only available on later OS versions and had defined
 // them to (presumably lower) values
 #ifndef _WIN32_WINNT
-    #define _WIN32_WINNT 0x0600
+    #define _WIN32_WINNT 0x0601
 #endif
 
 #ifndef _WIN32_IE

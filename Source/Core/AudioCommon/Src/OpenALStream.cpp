@@ -15,6 +15,8 @@
 // Official SVN repository and contact information can be found at
 // http://code.google.com/p/dolphin-emu/
 
+#include <functional>
+
 #include "aldlist.h"
 #include "OpenALStream.h"
 #include "DPL2Decoder.h"
