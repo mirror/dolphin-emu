@@ -153,10 +153,16 @@ void RunGpuLoop()
 
 	while (GpuRunningState)
 	{
-		g_video_backend->PeekMessages();
+		// HACK(jsd): PeekMessage is a hot spot according to profiler; trying to reduce number of calls
+		static long long hits = 0;
+		if (hits++ > 0x1FFFF)
+		{
+			hits = 0;
+			g_video_backend->PeekMessages();
+		}
 
 		VideoFifo_CheckAsyncRequest();
-				
+
 		CommandProcessor::SetCpStatus();
 
 		Common::AtomicStore(CommandProcessor::VITicks, CommandProcessor::m_cpClockOrigin);
@@ -203,10 +209,17 @@ void RunGpuLoop()
 		}
 
 		fifo.isGpuReadingData = false;
-		
 
 		if (EmuRunningState)
-			Common::YieldCPU();
+		{
+			// HACK(jsd): Calling SwitchToThread() is a hot spot according to profiler.
+			static long long hits2 = 0;
+			if (hits2++ > 0x1FFFF)
+			{
+				hits2 = 0;
+				Common::YieldCPU();
+			}
+		}
 		else
 		{
 			// While the emu is paused, we still handle async requests then sleep.

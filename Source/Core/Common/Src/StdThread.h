@@ -281,7 +281,13 @@ namespace this_thread
 inline void yield()
 {
 #ifdef _WIN32
+
+#if 1
 	SwitchToThread();
+#else
+	Sleep(0);
+#endif
+
 #else
 	sleep(0);
 #endif
