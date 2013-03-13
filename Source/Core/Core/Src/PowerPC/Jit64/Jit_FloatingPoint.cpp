@@ -92,11 +92,45 @@ void Jit64::fp_arith_s(UGeckoInstruction inst)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
-
+	
+	bool single_precision = inst.OPCD == 59;
 	// Causing problems for GC - Starfox Assault (invisible boss at the end of level 1)
 	if (inst.SUBOP5 == 21) {
+		// faddsx
+#if 0
+		//rPS0(_inst.FD) = rPS1(_inst.FD) = ForceSingle(NI_add(rPS0(_inst.FA), rPS0(_inst.FB)));
+		//UpdateFPRF(rPS0(_inst.FD));
 		Default(inst); return;
-	}	
+#else
+		int d = inst.FD;
+		int a = inst.FA;
+		int b = inst.FB;
+		fpr.Lock(d, a, b);
+		fpr.BindToRegister(d, true);
+
+		MOVSD(XMM0, fpr.R(a));
+		ADDSD(XMM0, fpr.R(b));
+		MOVSD(fpr.RX(d), R(XMM0));
+
+		if (single_precision)
+		{
+			ForceSinglePrecisionS(fpr.RX(d));
+			if (cpu_info.bSSE3)
+			{
+				MOVDDUP(fpr.RX(d), fpr.R(d));
+			}
+			else
+			{
+				if (!fpr.R(d).IsSimpleReg(fpr.RX(d)))
+					MOVQ_xmm(fpr.RX(d), fpr.R(d));
+				UNPCKLPD(fpr.RX(d), R(fpr.RX(d)));
+			}
+		}
+
+		fpr.UnlockAll();
+		return;
+#endif
+	}
 
 	if (inst.SUBOP5 == 26) {
 		// frsqrtex
@@ -122,13 +156,12 @@ void Jit64::fp_arith_s(UGeckoInstruction inst)
 		Default(inst); return;
 	}
 
-	bool dupe = inst.OPCD == 59;
 	switch (inst.SUBOP5)
 	{
-	case 18: fp_tri_op(inst.FD, inst.FA, inst.FB, false, dupe, &XEmitter::DIVSD); break; //div
-	case 20: fp_tri_op(inst.FD, inst.FA, inst.FB, false, dupe, &XEmitter::SUBSD); break; //sub
-	case 21: fp_tri_op(inst.FD, inst.FA, inst.FB, true,  dupe, &XEmitter::ADDSD); break; //add
-	case 25: fp_tri_op(inst.FD, inst.FA, inst.FC, true, dupe, &XEmitter::MULSD); break; //mul
+	case 18: fp_tri_op(inst.FD, inst.FA, inst.FB, false, single_precision, &XEmitter::DIVSD); break; //div
+	case 20: fp_tri_op(inst.FD, inst.FA, inst.FB, false, single_precision, &XEmitter::SUBSD); break; //sub
+	case 21: fp_tri_op(inst.FD, inst.FA, inst.FB, true,  single_precision, &XEmitter::ADDSD); break; //add
+	case 25: fp_tri_op(inst.FD, inst.FA, inst.FC, true,  single_precision, &XEmitter::MULSD); break; //mul
 	default:
 		_assert_msg_(DYNA_REC, 0, "fp_arith_s WTF!!!");
 	}
