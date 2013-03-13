@@ -144,7 +144,7 @@ u32 EFB_Read(const u32 addr)
 }
 
 template <typename T>
-inline void ReadFromHardware(T &_var, const u32 em_address, const u32 effective_address, Memory::XCheckTLBFlag flag)
+static __forceinline void ReadFromHardware(T &_var, const u32 em_address, const u32 effective_address, const Memory::XCheckTLBFlag flag)
 {
 	// TODO: Figure out the fastest order of tests for both read and write (they are probably different).
 	if ((em_address & 0xC8000000) == 0xC8000000)
@@ -208,7 +208,7 @@ inline void ReadFromHardware(T &_var, const u32 em_address, const u32 effective_
 
 
 template <typename T>
-inline void WriteToHardware(u32 em_address, const T data, u32 effective_address, Memory::XCheckTLBFlag flag)
+static __forceinline void WriteToHardware(u32 em_address, const T data, u32 effective_address, Memory::XCheckTLBFlag flag)
 {
 	// First, let's check for FIFO writes, since they are probably the most common
 	// reason we end up in this function:
