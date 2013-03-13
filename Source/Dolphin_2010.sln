@@ -1,5 +1,5 @@
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Dolphin", "Core\DolphinWX\Dolphin.vcxproj", "{1B099EF8-6F87-47A2-A3E7-898A24584F49}"
 	ProjectSection(ProjectDependencies) = postProject
 		{8C60E805-0DA5-4E25-8F84-038DB504BB0D} = {8C60E805-0DA5-4E25-8F84-038DB504BB0D}
@@ -399,5 +399,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(Performance) = preSolution
+		HasPerformanceSessions = true
 	EndGlobalSection
 EndGlobal

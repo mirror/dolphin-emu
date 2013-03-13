@@ -38,3 +38,10 @@ Externals/scons-local/*
 .DS_Store
 #Ignore transifix configuration directory
 .tx
+
+Externals/*
+Languages/*
+Source/*.vsp
+Source/*.psess
+
+Tools/*
