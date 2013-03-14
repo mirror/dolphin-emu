@@ -526,8 +526,14 @@ void Idle()
 	//while we process only the events required by the FIFO.
 	while (g_video_backend->Video_IsPossibleWaitingSetDrawDone())
 	{
-		ProcessFifoWaitEvents();		
-		Common::YieldCPU();
+		ProcessFifoWaitEvents();
+
+		static int hits = 0;
+		if (hits++ > 0x1FFFF)
+		{
+			hits = 0;
+			Common::YieldCPU();
+		}
 	}
 
 	idledCycles += downcount;
