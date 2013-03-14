@@ -468,7 +468,7 @@ void STACKALIGN GatherPipeBursted()
 	}
 
 	if (IsOnThread())
-		SetCpStatus();
+		SetCpStatus(true);
 
 	// update the fifo-pointer
 	if (fifo.CPWritePointer >= fifo.CPEnd)
@@ -518,14 +518,14 @@ void AbortFrame()
 
 }
 
-void SetCpStatus()
+void SetCpStatus(bool isCPUThread)
 {
     // overflow & underflow check
 	fifo.bFF_HiWatermark = (fifo.CPReadWriteDistance > fifo.CPHiWatermark);
     fifo.bFF_LoWatermark = (fifo.CPReadWriteDistance < fifo.CPLoWatermark);
 	
     // breakpoint     
-	if (Core::IsGPUThread())
+	if (!isCPUThread)
 	{
 		if (fifo.bFF_BPEnable)
 		{
