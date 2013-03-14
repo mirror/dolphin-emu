@@ -515,7 +515,10 @@ u32 OpcodeDecoder_Run(bool skipped_frame)
 	u32 cycles = FifoCommandRunnable();
 	while (cycles > 0)
 	{
-		skipped_frame ? DecodeSemiNop() : Decode();
+		if (skipped_frame)
+			DecodeSemiNop();
+		else
+			Decode();
 		totalCycles += cycles;
 		cycles = FifoCommandRunnable();
 	}
