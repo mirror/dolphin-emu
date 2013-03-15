@@ -153,12 +153,14 @@ void RunGpuLoop()
 
 	while (GpuRunningState)
 	{
-		// HACK(jsd): PeekMessage is a hot spot according to profiler; trying to reduce number of calls
-		static long long hits = 0;
-		if (hits++ > 0x1FFFF)
+		// NOTE(jsd): Win32 API function `PeekMessageW()` is a hot spot according to profiler; reducing number of calls.
 		{
-			hits = 0;
-			g_video_backend->PeekMessages();
+			static long long hits = 0;
+			if (hits++ > 0x1FFFF)
+			{
+				hits = 0;
+				g_video_backend->PeekMessages();
+			}
 		}
 
 		VideoFifo_CheckAsyncRequest();
@@ -212,13 +214,12 @@ void RunGpuLoop()
 
 		if (EmuRunningState)
 		{
-			// HACK(jsd): Calling SwitchToThread() is a hot spot according to profiler.
-			static long long hits2 = 0;
-			if (hits2++ > 0x1FFFF)
-			{
-				hits2 = 0;
-				Common::YieldCPU();
-			}
+			// NOTE(jsd): Calling SwitchToThread() on Windows 7 x64 is a hot spot, according to profiler.
+			// See https://docs.google.com/spreadsheet/ccc?key=0Ah4nh0yGtjrgdFpDeF9pS3V6RUotRVE3S3J4TGM1NlE#gid=0
+			// for benchmark details.
+#if 0
+			Common::YieldCPU();
+#endif
 		}
 		else
 		{
