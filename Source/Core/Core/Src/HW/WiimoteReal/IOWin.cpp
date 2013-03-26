@@ -119,7 +119,8 @@ inline void init_lib()
 		if (!bthprops_lib)
 		{
 			PanicAlertT("Failed to load bthprops.cpl");
-			exit(EXIT_FAILURE);
+//			exit(EXIT_FAILURE);
+			return;
 		}
 
 		Bth_BluetoothFindDeviceClose = (PBth_BluetoothFindDeviceClose)GetProcAddress(bthprops_lib, "BluetoothFindDeviceClose");
@@ -142,7 +143,8 @@ inline void init_lib()
 			!Bth_BluetoothEnumerateInstalledServices)
 		{
 			PanicAlertT("Failed to load bthprops.cpl");
-			exit(EXIT_FAILURE);
+//			exit(EXIT_FAILURE);
+			return;
 		}
 
 		initialized = true;
