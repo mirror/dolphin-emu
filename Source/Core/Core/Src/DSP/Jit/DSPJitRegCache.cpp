@@ -870,7 +870,7 @@ X64Reg DSPJitRegCache::spillXReg()
 	unsigned int i;
 	unsigned int max_use_ctr_diff = 0;
 	X64Reg least_recent_use_reg = INVALID_REG;
-	for(i = 0; i < sizeof(alloc_order)/sizeof(alloc_order[0]); i++) {
+	for(i = 0; i < ARRAYSIZE(alloc_order); i++) {
 		X64Reg reg = alloc_order[i];
 		if (xregs[reg].guest_reg <= DSP_REG_MAX_MEM_BACKED &&
 		    !regs[xregs[reg].guest_reg].used) {
@@ -889,7 +889,7 @@ X64Reg DSPJitRegCache::spillXReg()
 	}
 
 	//just choose one.
-	for(i = 0; i < sizeof(alloc_order)/sizeof(alloc_order[0]); i++) {
+	for(i = 0; i < ARRAYSIZE(alloc_order); i++) {
 		X64Reg reg = alloc_order[i];
 		if (xregs[reg].guest_reg <= DSP_REG_MAX_MEM_BACKED &&
 		    !regs[xregs[reg].guest_reg].used) {
@@ -918,7 +918,7 @@ void DSPJitRegCache::spillXReg(X64Reg reg)
 X64Reg DSPJitRegCache::findFreeXReg()
 {
 	unsigned int i;
-	for(i = 0; i < sizeof(alloc_order)/sizeof(alloc_order[0]); i++) {
+	for(i = 0; i < ARRAYSIZE(alloc_order); i++) {
 		if (xregs[alloc_order[i]].guest_reg == DSP_REG_NONE) {
 			return alloc_order[i];
 		}

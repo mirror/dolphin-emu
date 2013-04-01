@@ -395,7 +395,7 @@ void InitTables()
 		m_infoTable63[i] = 0;		
 	}
 
-	for (int i = 0; i < (int)(sizeof(primarytable) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(primarytable)); i++)
 	{
 		Interpreter::m_opTable[primarytable[i].opcode] = primarytable[i].Inst;
 		m_infoTable[primarytable[i].opcode] = &primarytable[i].opinfo;
@@ -404,7 +404,7 @@ void InitTables()
 	for (int i = 0; i < 32; i++)
 	{
 		int fill = i << 5;
-		for (int j = 0; j < (int)(sizeof(table4_2) / sizeof(GekkoOPTemplate)); j++)
+		for (int j = 0; j < (int)(ARRAYSIZE(table4_2)); j++)
 		{
 			int op = fill+table4_2[j].opcode;
 			Interpreter::m_opTable4[op] = table4_2[j].Inst;
@@ -415,7 +415,7 @@ void InitTables()
 	for (int i = 0; i < 16; i++)
 	{
 		int fill = i << 6;
-		for (int j = 0; j < (int)(sizeof(table4_3) / sizeof(GekkoOPTemplate)); j++)
+		for (int j = 0; j < (int)(ARRAYSIZE(table4_3)); j++)
 		{
 			int op = fill+table4_3[j].opcode;
 			Interpreter::m_opTable4[op] = table4_3[j].Inst;
@@ -423,14 +423,14 @@ void InitTables()
 		}
 	}
 
-	for (int i = 0; i < (int)(sizeof(table4) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table4)); i++)
 	{
 		int op = table4[i].opcode;
 		Interpreter::m_opTable4[op] = table4[i].Inst;
 		m_infoTable4[op] = &table4[i].opinfo;
 	}
 
-	for (int i = 0; i < (int)(sizeof(table31) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table31)); i++)
 	{
 		int op = table31[i].opcode;
 		Interpreter::m_opTable31[op] = table31[i].Inst;
@@ -440,7 +440,7 @@ void InitTables()
 	for (int i = 0; i < 1; i++)
 	{
 		int fill = i << 9;
-		for (int j = 0; j < (int)(sizeof(table31_2) / sizeof(GekkoOPTemplate)); j++)
+		for (int j = 0; j < (int)(ARRAYSIZE(table31_2)); j++)
 		{
 			int op = fill + table31_2[j].opcode;
 			Interpreter::m_opTable31[op] = table31_2[j].Inst;
@@ -448,21 +448,21 @@ void InitTables()
 		}
 	}
 
-	for (int i = 0; i < (int)(sizeof(table19) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table19)); i++)
 	{
 		int op = table19[i].opcode;
 		Interpreter::m_opTable19[op] = table19[i].Inst;
 		m_infoTable19[op] = &table19[i].opinfo;
 	}
 
-	for (int i = 0; i < (int)(sizeof(table59) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table59)); i++)
 	{
 		int op = table59[i].opcode;
 		Interpreter::m_opTable59[op] = table59[i].Inst;
 		m_infoTable59[op] = &table59[i].opinfo;
 	}
 
-	for (int i = 0; i < (int)(sizeof(table63) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table63)); i++)
 	{
 		int op = table63[i].opcode;
 		Interpreter::m_opTable63[op] = table63[i].Inst;
@@ -472,7 +472,7 @@ void InitTables()
 	for (int i = 0; i < 32; i++)
 	{
 		int fill = i << 5;
-		for (int j = 0; j < (int)(sizeof(table63_2) / sizeof(GekkoOPTemplate)); j++)
+		for (int j = 0; j < (int)(ARRAYSIZE(table63_2)); j++)
 		{
 			int op = fill + table63_2[j].opcode;
 			Interpreter::m_opTable63[op] = table63_2[j].Inst;
@@ -481,25 +481,25 @@ void InitTables()
 	}
 
 	m_numInstructions = 0;
-	for (int i = 0; i < (int)(sizeof(primarytable) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(primarytable)); i++)
 		m_allInstructions[m_numInstructions++] = &primarytable[i].opinfo;
-	for (int i = 0; i < (int)(sizeof(table4_2) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table4_2)); i++)
 		m_allInstructions[m_numInstructions++] = &table4_2[i].opinfo;
-	for (int i = 0; i < (int)(sizeof(table4_3) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table4_3)); i++)
 		m_allInstructions[m_numInstructions++] = &table4_3[i].opinfo;
-	for (int i = 0; i < (int)(sizeof(table4) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table4)); i++)
 		m_allInstructions[m_numInstructions++] = &table4[i].opinfo;
-	for (int i = 0; i < (int)(sizeof(table31) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table31)); i++)
 		m_allInstructions[m_numInstructions++] = &table31[i].opinfo;
-	for (int i = 0; i < (int)(sizeof(table31_2) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table31_2)); i++)
 		m_allInstructions[m_numInstructions++] = &table31_2[i].opinfo;
-	for (int i = 0; i < (int)(sizeof(table19) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table19)); i++)
 		m_allInstructions[m_numInstructions++] = &table19[i].opinfo;
-	for (int i = 0; i < (int)(sizeof(table59) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table59)); i++)
 		m_allInstructions[m_numInstructions++] = &table59[i].opinfo;
-	for (int i = 0; i < (int)(sizeof(table63) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table63)); i++)
 		m_allInstructions[m_numInstructions++] = &table63[i].opinfo;
-	for (int i = 0; i < (int)(sizeof(table63_2) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table63_2)); i++)
 		m_allInstructions[m_numInstructions++] = &table63_2[i].opinfo;
 	if (m_numInstructions >= 512) {
 		PanicAlert("m_allInstructions underdimensioned");

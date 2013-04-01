@@ -419,7 +419,7 @@ void Interpreter::frsqrtex(UGeckoInstruction _inst)
 		{
 			u32 fsa = Common::swap32(Common::swap64(riPS0(_inst.FB)));
 			u32 fsb = Common::swap32(Common::swap64(riPS0(_inst.FB)) >> 32);
-			u32 idx=(fsa >> 5) % (sizeof(frsqrtex_lut) / sizeof(frsqrtex_lut[0]));
+			u32 idx=(fsa >> 5) % (ARRAYSIZE(frsqrtex_lut));
 
 			s32 e = fsa >> (32-12);
 			e &= 2047;

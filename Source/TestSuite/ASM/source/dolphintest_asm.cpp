@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 	init_crap();
 	initialise_fat();
 	
-	for (uint a = 0; a < sizeof(instructions) / sizeof(inst); ++a)
+	for (uint a = 0; a < ARRAYSIZE(instructions); ++a)
 	{
 		RunInstruction(a);
 	}

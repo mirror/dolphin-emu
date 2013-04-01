@@ -281,7 +281,7 @@ VideoConfigDiag::VideoConfigDiag(wxWindow* parent, const std::string &title, con
 
 	szr_display->Add(new wxStaticText(page_general, -1, _("Aspect Ratio:")), 1, wxALIGN_CENTER_VERTICAL, 0);
 	wxChoice* const choice_aspect = CreateChoice(page_general, vconfig.iAspectRatio, wxGetTranslation(ar_desc),
-														sizeof(ar_choices)/sizeof(*ar_choices), ar_choices);
+														ARRAYSIZE(ar_choices), ar_choices);
 	szr_display->Add(choice_aspect, 1, 0, 0);
 	}
 
@@ -344,7 +344,7 @@ VideoConfigDiag::VideoConfigDiag(wxWindow* parent, const std::string &title, con
 		wxT("2.5x Native (1600x1320)"), wxT("3x Native (1920x1584)"), wxT("4x Native (2560x2112)") };
 
 	wxChoice *const choice_efbscale = CreateChoice(page_enh,
-		vconfig.iEFBScale, wxGetTranslation(internal_res_desc), sizeof(efbscale_choices)/sizeof(*efbscale_choices), efbscale_choices);
+		vconfig.iEFBScale, wxGetTranslation(internal_res_desc), ARRAYSIZE(efbscale_choices), efbscale_choices);
 
 	szr_enh->Add(new wxStaticText(page_enh, wxID_ANY, _("Internal Resolution:")), 1, wxALIGN_CENTER_VERTICAL, 0);
 	szr_enh->Add(choice_efbscale);

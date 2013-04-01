@@ -308,7 +308,7 @@ Joystick::Joystick( /*const LPCDIDEVICEINSTANCE lpddi, */const LPDIRECTINPUTDEVI
 		//ZeroMemory(&env, sizeof(env));
 		//env.dwSize = sizeof(env);
 
-		for (unsigned int f = 0; f < sizeof(force_type_names)/sizeof(*force_type_names); ++f)
+		for (unsigned int f = 0; f < ARRAYSIZE(force_type_names); ++f)
 		{
 			// ugly if ladder
 			if (0 == f)

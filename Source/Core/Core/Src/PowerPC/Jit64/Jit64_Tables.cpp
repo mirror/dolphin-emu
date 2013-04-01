@@ -420,7 +420,7 @@ void InitTables()
 		dynaOpTable63[i] = &Jit64::unknown_instruction;	
 	}
 
-	for (int i = 0; i < (int)(sizeof(primarytable) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(primarytable)); i++)
 	{
 		dynaOpTable[primarytable[i].opcode] = primarytable[i].Inst;
 	}
@@ -428,7 +428,7 @@ void InitTables()
 	for (int i = 0; i < 32; i++)
 	{
 		int fill = i << 5;
-		for (int j = 0; j < (int)(sizeof(table4_2) / sizeof(GekkoOPTemplate)); j++)
+		for (int j = 0; j < (int)(ARRAYSIZE(table4_2)); j++)
 		{
 			int op = fill+table4_2[j].opcode;
 			dynaOpTable4[op] = table4_2[j].Inst;
@@ -438,20 +438,20 @@ void InitTables()
 	for (int i = 0; i < 16; i++)
 	{
 		int fill = i << 6;
-		for (int j = 0; j < (int)(sizeof(table4_3) / sizeof(GekkoOPTemplate)); j++)
+		for (int j = 0; j < (int)(ARRAYSIZE(table4_3)); j++)
 		{
 			int op = fill+table4_3[j].opcode;
 			dynaOpTable4[op] = table4_3[j].Inst;
 		}
 	}
 
-	for (int i = 0; i < (int)(sizeof(table4) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table4)); i++)
 	{
 		int op = table4[i].opcode;
 		dynaOpTable4[op] = table4[i].Inst;
 	}
 
-	for (int i = 0; i < (int)(sizeof(table31) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table31)); i++)
 	{
 		int op = table31[i].opcode;
 		dynaOpTable31[op] = table31[i].Inst;
@@ -460,26 +460,26 @@ void InitTables()
 	for (int i = 0; i < 1; i++)
 	{
 		int fill = i << 9;
-		for (int j = 0; j < (int)(sizeof(table31_2) / sizeof(GekkoOPTemplate)); j++)
+		for (int j = 0; j < (int)(ARRAYSIZE(table31_2)); j++)
 		{
 			int op = fill + table31_2[j].opcode;
 			dynaOpTable31[op] = table31_2[j].Inst;
 		}
 	}
 
-	for (int i = 0; i < (int)(sizeof(table19) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table19)); i++)
 	{
 		int op = table19[i].opcode;
 		dynaOpTable19[op] = table19[i].Inst;
 	}
 
-	for (int i = 0; i < (int)(sizeof(table59) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table59)); i++)
 	{
 		int op = table59[i].opcode;
 		dynaOpTable59[op] = table59[i].Inst;
 	}
 
-	for (int i = 0; i < (int)(sizeof(table63) / sizeof(GekkoOPTemplate)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(table63)); i++)
 	{
 		int op = table63[i].opcode;
 		dynaOpTable63[op] = table63[i].Inst;
@@ -488,7 +488,7 @@ void InitTables()
 	for (int i = 0; i < 32; i++)
 	{
 		int fill = i << 5;
-		for (int j = 0; j < (int)(sizeof(table63_2) / sizeof(GekkoOPTemplate)); j++)
+		for (int j = 0; j < (int)(ARRAYSIZE(table63_2)); j++)
 		{
 			int op = fill + table63_2[j].opcode;
 			dynaOpTable63[op] = table63_2[j].Inst;

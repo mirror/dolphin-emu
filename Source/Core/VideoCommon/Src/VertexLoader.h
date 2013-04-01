@@ -61,7 +61,7 @@ public:
 		return false;
 	}
 	bool operator == (const VertexLoaderUID& rh) const {
-		return hash == rh.hash && std::equal(vid, vid + sizeof(vid) / sizeof(vid[0]), rh.vid);
+		return hash == rh.hash && std::equal(vid, vid + ARRAYSIZE(vid), rh.vid);
 	}
 	size_t GetHash() const {
 		return hash;
@@ -69,7 +69,7 @@ public:
 private:
 	size_t CalculateHash() {
 		size_t h = -1;
-		for (unsigned int i = 0; i < sizeof(vid) / sizeof(vid[0]); ++i) {
+		for (unsigned int i = 0; i < ARRAYSIZE(vid); ++i) {
 			h = h * 137 + vid[i];
 		}
 		return h;

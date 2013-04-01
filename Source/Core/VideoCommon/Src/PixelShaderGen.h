@@ -81,7 +81,7 @@ public:
 
 	int GetNumValues() const
 	{
-		if (safe) return (sizeof(values) / sizeof(u32));
+		if (safe) return (ARRAYSIZE(values));
 		else return num_values;
 	}
 

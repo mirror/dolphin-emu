@@ -78,7 +78,7 @@ unsigned int VideoBackend::PeekMessages()
 void VideoBackend::UpdateFPSDisplay(const char *text)
 {
 	TCHAR temp[512];
-	swprintf_s(temp, sizeof(temp)/sizeof(TCHAR), _T("%hs | DX9 | %hs"), scm_rev_str, text);
+	swprintf_s(temp, ARRAYSIZE(temp), _T("%hs | DX9 | %hs"), scm_rev_str, text);
 	EmuWindow::SetWindowText(temp);
 }
 

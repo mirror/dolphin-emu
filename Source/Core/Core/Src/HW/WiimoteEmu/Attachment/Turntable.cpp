@@ -30,7 +30,7 @@ Turntable::Turntable() : Attachment(_trans("Turntable"))
 {
 	// buttons
 	groups.push_back(m_buttons = new Buttons("Buttons"));
-	for (unsigned int i = 0; i < sizeof(turntable_button_names)/sizeof(*turntable_button_names); ++i)
+	for (unsigned int i = 0; i < ARRAYSIZE(turntable_button_names); ++i)
 		m_buttons->controls.push_back(new ControlGroup::Input(turntable_button_names[i]));
 
 	// turntables

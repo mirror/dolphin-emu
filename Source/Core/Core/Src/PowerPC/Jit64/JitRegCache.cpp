@@ -227,7 +227,7 @@ const int *GPRRegCache::GetAllocationOrder(int &count)
 		ESI, EDI, EBX, EBP, EDX, ECX,
 #endif
 	};
-	count = sizeof(allocationOrder) / sizeof(const int);
+	count = ARRAYSIZE(allocationOrder);
 	return allocationOrder;
 }
 
@@ -241,7 +241,7 @@ const int *FPURegCache::GetAllocationOrder(int &count)
 		XMM2, XMM3, XMM4, XMM5, XMM6, XMM7,
 #endif
 	};
-	count = sizeof(allocationOrder) / sizeof(int);
+	count = ARRAYSIZE(allocationOrder);
 	return allocationOrder;
 }
 

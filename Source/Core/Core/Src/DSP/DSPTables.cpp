@@ -340,8 +340,8 @@ const DSPOPCTemplate opcodes_ext[] =
 	{"LDNM",	0x00cc, 0x00cc, DSPInterpreter::Ext::ldnm, &DSPEmitter::ldnm, 1, 3, {{P_REGM18, 1, 0, 4, 0x0020}, {P_REGM19, 1, 0, 3, 0x0010}, {P_PRG, 1, 0, 0, 0x0003}}, false, false, false, false, false},
 };
 
-const int opcodes_size = sizeof(opcodes) / sizeof(DSPOPCTemplate);
-const int opcodes_ext_size = sizeof(opcodes_ext) / sizeof(DSPOPCTemplate);
+const int opcodes_size = ARRAYSIZE(opcodes);
+const int opcodes_ext_size = ARRAYSIZE(opcodes_ext);
 
 const pdlabel_t pdlabels[] =
 {
@@ -448,7 +448,7 @@ const pdlabel_t pdlabels[] =
 	{0xffff, "CMBL", "CPU Mailbox L",},
 };
 
-const u32 pdlabels_size = sizeof(pdlabels) / sizeof(pdlabel_t);
+const u32 pdlabels_size = ARRAYSIZE(pdlabels);
 
 const pdlabel_t regnames[] =
 {
@@ -501,7 +501,7 @@ const char* pdname(u16 val)
 {
 	static char tmpstr[12]; // nasty
 
-	for (int i = 0; i < (int)(sizeof(pdlabels) / sizeof(pdlabel_t)); i++)
+	for (int i = 0; i < (int)(ARRAYSIZE(pdlabels)); i++)
 	{
 		if (pdlabels[i].addr == val)
 			return pdlabels[i].name;

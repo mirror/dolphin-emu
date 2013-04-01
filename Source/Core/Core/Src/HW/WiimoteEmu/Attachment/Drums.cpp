@@ -32,7 +32,7 @@ Drums::Drums() : Attachment(_trans("Drums"))
 {
 	// pads
 	groups.push_back(m_pads = new Buttons(_trans("Pads")));
-	for (unsigned int i = 0; i < sizeof(drum_pad_names)/sizeof(*drum_pad_names); ++i)
+	for (unsigned int i = 0; i < ARRAYSIZE(drum_pad_names); ++i)
 		m_pads->controls.push_back(new ControlGroup::Input(drum_pad_names[i]));
 
 	// stick

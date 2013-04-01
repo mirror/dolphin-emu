@@ -69,7 +69,7 @@ GCPad::GCPad(const unsigned int index) : m_index(index)
 
 	// buttons
 	groups.push_back(m_buttons = new Buttons(_trans("Buttons")));
-	for (unsigned int i=0; i < sizeof(named_buttons)/sizeof(*named_buttons) - mic_hax; ++i)
+	for (unsigned int i=0; i < ARRAYSIZE(named_buttons) - mic_hax; ++i)
 		m_buttons->controls.push_back(new ControlGroup::Input(named_buttons[i]));
 
 	// sticks
@@ -78,7 +78,7 @@ GCPad::GCPad(const unsigned int index) : m_index(index)
 
 	// triggers
 	groups.push_back(m_triggers = new MixedTriggers(_trans("Triggers")));
-	for (unsigned int i=0; i < sizeof(named_triggers)/sizeof(*named_triggers); ++i)
+	for (unsigned int i=0; i < ARRAYSIZE(named_triggers); ++i)
 		m_triggers->controls.push_back(new ControlGroup::Input(named_triggers[i]));
 
 	// rumble

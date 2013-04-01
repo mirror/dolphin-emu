@@ -957,7 +957,7 @@ void PSTextureEncoder::Init()
 	// Create input layout for vertex quad using bytecode from vertex shader
 
 	hr = D3D::device->CreateInputLayout(QUAD_LAYOUT_DESC,
-		sizeof(QUAD_LAYOUT_DESC)/sizeof(D3D11_INPUT_ELEMENT_DESC),
+		ARRAYSIZE(QUAD_LAYOUT_DESC),
 		bytecode->Data(), bytecode->Size(), &m_quadLayout);
 	CHECK(SUCCEEDED(hr), "create efb encode quad vertex layout");
 	D3D::SetDebugObjectName(m_quadLayout, "efb encoder quad layout");

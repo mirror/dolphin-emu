@@ -69,12 +69,12 @@ Device::Device(const XINPUT_CAPABILITIES& caps, u8 index)
 	// but i will leave all this stuff in, incase m$ fixes xinput up a bit
 
 	// get supported buttons
-	for (int i = 0; i != sizeof(named_buttons)/sizeof(*named_buttons); ++i)
+	for (int i = 0; i != ARRAYSIZE(named_buttons); ++i)
 		if (named_buttons[i].bitmask & caps.Gamepad.wButtons)
 			AddInput(new Button(i, m_state_in.Gamepad.wButtons));
 
 	// get supported triggers
-	for (int i = 0; i != sizeof(named_triggers)/sizeof(*named_triggers); ++i)
+	for (int i = 0; i != ARRAYSIZE(named_triggers); ++i)
 	{
 		//BYTE val = (&caps.Gamepad.bLeftTrigger)[i];	// should be max value / msdn lies
 		if ((&caps.Gamepad.bLeftTrigger)[i])
@@ -82,7 +82,7 @@ Device::Device(const XINPUT_CAPABILITIES& caps, u8 index)
 	}
 
 	// get supported axes
-	for (int i = 0; i != sizeof(named_axes)/sizeof(*named_axes); ++i)
+	for (int i = 0; i != ARRAYSIZE(named_axes); ++i)
 	{
 		//SHORT val = (&caps.Gamepad.sThumbLX)[i];  // xinput doesnt give the range / msdn is lier
 		if ((&caps.Gamepad.sThumbLX)[i])
@@ -96,7 +96,7 @@ Device::Device(const XINPUT_CAPABILITIES& caps, u8 index)
 	}
 
 	// get supported motors
-	for (int i = 0; i != sizeof(named_motors)/sizeof(*named_motors); ++i)
+	for (int i = 0; i != ARRAYSIZE(named_motors); ++i)
 	{
 		//WORD val = (&caps.Vibration.wLeftMotorSpeed)[i];	// should be max value / nope, more lies
 		if ((&caps.Vibration.wLeftMotorSpeed)[i])

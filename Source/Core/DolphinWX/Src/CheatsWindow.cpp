@@ -221,7 +221,7 @@ CheatSearchTab::CheatSearchTab(wxWindow* const parent)
 		//_("Between"),
 	};
 
-	search_type = new wxChoice(this, -1, wxDefaultPosition, wxDefaultSize, sizeof(searches)/sizeof(*searches), searches);
+	search_type = new wxChoice(this, -1, wxDefaultPosition, wxDefaultSize, ARRAYSIZE(searches), searches);
 	search_type->Select(0);
 
 	wxStaticBoxSizer* const sizer_cheat_search_filter = new wxStaticBoxSizer(wxVERTICAL, this, _("Search Filter"));

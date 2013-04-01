@@ -32,7 +32,7 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin
 		m_wiimote_index_from_conf_bt_id.insert(std::pair<wxWindowID, unsigned int>(config_bt_id, i));
 
 		wiimote_label[i] = new wxStaticText(this, wxID_ANY, str);
-		wiimote_source_ch[i] = new wxChoice(this, source_ctrl_id, wxDefaultPosition, wxDefaultSize, sizeof(src_choices)/sizeof(*src_choices), src_choices);
+		wiimote_source_ch[i] = new wxChoice(this, source_ctrl_id, wxDefaultPosition, wxDefaultSize, ARRAYSIZE(src_choices), src_choices);
 		wiimote_source_ch[i]->Bind(wxEVT_COMMAND_CHOICE_SELECTED, &WiimoteConfigDiag::SelectSource, this);
 		wiimote_configure_bt[i] = new wxButton(this, config_bt_id, _("Configure"));
 		wiimote_configure_bt[i]->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &WiimoteConfigDiag::ConfigEmulatedWiimote, this);

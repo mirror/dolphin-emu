@@ -260,7 +260,7 @@ void CConfigMain::InitializeGUILists()
 		arrayStringFor_Framelimit.Add(wxString::Format(wxT("%i"), i));
 
 	// Emulator Engine
-	for (unsigned int a = 0; a < (sizeof(CPUCores) / sizeof(CPUCore)); ++a)
+	for (unsigned int a = 0; a < (ARRAYSIZE(CPUCores)); ++a)
 		arrayStringFor_CPUEngine.Add(wxGetTranslation(CPUCores[a].name));
 		
 	// DSP Engine 
@@ -335,7 +335,7 @@ void CConfigMain::InitializeGUIValues()
 	UseFPSForLimiting->SetValue(SConfig::GetInstance().b_UseFPS);
 
 	// General - Advanced
-	for (unsigned int a = 0; a < (sizeof(CPUCores) / sizeof(CPUCore)); ++a)
+	for (unsigned int a = 0; a < (ARRAYSIZE(CPUCores)); ++a)
 		if (CPUCores[a].CPUid == startup_params.iCPUCore)
 			CPUEngine->SetSelection(a);
 	_NTSCJ->SetValue(startup_params.bForceNTSCJ);
@@ -346,7 +346,7 @@ void CConfigMain::InitializeGUIValues()
 	UsePanicHandlers->SetValue(startup_params.bUsePanicHandlers);
 	OnScreenDisplayMessages->SetValue(startup_params.bOnScreenDisplayMessages);
 	// need redesign
-	for (unsigned int i = 0; i < sizeof(langIds) / sizeof(wxLanguage); i++)
+	for (unsigned int i = 0; i < ARRAYSIZE(langIds); i++)
 	{
 		if (langIds[i] == SConfig::GetInstance().m_InterfaceLanguage)
 		{

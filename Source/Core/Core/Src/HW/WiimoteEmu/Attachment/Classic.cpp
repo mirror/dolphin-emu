@@ -53,7 +53,7 @@ Classic::Classic() : Attachment(_trans("Classic"))
 {
 	// buttons
 	groups.push_back(m_buttons = new Buttons("Buttons"));
-	for (unsigned int i = 0; i < sizeof(classic_button_names)/sizeof(*classic_button_names); ++i)
+	for (unsigned int i = 0; i < ARRAYSIZE(classic_button_names); ++i)
 		m_buttons->controls.push_back(new ControlGroup::Input(classic_button_names[i]));
 
 	// sticks
@@ -62,7 +62,7 @@ Classic::Classic() : Attachment(_trans("Classic"))
 
 	// triggers
 	groups.push_back(m_triggers = new MixedTriggers("Triggers"));
-	for (unsigned int i=0; i < sizeof(classic_trigger_names)/sizeof(*classic_trigger_names); ++i)
+	for (unsigned int i=0; i < ARRAYSIZE(classic_trigger_names); ++i)
 		m_triggers->controls.push_back(new ControlGroup::Input(classic_trigger_names[i]));
 
 	// dpad

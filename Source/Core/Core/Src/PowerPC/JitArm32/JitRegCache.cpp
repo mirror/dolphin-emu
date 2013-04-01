@@ -65,7 +65,7 @@ ARMReg *ArmRegCache::GetPPCAllocationOrder(int &count)
 	{
 		R0, R1, R2, R3, R4, R5, R6, R7, R8
 	};
-	count = sizeof(allocationOrder) / sizeof(const int);
+	count = ARRAYSIZE(allocationOrder);
 	return allocationOrder;
 }
 ARMReg *ArmRegCache::GetAllocationOrder(int &count)
@@ -76,7 +76,7 @@ ARMReg *ArmRegCache::GetAllocationOrder(int &count)
 	{
 		R14, R12, R11, R10
 	};
-	count = sizeof(allocationOrder) / sizeof(const int);
+	count = ARRAYSIZE(allocationOrder);
 	return allocationOrder;
 }
 

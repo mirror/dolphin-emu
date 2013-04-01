@@ -58,7 +58,7 @@ bool cInterfaceWGL::PeekMessages()
 void cInterfaceWGL::UpdateFPSDisplay(const char *text)
 {
 	TCHAR temp[512];
-	swprintf_s(temp, sizeof(temp)/sizeof(TCHAR), _T("%hs"), text);
+	swprintf_s(temp, ARRAYSIZE(temp), _T("%hs"), text);
 	EmuWindow::SetWindowText(temp);
 }
 

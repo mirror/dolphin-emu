@@ -272,7 +272,7 @@ Wiimote::Wiimote( const unsigned int index )
 
 	// buttons
 	groups.push_back(m_buttons = new Buttons("Buttons"));
-	for (unsigned int i=0; i < sizeof(named_buttons)/sizeof(*named_buttons); ++i)
+	for (unsigned int i=0; i < ARRAYSIZE(named_buttons); ++i)
 		m_buttons->controls.push_back(new ControlGroup::Input( named_buttons[i]));
 
 	// udp

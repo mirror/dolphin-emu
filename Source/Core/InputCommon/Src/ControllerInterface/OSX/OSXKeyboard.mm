@@ -49,7 +49,7 @@ Keyboard::Keyboard(IOHIDDeviceRef device, std::string name, int index, void *win
 	for (unsigned int i=0; i<4; ++i)
 		AddInput(new Cursor(!!(i&2), (&m_cursor.x)[i/2], !!(i&1)));
 
-	for (u8 i = 0; i < sizeof(m_mousebuttons) / sizeof(m_mousebuttons[0]); ++i)
+	for (u8 i = 0; i < ARRAYSIZE(m_mousebuttons); ++i)
 		AddInput(new Button(i, m_mousebuttons[i]));
 }
 

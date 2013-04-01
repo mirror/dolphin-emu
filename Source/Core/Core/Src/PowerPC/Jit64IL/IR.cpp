@@ -1131,7 +1131,7 @@ unsigned IRBuilder::getNumberOfOperands(InstLoc I) const {
 	static bool initialized = false;
 	if (!initialized) {
 		initialized = true;
-		std::fill_n(numberOfOperands, sizeof(numberOfOperands) / sizeof(numberOfOperands[0]), -1U);
+		std::fill_n(numberOfOperands, ARRAYSIZE(numberOfOperands), -1U);
 
 		numberOfOperands[Nop] = 0;
 		numberOfOperands[CInt16] = 0;
@@ -1140,13 +1140,13 @@ unsigned IRBuilder::getNumberOfOperands(InstLoc I) const {
 		static unsigned ZeroOp[] = {LoadCR, LoadLink, LoadMSR, LoadGReg, LoadCTR, InterpreterBranch, LoadCarry, RFIExit, LoadFReg, LoadFRegDENToZero, LoadGQR, Int3, };
 		static unsigned UOp[] = {StoreLink, BranchUncond, StoreCR, StoreMSR, StoreFPRF, StoreGReg, StoreCTR, Load8, Load16, Load32, SExt16, SExt8, Cntlzw, Not, StoreCarry, SystemCall, ShortIdleLoop, LoadSingle, LoadDouble, LoadPaired, StoreFReg, DupSingleToMReg, DupSingleToPacked, ExpandPackedToMReg, CompactMRegToPacked, FSNeg, FSRSqrt, FDNeg, FPDup0, FPDup1, FPNeg, DoubleToSingle, StoreGQR, StoreSRR, };
 		static unsigned BiOp[] = {BranchCond, IdleBranch, And, Xor, Sub, Or, Add, Mul, Rol, Shl, Shrl, Sarl, ICmpEq, ICmpNe, ICmpUgt, ICmpUlt, ICmpSgt, ICmpSlt, ICmpSge, ICmpSle, Store8, Store16, Store32, ICmpCRSigned, ICmpCRUnsigned, InterpreterFallback, StoreSingle, StoreDouble, StorePaired, InsertDoubleInMReg, FSMul, FSAdd, FSSub, FDMul, FDAdd, FDSub, FPAdd, FPMul, FPSub, FPMerge00, FPMerge01, FPMerge10, FPMerge11, FDCmpCR, };
-		for (size_t i = 0; i < sizeof(ZeroOp) / sizeof(ZeroOp[0]); ++i) {
+		for (size_t i = 0; i < ARRAYSIZE(ZeroOp); ++i) {
 			numberOfOperands[ZeroOp[i]] = 0;
 		}
-		for (size_t i = 0; i < sizeof(UOp) / sizeof(UOp[0]); ++i) {
+		for (size_t i = 0; i < ARRAYSIZE(UOp); ++i) {
 			numberOfOperands[UOp[i]] = 1;
 		}
-		for (size_t i = 0; i < sizeof(BiOp) / sizeof(BiOp[0]); ++i) {
+		for (size_t i = 0; i < ARRAYSIZE(BiOp); ++i) {
 			numberOfOperands[BiOp[i]] = 2;
 		}
 	}
@@ -1282,13 +1282,13 @@ static const unsigned extra24RegList[] = {
 	StorePaired,
 };
 
-static const std::set<unsigned> alwaysUseds(alwaysUsedList, alwaysUsedList + sizeof(alwaysUsedList) / sizeof(alwaysUsedList[0]));
-static const std::set<unsigned> extra8Regs(extra8RegList, extra8RegList + sizeof(extra8RegList) / sizeof(extra8RegList[0]));
-static const std::set<unsigned> extra16Regs(extra16RegList, extra16RegList + sizeof(extra16RegList) / sizeof(extra16RegList[0]));
-static const std::set<unsigned> extra24Regs(extra24RegList, extra24RegList + sizeof(extra24RegList) / sizeof(extra24RegList[0]));
+static const std::set<unsigned> alwaysUseds(alwaysUsedList, alwaysUsedList + ARRAYSIZE(alwaysUsedList));
+static const std::set<unsigned> extra8Regs(extra8RegList, extra8RegList + ARRAYSIZE(extra8RegList));
+static const std::set<unsigned> extra16Regs(extra16RegList, extra16RegList + ARRAYSIZE(extra16RegList));
+static const std::set<unsigned> extra24Regs(extra24RegList, extra24RegList + ARRAYSIZE(extra24RegList));
 
 void IRBuilder::WriteToFile(u64 codeHash) {
-	_assert_(sizeof(opcodeNames) / sizeof(opcodeNames[0]) == Int3 + 1);
+	_assert_(ARRAYSIZE(opcodeNames) == Int3 + 1);
 
 	if (!writer.get()) {
 		writer = std::auto_ptr<Writer>(new Writer);

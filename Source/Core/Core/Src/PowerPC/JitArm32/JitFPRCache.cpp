@@ -60,7 +60,7 @@ ARMReg *ArmFPRCache::GetPPCAllocationOrder(int &count)
 		D11, D12, D13, D14, D15, D16, D17, D18, D19,
 		D20, D21, D22, D23, D24, D25, D26, D27
 	};
-	count = sizeof(allocationOrder) / sizeof(const int);
+	count = ARRAYSIZE(allocationOrder);
 	return allocationOrder;
 }
 ARMReg *ArmFPRCache::GetAllocationOrder(int &count)
@@ -71,7 +71,7 @@ ARMReg *ArmFPRCache::GetAllocationOrder(int &count)
 	{
 		D31, D30, D29, D28
 	};
-	count = sizeof(allocationOrder) / sizeof(const int);
+	count = ARRAYSIZE(allocationOrder);
 	return allocationOrder;
 }
 

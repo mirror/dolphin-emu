@@ -538,7 +538,7 @@ bool CheckDepthStencilSupport(D3DFORMAT target_format, D3DFORMAT depth_format)
 
 D3DFORMAT GetSupportedDepthTextureFormat()
 {
-	for (int i = 0; i < sizeof(DepthFormats)/sizeof(D3DFORMAT); ++i)
+	for (int i = 0; i < ARRAYSIZE(DepthFormats); ++i)
 		if (CheckTextureSupport(D3DUSAGE_DEPTHSTENCIL, DepthFormats[i]))
 			return DepthFormats[i];
 
@@ -547,7 +547,7 @@ D3DFORMAT GetSupportedDepthTextureFormat()
 
 D3DFORMAT GetSupportedDepthSurfaceFormat(D3DFORMAT target_format)
 {
-	for (int i = 0; i < sizeof(DepthFormats)/sizeof(D3DFORMAT); ++i)
+	for (int i = 0; i < ARRAYSIZE(DepthFormats); ++i)
 		if (CheckDepthStencilSupport(target_format, DepthFormats[i]))
 			return DepthFormats[i];
 

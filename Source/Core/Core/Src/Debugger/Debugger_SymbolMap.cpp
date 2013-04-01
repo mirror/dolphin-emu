@@ -36,7 +36,7 @@ void AddAutoBreakpoints()
 		"PPCHalt",
 	};
 
-	for (u32 i = 0; i < sizeof(bps) / sizeof(const char *); i++)
+	for (u32 i = 0; i < ARRAYSIZE(bps); i++)
 	{
 		Symbol *symbol = g_symbolDB.GetSymbolFromName(bps[i]);
 		if (symbol)

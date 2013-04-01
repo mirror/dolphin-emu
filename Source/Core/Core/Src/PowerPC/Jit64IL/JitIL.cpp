@@ -560,7 +560,7 @@ const u8* JitIL::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 	// if that is enabled), reorder instructions for optimal performance, and join joinable instructions.
 	b->exitAddress[0] = em_address;
 	u32 merged_addresses[32];
-	const int capacity_of_merged_addresses = sizeof(merged_addresses) / sizeof(merged_addresses[0]);
+	const int capacity_of_merged_addresses = ARRAYSIZE(merged_addresses);
 	int size_of_merged_addresses = 0;
 	if (!memory_exception)
 	{

@@ -134,7 +134,7 @@ static PauseEventMap pauseEventMap[] = {
 
 	{NEXT_ERROR,				_("Error")}
 };
-static const int numPauseEventMap = sizeof(pauseEventMap)/sizeof(PauseEventMap);
+static const int numPauseEventMap = ARRAYSIZE(pauseEventMap);
 
 void GFXDebuggerPanel::CreateGUIControls()
 {

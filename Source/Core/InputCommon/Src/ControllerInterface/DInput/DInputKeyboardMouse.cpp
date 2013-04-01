@@ -101,10 +101,10 @@ KeyboardMouse::KeyboardMouse(const LPDIRECTINPUTDEVICE8 kb_device, const LPDIREC
 
 	// KEYBOARD
 	// add keys
-	for (u8 i = 0; i < sizeof(named_keys)/sizeof(*named_keys); ++i)
+	for (u8 i = 0; i < ARRAYSIZE(named_keys); ++i)
 		AddInput(new Key(i, m_state_in.keyboard[named_keys[i].code]));
 	// add lights
-	for (u8 i = 0; i < sizeof(named_lights)/sizeof(*named_lights); ++i)
+	for (u8 i = 0; i < ARRAYSIZE(named_lights); ++i)
 		AddOutput(new Light(i));
 
 	// MOUSE
@@ -208,7 +208,7 @@ bool KeyboardMouse::UpdateOutput()
 	};
 
 	std::vector< KInput > kbinputs;
-	for (unsigned int i = 0; i < sizeof(m_state_out)/sizeof(*m_state_out); ++i)
+	for (unsigned int i = 0; i < ARRAYSIZE(m_state_out); ++i)
 	{
 		bool want_on = false;
 		if (m_state_out[i])

@@ -85,7 +85,7 @@ public:
 
 	_VERTEXSHADERUID(const _VERTEXSHADERUID& r)
 	{
-		for (size_t i = 0; i < sizeof(values) / sizeof(u32); ++i) 
+		for (size_t i = 0; i < ARRAYSIZE(values); ++i) 
 			values[i] = r.values[i]; 
 	}
 

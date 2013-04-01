@@ -36,7 +36,7 @@ Guitar::Guitar() : Attachment(_trans("Guitar"))
 {
 	// frets
 	groups.push_back(m_frets = new Buttons(_trans("Frets")));
-	for (unsigned int i = 0; i < sizeof(guitar_fret_names)/sizeof(*guitar_fret_names); ++i)
+	for (unsigned int i = 0; i < ARRAYSIZE(guitar_fret_names); ++i)
 		m_frets->controls.push_back(new ControlGroup::Input(guitar_fret_names[i]));
 
 	// strum

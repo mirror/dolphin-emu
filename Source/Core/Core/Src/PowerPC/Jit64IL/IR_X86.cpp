@@ -162,17 +162,17 @@ static const X64Reg RegAllocOrder[] = {RSI, RDI, R12, R13, R14, R8, R9, R10, R11
 #else
 static const X64Reg RegAllocOrder[] = {RBP, R12, R13, R14, R8, R9, R10, R11};
 #endif
-static const int RegAllocSize = sizeof(RegAllocOrder) / sizeof(X64Reg);
+static const int RegAllocSize = ARRAYSIZE(RegAllocOrder);
 static const X64Reg FRegAllocOrder[] = {XMM6, XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15, XMM2, XMM3, XMM4, XMM5};
-static const int FRegAllocSize = sizeof(FRegAllocOrder) / sizeof(X64Reg);
+static const int FRegAllocSize = ARRAYSIZE(FRegAllocOrder);
 
 #else
 
 // 32-bit
 static const X64Reg RegAllocOrder[] = {EDI, ESI, EBP, EBX, EDX, EAX};
-static const int RegAllocSize = sizeof(RegAllocOrder) / sizeof(X64Reg);
+static const int RegAllocSize = ARRAYSIZE(RegAllocOrder);
 static const X64Reg FRegAllocOrder[] = {XMM2, XMM3, XMM4, XMM5, XMM6, XMM7};
-static const int FRegAllocSize = sizeof(FRegAllocOrder) / sizeof(X64Reg);
+static const int FRegAllocSize = ARRAYSIZE(FRegAllocOrder);
 
 #endif
 

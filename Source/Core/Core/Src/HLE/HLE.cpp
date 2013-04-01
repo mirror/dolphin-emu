@@ -122,7 +122,7 @@ static const SPatch OSBreakPoints[] =
 
 void Patch(u32 addr, const char *hle_func_name)
 {
-	for (u32 i = 0; i < sizeof(OSPatches) / sizeof(SPatch); i++)
+	for (u32 i = 0; i < ARRAYSIZE(OSPatches); i++)
 	{
 		if (!strcmp(OSPatches[i].m_szPatchName, hle_func_name))
 		{
@@ -135,7 +135,7 @@ void Patch(u32 addr, const char *hle_func_name)
 void PatchFunctions()
 {
 	orig_instruction.clear();
-	for (u32 i = 0; i < sizeof(OSPatches) / sizeof(SPatch); i++)
+	for (u32 i = 0; i < ARRAYSIZE(OSPatches); i++)
 	{
 		Symbol *symbol = g_symbolDB.GetSymbolFromName(OSPatches[i].m_szPatchName);
 		if (symbol > 0)
@@ -150,7 +150,7 @@ void PatchFunctions()
 
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableDebugging)
 	{
-		for (size_t i = 1; i < sizeof(OSBreakPoints) / sizeof(SPatch); i++)
+		for (size_t i = 1; i < ARRAYSIZE(OSBreakPoints); i++)
 		{
 			Symbol *symbol = g_symbolDB.GetSymbolFromName(OSPatches[i].m_szPatchName);
 			if (symbol > 0)
@@ -167,7 +167,7 @@ void PatchFunctions()
 void Execute(u32 _CurrentPC, u32 _Instruction)
 {
 	unsigned int FunctionIndex = _Instruction & 0xFFFFF;
-	if ((FunctionIndex > 0) && (FunctionIndex < (sizeof(OSPatches) / sizeof(SPatch))))
+	if ((FunctionIndex > 0) && (FunctionIndex < (ARRAYSIZE(OSPatches))))
 	{
 		OSPatches[FunctionIndex].PatchFunction();
 	}

@@ -344,7 +344,7 @@ static const MemoryView views[] =
 	{NULL,         &m_pVirtualCachedEXRAM,   0x90000000, EXRAM_SIZE, MV_WII_ONLY | MV_MIRROR_PREVIOUS},
 	{NULL,         &m_pVirtualUncachedEXRAM, 0xD0000000, EXRAM_SIZE, MV_WII_ONLY | MV_MIRROR_PREVIOUS},
 };
-static const int num_views = sizeof(views) / sizeof(MemoryView);
+static const int num_views = ARRAYSIZE(views);
 
 void Init()
 {

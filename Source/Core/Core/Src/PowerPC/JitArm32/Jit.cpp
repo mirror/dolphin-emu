@@ -345,7 +345,7 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 	// if that is enabled), reorder instructions for optimal performance, and join joinable instructions.
 	u32 nextPC = em_address;
 	u32 merged_addresses[32];
-	const int capacity_of_merged_addresses = sizeof(merged_addresses) / sizeof(merged_addresses[0]);
+	const int capacity_of_merged_addresses = ARRAYSIZE(merged_addresses);
 	int size_of_merged_addresses = 0;
 	if (!memory_exception)
 	{

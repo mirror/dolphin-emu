@@ -338,7 +338,7 @@ void Renderer::DrawDebugText()
 		std::string("6: Fog: ") + (g_ActiveConfig.bDisableFog ? "Disabled" : "Enabled"),
 	};
 
-	enum { lines_count = sizeof(lines)/sizeof(*lines) };
+	auto const lines_count = ARRAYSIZE(lines);
 
 	std::string final_yellow, final_cyan;
 
@@ -349,7 +349,7 @@ void Renderer::DrawDebugText()
 	}
 
 	// The latest changed setting in yellow
-	for (int i = 0; i != lines_count; ++i)
+	for (u32 i = 0; i != lines_count; ++i)
 	{
 		if (OSDChoice == -i - 1)
 			final_yellow += lines[i];
@@ -357,7 +357,7 @@ void Renderer::DrawDebugText()
 	}
 
 	// The other settings in cyan
-	for (int i = 0; i != lines_count; ++i)
+	for (u32 i = 0; i != lines_count; ++i)
 	{
 		if (OSDChoice != -i - 1)
 			final_cyan += lines[i];
