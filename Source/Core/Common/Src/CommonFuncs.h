@@ -18,6 +18,8 @@
 #ifndef _COMMONFUNCS_H_
 #define _COMMONFUNCS_H_
 
+#include <cstddef>
+
 #ifdef _WIN32
 #define SLEEP(x) Sleep(x)
 #else
@@ -209,8 +211,8 @@ inline T FromBigEndian(T data)
 }  // Namespace Common
 
 // This will fail to compile if used on a non-array.
-template <typename T, size_t N>
-size_t ARRAYSIZE(T(&)[N])
+template <typename T, std::size_t N>
+std::size_t ARRAYSIZE(T(&)[N])
 { return N; }
 
 #endif // _COMMONFUNCS_H_
