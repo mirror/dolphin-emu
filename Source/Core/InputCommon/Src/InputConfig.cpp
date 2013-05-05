@@ -28,8 +28,11 @@ InputPlugin::~InputPlugin()
 
 bool InputPlugin::LoadConfig()
 {
-	IniFile inifile;
-	if (inifile.Load(File::GetUserPath(D_CONFIG_IDX) + ini_name + ".ini"))
+	IniFile inifile, gameiniFile;
+	std::string ini = File::GetUserPath(D_CONFIG_IDX) + ini_name + ".ini";
+	std::string gameini = Core::IsRunning() ? SConfig::GetInstance().m_LocalCoreStartupParameter.m_strGameIni : "";
+
+	if (inifile.Load(ini))
 	{
 		std::vector< ControllerEmu* >::const_iterator
 			i = controllers.begin(),
@@ -37,7 +40,35 @@ bool InputPlugin::LoadConfig()
 		for (; i!=e; ++i)
 		{
 			// load settings from ini
-			(*i)->LoadConfig(inifile.GetOrCreateSection((*i)->GetName().c_str()));
+			if (gameiniFile.Load(gameini) && SConfig::GetInstance().m_LocalCoreStartupParameter.bInputSettingsISO)
+			{
+				// first use
+				if (!gameiniFile.GetSection((*i)->GetName().c_str()))
+				{
+					gameiniFile.GetOrCreateSection((*i)->GetName().c_str());
+					// copy gameini wiimote config
+					if (gameiniFile.GetSection("WiimoteFirstUse"))
+					{
+						gameiniFile.GetSection((*i)->GetName().c_str())->Copy(gameiniFile.GetSection("WiimoteFirstUse"));
+						if ((*i)->GetName().find("Wiimote4") != (*i)->GetName().npos)
+							gameiniFile.DeleteSection("WiimoteFirstUse");
+					}
+					// copy from baseini
+					if (inifile.Load(ini))
+						gameiniFile.GetSection((*i)->GetName().c_str())->Copy(inifile.GetOrCreateSection((*i)->GetName().c_str()));
+					gameiniFile.Save(gameini);
+				}
+				(*i)->LoadConfig(gameiniFile.GetOrCreateSection((*i)->GetName().c_str()));
+			}
+			else if (inifile.Load(ini))
+			{
+				// copy gameini wiimote config
+				if (gameiniFile.Load(gameini))
+					if (gameiniFile.GetSection("WiimoteFirstUse"))
+						inifile.GetSection((*i)->GetName().c_str())->Copy(gameiniFile.GetSection("WiimoteFirstUse"));
+				(*i)->LoadConfig(inifile.GetOrCreateSection((*i)->GetName().c_str()));
+			}
+
 			// update refs
 			(*i)->UpdateReferences(g_controller_interface);
 		}
