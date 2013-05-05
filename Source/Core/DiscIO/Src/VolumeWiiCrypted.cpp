@@ -156,6 +156,18 @@ std::string CVolumeWiiCrypted::GetMakerID() const
 	return makerID;
 }
 
+int CVolumeWiiCrypted::GetRevision() const
+{
+	if (!m_pReader)
+		return 0;
+
+	u8 Revision;
+	if (!RAWRead(7, 1, &Revision))
+		return 0;
+
+	return Revision;
+}
+
 std::vector<std::string> CVolumeWiiCrypted::GetNames() const
 {
 	std::vector<std::string> names;
