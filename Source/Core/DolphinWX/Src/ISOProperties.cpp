@@ -20,10 +20,205 @@
 #include "GeckoCodeDiag.h"
 #include "ConfigManager.h"
 #include "StringUtil.h"
+#include "Core.h"
 
 #include "../resources/isoprop_file.xpm"
 #include "../resources/isoprop_folder.xpm"
 #include "../resources/isoprop_disc.xpm"
+
+using namespace ActionReplay;
+
+BEGIN_EVENT_TABLE(ARPanel, wxPanel)
+	EVT_LISTBOX(ID_CHEATS_LIST, ARPanel::ItemSelected)
+	EVT_CHECKLISTBOX(ID_CHEATS_LIST, ARPanel::ItemToggled)
+	EVT_BUTTON(ID_EDITCHEAT, ARPanel::ButtonClicked)
+	EVT_BUTTON(ID_ADDCHEAT, ARPanel::ButtonClicked)
+	EVT_BUTTON(ID_REMOVECHEAT, ARPanel::ButtonClicked)
+END_EVENT_TABLE()
+
+ARPanel::ARPanel(IniFile& ini, wxWindow* const parent, wxWindowID id)
+	: wxPanel(parent, id, wxDefaultPosition, wxDefaultSize),
+	GameIni(ini)
+{
+	// list
+	m_Cheats = new wxCheckListBox(this, ID_CHEATS_LIST, wxDefaultPosition, wxSize(300, 0), m_CheatStringList, wxLB_HSCROLL);
+
+	// buttons
+	EditCheat = new wxButton(this, ID_EDITCHEAT, _("Edit..."));
+	wxButton* const AddCheat = new wxButton(this, ID_ADDCHEAT, _("Add..."));
+	RemoveCheat = new wxButton(this, ID_REMOVECHEAT, _("Remove"), wxDefaultPosition, wxDefaultSize, 0);
+	EditCheat->Enable(false);
+	RemoveCheat->Enable(false);
+
+	wxBoxSizer* const sCheatButtons = new wxBoxSizer(wxHORIZONTAL);
+	sCheatButtons->Add(EditCheat,  0, wxEXPAND|wxALL, 0);
+	sCheatButtons->AddStretchSpacer();
+	sCheatButtons->Add(AddCheat,  0, wxEXPAND|wxALL, 0);
+	sCheatButtons->Add(RemoveCheat,  0, wxEXPAND|wxALL, 0);
+
+	// code info
+	m_Label_Codename = new wxStaticText(this, wxID_ANY, _("Name: "), wxDefaultPosition, wxDefaultSize);
+	m_GroupBox_Info = new wxStaticBox(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize);
+	m_Label_NumCodes = new wxStaticText(this, wxID_ANY, wxEmptyString,  wxDefaultPosition, wxDefaultSize);
+	m_ListBox_CodesList = new wxListBox(this, wxID_ANY, wxDefaultPosition, wxSize(120, 150), 0, 0, wxLB_HSCROLL);
+
+	wxStaticBoxSizer* sGroupBoxInfo = new wxStaticBoxSizer(m_GroupBox_Info, wxVERTICAL);
+	sGroupBoxInfo->Add(m_Label_Codename, 0, wxALL, 5);
+	sGroupBoxInfo->Add(m_Label_NumCodes, 0, wxALL, 5);
+	sGroupBoxInfo->Add(m_ListBox_CodesList, 1, wxALL, 5);
+
+	// parent
+	wxBoxSizer* sCheats = new wxBoxSizer(wxHORIZONTAL);
+	sCheats->Add(m_Cheats, 1, wxEXPAND | wxTOP | wxBOTTOM | wxLEFT, 5);
+	sCheats->Add(sGroupBoxInfo, 0, wxALIGN_LEFT | wxEXPAND | wxALL, 5);
+
+	wxBoxSizer* sCheatPage = new wxBoxSizer(wxVERTICAL);
+	sCheatPage->Add(sCheats, 1, wxEXPAND|wxALL, 0);
+	sCheatPage->Add(sCheatButtons, 0, wxEXPAND|wxLEFT|wxBOTTOM|wxRIGHT, 5);
+
+	UpdateGUI();
+	SetSizerAndFit(sCheatPage);
+}
+
+void ARPanel::UpdateGUI()
+{
+	m_ListBox_CodesList->Clear();
+	m_Label_Codename->SetLabel(_("Name: "));
+	m_Label_NumCodes->SetLabel(_("Number Of Codes: "));
+}
+
+void ARPanel::Load(bool checkRunning)
+{
+	arCodes.clear();
+	m_Cheats->Clear();
+
+	if (checkRunning && !Core::IsRunning())
+		return;
+
+	ActionReplay::LoadCodes(arCodes, GameIni);
+
+	u32 index = 0;
+	for (std::vector<ActionReplay::ARCode>::const_iterator it = arCodes.begin(); it != arCodes.end(); ++it)
+	{
+		ActionReplay::ARCode code = *it;
+		m_Cheats->Append(StrToWxStr(code.name));
+		m_Cheats->Check(index, code.active);
+		++index;
+	}
+}
+
+void ARPanel::Save()
+{
+	std::vector<std::string> lines;
+	u32 index = 0;
+	for (std::vector<ActionReplay::ARCode>::const_iterator iter = arCodes.begin(); iter != arCodes.end(); ++iter)
+	{
+		ActionReplay::ARCode code = *iter;
+
+		bool is_checked = false;
+		if (index < m_Cheats->GetCount())
+			is_checked = m_Cheats->IsChecked(index);
+
+		lines.push_back(is_checked ? "+$" + code.name : "$" + code.name);
+
+		for (std::vector<ActionReplay::AREntry>::const_iterator iter2 = code.ops.begin(); iter2 != code.ops.end(); ++iter2)
+		{
+			lines.push_back(WxStrToStr(wxString::Format(wxT("%08X %08X"), iter2->cmd_addr, iter2->value)));
+		}
+
+		ActionReplay::SetARCode_IsActive(is_checked, index);
+
+		++index;
+	}
+
+	GameIni.SetLines("ActionReplay", lines);
+}
+
+void ARPanel::ButtonClicked(wxCommandEvent& event)
+{
+	int selection = m_Cheats->GetSelection();
+	
+	switch (event.GetId())
+	{
+	case ID_EDITCHEAT:
+		{
+		CARCodeAddEdit dlg(selection, this);
+		dlg.ShowModal();
+		}
+		break;
+	case ID_ADDCHEAT:
+		{
+			CARCodeAddEdit dlg(-1, this, 1, _("Add ActionReplay Code"));
+			if (dlg.ShowModal() == wxID_OK)
+			{
+				m_Cheats->Append(StrToWxStr(arCodes.back().name));
+				m_Cheats->Check((unsigned int)(arCodes.size() - 1), arCodes.back().active);
+			}
+		}
+		break;
+	case ID_REMOVECHEAT:
+		arCodes.erase(arCodes.begin() + m_Cheats->GetSelection());
+		m_Cheats->Delete(m_Cheats->GetSelection());
+		break;
+	}
+
+	Save();
+	Load();
+	UpdateGUI();
+
+	EditCheat->Enable(false);
+	RemoveCheat->Enable(false);
+}
+
+void ARPanel::ItemSelected(wxCommandEvent& WXUNUSED (event))
+{
+	int index = m_Cheats->GetSelection();
+	if (index != wxNOT_FOUND)
+	{
+		EditCheat->Enable();
+		RemoveCheat->Enable();
+	}
+
+	u32 i = 0;
+	for (std::vector<ActionReplay::ARCode>::const_iterator iter = arCodes.begin(); iter != arCodes.end(); ++iter)
+	{
+		if (i == index)
+		{
+			ARCode code = GetARCode(i);
+			m_Label_Codename->SetLabel(_("Name: ") + StrToWxStr(code.name));
+			char text[CHAR_MAX];
+			char* numcodes = text;
+			sprintf(numcodes, "Number of Codes: %lu", (unsigned long)code.ops.size());
+			m_Label_NumCodes->SetLabel(StrToWxStr(numcodes));
+			m_ListBox_CodesList->Clear();
+
+			for (size_t j = 0; j < code.ops.size(); j++)
+			{
+				char text2[CHAR_MAX];
+				char* ops = text2;
+				sprintf(ops, "%08x %08x", code.ops[j].cmd_addr, code.ops[j].value);
+				m_ListBox_CodesList->Append(StrToWxStr(ops));
+			}
+		}
+		++i;
+	}
+}
+
+void ARPanel::ItemToggled(wxCommandEvent& event)
+{
+	int index = event.GetInt();
+
+	u32 i = 0;
+	for (std::vector<ActionReplay::ARCode>::const_iterator iter = arCodes.begin(); iter != arCodes.end(); ++iter)
+	{
+		if (i == index)
+		{
+			SetARCode_IsActive(m_Cheats->IsChecked(index), index);
+		}
+		++i;
+	}
+}
+
 
 struct WiiPartition
 {
@@ -37,7 +232,6 @@ DiscIO::IVolume *OpenISO = NULL;
 DiscIO::IFileSystem *pFileSystem = NULL;
 
 std::vector<PatchEngine::Patch> onFrame;
-std::vector<ActionReplay::ARCode> arCodes;
 PHackData PHack_Data;
 
 
@@ -52,10 +246,6 @@ BEGIN_EVENT_TABLE(CISOProperties, wxDialog)
 	EVT_BUTTON(ID_EDITPATCH, CISOProperties::PatchButtonClicked)
 	EVT_BUTTON(ID_ADDPATCH, CISOProperties::PatchButtonClicked)
 	EVT_BUTTON(ID_REMOVEPATCH, CISOProperties::PatchButtonClicked)
-	EVT_LISTBOX(ID_CHEATS_LIST, CISOProperties::ListSelectionChanged)
-	EVT_BUTTON(ID_EDITCHEAT, CISOProperties::ActionReplayButtonClicked)
-	EVT_BUTTON(ID_ADDCHEAT, CISOProperties::ActionReplayButtonClicked)
-	EVT_BUTTON(ID_REMOVECHEAT, CISOProperties::ActionReplayButtonClicked)
 	EVT_MENU(IDM_BNRSAVEAS, CISOProperties::OnBannerImageSave)
 	EVT_TREE_ITEM_RIGHT_CLICK(ID_TREECTRL, CISOProperties::OnRightClickOnTree)
 	EVT_MENU(IDM_EXTRACTFILE, CISOProperties::OnExtractFile)
@@ -295,8 +485,8 @@ void CISOProperties::CreateGUIControls(bool IsWad)
 	wxPanel * const m_PatchPage =
 		new wxPanel(m_Notebook, ID_PATCH_PAGE, wxDefaultPosition, wxDefaultSize);
 	m_Notebook->AddPage(m_PatchPage, _("Patches"));
-	wxPanel * const m_CheatPage =
-		new wxPanel(m_Notebook, ID_ARCODE_PAGE, wxDefaultPosition, wxDefaultSize);
+	m_CheatPage =
+		new ARPanel(GameIni, m_Notebook, ID_ARCODE_PAGE);
 	m_Notebook->AddPage(m_CheatPage, _("AR Codes"));
 	m_geckocode_panel = new Gecko::CodeConfigPanel(m_Notebook);
 	m_Notebook->AddPage(m_geckocode_panel, _("Gecko Codes"));
@@ -419,29 +609,6 @@ void CISOProperties::CreateGUIControls(bool IsWad)
 	sPatches->Add(sPatchButtons, 0, wxEXPAND|wxALL, 0);
 	sPatchPage->Add(sPatches, 1, wxEXPAND|wxALL, 5);
 	m_PatchPage->SetSizer(sPatchPage);
-
-	
-	// Action Replay Cheats
-	wxBoxSizer * const sCheats = new wxBoxSizer(wxVERTICAL);
-	Cheats = new wxCheckListBox(m_CheatPage, ID_CHEATS_LIST, wxDefaultPosition,
-			wxDefaultSize, arrayStringFor_Cheats, wxLB_HSCROLL);
-	wxBoxSizer * const sCheatButtons = new wxBoxSizer(wxHORIZONTAL);
-	EditCheat = new wxButton(m_CheatPage, ID_EDITCHEAT, _("Edit..."));
-	wxButton * const AddCheat = new wxButton(m_CheatPage, ID_ADDCHEAT, _("Add..."));
-	RemoveCheat = new wxButton(m_CheatPage, ID_REMOVECHEAT, _("Remove"),
-			wxDefaultPosition, wxDefaultSize, 0);
-	EditCheat->Enable(false);
-	RemoveCheat->Enable(false);
-
-	wxBoxSizer* sCheatPage = new wxBoxSizer(wxVERTICAL);
-	sCheats->Add(Cheats, 1, wxEXPAND|wxALL, 0);
-	sCheatButtons->Add(EditCheat,  0, wxEXPAND|wxALL, 0);
-	sCheatButtons->AddStretchSpacer();
-	sCheatButtons->Add(AddCheat,  0, wxEXPAND|wxALL, 0);
-	sCheatButtons->Add(RemoveCheat,  0, wxEXPAND|wxALL, 0);
-	sCheats->Add(sCheatButtons, 0, wxEXPAND|wxALL, 0);
-	sCheatPage->Add(sCheats, 1, wxEXPAND|wxALL, 5);
-	m_CheatPage->SetSizer(sCheatPage);
 
 	
 	wxStaticText * const m_NameText =
@@ -1029,7 +1196,7 @@ void CISOProperties::LoadGameConfig()
 	EmuIssues->Enable(EmuState->GetSelection() != 0);
 
 	PatchList_Load();
-	ActionReplayList_Load();
+	m_CheatPage->Load();
 	m_geckocode_panel->LoadCodes(GameIni, OpenISO->GetUniqueID());
 }
 
@@ -1118,7 +1285,7 @@ bool CISOProperties::SaveGameConfig()
 	GameIni.Set("EmuState", "EmulationIssues", WxStrToStr(EmuIssues->GetValue()));
 
 	PatchList_Save();
-	ActionReplayList_Save();
+	m_CheatPage->Save();
 	Gecko::SaveCodes(GameIni, m_geckocode_panel->GetCodes());
 
 	return GameIni.Save(GameIniFile.c_str());
@@ -1174,13 +1341,6 @@ void CISOProperties::ListSelectionChanged(wxCommandEvent& event)
 		{
 			EditPatch->Enable();
 			RemovePatch->Enable();
-		}
-		break;
-	case ID_CHEATS_LIST:
-		if (Cheats->GetSelection() != wxNOT_FOUND)
-		{
-			EditCheat->Enable();
-			RemoveCheat->Enable();
 		}
 		break;
 	}
@@ -1256,7 +1416,7 @@ void CISOProperties::PatchButtonClicked(wxCommandEvent& event)
 		break;
 	case ID_REMOVEPATCH:
 		onFrame.erase(onFrame.begin() + Patches->GetSelection());
-		Patches->Delete(Cheats->GetSelection());
+		Patches->Delete(Patches->GetSelection());
 		break;
 	}
 
@@ -1266,77 +1426,6 @@ void CISOProperties::PatchButtonClicked(wxCommandEvent& event)
 
 	EditPatch->Enable(false);
 	RemovePatch->Enable(false);
-}
-
-void CISOProperties::ActionReplayList_Load()
-{
-	arCodes.clear();
-	Cheats->Clear();
-	ActionReplay::LoadCodes(arCodes, GameIni);
-
-	u32 index = 0;
-	for (std::vector<ActionReplay::ARCode>::const_iterator it = arCodes.begin(); it != arCodes.end(); ++it)
-	{
-		ActionReplay::ARCode arCode = *it;
-		Cheats->Append(StrToWxStr(arCode.name));
-		Cheats->Check(index, arCode.active);
-		++index;
-	}
-}
-
-void CISOProperties::ActionReplayList_Save()
-{
-	std::vector<std::string> lines;
-	u32 index = 0;
-	for (std::vector<ActionReplay::ARCode>::const_iterator iter = arCodes.begin(); iter != arCodes.end(); ++iter)
-	{
-		ActionReplay::ARCode code = *iter;
-
-		lines.push_back(Cheats->IsChecked(index) ? "+$" + code.name : "$" + code.name);
-
-		for (std::vector<ActionReplay::AREntry>::const_iterator iter2 = code.ops.begin(); iter2 != code.ops.end(); ++iter2)
-		{
-			lines.push_back(WxStrToStr(wxString::Format(wxT("%08X %08X"), iter2->cmd_addr, iter2->value)));
-		}
-		++index;
-	}
-	GameIni.SetLines("ActionReplay", lines);
-}
-
-void CISOProperties::ActionReplayButtonClicked(wxCommandEvent& event)
-{
-	int selection = Cheats->GetSelection();
-	
-	switch (event.GetId())
-	{
-	case ID_EDITCHEAT:
-		{
-		CARCodeAddEdit dlg(selection, this);
-		dlg.ShowModal();
-		}
-		break;
-	case ID_ADDCHEAT:
-		{
-			CARCodeAddEdit dlg(-1, this, 1, _("Add ActionReplay Code"));
-			if (dlg.ShowModal() == wxID_OK)
-			{
-				Cheats->Append(StrToWxStr(arCodes.back().name));
-				Cheats->Check((unsigned int)(arCodes.size() - 1), arCodes.back().active);
-			}
-		}
-		break;
-	case ID_REMOVECHEAT:
-		arCodes.erase(arCodes.begin() + Cheats->GetSelection());
-		Cheats->Delete(Cheats->GetSelection());
-		break;
-	}
-
-	ActionReplayList_Save();
-	Cheats->Clear();
-	ActionReplayList_Load();
-
-	EditCheat->Enable(false);
-	RemoveCheat->Enable(false);
 }
 
 void CISOProperties::OnChangeBannerLang(wxCommandEvent& event)

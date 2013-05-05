@@ -74,7 +74,7 @@ enum
 static ARCode const* current_code = NULL;
 
 static bool b_RanOnce = false;
-static std::vector<ARCode> arCodes;
+std::vector<ARCode> arCodes;
 static std::vector<ARCode> activeCodes;
 static bool logSelf = false;
 static std::vector<std::string> arLog;
@@ -434,10 +434,9 @@ size_t GetCodeListSize()
 
 ARCode GetARCode(size_t index)
 {
-	if (index > arCodes.size())
+	if (index >= arCodes.size())
 	{
-		PanicAlertT("GetARCode: Index is greater than "
-			"ar code list size %lu", (unsigned long)index);
+		PanicAlertT("GetARCode: Index %u is >= ar code list size %u", index, arCodes.size());
 		return ARCode();
 	}
 	return arCodes[index];
@@ -445,12 +444,12 @@ ARCode GetARCode(size_t index)
 
 void SetARCode_IsActive(bool active, size_t index)
 {
-	if (index > arCodes.size())
+	if (index >= arCodes.size())
 	{
-		PanicAlertT("SetARCode_IsActive: Index is greater than "
-			"ar code list size %lu", (unsigned long)index);
+		PanicAlertT("SetARCode_IsActive: Index %u is >= ar code list size %u", index, arCodes.size());
 		return;
 	}
+
 	arCodes[index].active = active;
 	UpdateActiveList();
 }

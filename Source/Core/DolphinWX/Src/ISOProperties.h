@@ -24,6 +24,48 @@
 #include "ActionReplay.h"
 #include "GeckoCodeDiag.h"
 
+class ARPanel : public wxPanel
+{
+public:
+	ARPanel(IniFile& ini, wxWindow* const parent, wxWindowID id);
+
+	void UpdateGUI();
+	void Load(bool checkRunning = false);
+	void Save();
+	void ButtonClicked(wxCommandEvent& event);
+
+private:
+	DECLARE_EVENT_TABLE();
+
+	enum
+	{
+		ID_CHEATS_LIST,
+		ID_EDITCHEAT,
+		ID_ADDCHEAT,
+		ID_REMOVECHEAT
+	};
+
+	struct ARCodeIndex {
+		u32 uiIndex;
+		size_t index;
+	};
+
+	wxArrayString m_CheatStringList;
+	wxCheckListBox *m_Cheats;
+	wxButton *EditCheat;
+	wxButton *RemoveCheat;
+	wxStaticText *m_Label_Codename;
+	wxStaticText *m_Label_NumCodes;
+	wxStaticBox *m_GroupBox_Info;
+	wxListBox *m_ListBox_CodesList;
+
+	IniFile& GameIni;
+
+	void ListSelectionChanged(wxCommandEvent& event);
+	void ItemSelected(wxCommandEvent& event);
+	void ItemToggled(wxCommandEvent& event);
+};
+
 struct PHackData
 {
 	bool PHackSZNear;
@@ -47,7 +89,6 @@ public:
 
 	bool bRefreshList;
 
-	void ActionReplayList_Load();
 	bool SaveGameConfig();
 
 	PHackData PHack_Data;
@@ -71,10 +112,6 @@ private:
 	wxCheckListBox *Patches;
 	wxButton *EditPatch;
 	wxButton *RemovePatch;
-	wxArrayString arrayStringFor_Cheats;
-	wxCheckListBox *Cheats;
-	wxButton *EditCheat;
-	wxButton *RemoveCheat;
 	wxArrayString arrayStringFor_Speedhacks;
 	wxCheckListBox *Speedhacks;
 	wxButton *EditSpeedhack;
@@ -98,6 +135,7 @@ private:
 	wxTreeCtrl *m_Treectrl;
 	wxTreeItemId RootId;
 
+	ARPanel *m_CheatPage;
 	Gecko::CodeConfigPanel *m_geckocode_panel;
 
 	enum
@@ -135,10 +173,6 @@ private:
 		ID_EDITPATCH,
 		ID_ADDPATCH,
 		ID_REMOVEPATCH,
-		ID_CHEATS_LIST,
-		ID_EDITCHEAT,
-		ID_ADDCHEAT,
-		ID_REMOVECHEAT,
 
 		ID_NAME,
 		ID_GAMEID,
@@ -169,7 +203,6 @@ private:
 	void OnEditConfig(wxCommandEvent& event);
 	void ListSelectionChanged(wxCommandEvent& event);
 	void PatchButtonClicked(wxCommandEvent& event);
-	void ActionReplayButtonClicked(wxCommandEvent& event);
 	void RightClickOnBanner(wxMouseEvent& event);
 	void OnBannerImageSave(wxCommandEvent& event);
 	void OnRightClickOnTree(wxTreeEvent& event);
@@ -199,7 +232,6 @@ private:
 	void LoadGameConfig();
 	void PatchList_Load();
 	void PatchList_Save();
-	void ActionReplayList_Save();
 	void ChangeBannerDetails(int lang);
 };
 #endif

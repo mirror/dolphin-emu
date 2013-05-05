@@ -6,7 +6,7 @@
 #include "ARDecrypt.h"
 #include "WxUtils.h"
 
-extern std::vector<ActionReplay::ARCode> arCodes;
+using namespace ActionReplay;
 
 BEGIN_EVENT_TABLE(CARCodeAddEdit, wxDialog)
 	EVT_BUTTON(wxID_OK, CARCodeAddEdit::SaveCheatData)

@@ -13,10 +13,11 @@
 #include "Frame.h"
 #include "WxUtils.h"
 
+using namespace ActionReplay;
+
 #define MAX_CHEAT_SEARCH_RESULTS_DISPLAY	256
 const wxString title = _("Cheats Manager");
 
-extern std::vector<ActionReplay::ARCode> arCodes;
 extern CFrame* main_frame;
 
 // meh
@@ -52,32 +53,10 @@ void wxCheatsWindow::Init_ChildControls()
 	m_Notebook_Main = new wxNotebook(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize);
 
 	// --- Tabs ---
-	// $ Cheats List Tab
-	m_Tab_Cheats = new wxPanel(m_Notebook_Main, wxID_ANY, wxDefaultPosition, wxDefaultSize);
-
-	m_CheckListBox_CheatsList = new wxCheckListBox(m_Tab_Cheats, wxID_ANY, wxDefaultPosition, wxSize(300, 0), m_CheatStringList, wxLB_HSCROLL, wxDefaultValidator);
-	m_CheckListBox_CheatsList->Bind(wxEVT_COMMAND_LISTBOX_SELECTED, &wxCheatsWindow::OnEvent_CheatsList_ItemSelected, this);
-	m_CheckListBox_CheatsList->Bind(wxEVT_COMMAND_CHECKLISTBOX_TOGGLED, &wxCheatsWindow::OnEvent_CheatsList_ItemToggled, this);
-
-	m_Label_Codename = new wxStaticText(m_Tab_Cheats, wxID_ANY, _("Name: "), wxDefaultPosition, wxDefaultSize);
-	m_GroupBox_Info = new wxStaticBox(m_Tab_Cheats, wxID_ANY, _("Code Info"), wxDefaultPosition, wxDefaultSize);
-
-	m_Label_NumCodes = new wxStaticText(m_Tab_Cheats, wxID_ANY, _("Number Of Codes: "),  wxDefaultPosition, wxDefaultSize);
-	m_ListBox_CodesList = new wxListBox(m_Tab_Cheats, wxID_ANY, wxDefaultPosition, wxSize(120, 150), 0, 0, wxLB_HSCROLL);
-
-	wxStaticBoxSizer* sGroupBoxInfo = new wxStaticBoxSizer(m_GroupBox_Info, wxVERTICAL);
-	sGroupBoxInfo->Add(m_Label_Codename, 0, wxALL, 5);
-	sGroupBoxInfo->Add(m_Label_NumCodes, 0, wxALL, 5);
-	sGroupBoxInfo->Add(m_ListBox_CodesList, 1, wxALL, 5);
-
-	wxBoxSizer* sizer_tab_cheats = new wxBoxSizer(wxHORIZONTAL);
-	sizer_tab_cheats->Add(m_CheckListBox_CheatsList, 1, wxEXPAND | wxTOP | wxBOTTOM | wxLEFT, 10);
-	sizer_tab_cheats->Add(sGroupBoxInfo, 0, wxALIGN_LEFT | wxEXPAND | wxALL, 5);
-
-	m_Tab_Cheats->SetSizerAndFit(sizer_tab_cheats);	
+	m_Tab_Cheats = new ARPanel(m_gameini, m_Notebook_Main, wxID_ANY);
 
 	// $ Cheat Search Tab
-	wxPanel* const tab_cheat_search = new CheatSearchTab(m_Notebook_Main);
+	wxPanel* const tab_cheat_search = new CheatSearchTab(m_gameini, m_Notebook_Main, m_Tab_Cheats);
 
 	// $ Log Tab
 	m_Tab_Log = new wxPanel(m_Notebook_Main, wxID_ANY, wxDefaultPosition, wxDefaultSize);
@@ -131,8 +110,10 @@ void wxCheatsWindow::Init_ChildControls()
 	SetSizerAndFit(frame_szr);
 }
 
-CheatSearchTab::CheatSearchTab(wxWindow* const parent)
+CheatSearchTab::CheatSearchTab(IniFile& ini, wxWindow* const parent, ARPanel* const ar)
 	: wxPanel(parent, -1, wxDefaultPosition, wxDefaultSize)
+	, m_ar(ar)
+	, m_gameini(ini)
 {
 	// first scan button
 	btnInitScan = new wxButton(this, -1, _("New Scan"));
@@ -260,25 +241,7 @@ void wxCheatsWindow::UpdateGUI()
 
 void wxCheatsWindow::Load_ARCodes()
 {
-	using namespace ActionReplay;
-
-	m_CheckListBox_CheatsList->Clear();
-
-	if (!Core::IsRunning())
-		return;
-
-	indexList.clear();
-	size_t size = GetCodeListSize();
-	for (size_t i = 0; i < size; i++)
-	{
-		ARCode code = GetARCode(i);
-		ARCodeIndex ind;
-		u32 index = m_CheckListBox_CheatsList->Append(StrToWxStr(code.name));
-		m_CheckListBox_CheatsList->Check(index, code.active);
-		ind.index = i;
-		ind.uiIndex = index;
-		indexList.push_back(ind);
-	}
+	m_Tab_Cheats->Load(true);
 }
 
 void wxCheatsWindow::Load_GeckoCodes()
@@ -286,53 +249,10 @@ void wxCheatsWindow::Load_GeckoCodes()
 	m_geckocode_panel->LoadCodes(m_gameini, Core::g_CoreStartupParameter.GetUniqueID(), true);
 }
 
-void wxCheatsWindow::OnEvent_CheatsList_ItemSelected(wxCommandEvent& WXUNUSED (event))
-{
-	using namespace ActionReplay;
-
-	int index = m_CheckListBox_CheatsList->GetSelection();
-	for (size_t i = 0; i < indexList.size(); i++)
-	{
-		if ((int)indexList[i].uiIndex == index)
-		{
-			ARCode code = GetARCode(i);
-			m_Label_Codename->SetLabel(_("Name: ") + StrToWxStr(code.name));
-			char text[CHAR_MAX];
-			char* numcodes = text;
-			sprintf(numcodes, "Number of Codes: %lu", (unsigned long)code.ops.size());
-			m_Label_NumCodes->SetLabel(StrToWxStr(numcodes));
-			m_ListBox_CodesList->Clear();
-
-			for (size_t j = 0; j < code.ops.size(); j++)
-			{
-				char text2[CHAR_MAX];
-				char* ops = text2;
-				sprintf(ops, "%08x %08x", code.ops[j].cmd_addr, code.ops[j].value);
-				m_ListBox_CodesList->Append(StrToWxStr(ops));
-			}
-		}
-	}
-}
-
-void wxCheatsWindow::OnEvent_CheatsList_ItemToggled(wxCommandEvent& WXUNUSED (event))
-{
-	int index = m_CheckListBox_CheatsList->GetSelection();
-	for (size_t i = 0; i < indexList.size(); i++)
-	{
-		if ((int)indexList[i].uiIndex == index)
-		{
-			ActionReplay::SetARCode_IsActive(m_CheckListBox_CheatsList->IsChecked(index), indexList[i].index);
-		}
-	}
-}
-
 void wxCheatsWindow::OnEvent_ApplyChanges_Press(wxCommandEvent& ev)
 {
 	// Apply AR Code changes
-	for (size_t i = 0; i < indexList.size(); i++)
-	{
-		ActionReplay::SetARCode_IsActive(m_CheckListBox_CheatsList->IsChecked(indexList[i].uiIndex), indexList[i].index);
-	}
+	m_Tab_Cheats->Save();
 
 	// Apply Gecko Code changes
 	Gecko::SetActiveCodes(m_geckocode_panel->GetCodes());
@@ -558,14 +478,16 @@ void CheatSearchTab::CreateARCode(wxCommandEvent&)
 	{
 		const u32 address = search_results[sel].address | ((search_type_size & ~1) << 24);
 
-		CreateCodeDialog arcode_dlg(this, address);
+		CreateCodeDialog arcode_dlg(m_gameini, this, m_ar, address);
 		arcode_dlg.ShowModal();
 	}
 }
 
-CreateCodeDialog::CreateCodeDialog(wxWindow* const parent, const u32 address)
+CreateCodeDialog::CreateCodeDialog(IniFile& ini, wxWindow* const parent, ARPanel* const ar, const u32 address)
 	: wxDialog(parent, -1, _("Create AR Code"), wxDefaultPosition)
+	, m_ar(ar)
 	, code_address(address)
+	, m_gameini(ini)
 {
 	wxStaticText* const label_name = new wxStaticText(this, -1, _("Name: "));
 	textctrl_name = new wxTextCtrl(this, -1, wxEmptyString, wxDefaultPosition, wxSize(256,-1));
@@ -629,19 +551,10 @@ void CreateCodeDialog::PressOK(wxCommandEvent& ev)
 	const ActionReplay::AREntry new_entry(code_address, code_value);
 	new_cheat.ops.push_back(new_entry);
 
-	// pretty hacky - add the code to the gameini
-	{
-	CISOProperties isoprops(SConfig::GetInstance().m_LastFilename, this);
-	// add the code to the isoproperties arcode list
+	// add the code to the AR panel
 	arCodes.push_back(new_cheat);
-	// save the gameini
-	isoprops.SaveGameConfig();
-	isoprops.ActionReplayList_Load();	// loads the new arcodes
-	//ActionReplay::UpdateActiveList();
-	}
-
-	// refresh arcode list in other tab
-	::g_cheat_window->Load_ARCodes();
+	m_ar->Save();
+	m_ar->Load();
 
 	Close();
 }
