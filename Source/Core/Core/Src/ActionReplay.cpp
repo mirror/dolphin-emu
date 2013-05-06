@@ -34,6 +34,9 @@
 namespace ActionReplay
 {
 
+// avoid incorrect codes
+const u8 REPEAT_LIMIT = 0xffff;
+
 enum
 {
 	// Zero Code Types
@@ -500,7 +503,8 @@ bool Subtype_RamWriteAndFill(const ARAddr addr, const u32 data)
 		LogInfo("8-bit Write");
 		LogInfo("--------");
 		u32 repeat = data >> 8;
-		for (u32 i = 0; i <= repeat; ++i)
+		LogInfo("Repeat: %08x", repeat);
+		for (u32 i = 0; i <= repeat && repeat <= REPEAT_LIMIT; ++i)
 		{
 			Memory::Write_U8(data & 0xFF, new_addr + i);
 			LogInfo("Wrote %08x to address %08x", data & 0xFF, new_addr + i);
@@ -514,7 +518,8 @@ bool Subtype_RamWriteAndFill(const ARAddr addr, const u32 data)
 		LogInfo("16-bit Write");
 		LogInfo("--------");
 		u32 repeat = data >> 16;
-		for (u32 i = 0; i <= repeat; ++i)
+		LogInfo("Repeat: %08x", repeat);
+		for (u32 i = 0; i <= repeat && repeat <= REPEAT_LIMIT; ++i)
 		{
 			Memory::Write_U16(data & 0xFFFF, new_addr + i * 2);
 			LogInfo("Wrote %08x to address %08x", data & 0xFFFF, new_addr + i * 2);
