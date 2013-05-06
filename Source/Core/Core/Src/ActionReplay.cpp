@@ -111,7 +111,7 @@ bool CompareValues(const u32 val1, const u32 val2, const int type);
 
 // ----------------------
 // AR Remote Functions
-void LoadCodes(IniFile &ini, bool forceLoad)
+void LoadCodes(IniFile &ini, u8 version, bool forceLoad)
 {
 	// Parses the Action Replay section of a game ini file.
 	if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableCheats 
@@ -123,8 +123,9 @@ void LoadCodes(IniFile &ini, bool forceLoad)
 	ARCode currentCode;
 	arCodes.clear();
 
-	if (!ini.GetLines("ActionReplay", lines))
-		return;  // no codes found.
+	if (!ini.GetLines(StringFromFormat("ActionReplay%02x", version).c_str(), lines))
+		if (!ini.GetLines("ActionReplay", lines))
+			return;  // no codes found.
 
 	std::vector<std::string>::const_iterator
 		it = lines.begin(),
@@ -217,9 +218,9 @@ void LoadCodes(IniFile &ini, bool forceLoad)
 	UpdateActiveList();
 }
 
-void LoadCodes(std::vector<ARCode> &_arCodes, IniFile &ini)
+void LoadCodes(std::vector<ARCode> &_arCodes, IniFile &ini, u8 version)
 {
-	LoadCodes(ini, true);
+	LoadCodes(ini, version, true);
 	_arCodes = arCodes;
 }
 

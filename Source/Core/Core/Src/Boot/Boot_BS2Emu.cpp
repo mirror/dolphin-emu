@@ -149,7 +149,8 @@ bool CBoot::EmulatedBS2_GC()
 
 	// Load patches
 	std::string gameID = VolumeHandler::GetVolume()->GetUniqueID();
-	PatchEngine::LoadPatches(gameID.c_str());
+	u8 version = VolumeHandler::GetVolume()->GetRevision();
+	PatchEngine::LoadPatches(gameID.c_str(), version);
 	
 	PowerPC::ppcState.DebugCount = 0;
 
@@ -380,7 +381,8 @@ bool CBoot::EmulatedBS2_Wii()
 
 		// Load patches and run startup patches
 		std::string gameID = VolumeHandler::GetVolume()->GetUniqueID();
-		PatchEngine::LoadPatches(gameID.c_str());
+		u8 version = VolumeHandler::GetVolume()->GetRevision();
+		PatchEngine::LoadPatches(gameID.c_str(), version);
 
 		// return
 		PC = PowerPC::ppcState.gpr[3];

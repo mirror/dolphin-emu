@@ -108,7 +108,13 @@ CISOProperties::CISOProperties(const std::string fileName, wxWindow* parent, wxW
 
 	CreateGUIControls(DiscIO::IsVolumeWadFile(OpenISO));
 
-	std::string _iniFilename = OpenISO->GetUniqueID();
+	// save header data used more than once because that reduce disk access
+	m_ISO.id = OpenISO->GetUniqueID();
+	m_ISO.version = OpenISO->GetRevision();
+	m_ISO.name = OpenISO->GetName();
+	m_ISO.country = OpenISO->GetCountry();
+
+	std::string _iniFilename = m_ISO.id;
 
 	if (!_iniFilename.length())
 	{
@@ -134,7 +140,7 @@ CISOProperties::CISOProperties(const std::string fileName, wxWindow* parent, wxW
 		OpenFStream(f, GameIniFile, std::ios_base::out);
 		if (f)
 		{
-			f << "# " << OpenISO->GetUniqueID() << " - " << OpenISO->GetName() << '\n'
+			f << "# " << m_ISO.id << " - " << m_ISO.name << '\n'
 				<< "[Core] Values set here will override the main dolphin settings.\n"
 				<< "[EmuState] The Emulation State. 1 is worst, 5 is best, 0 is not set.\n"
 				<< "[OnFrame] Add memory patches to be applied every frame here.\n"
@@ -152,9 +158,9 @@ CISOProperties::CISOProperties(const std::string fileName, wxWindow* parent, wxW
 
 	// Disk header and apploader
 
-	m_Name->SetValue(StrToWxStr(OpenISO->GetName()));
-	m_GameID->SetValue(StrToWxStr(OpenISO->GetUniqueID()));
-	switch (OpenISO->GetCountry())
+	m_Name->SetValue(StrToWxStr(m_ISO.name));
+	m_GameID->SetValue(StrToWxStr(m_ISO.id));
+	switch (m_ISO.country)
 	{
 	case DiscIO::IVolume::COUNTRY_EUROPE:
 		m_Country->SetValue(_("EUROPE"));
@@ -195,7 +201,7 @@ CISOProperties::CISOProperties(const std::string fileName, wxWindow* parent, wxW
 	}
 	wxString temp = _T("0x") + StrToWxStr(OpenISO->GetMakerID());
 	m_MakerID->SetValue(temp);
-	m_Revision->SetValue(wxString::Format(wxT("%u"), OpenISO->GetRevision()));
+	m_Revision->SetValue(wxString::Format(wxT("%u"), m_ISO.version));
 	m_Date->SetValue(StrToWxStr(OpenISO->GetApploaderDate()));
 	m_FST->SetValue(wxString::Format(wxT("%u"), OpenISO->GetFSTSize()));
 
@@ -1251,9 +1257,11 @@ void CISOProperties::PatchButtonClicked(wxCommandEvent& event)
 
 void CISOProperties::ActionReplayList_Load()
 {
+	NOTICE_LOG(CONSOLE, "test");
+	WARN_LOG(CONSOLE, "ActionReplayList_Load: ActionReplay%02x", m_ISO.version);
 	arCodes.clear();
 	Cheats->Clear();
-	ActionReplay::LoadCodes(arCodes, GameIni);
+	ActionReplay::LoadCodes(arCodes, GameIni, m_ISO.version);
 
 	u32 index = 0;
 	for (std::vector<ActionReplay::ARCode>::const_iterator it = arCodes.begin(); it != arCodes.end(); ++it)
@@ -1281,7 +1289,7 @@ void CISOProperties::ActionReplayList_Save()
 		}
 		++index;
 	}
-	GameIni.SetLines("ActionReplay", lines);
+	GameIni.SetLines(StringFromFormat("ActionReplay%02x", m_ISO.version).c_str(), lines);
 }
 
 void CISOProperties::ActionReplayButtonClicked(wxCommandEvent& event)
