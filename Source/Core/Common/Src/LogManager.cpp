@@ -12,6 +12,7 @@
 #include "Timer.h"
 #include "Thread.h"
 #include "FileUtil.h"
+#include "IniFile.h"
 
 void GenericLog(LogTypes::LOG_LEVELS level, LogTypes::LOG_TYPE type, 
 		bool logFile, bool logType, const char *file, int line, const char* fmt, ...)
@@ -77,15 +78,41 @@ LogManager::LogManager()
 	m_consoleLog = new ConsoleListener();
 	m_debuggerLog = new DebuggerLogListener();
 
+	LoadSettings();
+}
+
+void LogManager::LoadSettings()
+{
+	IniFile ini;
+	ini.Load(File::GetUserPath(F_LOGGERCONFIG_IDX));
+
+	int verbosity;
+	ini.Get("Options", "Verbosity", &verbosity, 0);
+
 	for (int i = 0; i < LogTypes::NUMBER_OF_LOGS; ++i)
 	{
-		m_Log[i]->SetEnable(true);
-		m_Log[i]->AddListener(m_fileLog);
-		m_Log[i]->AddListener(m_consoleLog);
+		bool enable;
+		ini.Get("Logs", GetShortName((LogTypes::LOG_TYPE)i), &enable, true);
+
+		m_Log[i]->SetEnable(enable);
+		SetLogLevel((LogTypes::LOG_TYPE)i, (LogTypes::LOG_LEVELS)(verbosity));
+		if (enable)
+		{
+			m_Log[i]->AddListener(m_fileLog);
+			m_Log[i]->AddListener(m_consoleLog);
 #ifdef _MSC_VER
 		if (IsDebuggerPresent())
 			m_Log[i]->AddListener(m_debuggerLog);
 #endif
+		}
+		else
+		{
+			m_Log[i]->RemoveListener(m_fileLog);
+			m_Log[i]->RemoveListener(m_consoleLog);
+#ifdef _MSC_VER
+			m_Log[i]->RemoveListener(m_debuggerLog);
+#endif
+		}
 	}
 }
 

@@ -97,6 +97,8 @@ private:
 	~LogManager();
 public:
 
+	void LoadSettings();
+
 	static u32 GetMaxLevel() { return MAX_LOGLEVEL;	}
 
 	void Log(LogTypes::LOG_LEVELS level, LogTypes::LOG_TYPE type, 
