@@ -47,7 +47,6 @@ struct ConfigCache
 	int iTLBHack, iCPUCore;
 	std::string strBackend;
 };
-static ConfigCache config_cache;
 
 // Boot the ISO or file
 bool BootCore(const std::string& _rFilename)
@@ -75,22 +74,6 @@ bool BootCore(const std::string& _rFilename)
 	StartUp.m_strGameIni = File::GetUserPath(D_GAMECONFIG_IDX) + unique_id + ".ini";
 	if (unique_id.size() == 6 && game_ini.Load(StartUp.m_strGameIni.c_str()))
 	{
-		config_cache.valid = true;
-		config_cache.bCPUThread = StartUp.bCPUThread;
-		config_cache.bSkipIdle = StartUp.bSkipIdle;
-		config_cache.iCPUCore = StartUp.iCPUCore;
-		config_cache.bEnableFPRF = StartUp.bEnableFPRF;
-		config_cache.bMMU = StartUp.bMMU;
-		config_cache.bDCBZOFF = StartUp.bDCBZOFF;
-		config_cache.iTLBHack = StartUp.iTLBHack;
-		config_cache.bVBeamSpeedHack = StartUp.bVBeamSpeedHack;
-		config_cache.bSyncGPU = StartUp.bSyncGPU;
-		config_cache.bFastDiscSpeed = StartUp.bFastDiscSpeed;
-		config_cache.bMergeBlocks = StartUp.bMergeBlocks;
-		config_cache.bDSPHLE = StartUp.bDSPHLE;
-		config_cache.strBackend = StartUp.m_strVideoBackend;
-		config_cache.bHLE_BS2 = StartUp.bHLE_BS2;
-
 		// General settings
 		game_ini.Get("Core", "CPUThread",			&StartUp.bCPUThread, StartUp.bCPUThread);
 		game_ini.Get("Core", "SkipIdle",			&StartUp.bSkipIdle, StartUp.bSkipIdle);
@@ -144,29 +127,8 @@ bool BootCore(const std::string& _rFilename)
 void Stop()
 {
 	Core::Stop();
-
-	SCoreStartupParameter& StartUp = SConfig::GetInstance().m_LocalCoreStartupParameter;
-
-	StartUp.m_strUniqueID = "00000000";
-	if (config_cache.valid)
-	{
-		config_cache.valid = false;
-		StartUp.bCPUThread = config_cache.bCPUThread;
-		StartUp.bSkipIdle = config_cache.bSkipIdle;
-		StartUp.iCPUCore = config_cache.iCPUCore;
-		StartUp.bEnableFPRF = config_cache.bEnableFPRF;
-		StartUp.bMMU = config_cache.bMMU;
-		StartUp.bDCBZOFF = config_cache.bDCBZOFF;
-		StartUp.iTLBHack = config_cache.iTLBHack;
-		StartUp.bVBeamSpeedHack = config_cache.bVBeamSpeedHack;
-		StartUp.bSyncGPU = config_cache.bSyncGPU;
-		StartUp.bFastDiscSpeed = config_cache.bFastDiscSpeed;
-		StartUp.bMergeBlocks = config_cache.bMergeBlocks;
-		StartUp.bDSPHLE = config_cache.bDSPHLE;
-		StartUp.m_strVideoBackend = config_cache.strBackend;
-		VideoBackend::ActivateBackend(StartUp.m_strVideoBackend);
-		StartUp.bHLE_BS2 = config_cache.bHLE_BS2;
-	}
+	SConfig::Shutdown();
+	SConfig::Init();
 }
 
 } // namespace
