@@ -12,7 +12,7 @@
 #endif
 
 #include "ConfigManager.h"
-
+#include "CommonPaths.h"
 #include "Thread.h"
 
 #include "CLI.h"
@@ -29,6 +29,7 @@ int main(int argc, char* argv[])
 
 	struct option longopts[] = {
 		{ "benchmark",	no_argument,	NULL,	'B' },
+		{ "config",	no_argument,	NULL,	'C' },
 		{ "exec",	optional_argument,	NULL,	'e' },
 		{ "help",	no_argument,	NULL,	'h' },
 		{ "version",	no_argument,	NULL,	53 },
@@ -38,11 +39,15 @@ int main(int argc, char* argv[])
 
 	SConfig::Init();
 
-	while ((c = getopt_long(argc, argv, "Be::h?V:", longopts, 0)) != -1) {
+	while ((c = getopt_long(argc, argv, "BC:e::h?V:", longopts, 0)) != -1) {
 		switch (c) {
 		case 'B':
 			SConfig::GetInstance().m_LocalCoreStartupParameter.bBenchmark = true;
 			SConfig::GetInstance().m_Framelimit = 0;
+			break;
+		case 'C':
+			File::GetUserPath(D_CONFIG_IDX, File::GetUserPath(D_CONFIG_IDX) + std::string(optarg) + DIR_SEP);
+			NOTICE_LOG(CONSOLE, "Configuration path: %s", File::GetUserPath(D_CONFIG_IDX).c_str());
 			break;
 		case 'e':
 			if (optarg) exec = std::string(optarg);
@@ -67,8 +72,9 @@ int main(int argc, char* argv[])
 	if (help || argc == 1) {
 		fprintf(stderr, "%s\n\n", scm_rev_str);
 		fprintf(stderr, "A multi-platform Gamecube/Wii emulator\n\n");
-		fprintf(stderr, "Usage: %s [-b] [-h] [-v <video backend>] [-e[<file>]]\n", argv[0]);
+		fprintf(stderr, "Usage: %s [-b] [-h] [-C <config path>] [-v <video backend>] [-e[<file>]]\n", argv[0]);
 		fprintf(stderr, "  -b, --bench	Benchmark mode\n");
+		fprintf(stderr, "  -C, --config	Benchmark mode\n");
 		fprintf(stderr, "  -e, --exec	Load the specified file\n");
 		fprintf(stderr, "  -h, --help	Show this help message\n");
 		fprintf(stderr, "  -v, --exec	Use the specified video backend\n");

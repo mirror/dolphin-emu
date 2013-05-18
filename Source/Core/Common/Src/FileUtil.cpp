@@ -737,23 +737,33 @@ const std::string& GetUserPath(const unsigned int DirIDX, const std::string &new
 
 	if (!newPath.empty())
 	{
-		if(DirIDX != D_WIIROOT_IDX)
-			PanicAlert("Trying to change user path other than Wii root");
 
 		if (!File::IsDirectory(newPath))
 		{
-			WARN_LOG(COMMON, "Invalid path specified %s, Wii user path will be set to default", newPath.c_str());
-			paths[D_WIIROOT_IDX] = paths[D_USER_IDX] + WII_USER_DIR;
+			WARN_LOG(COMMON, "Invalid path: %s", newPath.c_str());
 		}
 		else
 		{
-			paths[D_WIIROOT_IDX] = newPath;
+			paths[DirIDX] = newPath;
 		}
 
-		paths[D_WIIUSER_IDX] = paths[D_WIIROOT_IDX] + DIR_SEP;
-		paths[D_WIISYSCONF_IDX]	= paths[D_WIIUSER_IDX] + WII_SYSCONF_DIR + DIR_SEP; 
-		paths[F_WIISYSCONF_IDX]	= paths[D_WIISYSCONF_IDX] + WII_SYSCONF;
+		// update dependent paths
+		switch (DirIDX)
+		{
+		case D_WIIROOT_IDX:
+			paths[D_WIIUSER_IDX] = paths[D_WIIROOT_IDX] + DIR_SEP;
+			paths[D_WIISYSCONF_IDX]	= paths[D_WIIUSER_IDX] + WII_SYSCONF_DIR + DIR_SEP;
+			paths[F_WIISYSCONF_IDX]	= paths[D_WIISYSCONF_IDX] + WII_SYSCONF;
+			break;
+
+		case D_CONFIG_IDX:
+			paths[F_DOLPHINCONFIG_IDX]	= paths[D_CONFIG_IDX] + DOLPHIN_CONFIG;
+			paths[F_DEBUGGERCONFIG_IDX]	= paths[D_CONFIG_IDX] + DEBUGGER_CONFIG;
+			paths[F_LOGGERCONFIG_IDX]	= paths[D_CONFIG_IDX] + LOGGER_CONFIG;
+			break;
+		}
 	}
+
 	return paths[DirIDX];
 }
 

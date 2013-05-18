@@ -120,6 +120,7 @@ bool DolphinApp::Initialize(int& c, wxChar **v)
 
 bool DolphinApp::OnInit()
 {
+	LogManager::Init();
 	InitLanguageSupport();
 
 	// Declarations and definitions
@@ -130,6 +131,7 @@ bool DolphinApp::OnInit()
 
 	wxString videoBackendName;
 	wxString audioEmulationName;
+	wxString configPath;
 
 #if wxUSE_CMDLINE_PARSER // Parse command lines
 	wxCmdLineEntryDesc cmdLineDesc[] =
@@ -158,6 +160,11 @@ bool DolphinApp::OnInit()
 			wxCMD_LINE_SWITCH, "l", "logger",
 			"Opens the logger",
 			wxCMD_LINE_VAL_NONE, wxCMD_LINE_PARAM_OPTIONAL
+		},
+		{
+			wxCMD_LINE_OPTION, "C", "config",
+			"Configuration path",
+			wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL
 		},
 		{
 			wxCMD_LINE_OPTION, "e", "exec",
@@ -210,6 +217,14 @@ bool DolphinApp::OnInit()
 	CLI::isCLI = parser.Found(wxT("cli"));
 	UseDebugger = parser.Found(wxT("debugger"));
 	UseLogger = parser.Found(wxT("logger"));
+
+	// config path
+	if (parser.Found(wxT("config"), &configPath))
+	{
+		File::GetUserPath(D_CONFIG_IDX, File::GetUserPath(D_CONFIG_IDX) + WxStrToStr(configPath) + DIR_SEP);
+		NOTICE_LOG(CONSOLE, "Configuration path: %s", File::GetUserPath(D_CONFIG_IDX).c_str());
+	}
+
 	LoadFile = parser.Found(wxT("exec"), &FileToLoad);
 	BatchMode = parser.Found(wxT("batch"));
 	BenchmarkMode = parser.Found(wxT("benchmark"));
@@ -292,7 +307,7 @@ bool DolphinApp::OnInit()
 	File::CreateFullPath(File::GetUserPath(D_STATESAVES_IDX));
 	File::CreateFullPath(File::GetUserPath(D_MAILLOGS_IDX));
 
-	LogManager::Init();
+	LogManager::GetInstance()->LoadSettings();
 	SConfig::Init();
 	VideoBackend::PopulateList();
 	WiimoteReal::LoadSettings();
