@@ -543,52 +543,6 @@ void CFrame::InitBitmaps()
 
 // Menu items
 
-// Start the game or change the disc.
-// Boot priority:
-// 1. Show the game list and boot the selected game.
-// 2. Default ISO
-// 3. Boot last selected game
-void CFrame::BootGame(const std::string& filename)
-{
-	std::string bootfile = filename;
-	SCoreStartupParameter& StartUp = SConfig::GetInstance().m_LocalCoreStartupParameter;
-
-	if (Core::GetState() != Core::CORE_UNINITIALIZED)
-		return;
-
-	// Start filename if non empty.
-	// Start the selected ISO, or try one of the saved paths.
-	// If all that fails, ask to add a dir and don't boot
-	if (bootfile.empty())
-	{
-		if (m_GameListCtrl->GetSelectedISO() != NULL)
-		{
-			if (m_GameListCtrl->GetSelectedISO()->IsValid())
-				bootfile = m_GameListCtrl->GetSelectedISO()->GetFileName();
-		}
-		else if (!StartUp.m_strDefaultGCM.empty()
-				&&	wxFileExists(wxSafeConvertMB2WX(StartUp.m_strDefaultGCM.c_str())))
-		{
-			bootfile = StartUp.m_strDefaultGCM;
-		}
-		else
-		{
-			if (!SConfig::GetInstance().m_LastFilename.empty()
-					&& wxFileExists(wxSafeConvertMB2WX(SConfig::GetInstance().m_LastFilename.c_str())))
-			{
-				bootfile = SConfig::GetInstance().m_LastFilename;
-			}
-			else
-			{
-				m_GameListCtrl->BrowseForDirectory();
-				return;
-			}
-		}
-	}
-	if (!bootfile.empty())
-		StartGame(bootfile);
-}
-
 // Open file to boot
 void CFrame::OnOpen(wxCommandEvent& WXUNUSED (event))
 {
@@ -602,8 +556,8 @@ void CFrame::DoOpen(bool Boot)
 	wxString path = wxFileSelector(
 			_("Select the file to load"),
 			wxEmptyString, wxEmptyString, wxEmptyString,
-			_("All GC/Wii files (elf, dol, gcm, iso, wbfs, ciso, gcz, wad)") +
-			wxString::Format(wxT("|*.elf;*.dol;*.gcm;*.iso;*.wbfs;*.ciso;*.gcz;*.wad;*.dff;*.tmd|%s"),
+			_("All GC/Wii files (ciso, dff, dol, dtm, elf, gcm, gcz, iso, sav, s#, tmd, wad, wbfs)") +
+			wxString::Format(wxT("|*.elf;*.dol;*.gcm;*.iso;*.wbfs;*.ciso;*.gcz;*.wad;*.dff;*.tmd;*.dtm;*.sav|%s"),
 				wxGetTranslation(wxALL_FILES)),
 			wxFD_OPEN | wxFD_FILE_MUST_EXIST,
 			this);
@@ -715,8 +669,7 @@ void CFrame::OnPlayRecording(wxCommandEvent& WXUNUSED (event))
 		GetMenuBar()->FindItem(IDM_RECORDREADONLY)->Check(true);
 	}
 
-	if (Movie::PlayInput(WxStrToStr(path).c_str()))
-		BootGame(std::string(""));
+	BootGame(path.ToStdString());
 }
 
 void CFrame::OnRecordExport(wxCommandEvent& WXUNUSED (event))
@@ -827,8 +780,14 @@ void CFrame::ToggleDisplayMode(bool bFullscreen)
 }
 
 // Prepare the GUI to start the game.
-void CFrame::StartGame(const std::string& filename)
+void CFrame::BootGame(std::string filename)
 {
+	if (Core::GetState() != Core::CORE_UNINITIALIZED)
+		return;
+
+	// Get ISO if none provided
+	if (filename.empty()) filename = GetISO().mb_str();
+
 	m_bGameLoading = true;
 
 	if (m_ToolBar)
@@ -1515,7 +1474,7 @@ void CFrame::OnFrameSkip(wxCommandEvent& event)
 
 
 
-// GUI
+// Utility
 // ---------------------
 
 // Update the enabled/disabled status
@@ -1549,9 +1508,10 @@ void CFrame::UpdateGUI()
 	GetMenuBar()->FindItem(IDM_BROWSE)->Enable(!Initialized);
 
 	// Emulation
+	GetMenuBar()->FindItem(IDM_PLAY)->Enable(!(Running || Paused) && IsISOSet());
 	GetMenuBar()->FindItem(IDM_STOP)->Enable(Running || Paused);
 	GetMenuBar()->FindItem(IDM_RESET)->Enable(Running || Paused);
-	GetMenuBar()->FindItem(IDM_RECORD)->Enable(!Movie::IsRecordingInput());
+	GetMenuBar()->FindItem(IDM_RECORD)->Enable(IsISOSet() && !Movie::IsRecordingInput());
 	GetMenuBar()->FindItem(IDM_PLAYRECORD)->Enable(!Initialized);
 	GetMenuBar()->FindItem(IDM_RECORDEXPORT)->Enable(Movie::IsPlayingInput() || Movie::IsRecordingInput());
 	GetMenuBar()->FindItem(IDM_FRAMESTEP)->Enable(Running || Paused);
@@ -1798,4 +1758,30 @@ void CFrame::OnToggleStatusbar(wxCommandEvent& event)
 		GetStatusBar()->Hide();
 
 	this->SendSizeEvent();
+}
+
+// Get ISO
+// Priority:
+// 1. Selected ISO
+// 2. Default ISO
+// 3. Last selected ISO
+wxString CFrame::GetISO()
+{
+	wxString filename = "";
+	SCoreStartupParameter& StartUp = SConfig::GetInstance().m_LocalCoreStartupParameter;
+
+	if (m_GameListCtrl->GetSelectedISO())
+		filename = m_GameListCtrl->GetSelectedISO()->GetFileName();
+	else if (wxFileExists(wxSafeConvertMB2WX(StartUp.m_strDefaultGCM.c_str())))
+		filename = StartUp.m_strDefaultGCM;
+	else if (wxFileExists(wxSafeConvertMB2WX(SConfig::GetInstance().m_LastFilename.c_str())))
+		filename = SConfig::GetInstance().m_LastFilename;
+
+	return wxSafeConvertMB2WX(filename.c_str());
+}
+
+// Determine if an ISO is set
+bool CFrame::IsISOSet()
+{
+	return !GetISO().empty();
 }
