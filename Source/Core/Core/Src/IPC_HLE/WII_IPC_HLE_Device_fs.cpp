@@ -468,8 +468,8 @@ s32 CWII_IPC_HLE_Device_fs::ExecuteCommand(u32 _Parameter, u32 _BufferIn, u32 _B
 			bool Result = File::CreateEmptyFile(Filename);
 			if (!Result)
 			{
-				ERROR_LOG(WII_IPC_FILEIO, "CWII_IPC_HLE_Device_fs: couldn't create new file");
-				PanicAlert("CWII_IPC_HLE_Device_fs: couldn't create new file");
+				ERROR_LOG(WII_IPC_FILEIO, "CWII_IPC_HLE_Device_fs: couldn't create new file \"\"", Filename.c_str());
+				PanicAlert("CWII_IPC_HLE_Device_fs: couldn't create new file \"\"", Filename.c_str());
 				return FS_RESULT_FATAL;
 			}
 

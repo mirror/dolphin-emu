@@ -206,7 +206,7 @@ bool CBoot::SetupWiiMemory(unsigned int _CountryCode)
 	File::IOFile settingsFile(settings_Filename, "rb");
 	if (!settingsFile)
 	{
-		PanicAlertT("SetupWiiMem: Cant find setting file");	
+		PanicAlertT("SetupWiiMem: Cant find setting file \"%s\"", settings_Filename.c_str());
 		return false;
 	}
 
