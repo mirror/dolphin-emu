@@ -101,8 +101,7 @@ void LogManager::LoadSettings()
 			m_Log[i]->AddListener(m_fileLog);
 			m_Log[i]->AddListener(m_consoleLog);
 #ifdef _MSC_VER
-		if (IsDebuggerPresent())
-			m_Log[i]->AddListener(m_debuggerLog);
+		m_Log[i]->AddListener(m_debuggerLog);
 #endif
 		}
 		else

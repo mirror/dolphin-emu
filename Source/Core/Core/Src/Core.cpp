@@ -132,6 +132,8 @@ void DisplayMessage(const char *message, int time_in_ms)
 	{
 		Host_UpdateTitle(message);
 	}
+
+	NOTICE_LOG(CONSOLE, message);
 }
 
 void Callback_DebuggerBreak()
