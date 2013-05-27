@@ -12,6 +12,7 @@
 #include "Thread.h"
 #include "FileUtil.h"
 #include "PowerPC/PowerPC.h"
+#include "CoreTiming.h"
 #include "HW/SI.h"
 #include "HW/Wiimote.h"
 #include "HW/WiimoteEmu/WiimoteEmu.h"
@@ -673,9 +674,16 @@ void RecordInput(SPADStatus *PadStatus, int controllerID)
 		g_bDiscChange = false;
 	}
 
-	EnsureTmpInputSize((size_t)(g_currentByte + 8));
-	memcpy(&(tmpInput[g_currentByte]), &g_padState, 8);
-	g_currentByte += 8;
+
+	DTMData d;
+	d.frame = g_currentFrame;
+	d.wii = 0;
+	d.size = 8;
+
+	EnsureTmpInputSize((size_t)(g_currentByte + sizeof(DTMData) + d.size));
+	memcpy(&(tmpInput[g_currentByte]), &d, sizeof(DTMData));
+	memcpy(&(tmpInput[g_currentByte + sizeof(DTMData)]), &g_padState, d.size);
+	g_currentByte += sizeof(DTMData) + d.size;
 	g_totalBytes = g_currentByte;
 }
 
@@ -696,11 +704,17 @@ void RecordWiimote(int wiimote, u8 *data, u8 size)
 	if(!IsRecordingInput() || !IsUsingWiimote(wiimote))
 		return;
 
+	DTMData d;
+	d.frame = g_currentFrame;
+	d.wii = 1;
+	d.size = size;
+
 	InputUpdate();
-	EnsureTmpInputSize((size_t)(g_currentByte + size + 1));
-	tmpInput[g_currentByte++] = size;
-	memcpy(&(tmpInput[g_currentByte]), data, size);
-	g_currentByte += size;
+	EnsureTmpInputSize((size_t)(g_currentByte + sizeof(DTMData) + d.size));
+	memcpy(&(tmpInput[g_currentByte]), &d, sizeof(DTMData));
+	memcpy(&(tmpInput[g_currentByte + sizeof(DTMData)]), data, size);
+
+	g_currentByte += sizeof(DTMData) + d.size;
 	g_totalBytes = g_currentByte;
 }
 
@@ -952,6 +966,50 @@ static void CheckInputEnd()
 	}
 }
 
+bool TestEnd(u64 current, u64 total)
+{
+	if (current > total)
+	{
+		PanicAlertT("Premature movie end because next byte %llu > total bytes %llu", g_currentByte, g_totalBytes);
+		EndPlayInput(!g_bReadOnly);
+		return false;
+	}
+	else
+		return true;
+}
+
+bool TestSize(u8 recorded, u8 current)
+{
+	if (recorded != current)
+	{
+		WARN_LOG(PAD, "Size at input %6llu: rec. %u, cur. %u", g_currentInputCount, recorded, current);
+		g_currentByte += sizeof(DTMData) + recorded;
+		return false;
+	}
+	else
+		return true;
+}
+
+bool TestType(u8 recorded, u8 current)
+{
+	if (recorded != current)
+	{
+		PanicAlertT("Type at input %6llu: rec. %d, cur. %d", g_currentInputCount, recorded, current);
+		EndPlayInput(!g_bReadOnly);
+		return false;
+	}
+	else
+		return true;
+}
+
+void TestSync(u64 recorded)
+{
+	if (recorded != g_currentFrame)
+	{
+		WARN_LOG(PAD, "Frame at input %6llu: dif. %3d, rec. %6d, cur. %6d", g_currentInputCount, g_currentFrame - recorded, recorded, g_currentFrame);
+	}
+}
+
 void PlayController(SPADStatus *PadStatus, int controllerID)
 {
 	// Correct playback is entirely dependent on the emulator polling the controllers
@@ -959,21 +1017,27 @@ void PlayController(SPADStatus *PadStatus, int controllerID)
 	if (!IsPlayingInput() || !IsUsingPad(controllerID) || tmpInput == NULL)
 		return;
 
-	if (g_currentByte + 8 > g_totalBytes)
-	{
-		PanicAlertT("Premature movie end in PlayController. %u + 8 > %u", (u32)g_currentByte, (u32)g_totalBytes);
-		EndPlayInput(!g_bReadOnly);
+	if (!TestEnd(g_currentByte + 8, g_totalBytes))
 		return;
-	}
 
 	// dtm files don't save the mic button or error bit. not sure if they're actually used, but better safe than sorry
 	signed char e = PadStatus->err;
 	memset(PadStatus, 0, sizeof(SPADStatus));
 	PadStatus->err = e;
 
+	DTMData d;
+	memcpy(&d, &(tmpInput[g_currentByte]), sizeof(DTMData));
 
-	memcpy(&g_padState, &(tmpInput[g_currentByte]), 8);
-	g_currentByte += 8;
+	if (!TestType(d.wii, 0))
+		return;
+
+	if (!TestSize(d.size, 8))
+		return;
+
+	TestSync(d.frame);
+
+	memcpy(&g_padState, &(tmpInput[g_currentByte + sizeof(DTMData)]), d.size);
+	g_currentByte += sizeof(DTMData) + d.size;
 	
 	PadStatus->triggerLeft = g_padState.TriggerL;
 	PadStatus->triggerRight = g_padState.TriggerR;
@@ -1055,38 +1119,31 @@ bool PlayWiimote(int wiimote, u8 *data, const WiimoteEmu::ReportFeatures& rptf, 
 	if(!IsPlayingInput() || !IsUsingWiimote(wiimote) || tmpInput == NULL)
 		return false;
 
-	if (g_currentByte > g_totalBytes)
-	{
-		PanicAlertT("Premature movie end in PlayWiimote. %u > %u", (u32)g_currentByte, (u32)g_totalBytes);
-		EndPlayInput(!g_bReadOnly);
+	if (!TestEnd(g_currentByte, g_totalBytes))
 		return false;
-	}
 
 	u8* const coreData = rptf.core?(data+rptf.core):NULL;
 	u8* const accelData = rptf.accel?(data+rptf.accel):NULL;
 	u8* const irData = rptf.ir?(data+rptf.ir):NULL;
 	u8 size = rptf.size;
 
-	u8 sizeInMovie = tmpInput[g_currentByte];
-
-	if (size != sizeInMovie)
-	{
-		PanicAlertT("Fatal desync. Aborting playback. (Error in PlayWiimote: %u != %u, byte %u.)%s", (u32)sizeInMovie, (u32)size, (u32)g_currentByte, (g_numPads & 0xF)?" Try re-creating the recording with all GameCube controllers disabled (in Configure > Gamecube > Device Settings), or restarting Dolphin (Dolphin currently must be restarted every time before playing back a wiimote movie).":"");
-		EndPlayInput(!g_bReadOnly);
+	if (!TestEnd(g_currentByte + size, g_totalBytes))
 		return false;
-	}
 
-	g_currentByte++;
+	DTMData d;
+	memcpy(&d, &(tmpInput[g_currentByte]), sizeof(DTMData));
 
-	if (g_currentByte + size > g_totalBytes)
-	{
-		PanicAlertT("Premature movie end in PlayWiimote. %u + %d > %u", (u32)g_currentByte, size, (u32)g_totalBytes);
-		EndPlayInput(!g_bReadOnly);
+	if (!TestType(d.wii, 1))
 		return false;
-	}
 	
-	memcpy(data, &(tmpInput[g_currentByte]), size);
-	g_currentByte += size;
+	// send neutral instead of recorded data if it belong to another reporting mode
+	if (!TestSize(d.size, size))
+		return false;
+
+	TestSync(d.frame);
+
+	memcpy(data, &(tmpInput[g_currentByte + sizeof(DTMData)]), size);
+	g_currentByte += sizeof(DTMData) + size;
 	
 	SetWiiInputDisplayString(wiimote, coreData, accelData, irData);
 

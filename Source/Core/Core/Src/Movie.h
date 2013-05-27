@@ -116,6 +116,12 @@ struct DTMHeader {
 };
 static_assert(sizeof(DTMHeader) == 256, "DTMHeader should be 256 bytes");
 
+struct DTMData {
+	u64 frame;
+	u8 wii;
+	u8 size;
+};
+
 #pragma pack(pop)
 
 void FrameUpdate();
