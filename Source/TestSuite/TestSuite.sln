@@ -1,6 +1,6 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{057B2E90-B8A7-431E-9FA2-68AC8ABABCC5}"
 	ProjectSection(SolutionItems) = preProject
 		Makefile = Makefile
@@ -76,8 +76,8 @@ Global
 		{F250A358-225C-4B50-ABAE-5B3D4EC9DC4E}.Debug|Win32.Build.0 = Release|Win32
 		{F250A358-225C-4B50-ABAE-5B3D4EC9DC4E}.Release|Win32.ActiveCfg = Release|Win32
 		{F250A358-225C-4B50-ABAE-5B3D4EC9DC4E}.Release|Win32.Build.0 = Release|Win32
-		{18373B64-BCAB-4677-A070-7AD45D4C8304}.Debug|Win32.ActiveCfg = Debug|Win32
-		{18373B64-BCAB-4677-A070-7AD45D4C8304}.Debug|Win32.Build.0 = Debug|Win32
+		{18373B64-BCAB-4677-A070-7AD45D4C8304}.Debug|Win32.ActiveCfg = Release|Win32
+		{18373B64-BCAB-4677-A070-7AD45D4C8304}.Debug|Win32.Build.0 = Release|Win32
 		{18373B64-BCAB-4677-A070-7AD45D4C8304}.Release|Win32.ActiveCfg = Release|Win32
 		{18373B64-BCAB-4677-A070-7AD45D4C8304}.Release|Win32.Build.0 = Release|Win32
 		{B0723635-279A-44E0-80A6-FC21DBB7A4B4}.Debug|Win32.ActiveCfg = Release|Win32
