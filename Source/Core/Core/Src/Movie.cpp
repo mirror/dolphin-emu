@@ -14,6 +14,7 @@
 #include "PowerPC/PowerPC.h"
 #include "CoreTiming.h"
 #include "HW/SI.h"
+#include "HW/SystemTimers.h"
 #include "HW/Wiimote.h"
 #include "HW/WiimoteEmu/WiimoteEmu.h"
 #include "HW/WiimoteEmu/WiimoteHid.h"
@@ -49,6 +50,7 @@ ControllerState g_padState;
 DTMHeader tmpHeader;
 u8* tmpInput = NULL;
 size_t tmpInputAllocated = 0;
+int et_IU;
 u64 g_currentByte = 0, g_totalBytes = 0;
 u64 g_currentFrame = 0, g_totalFrames = 0; // VI
 u64 g_currentLagCount = 0, g_totalLagCount = 0; // just stats
@@ -122,6 +124,16 @@ std::string GetInputDisplay()
 	return inputDisplay; 
 }
 
+void InputUpdate(u64 userdata, int cyclesLate)
+{
+	SerialInterface::UpdateDevices();
+
+	auto s_Usb = GetUsbPointer();
+	for (unsigned int i = 0; s_Usb && i < s_Usb->m_WiiMotes.size(); i++)
+		if (s_Usb->m_WiiMotes[i].IsConnected())
+			Wiimote::Update(i);
+}
+
 void FrameUpdate()
 {
 	g_currentFrame++;
@@ -148,6 +160,9 @@ void FrameUpdate()
 		FrameSkipping();
 	
 	g_bPolled = false;
+
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bCPUThread && (IsRecordingInput() || IsPlayingInput()))
+		CoreTiming::ScheduleEvent_Threadsafe_Immediate(et_IU);
 }
 
 // called when game is booting up, even if no movie is active,
@@ -191,6 +206,8 @@ void Init()
 		g_currentLagCount = 0;
 		g_currentInputCount = 0;
 	}
+
+	et_IU = CoreTiming::RegisterEvent("InputUpdate", InputUpdate);
 }
 
 void InputUpdate()

@@ -489,18 +489,7 @@ u32 CWII_IPC_HLE_Device_usb_oh1_57e_305::Update()
 	const u64 interval = SystemTimers::GetTicksPerSecond() / SystemTimers::IPC_HLE_INPUT_PERIOD;
 	const u64 now = CoreTiming::GetTicks();
 
-	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bCPUThread && (Movie::IsRecordingInput() || Movie::IsPlayingInput()))
-	{
-		if (m_last_ticks == SystemTimers::IPC_HLE_PERIOD)
-		{
-			for (unsigned int i = 0; i < m_WiiMotes.size(); i++)
-				if (m_WiiMotes[i].IsConnected())
-					Wiimote::Update(i);
-			m_last_ticks = 0;
-		}
-		m_last_ticks++;
-	}
-	else
+	if (!(SConfig::GetInstance().m_LocalCoreStartupParameter.bCPUThread && (Movie::IsRecordingInput() || Movie::IsPlayingInput())))
 	{
 		if (now - m_last_ticks > interval)
 		{

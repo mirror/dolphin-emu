@@ -27,6 +27,8 @@ extern int
 	IPC_HLE_PERIOD,
 	IPC_HLE_INPUT_PERIOD;
 
+extern int et_SI;
+
 u32 GetTicksPerSecond();
 void PreInit();
 void Init();
