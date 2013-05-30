@@ -23,6 +23,10 @@
 namespace SystemTimers
 {
 
+extern int
+	IPC_HLE_PERIOD,
+	IPC_HLE_INPUT_PERIOD;
+
 u32 GetTicksPerSecond();
 void PreInit();
 void Init();
