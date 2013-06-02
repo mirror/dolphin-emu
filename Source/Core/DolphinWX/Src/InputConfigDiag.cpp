@@ -135,7 +135,7 @@ ControlButton::ControlButton(wxWindow* const parent, ControllerInterface::Contro
 		SetLabel(StrToWxStr(label));
 }
 
-void InputConfigDialog::UpdateProfileComboBox()
+void InputConfigDialog::UpdateProfileComboBox(std::string fname)
 {
 	std::string pname(File::GetUserPath(D_CONFIG_IDX));
 	pname += PROFILES_PATH;
@@ -163,6 +163,7 @@ void InputConfigDialog::UpdateProfileComboBox()
 	{
 		(*i)->profile_cbox->Clear();
 		(*i)->profile_cbox->Append(strs);
+		(*i)->profile_cbox->SetValue(StrToWxStr(fname));
 	}
 }
 
@@ -585,7 +586,7 @@ void GamepadPage::SaveProfile(wxCommandEvent&)
 		controller->SaveConfig(inifile.GetOrCreateSection("Profile"));
 		inifile.Save(fname);
 		
-		m_config_dialog->UpdateProfileComboBox();
+		m_config_dialog->UpdateProfileComboBox(WxStrToStr(profile_cbox->GetValue()));
 	}
 	else
 	{
@@ -889,13 +890,11 @@ GamepadPage::GamepadPage(wxWindow* parent, InputPlugin& plugin, const unsigned i
 
 	wxStaticBoxSizer* const device_sbox = new wxStaticBoxSizer(wxHORIZONTAL, this, _("Device"));
 
-	device_cbox = new wxComboBox(this, -1, wxT(""), wxDefaultPosition, wxSize(64,-1));
-	device_cbox->ToggleWindowStyle(wxTE_PROCESS_ENTER);
+	device_cbox = new wxComboBox(this, -1, wxT(""), wxDefaultPosition, wxSize(64,-1), wxArrayString(), wxCB_SORT|wxCB_READONLY);
 
 	wxButton* refresh_button = new wxButton(this, -1, _("Refresh"), wxDefaultPosition, wxSize(60,-1));
 
 	device_cbox->Bind(wxEVT_COMMAND_COMBOBOX_SELECTED, &GamepadPage::SetDevice, this);
-	device_cbox->Bind(wxEVT_COMMAND_TEXT_ENTER, &GamepadPage::SetDevice, this);
 	refresh_button->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &GamepadPage::RefreshDevices, this);
 
 	device_sbox->Add(device_cbox, 1, wxLEFT|wxRIGHT, 3);
