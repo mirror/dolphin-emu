@@ -505,7 +505,7 @@ wxStaticBoxSizer* ControlDialog::CreateControlChooser(GamepadPage* const parent)
 		button_sizer->Add(add_button, 1, 0, 5);
 	}
 
-	range_slider = new wxSlider(this, -1, SLIDER_TICK_COUNT, -SLIDER_TICK_COUNT * 5, SLIDER_TICK_COUNT * 5, wxDefaultPosition, wxDefaultSize, wxSL_TOP | wxSL_LABELS /*| wxSL_AUTOTICKS*/);
+	range_slider = new wxSlider(this, -1, SLIDER_TICK_COUNT, 0, SLIDER_TICK_COUNT * 10, wxDefaultPosition, wxDefaultSize, wxSL_TOP | wxSL_LABELS /*| wxSL_AUTOTICKS*/);
 
 	range_slider->SetValue((int)(control_reference->range * SLIDER_TICK_COUNT));
 
@@ -514,11 +514,10 @@ wxStaticBoxSizer* ControlDialog::CreateControlChooser(GamepadPage* const parent)
 	set_button->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &ControlDialog::SetControl, this);
 
 	range_slider->Bind(wxEVT_SCROLL_CHANGED, &GamepadPage::AdjustControlOption, parent);
-	wxStaticText* const range_label = new wxStaticText(this, -1, _("Range"));
 	m_bound_label = new wxStaticText(this, -1, wxT(""));
 
 	wxBoxSizer* const range_sizer = new wxBoxSizer(wxHORIZONTAL);
-	range_sizer->Add(range_label, 0, wxCENTER|wxLEFT, 5);
+	range_sizer->Add(new wxStaticText(this, -1, _("Range")), 0, wxALIGN_CENTER_VERTICAL, 5);
 	range_sizer->Add(range_slider, 1, wxEXPAND|wxLEFT, 5);
 
 	wxBoxSizer* const ctrls_sizer = new wxBoxSizer(wxHORIZONTAL);
@@ -532,7 +531,7 @@ wxStaticBoxSizer* ControlDialog::CreateControlChooser(GamepadPage* const parent)
 	main_szr->Add(range_sizer, 0, wxEXPAND|wxLEFT|wxRIGHT, 5);
 	main_szr->Add(ctrls_sizer, 0, wxEXPAND|wxLEFT|wxRIGHT|wxBOTTOM, 5);
 	main_szr->Add(textctrl, 1, wxEXPAND|wxLEFT|wxRIGHT|wxBOTTOM, 5);
-	main_szr->Add(bottom_btns_sizer, 0, wxEXPAND|wxBOTTOM|wxRIGHT, 5);
+	main_szr->Add(bottom_btns_sizer, 0, wxEXPAND|wxBOTTOM, 5);
 	main_szr->Add(m_bound_label, 0, wxCENTER, 0);
 
 	UpdateListContents();
