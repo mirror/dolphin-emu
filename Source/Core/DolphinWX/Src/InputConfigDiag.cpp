@@ -6,6 +6,7 @@
 #include "UDPConfigDiag.h"
 #include "WxUtils.h"
 #include "HW/Wiimote.h"
+#include "MathUtil.h"
 
 void GamepadPage::ConfigUDPWii(wxCommandEvent &event)
 {
@@ -87,7 +88,7 @@ void PadSettingCheckBox::UpdateValue()
 
 void PadSettingSpin::UpdateGUI()
 {
-	((wxSpinCtrl*)wxcontrol)->SetValue((int)(value * 100));
+	((wxSpinCtrl*)wxcontrol)->SetValue(int(MathUtil::Round(value * 100.0f, 0)));
 }
 
 void PadSettingSpin::UpdateValue()
