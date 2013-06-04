@@ -232,8 +232,10 @@ ControllerEmu::AnalogStick::AnalogStick(const char* const _name) : ControlGroup(
 
 }
 
-ControllerEmu::Buttons::Buttons(const char* const _name) : ControlGroup(_name, GROUP_TYPE_BUTTONS)
+ControllerEmu::Buttons::Buttons(const char* const _name, bool has_range) : m_has_range(has_range), ControlGroup(_name, GROUP_TYPE_BUTTONS)
 {
+	if (has_range)
+		settings.push_back(new Setting(_trans("Range"), 1.0f, 0, 500));
 	settings.push_back(new Setting(_trans("Threshold"), 0.5f));
 }
 

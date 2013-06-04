@@ -42,6 +42,16 @@ enum
 	SETTING_SQUARE,
 };
 
+enum
+{
+	B_THRESHOLD,
+};
+enum
+{
+	B_RANGE,
+	B_THRESHOLD_R,
+};
+
 const char * const named_directions[] = 
 {
 	"Up",
@@ -189,7 +199,9 @@ public:
 	class Buttons : public ControlGroup
 	{
 	public:
-		Buttons(const char* const _name);
+		Buttons(const char* const _name, bool has_range = false);
+
+		bool HasRange() { return m_has_range; }
 
 		template <typename C>
 		void GetState(C* const buttons, const C* bitmasks)
@@ -200,11 +212,30 @@ public:
 
 			for (; i!=e; ++i, ++bitmasks)
 			{
-				if ((*i)->control_ref->State() > settings[0]->value) // threshold
+				if ((*i)->control_ref->State() > settings[m_has_range ? B_THRESHOLD_R : B_THRESHOLD]->value) // threshold
 					*buttons |= *bitmasks;
 			}
 		}
 
+		void GetState(ControlState* buttons)
+		{
+			auto range = settings[B_RANGE]->value;
+
+			std::vector<Control*>::iterator
+				i = controls.begin(),
+				e = controls.end();
+
+			for (; i!=e; ++i)
+			{
+				if ((*i)->control_ref->State() > settings[m_has_range ? B_THRESHOLD_R : B_THRESHOLD]->value)
+					*buttons++ = (sign((*i)->control_ref->State()) * range);
+				else
+					*buttons++ = 0.f;
+			}
+		}
+
+	private:
+		bool	m_has_range;
 	};
 
 	class MixedTriggers : public ControlGroup
