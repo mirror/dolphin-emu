@@ -740,19 +740,26 @@ ControlGroupBox::ControlGroupBox(ControllerEmu::ControlGroup* const group, wxWin
 			dc.Clear();
 			static_bitmap = new wxStaticBitmap(parent, -1, bitmap, wxDefaultPosition, wxDefaultSize, wxBITMAP_TYPE_BMP);
 
-			PadSettingSpin* const threshold_cbox = new PadSettingSpin(parent, group->settings[0]);
-			threshold_cbox->wxcontrol->Bind(wxEVT_COMMAND_SPINCTRL_UPDATED, &GamepadPage::AdjustSetting, eventsink);
+			std::vector< ControllerEmu::ControlGroup::Setting* >::iterator
+				i = group->settings.begin(),
+				e = group->settings.end();
 
-			threshold_cbox->wxcontrol->SetToolTip(_("Adjust the analog control pressure required to activate buttons."));
+			wxBoxSizer* const h_szr = new wxBoxSizer(wxHORIZONTAL);
+			for (int n = 0; i!=e; ++i, ++n)
+			{
+				PadSettingSpin* setting = new PadSettingSpin(parent, *i);
+				setting->wxcontrol->Bind(wxEVT_COMMAND_SPINCTRL_UPDATED, &GamepadPage::AdjustSetting, eventsink);
+				if ((*i)->default_value == 0.5f)
+					setting->wxcontrol->SetToolTip(_("Adjust the analog control pressure required to activate buttons."));
+				options.push_back(setting);
 
-			options.push_back(threshold_cbox);
+				wxBoxSizer* const szr = new wxBoxSizer(wxVERTICAL);
+				szr->Add(new wxStaticText(parent, -1, wxGetTranslation(StrToWxStr((*i)->name))));
+				szr->Add(setting->wxcontrol, 0, wxLEFT, 0);
+				h_szr->Add(szr, 0, wxLEFT, n % 2 == 0 ? 0 : 5);
+			}
 
-			wxBoxSizer* const szr = new wxBoxSizer(wxHORIZONTAL);
-			szr->Add(new wxStaticText(parent, -1, wxGetTranslation(StrToWxStr(group->settings[0]->name))),
-					0, wxCENTER|wxRIGHT, 3);
-			szr->Add(threshold_cbox->wxcontrol, 0, wxRIGHT, 3);
-
-			Add(szr, 0, wxALL|wxCENTER, 3);
+			Add(h_szr, 0, wxALL|wxCENTER, 3);
 			Add(static_bitmap, 0, wxALL|wxCENTER, 3);
 		}
 		break;

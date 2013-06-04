@@ -97,18 +97,16 @@ void EmulateShake(AccelData* const accel
 	// peak G-force
 	double shake_intensity;
 	
-	// shake is a bitfield of X,Y,Z shake button states
-	static const unsigned int btns[] = { 0x01, 0x02, 0x04 };
-	unsigned int shake = 0;
-	buttons_group->GetState( &shake, btns );
+	ControlState button[3];
+	buttons_group->GetState( button );
 
 	for (int i = 0; i != 3; ++i)
 	{
-		if (shake & (1 << i))
+		if (button[i] != 0)
 		{
 			double zero = double((&(calib->zero_g.x))[i]);
 			double one = double((&(calib->one_g.x))[i]);
-			shake_intensity = max(zero / (one - zero), (255.f - zero) / (one - zero));
+			shake_intensity = button[i] * max(zero / (one - zero), (255.f - zero) / (one - zero));
 			(&(accel->x))[i] = std::sin(TAU * shake_step[i] / shake_step_max) * shake_intensity;
 			shake_step[i] = (shake_step[i] + 1) % shake_step_max;
 		}
