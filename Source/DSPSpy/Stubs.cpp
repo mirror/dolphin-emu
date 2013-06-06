@@ -25,21 +25,21 @@
 
 #include "Thread.h"
 
-void *AllocateMemoryPages(size_t size)
+void *Memory::AllocatePages(size_t size)
 {
 	return malloc(size);
 }
 
-void FreeMemoryPages(void *pages, size_t size)
+void Memory::FreePages(void *pages, size_t size)
 {
 	free(pages);
 }
 
-void WriteProtectMemory(void* ptr, size_t size, bool allowExecute)
+void Memory::WriteProtect(void* ptr, size_t size, bool allowExecute)
 {
 }
 
-void UnWriteProtectMemory(void* ptr, size_t size, bool allowExecute)
+void Memory::UnWriteProtect(void* ptr, size_t size, bool allowExecute)
 {
 }
 

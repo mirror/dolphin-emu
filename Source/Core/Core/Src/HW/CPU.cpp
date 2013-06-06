@@ -3,6 +3,7 @@
 // Refer to the license.txt file included.
 
 #include "Common.h"
+#include "MemoryUtil.h"
 #include "Thread.h"
 
 #include "../DSPEmulator.h"
@@ -32,6 +33,8 @@ void CCPU::Shutdown()
 {
 	PowerPC::Shutdown();
 	m_SyncEvent = 0;
+
+	Memory::AllocationMessage("CCPU Shutdown");
 }
 
 void CCPU::Run()

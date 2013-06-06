@@ -94,7 +94,7 @@ namespace HwRasterizer
 		efbHalfWidth = EFB_WIDTH / 2.0f;
 		efbHalfHeight = 480 / 2.0f;
 
-		temp = (u8*)AllocateMemoryPages(TEMP_SIZE);
+		temp = (u8*)Memory::AllocatePages(TEMP_SIZE);
 	}
 	void Shutdown()
 	{

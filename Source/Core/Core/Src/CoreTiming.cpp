@@ -8,6 +8,7 @@
 #include "PowerPC/PowerPC.h"
 #include "CoreTiming.h"
 #include "Core.h"
+#include "MemoryUtil.h"
 #include "StringUtil.h"
 #include "VideoBackendBase.h"
 
@@ -159,6 +160,8 @@ void Shutdown()
 		eventTsPool = ev->next;
 		delete ev;
 	}
+
+	Memory::AllocationMessage("CoreTiming Shutdown");
 }
 
 void EventDoState(PointerWrap &p, BaseEvent* ev)

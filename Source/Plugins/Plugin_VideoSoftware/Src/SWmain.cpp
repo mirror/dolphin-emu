@@ -24,6 +24,7 @@
 #include "EfbInterface.h"
 #include "DebugUtil.h"
 #include "FileUtil.h"
+#include "MemoryUtil.h"
 #include "VideoBackend.h"
 #include "Core.h"
 #include "OpcodeDecoder.h"
@@ -270,6 +271,8 @@ void VideoSoftware::Video_EnterLoop()
 			m_csSWVidOccupied.lock();
 		}
 	}
+
+	Memory::AllocationMessage("Video_EnterLoop");
 }
 
 void VideoSoftware::Video_ExitLoop()

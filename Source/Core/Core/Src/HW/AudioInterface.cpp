@@ -51,6 +51,7 @@ This file mainly deals with the [Drive I/F], however [AIDFR] controls
 */
 
 #include "Common.h"
+#include "MemoryUtil.h"
 
 #include "StreamADPCM.h"
 #include "AudioInterface.h"
@@ -163,6 +164,7 @@ void Init()
 	g_AIDSampleRate = 32000;
 
 	et_AI = CoreTiming::RegisterEvent("AICallback", Update);
+	Memory::AllocationMessage("AudioInterface");
 }
 
 void Shutdown()

@@ -73,9 +73,9 @@ void DSPLLE::DoState(PointerWrap &p)
 	p.Do(g_dsp.ifx_regs);
 	p.Do(g_dsp.mbox[0]);
 	p.Do(g_dsp.mbox[1]);
-	UnWriteProtectMemory(g_dsp.iram, DSP_IRAM_BYTE_SIZE, false);
+	Memory::UnWriteProtect(g_dsp.iram, DSP_IRAM_BYTE_SIZE, false);
 	p.DoArray(g_dsp.iram, DSP_IRAM_SIZE);
-	WriteProtectMemory(g_dsp.iram, DSP_IRAM_BYTE_SIZE, false);
+	Memory::WriteProtect(g_dsp.iram, DSP_IRAM_BYTE_SIZE, false);
 	if (p.GetMode() == PointerWrap::MODE_READ)
 		DSPHost_CodeLoaded((const u8*)g_dsp.iram, DSP_IRAM_BYTE_SIZE);
 	p.DoArray(g_dsp.dram, DSP_DRAM_SIZE);

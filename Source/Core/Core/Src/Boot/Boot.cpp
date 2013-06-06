@@ -7,6 +7,7 @@
 #include "StringUtil.h"
 #include "FileUtil.h"
 #include "MathUtil.h"
+#include "MemoryUtil.h"
 
 #include "../HLE/HLE.h" // Core
 #include "../PowerPC/PowerPC.h"
@@ -416,5 +417,6 @@ bool CBoot::BootUp()
 	}
 	}
 	Host_UpdateLogDisplay();
+	Memory::AllocationMessage("BootUp");
 	return true;
 }

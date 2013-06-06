@@ -13,6 +13,7 @@
 #include "../CoreTiming.h"
 #include "../HW/SystemTimers.h"
 #include "StringUtil.h"
+#include "MemoryUtil.h"
 
 #include "VideoBackendBase.h"
 #include "State.h"
@@ -180,6 +181,8 @@ void Init()
 
 	m_DisplayControlRegister.Hex = 0;
 	UpdateParameters();
+
+	Memory::AllocationMessage("VideoInterface");
 }
 
 void SetRegionReg(char region)
