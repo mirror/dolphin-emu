@@ -268,15 +268,26 @@ void CompressAndDumpState(CompressAndDumpState_args save_args)
 			if (lzo1x_1_compress(buffer_data + i, cur_len, out, &out_len, wrkmem) != LZO_E_OK)
 				PanicAlertT("Internal LZO Error - compression failed");
 
-			// The size of the data to write is 'out_len'
-			f.WriteArray(&out_len, 1);
-			f.WriteBytes(out, out_len);
+			// lzop compatible
+			cur_len = Common::swap32(cur_len); f.WriteArray(&cur_len, 1); cur_len = Common::swap32(cur_len);
+			if (out_len < cur_len) {
+				out_len = Common::swap32(out_len); f.WriteArray(&out_len, 1); out_len = Common::swap32(out_len);
+				f.WriteBytes(out, out_len);
+			}
+			else {
+				cur_len = Common::swap32(cur_len); f.WriteArray(&cur_len, 1); cur_len = Common::swap32(cur_len);
+				f.WriteBytes(buffer_data + i, cur_len);
+			}
 
 			if (cur_len != IN_LEN)
 				break;
 
 			i += cur_len;
 		}
+
+		// EOF
+		u8 zero[4] = {0};
+		f.WriteBytes(&zero, 4);
 	}
 	else	// uncompressed
 	{
@@ -382,17 +393,30 @@ void LoadFileStateData(const std::string& filename, std::vector<u8>& ret_data)
 			lzo_uint cur_len = 0;  // number of bytes to read
 			lzo_uint new_len = 0;  // number of bytes to write
 
+			if (!f.ReadArray(&new_len, 1))
+				break;
+			new_len = Common::swap32(new_len);
+
 			if (!f.ReadArray(&cur_len, 1))
 				break;
+			cur_len = Common::swap32(cur_len);
 
-			f.ReadBytes(out, cur_len);
-			const int res = lzo1x_decompress(out, cur_len, &buffer[i], &new_len, NULL);
-			if (res != LZO_E_OK)
+			if (cur_len < new_len)
 			{
-				// This doesn't seem to happen anymore.
-				PanicAlertT("Internal LZO Error - decompression failed (%d) (%li, %li) \n"
-					"Try loading the state again", res, i, new_len);
-				return;
+				f.ReadBytes(out, cur_len);
+				const int res = lzo1x_decompress(out, cur_len, &buffer[i], &new_len, NULL);
+				if (res != LZO_E_OK)
+				{
+					// This doesn't seem to happen anymore.
+					PanicAlertT("Internal LZO Error - decompression failed (%d) (%li, %li) \n"
+						"Try loading the state again", res, i, new_len);
+					return;
+				}
+			}
+			else
+			{
+				_assert_(new_len == cur_len);
+				f.ReadBytes(&buffer[i], cur_len);
 			}
 	
 			i += new_len;
