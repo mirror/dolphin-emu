@@ -57,7 +57,7 @@ static std::mutex g_cs_undo_load_buffer;
 static std::mutex g_cs_current_buffer;
 static Common::Event g_compressAndDumpStateSyncEvent;
 
-static std::thread g_save_thread;
+static Common::Thread g_save_thread;
 
 // Don't forget to increase this after doing changes on the savestate system
 static const u32 STATE_VERSION = 20;
@@ -246,9 +246,6 @@ void CompressAndDumpState(CompressAndDumpState_args save_args)
 	const size_t buffer_size = (save_args.buffer_vector)->size();
 	std::string& filename = save_args.filename;
 
-	// For easy debugging
-	Common::SetCurrentThreadName("SaveState thread");
-
 	// Moving to last overwritten save-state
 	if (File::Exists(filename))
 	{
@@ -351,7 +348,7 @@ void SaveAs(const std::string& filename, bool wait)
 		save_args.wait = wait;
 
 		Flush();
-		g_save_thread = std::thread(CompressAndDumpState, save_args);
+		g_save_thread.Run(CompressAndDumpState, save_args, "State");
 		g_compressAndDumpStateSyncEvent.Wait();
 
 		g_last_filename = filename;

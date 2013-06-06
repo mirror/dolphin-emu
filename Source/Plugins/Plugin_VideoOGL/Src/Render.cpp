@@ -131,7 +131,7 @@ static u32 s_blendMode;
 static bool s_vsync;
 
 #if defined(HAVE_WX) && HAVE_WX
-static std::thread scrshotThread;
+static Common::Thread scrshotThread;
 #endif
 
 // EFB cache related
@@ -1814,7 +1814,7 @@ bool Renderer::SaveScreenshot(const std::string &filename, const TargetRectangle
 	threadStruct->img = a;
 	threadStruct->H = H; threadStruct->W = W;
 
-	scrshotThread = std::thread(TakeScreenshot, threadStruct);
+	scrshotThread.Run(TakeScreenshot, threadStruct, "Screenshot");
 #ifdef _WIN32
 	SetThreadPriority(scrshotThread.native_handle(), THREAD_PRIORITY_BELOW_NORMAL);
 #endif

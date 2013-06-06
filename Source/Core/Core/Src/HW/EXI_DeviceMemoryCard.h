@@ -86,7 +86,7 @@ private:
 	u8 *memory_card_content; 
 
 	FlushData flushData;
-	std::thread flushThread;
+	Common::Thread flushThread;
 	
 protected:
 	virtual void TransferByte(u8 &byte);

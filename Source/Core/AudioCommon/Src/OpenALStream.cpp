@@ -43,7 +43,7 @@ bool OpenALStream::Start()
 				//period_size_in_millisec = 1000 / refresh;
 
 				alcMakeContextCurrent(pContext);
-				thread = std::thread(std::mem_fun(&OpenALStream::SoundLoop), this);
+				thread.Run(std::mem_fun(&OpenALStream::SoundLoop), this, "Audio - OpenAL");
 				bReturn = true;
 			}
 			else
@@ -126,8 +126,6 @@ void OpenALStream::Clear(bool mute)
 
 void OpenALStream::SoundLoop()
 {
-	Common::SetCurrentThreadName("Audio thread - openal");
-
 	bool surround_capable = Core::g_CoreStartupParameter.bDPL2Decoder;
 #if defined(__APPLE__)
 	bool float32_capable = false;

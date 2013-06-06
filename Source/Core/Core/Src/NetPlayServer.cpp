@@ -49,7 +49,7 @@ NetPlayServer::NetPlayServer(const u16 port, const std::string& name, NetPlayUI*
 		is_connected = true;
 
 		m_selector.Add(m_socket);
-		m_thread = std::thread(std::mem_fun(&NetPlayServer::ThreadFunc), this);
+		m_thread.Run(std::mem_fun(&NetPlayServer::ThreadFunc), this, "NetPlayServer");
 	}
 	else
 		is_connected = false;

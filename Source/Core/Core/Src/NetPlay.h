@@ -151,7 +151,7 @@ protected:
 
 	NetPlayUI*		m_dialog;
 	sf::SocketTCP	m_socket;
-	std::thread		m_thread;
+	Common::Thread		m_thread;
 	sf::Selector<sf::SocketTCP>		m_selector;
 
 	std::string		m_selected_game;

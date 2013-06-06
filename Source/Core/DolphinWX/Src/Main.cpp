@@ -120,6 +120,7 @@ bool DolphinApp::Initialize(int& c, wxChar **v)
 
 bool DolphinApp::OnInit()
 {
+	Common::Thread::SetCurrentName("GUI");
 	LogManager::Init();
 	InitLanguageSupport();
 

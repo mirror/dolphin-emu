@@ -83,8 +83,6 @@ bool DSound::WriteDataToBuffer(DWORD dwOffset,                  // Our own write
 // The audio thread.
 void DSound::SoundLoop()
 {
-	Common::SetCurrentThreadName("Audio thread - dsound");
-
 	currentPos = 0;
 	lastPos = 0;
 	dsBuffer->Play(0, 0, DSBPLAY_LOOPING);
@@ -122,7 +120,7 @@ bool DSound::Start()
 	dsBuffer->Lock(0, bufferSize, (void* *)&p1, &num1, 0, 0, DSBLOCK_ENTIREBUFFER);
 	memset(p1, 0, num1);
 	dsBuffer->Unlock(p1, num1, 0, 0);
-	thread = std::thread(std::mem_fun(&DSound::SoundLoop), this);
+	thread.Run(std::mem_fun(&DSound::SoundLoop), this, "Audio - DSound");
 	return true;
 }
 

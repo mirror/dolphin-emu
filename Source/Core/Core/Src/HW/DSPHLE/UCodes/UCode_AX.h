@@ -62,7 +62,7 @@ public:
 	virtual void DoState(PointerWrap& p);
 	u32 GetUpdateMs();
 
-	// Needed because StdThread.h std::thread implem does not support member
+	// Needed because StdThread.h Common::Thread implem does not support member
 	// pointers. TODO(delroth): obsolete.
 	static void SpawnAXThread(CUCode_AX* self);
 
@@ -105,7 +105,7 @@ protected:
 	std::condition_variable m_cmdlist_cv;
 	std::mutex m_cmdlist_mutex;
 
-	std::thread m_axthread;
+	Common::Thread m_axthread;
 
 	// Table of coefficients for polyphase sample rate conversion.
 	// The coefficients aren't always available (they are part of the DSP DROM)

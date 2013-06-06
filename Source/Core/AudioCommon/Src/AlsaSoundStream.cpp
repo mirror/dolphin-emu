@@ -24,7 +24,7 @@ AlsaSound::~AlsaSound()
 
 bool AlsaSound::Start()
 {
-	thread = std::thread(std::mem_fun(&AlsaSound::SoundLoop), this);
+	thread.Run(std::mem_fun(&AlsaSound::SoundLoop), this, "Audio - Alsa");
 	thread_data = 0;
 	return true;
 }
@@ -47,7 +47,7 @@ void AlsaSound::SoundLoop()
 		thread_data = 2;
 		return;
 	}
-	Common::SetCurrentThreadName("Audio thread - alsa");
+
 	while (!thread_data)
 	{
 		m_mixer->Mix(reinterpret_cast<short *>(mix_buffer), frames_to_deliver);

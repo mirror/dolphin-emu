@@ -104,7 +104,7 @@ private:
 	bool m_rumble_state;
 	
 	bool				m_run_thread;
-	std::thread			m_wiimote_thread;
+	Common::Thread			m_wiimote_thread;
 	
 	Common::FifoQueue<Report>	m_read_reports;
 	Common::FifoQueue<Report>	m_write_reports;
@@ -134,7 +134,7 @@ public:
 private:
 	void ThreadFunc();
 
-	std::thread m_scan_thread;
+	Common::Thread m_scan_thread;
 
 	volatile bool m_run_thread;
 	volatile bool m_want_wiimotes;

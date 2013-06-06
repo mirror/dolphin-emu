@@ -22,7 +22,7 @@ public:
 	// Client for this server object
 	sf::SocketTCP client;
 	void ClientThread();
-	std::thread clientThread;
+	Common::Thread clientThread;
 	std::mutex transfer_lock;
 
 	std::deque<u8> send_fifo;
@@ -37,7 +37,7 @@ private:
 
 	static u16							server_port;
 	static volatile bool				server_running;
-	static std::thread					connectionThread;
+	static Common::Thread					connectionThread;
 	static std::queue<sf::SocketTCP>	waiting_socks;
 	static std::mutex					connection_lock;
 };

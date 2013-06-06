@@ -39,7 +39,7 @@ namespace SW
 static volatile bool fifoStateRun = false;
 static volatile bool emuRunningState = false;
 static std::mutex m_csSWVidOccupied;
-static void* m_windowhandle; 
+static void* m_windowhandle;
 
 std::string VideoSoftware::GetName()
 {
@@ -62,8 +62,8 @@ void VideoSoftware::ShowConfig(void *_hParent)
 bool VideoSoftware::Initialize(void *&window_handle)
 {
 	g_SWVideoConfig.Load((File::GetUserPath(D_CONFIG_IDX) + "gfx_software.ini").c_str());
-	InitInterface();	
-	
+	InitInterface();
+
 	m_windowhandle = window_handle;
 
 	InitBPMemory();
@@ -150,7 +150,7 @@ void VideoSoftware::Shutdown()
 	HwRasterizer::Shutdown();
 	SWRenderer::Shutdown();
 
-	// Do our OSD callbacks	
+	// Do our OSD callbacks
 	OSD::DoCallbacks(OSD::OSD_SHUTDOWN);
 
 	GLInterface->Shutdown();
@@ -183,7 +183,7 @@ void VideoSoftware::Video_Prepare()
 	// Handle VSync on/off
 	GLInterface->SwapInterval(VSYNC_ENABLED);
 
-	// Do our OSD callbacks	
+	// Do our OSD callbacks
 	OSD::DoCallbacks(OSD::OSD_INIT);
 
 	HwRasterizer::Prepare();
@@ -194,7 +194,7 @@ void VideoSoftware::Video_Prepare()
 
 // Run from the CPU thread (from VideoInterface.cpp)
 void VideoSoftware::Video_BeginField(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight)
-{	
+{
 }
 
 // Run from the CPU thread (from VideoInterface.cpp)
@@ -269,7 +269,7 @@ void VideoSoftware::Video_EnterLoop()
 			Common::SleepCurrentThread(1);
 			m_csSWVidOccupied.lock();
 		}
-	}	
+	}
 }
 
 void VideoSoftware::Video_ExitLoop()
