@@ -95,14 +95,6 @@ void SetStateFileName(std::string val) { g_stateFileName = val; }
 
 // Display messages and return values
 
-// Formatted stop message
-std::string StopMessage(bool bMainThread, std::string Message)
-{
-	return StringFromFormat("Stop [%s %i]\t%s\t%s",
-		bMainThread ? "Main Thread" : "Video Thread", Common::CurrentThreadId(), MemUsage().c_str(), Message.c_str());
-}
-
-//
 bool PanicAlertToVideo(const char* text, bool yes_no)
 {
 	DisplayMessage(text, 3000);
@@ -240,10 +232,9 @@ void Stop()  // - Hammertime!
 
 	g_video_backend->EmuStateChange(EMUSTATE_CHANGE_STOP);
 
-	INFO_LOG(CONSOLE, "Stop [Main Thread]\t\t---- Shutting down ----");
+	Memory::AllocationMessage("Shutting down");
 
 	// Stop the CPU
-	INFO_LOG(CONSOLE, "%s", StopMessage(true, "Stop CPU").c_str());
 	PowerPC::Stop();
 
 	// Kick it if it's waiting (code stepping wait loop)
@@ -254,12 +245,9 @@ void Stop()  // - Hammertime!
 		// Video_EnterLoop() should now exit so that EmuThread()
 		// will continue concurrently with the rest of the commands
 		// in this function. We no longer rely on Postmessage.
-		INFO_LOG(CONSOLE, "%s", StopMessage(true, "Wait for Video Loop to exit ...").c_str());
 
 		g_video_backend->Video_ExitLoop();
 	}
-
-	INFO_LOG(CONSOLE, "%s", StopMessage(true, "Stopping Emu thread ...").c_str());
 
 	// wait for GPU thread to join
 	g_thread.gpu.join();
@@ -299,9 +287,10 @@ void Stop()  // - Hammertime!
 	if (_CoreParameter.bWii)
 		SConfig::GetInstance().m_SYSCONF->Reload();
 
-	INFO_LOG(CONSOLE, "Stop [Main Thread]\t\t---- Shutdown complete ----");
 	Movie::Shutdown();
 	g_bStopping = false;
+
+	Memory::AllocationMessage("Shutdown complete");
 }
 
 // Create the CPU thread, which is a CPU + Video thread in Single Core mode.

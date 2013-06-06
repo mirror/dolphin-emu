@@ -42,7 +42,7 @@ TextureCache::TextureCache()
 {
 	temp_size = 2048 * 2048 * 4;
 	if (!temp)
-		temp = (u8*)AllocateAlignedMemory(temp_size, 16);
+		temp = (u8*)Memory::AllocateAligned(temp_size, 16);
 
 	TexDecoder_SetTexFmtOverlayOptions(g_ActiveConfig.bTexFmtOverlayEnable, g_ActiveConfig.bTexFmtOverlayCenter);
 
@@ -75,7 +75,7 @@ TextureCache::~TextureCache()
 	Invalidate();
 	if (temp)
 	{
-		FreeAlignedMemory(temp);
+		Memory::FreeAligned(temp);
 		temp = NULL;
 	}
 }
@@ -268,8 +268,8 @@ PC_TexFormat TextureCache::LoadCustomTexture(u64 tex_hash, int texformat, unsign
 		// Allocate more memory and try again
 		// TODO: Should probably check if newWidth and newHeight are texture dimensions which are actually supported by the current video backend
 		temp_size = required_size;
-		FreeAlignedMemory(temp);
-		temp = (u8*)AllocateAlignedMemory(temp_size, 16);
+		Memory::FreeAligned(temp);
+		temp = (u8*)Memory::AllocateAligned(temp_size, 16);
 		ret = HiresTextures::GetHiresTex(texPathTemp, &newWidth, &newHeight, &required_size, texformat, temp_size, temp);
 	}
 

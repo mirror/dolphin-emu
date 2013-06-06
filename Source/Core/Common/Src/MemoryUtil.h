@@ -11,15 +11,21 @@
 #endif
 #include <string>
 
-void* AllocateExecutableMemory(size_t size, bool low = true);
-void* AllocateMemoryPages(size_t size);
-void FreeMemoryPages(void* ptr, size_t size);
-void* AllocateAlignedMemory(size_t size,size_t alignment);
-void FreeAlignedMemory(void* ptr);
-void WriteProtectMemory(void* ptr, size_t size, bool executable = false);
-void UnWriteProtectMemory(void* ptr, size_t size, bool allowExecute = false);
-std::string MemUsage();
+namespace Memory
+{
+
+void* AllocateExecutable(size_t size, bool low = true);
+void* AllocatePages(size_t size);
+void FreePages(void* ptr, size_t size);
+void* AllocateAligned(size_t size,size_t alignment);
+void FreeAligned(void* ptr);
+void WriteProtect(void* ptr, size_t size, bool executable = false);
+void UnWriteProtect(void* ptr, size_t size, bool allowExecute = false);
+std::string Allocation();
+void AllocationMessage(std::string);
 
 inline int GetPageSize() { return 4096; }
+
+}
 
 #endif

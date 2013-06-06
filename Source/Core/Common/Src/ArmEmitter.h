@@ -66,7 +66,7 @@ enum ARMReg
 	D8, D9, D10, D11, D12, D13, D14, D15,
 	D16, D17, D18, D19, D20, D21, D22, D23,
 	D24, D25, D26, D27, D28, D29, D30, D31,
-	
+
 	// ASIMD Quad-Word registers
 	Q0, Q1, Q2, Q3, Q4, Q5, Q6, Q7,
 	Q8, Q9, Q10, Q11, Q12, Q13, Q14, Q15,
@@ -106,7 +106,7 @@ enum ShiftType
 };
 enum IntegerSize
 {
-	I_I8 = 0, 
+	I_I8 = 0,
 	I_I16,
 	I_I32,
 	I_I64
@@ -149,11 +149,11 @@ public:
 	{
 		return Type;
 	}
-	Operand2() {} 
+	Operand2() {}
 	Operand2(u32 imm, OpType type = TYPE_IMM)
-	{ 
-		Type = type; 
-		Value = imm; 
+	{
+		Type = type;
+		Value = imm;
 		Rotation = 0;
 	}
 
@@ -365,7 +365,7 @@ private:
 	u32 EncodeVn(ARMReg Vn);
 	u32 EncodeVm(ARMReg Vm);
 	void WriteVFPDataOp(u32 Op, ARMReg Vd, ARMReg Vn, ARMReg Vm);
-	
+
 	void Write4OpMultiply(u32 op, ARMReg destLo, ARMReg destHi, ARMReg rn, ARMReg rm);
 
 	// New Ops
@@ -475,7 +475,7 @@ public:
 	void MOVW(ARMReg dest,             Operand2 op2);
 	void MOVT(ARMReg dest, Operand2 op2, bool TopBits = false);
 
-	// UDIV and SDIV are only available on CPUs that have 
+	// UDIV and SDIV are only available on CPUs that have
 	// the idiva hardare capacity
 	void UDIV(ARMReg dest, ARMReg dividend, ARMReg divisor);
 	void SDIV(ARMReg dest, ARMReg dividend, ARMReg divisor);
@@ -528,7 +528,7 @@ public:
 	// ASIMD instructions don't even have a conditional encoding.
 
 	// Subtracts the base from the register to give us the real one
-	ARMReg SubBase(ARMReg Reg);	
+	ARMReg SubBase(ARMReg Reg);
 	// NEON Only
 	void VADD(IntegerSize Size, ARMReg Vd, ARMReg Vn, ARMReg Vm);
 	void VSUB(IntegerSize Size, ARMReg Vd, ARMReg Vn, ARMReg Vm);
@@ -592,13 +592,13 @@ public:
 	void AllocCodeSpace(int size)
 	{
 		region_size = size;
-		region = (u8*)AllocateExecutableMemory(region_size);
+		region = (u8*)Memory::AllocateExecutable(region_size);
 		SetCodePtr(region);
 	}
 
 	// Always clear code space with breakpoints, so that if someone accidentally executes
 	// uninitialized, it just breaks into the debugger.
-	void ClearCodeSpace() 
+	void ClearCodeSpace()
 	{
 		// x86/64: 0xCC = breakpoint
 		memset(region, 0xCC, region_size);
@@ -609,7 +609,7 @@ public:
 	void FreeCodeSpace()
 	{
 #ifndef __SYMBIAN32__
-		FreeMemoryPages(region, region_size);
+		Memory::FreePages(region, region_size);
 #endif
 		region = NULL;
 		region_size = 0;
@@ -624,7 +624,7 @@ public:
 	// Start over if you need to change the code (call FreeCodeSpace(), AllocCodeSpace()).
 	void WriteProtect()
 	{
-		WriteProtectMemory(region, region_size, true);		
+		Memory::WriteProtect(region, region_size, true);
 	}
 
 	void ResetCodePtr()

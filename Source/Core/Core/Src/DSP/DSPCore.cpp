@@ -58,7 +58,7 @@ static bool LoadRom(const char *fname, int size_in_words, u16 *rom)
 			rom[i] = Common::swap16(rom[i]);
 
 		// Always keep ROMs write protected.
-		WriteProtectMemory(rom, size_in_bytes, false);
+		Memory::WriteProtect(rom, size_in_bytes, false);
 		return true;
 	}
 
@@ -126,10 +126,10 @@ static bool VerifyRoms(const char *irom_filename, const char *coef_filename)
 
 static void DSPCore_FreeMemoryPages()
 {
-	FreeMemoryPages(g_dsp.irom, DSP_IROM_BYTE_SIZE);
-	FreeMemoryPages(g_dsp.iram, DSP_IRAM_BYTE_SIZE);
-	FreeMemoryPages(g_dsp.dram, DSP_DRAM_BYTE_SIZE);
-	FreeMemoryPages(g_dsp.coef, DSP_COEF_BYTE_SIZE);
+	Memory::FreePages(g_dsp.irom, DSP_IROM_BYTE_SIZE);
+	Memory::FreePages(g_dsp.iram, DSP_IRAM_BYTE_SIZE);
+	Memory::FreePages(g_dsp.dram, DSP_DRAM_BYTE_SIZE);
+	Memory::FreePages(g_dsp.coef, DSP_COEF_BYTE_SIZE);
 }
 
 bool DSPCore_Init(const char *irom_filename, const char *coef_filename,
@@ -140,10 +140,10 @@ bool DSPCore_Init(const char *irom_filename, const char *coef_filename,
 	init_hax = false;
 	dspjit = NULL;
 	
-	g_dsp.irom = (u16*)AllocateMemoryPages(DSP_IROM_BYTE_SIZE);
-	g_dsp.iram = (u16*)AllocateMemoryPages(DSP_IRAM_BYTE_SIZE);
-	g_dsp.dram = (u16*)AllocateMemoryPages(DSP_DRAM_BYTE_SIZE);
-	g_dsp.coef = (u16*)AllocateMemoryPages(DSP_COEF_BYTE_SIZE);
+	g_dsp.irom = (u16*)Memory::AllocatePages(DSP_IROM_BYTE_SIZE);
+	g_dsp.iram = (u16*)Memory::AllocatePages(DSP_IRAM_BYTE_SIZE);
+	g_dsp.dram = (u16*)Memory::AllocatePages(DSP_DRAM_BYTE_SIZE);
+	g_dsp.coef = (u16*)Memory::AllocatePages(DSP_COEF_BYTE_SIZE);
 
 	// Fill roms with zeros.
 	memset(g_dsp.irom, 0, DSP_IROM_BYTE_SIZE);
@@ -195,7 +195,7 @@ bool DSPCore_Init(const char *irom_filename, const char *coef_filename,
 	gdsp_ifx_init();
 	// Mostly keep IRAM write protected. We unprotect only when DMA-ing
 	// in new ucodes.
-	WriteProtectMemory(g_dsp.iram, DSP_IRAM_BYTE_SIZE, false);
+	Memory::WriteProtect(g_dsp.iram, DSP_IRAM_BYTE_SIZE, false);
 
 	// Initialize JIT, if necessary
 	if(bUsingJIT) 
@@ -217,6 +217,7 @@ void DSPCore_Shutdown()
 		dspjit = NULL;
 	}
 	DSPCore_FreeMemoryPages();
+	Memory::AllocationMessage("DSPCore Shutdown");
 }
 
 void DSPCore_Reset()

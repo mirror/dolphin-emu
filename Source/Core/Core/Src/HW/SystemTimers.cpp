@@ -58,6 +58,7 @@ IPC_HLE_PERIOD: For the Wiimote this is the call schedule:
 
 
 #include "Common.h"
+#include "MemoryUtil.h"
 #include "Atomic.h"
 #include "../PatchEngine.h"
 #include "Movie.h"
@@ -294,11 +295,15 @@ void Init()
 
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii)
 		CoreTiming::ScheduleEvent(WII_IPC_HLE_Interface::GetTicksToNextIPCUpdate(), et_IPC_HLE);
+
+	Memory::AllocationMessage("SystemTimers");
 }
 
 void Shutdown()
 {
 	Common::Timer::RestoreResolution();
+
+	Memory::AllocationMessage("SystemTimers Shutdown");
 }
 
 }  // namespace

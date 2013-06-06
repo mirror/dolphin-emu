@@ -66,8 +66,6 @@ enum EState
 bool Init();
 void Stop();
 
-void MemoryMessage(std::string);
-
 bool IsRunning();
 bool IsRunningAndStarted(); // is running and the cpu loop has been entered
 bool IsRunningInCurrentThread(); // this tells us whether we are running in the cpu thread.
