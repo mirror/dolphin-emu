@@ -105,8 +105,6 @@ void DSPLLE::DoState(PointerWrap &p)
 // Regular thread
 void DSPLLE::dsp_thread(DSPLLE *dsp_lle)
 {
-	Common::SetCurrentThreadName("DSP thread");
-
 	while (dsp_lle->m_bIsRunning)
 	{
 		int cycles = (int)dsp_lle->m_cycle_count;
@@ -156,7 +154,7 @@ bool DSPLLE::Initialize(void *hWnd, bool bWii, bool bDSPThread)
 	InitInstructionTable();
 
 	if (m_bDSPThread)
-		m_hDSPThread = std::thread(dsp_thread, this);
+		m_hDSPThread.Run(dsp_thread, this, "DSP thread");
 
 	Host_RefreshDSPDebuggerWindow();
 

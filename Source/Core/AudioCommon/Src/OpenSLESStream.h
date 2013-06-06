@@ -24,7 +24,7 @@ public:
 	virtual bool usesMixer() const { return true; }
 
 private:
-	std::thread thread;
+	Common::Thread thread;
 	Common::Event soundSyncEvent;
 #else
 public:

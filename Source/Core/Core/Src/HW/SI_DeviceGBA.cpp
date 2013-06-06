@@ -9,7 +9,7 @@
 #include "Thread.h"
 #include <queue>
 
-static std::thread connectionThread;
+static Common::Thread connectionThread;
 static std::queue<sf::SocketTCP> waiting_socks;
 static std::mutex cs_gba;
 namespace { volatile bool server_running; }
@@ -19,8 +19,6 @@ namespace { volatile bool server_running; }
 void GBAConnectionWaiter()
 {
 	server_running = true;
-
-	Common::SetCurrentThreadName("GBA Connection Waiter");
 
 	sf::SocketTCP server;
 	// "dolphin gba"
@@ -69,7 +67,7 @@ bool GetAvailableSock(sf::SocketTCP& sock_to_fill)
 GBASockServer::GBASockServer()
 {
 	if (!connectionThread.joinable())
-		connectionThread = std::thread(GBAConnectionWaiter);
+		connectionThread.Run(GBAConnectionWaiter, "GBA Connection Waiter");
 }
 
 GBASockServer::~GBASockServer()

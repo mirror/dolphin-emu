@@ -318,7 +318,7 @@ public:
 	static VOID CALLBACK ReadWaitCallback(PVOID lpParameter, BOOLEAN TimerFired);
 #elif defined(__linux__)
 	int fd;
-	std::thread readThread;
+	Common::Thread readThread;
 	volatile bool readEnabled;
 #endif
 

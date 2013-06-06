@@ -10,7 +10,7 @@
 
 u16							GeckoSockServer::server_port;
 int							GeckoSockServer::client_count;
-std::thread					GeckoSockServer::connectionThread;
+Common::Thread					GeckoSockServer::connectionThread;
 volatile bool				GeckoSockServer::server_running;
 std::queue<sf::SocketTCP>	GeckoSockServer::waiting_socks;
 std::mutex					GeckoSockServer::connection_lock;
@@ -19,7 +19,7 @@ GeckoSockServer::GeckoSockServer()
 	: client_running(false)
 {
 	if (!connectionThread.joinable())
-		connectionThread = std::thread(GeckoConnectionWaiter);
+		connectionThread.Run(GeckoConnectionWaiter, "Gecko Connection Waiter");
 }
 
 GeckoSockServer::~GeckoSockServer()
@@ -39,8 +39,6 @@ GeckoSockServer::~GeckoSockServer()
 
 void GeckoSockServer::GeckoConnectionWaiter()
 {
-	Common::SetCurrentThreadName("Gecko Connection Waiter");
-
 	sf::SocketTCP server;
 	server_port = 0xd6ec; // "dolphin gecko"
 	for (int bind_tries = 0; bind_tries <= 10 && !server_running; bind_tries++)
@@ -88,7 +86,7 @@ bool GeckoSockServer::GetAvailableSock(sf::SocketTCP &sock_to_fill)
 			recv_fifo = std::deque<u8>();
 			send_fifo = std::deque<u8>();
 		}
-		clientThread = std::thread(std::mem_fun(&GeckoSockServer::ClientThread), this);
+		clientThread.Run(std::mem_fun(&GeckoSockServer::ClientThread), this, "Gecko Client");
 		client_count++;
 		waiting_socks.pop();
 		sock_filled = true;
@@ -100,8 +98,6 @@ bool GeckoSockServer::GetAvailableSock(sf::SocketTCP &sock_to_fill)
 void GeckoSockServer::ClientThread()
 {
 	client_running = true;
-
-	Common::SetCurrentThreadName("Gecko Client");
 
 	client.SetBlocking(false);
 

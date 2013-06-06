@@ -177,7 +177,8 @@ void Init()
 	if (IsPlayingInput())
 	{
 		ReadHeader();
-		std::thread md5thread(CheckMD5);
+		Common::Thread md5thread;
+		md5thread.Run(CheckMD5, "md5thread");
 		if ((strncmp((char *)tmpHeader.gameID, Core::g_CoreStartupParameter.GetUniqueID().c_str(), 6)))
 		{
 			PanicAlert("The recorded game (%s) is not the same as the selected game (%s)", tmpHeader.gameID, Core::g_CoreStartupParameter.GetUniqueID().c_str());
@@ -188,7 +189,8 @@ void Init()
 	if (IsRecordingInput())
 	{
 		GetSettings();
-		std::thread md5thread(GetMD5);
+		Common::Thread md5thread;
+		md5thread.Run(CheckMD5, "md5thread");
 	}
 
 	g_frameSkipCounter = g_framesToSkip;
@@ -493,7 +495,9 @@ bool BeginRecordingInput(int controllers)
 			else
 				Movie::g_bClearSave = true;
 		}
-		std::thread md5thread(GetMD5);
+
+		Common::Thread md5thread;
+		md5thread.Run(GetMD5, "md5thread");
 		GetSettings();
 	}
 	g_playMode = MODE_RECORDING;

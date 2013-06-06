@@ -63,7 +63,7 @@ public:
 	virtual void Update();
 
 private:
-	std::thread thread;
+	Common::Thread thread;
 	Common::Event soundSyncEvent;
 
 	short realtimeBuffer[OAL_MAX_SAMPLES * STEREO_CHANNELS];

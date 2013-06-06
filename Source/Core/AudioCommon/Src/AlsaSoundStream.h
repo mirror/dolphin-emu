@@ -39,7 +39,7 @@ private:
 	void AlsaShutdown();
 
 	u8 *mix_buffer;
-	std::thread thread;
+	Common::Thread thread;
 	// 0 = continue
 	// 1 = shutdown
 	// 2 = done shutting down.

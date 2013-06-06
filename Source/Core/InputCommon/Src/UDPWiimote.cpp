@@ -50,7 +50,7 @@
 
 struct UDPWiimote::_d
 {
-	std::thread thread;
+	Common::Thread thread;
 	std::list<sock_t> sockfds;
 	std::mutex termLock, mutex, nameMutex;
 	volatile bool exit;
@@ -141,7 +141,7 @@ UDPWiimote::UDPWiimote(const char *_port, const char * name, int _index) :
 	initBroadcastIPv6();
 
 	std::lock_guard<std::mutex> lk(d->termLock);
-	d->thread = std::thread(std::mem_fun(&UDPWiimote::mainThread), this);
+	d->thread.Run(std::mem_fun(&UDPWiimote::mainThread), this, "UDP Wiimote");
 
 	return;
 }
