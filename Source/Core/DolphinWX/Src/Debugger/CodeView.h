@@ -47,6 +47,8 @@ public:
 	{
 		curAddress = addr;
 		selection = addr;
+		if (debugger->isAlive())
+			debugger->showJitResults(selection);
 		Refresh();
 	}
 

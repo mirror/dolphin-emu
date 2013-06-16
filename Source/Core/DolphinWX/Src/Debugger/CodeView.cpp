@@ -26,7 +26,6 @@ enum
 	IDM_COPYCODE,
 	IDM_INSERTBLR, IDM_INSERTNOP,
 	IDM_RUNTOHERE,
-	IDM_JITRESULTS,
 	IDM_FOLLOWBRANCH,
 	IDM_RENAMESYMBOL,
 	IDM_PATCHALERT,
@@ -76,6 +75,9 @@ int CCodeView::YToAddress(int y)
 
 void CCodeView::OnMouseDown(wxMouseEvent& event)
 {
+	if (!debugger->isAlive())
+		return;
+
 	int x = event.m_x;
 	int y = event.m_y;
 
@@ -86,6 +88,7 @@ void CCodeView::OnMouseDown(wxMouseEvent& event)
 		// SetCapture(wnd);
 		bool oldselecting = selecting;
 		selecting = true;
+		debugger->showJitResults(selection);
 
 		if (!oldselecting || (selection != oldSelection))
 			Refresh();
@@ -268,10 +271,6 @@ void CCodeView::OnPopupMenu(wxCommandEvent& event)
 			InsertBlrNop(1);
 			Refresh();
 			break;
-
-		case IDM_JITRESULTS:
-			debugger->showJitResults(selection);
-			break;
 			
 		case IDM_FOLLOWBRANCH:
 			{
@@ -335,7 +334,6 @@ void CCodeView::OnMouseUpR(wxMouseEvent& event)
 	menu->AppendSeparator();
 	menu->Append(IDM_RUNTOHERE, _("&Run To Here"));
 	menu->Append(IDM_ADDFUNCTION, _("&Add function"));
-	menu->Append(IDM_JITRESULTS, StrToWxStr("PPC vs X86"));
 	menu->Append(IDM_INSERTBLR, StrToWxStr("Insert &blr"));
 	menu->Append(IDM_INSERTNOP, StrToWxStr("Insert &nop"));
 	menu->Append(IDM_PATCHALERT, StrToWxStr("Patch alert"));
