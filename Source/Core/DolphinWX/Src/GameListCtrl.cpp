@@ -317,7 +317,7 @@ void CGameListCtrl::Update()
 		for (int i = 0; i < (int)m_ISOFiles.size(); i++)
 		{
 			InsertItemInReportView(i);
-			if (m_ISOFiles[i]->IsCompressed())
+			if (m_ISOFiles[i]->IsCompressed() || File::IsSparse(m_ISOFiles[i]->GetFileName()))
 				SetItemTextColour(i, wxColour(0xFF0000));
 		}
 
@@ -438,7 +438,7 @@ void CGameListCtrl::InsertItemInReportView(long _Index)
 	SetItemColumnImage(_Index, COLUMN_COUNTRY, m_FlagImageIndex[rISOFile.GetCountry()]);
 
 	// File size
-	SetItem(_Index, COLUMN_SIZE, NiceSizeFormat(rISOFile.GetFileSize()), -1);
+	SetItem(_Index, COLUMN_SIZE, NiceSizeFormat(File::GetSize(rISOFile.GetFileName())), -1);
 
 	// Background color
 	SetBackgroundColor();
