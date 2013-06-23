@@ -552,6 +552,11 @@ void Host_ShowJitResults(unsigned int address)
 		main_frame->g_pCodeWindow->m_JitWindow->ViewAddr(address);
 }
 
+void Host_Yield()
+{
+	wxTheApp->Yield();
+}
+
 void Host_UpdateMainFrame()
 {
 	wxCommandEvent event(wxEVT_HOST_COMMAND, IDM_UPDATEGUI);
@@ -664,6 +669,16 @@ void Host_SetWiiMoteConnectionState(int _State)
 bool Host_RendererHasFocus()
 {
 	return main_frame->RendererHasFocus();
+}
+
+bool Host_PadConfigOpen()
+{
+	return main_frame->m_PadConfigDiag ? true : false;
+}
+
+bool Host_WiimoteConfigOpen()
+{
+	return main_frame->m_WiimoteConfigDiag ? true : false;
 }
 
 void Host_ConnectWiimote(int wm_idx, bool connect)

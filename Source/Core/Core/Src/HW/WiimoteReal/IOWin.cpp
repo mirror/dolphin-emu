@@ -597,6 +597,8 @@ int _IORead(HANDLE &dev_handle, OVERLAPPED &hid_overlap_read, u8* buf, int index
 		}
 	}
 
+	WiimoteEmu::Spy(NULL, buf, bytes + 1);
+
 	return bytes + 1;
 }
 

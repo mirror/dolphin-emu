@@ -192,6 +192,8 @@ public:
 
 	void ClearAll(wxCommandEvent& event);
 	void LoadDefaults(wxCommandEvent& event);
+	void LoadUserDefault(wxCommandEvent& event);
+	void SaveUserDefault(wxCommandEvent& event);
 
 	void AdjustControlOption(wxCommandEvent& event);
 	void AdjustSetting(wxCommandEvent& event);
@@ -200,6 +202,7 @@ public:
 
 	wxComboBox*					profile_cbox;
 	wxComboBox*					device_cbox;
+	wxButton					*ud_load_button, *ud_save_button;
 
 	std::vector<ControlGroupBox*>		control_groups;
 
@@ -216,26 +219,42 @@ private:
 
 class InputConfigDialog : public wxDialog
 {
+	struct ext
+	{
+		ControllerEmu::Extension*	object;
+		int							type;
+		wxDialog*					dlg;
+		std::size_t					size;
+	};
+
 public:
 	InputConfigDialog(wxWindow* const parent, InputPlugin& plugin, const std::string& name, const int tab_num = 0);
 	//~InputConfigDialog();
 
-	bool Destroy();
+	void OnClose(wxCloseEvent& event);
+	void OnCloseExt(wxCloseEvent& event);
 
-	void ClickSave(wxCommandEvent& event);
+	void Save(wxCommandEvent& event);
+	void Apply(wxCommandEvent& event);
+	void Cancel(wxCommandEvent& event);
 
 	void UpdateDeviceComboBox();
-	void UpdateProfileComboBox();
+	void UpdateProfileComboBox(std::string fname = "");
 
 	void UpdateControlReferences();
 	void UpdateBitmaps(wxTimerEvent&);
+	void UpdateGUI();
+
+	wxNotebook*					m_pad_notebook;
+	ext							m_ext;
 
 private:
 
-	wxNotebook*					m_pad_notebook;
+	wxWindow*					m_parent;
 	std::vector<GamepadPage*>	m_padpages;
 	InputPlugin&				m_plugin;
 	wxTimer*					m_update_timer;
+	wxString					m_title;
 };
 
 #endif

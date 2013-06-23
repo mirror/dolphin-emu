@@ -3,6 +3,7 @@
 // Refer to the license.txt file included.
 
 #include "Common.h"
+#include "CommonPaths.h"
 
 #include "Wiimote.h"
 #include "WiimoteReal/WiimoteReal.h"
@@ -11,13 +12,15 @@
 #include "../ConfigManager.h"
 
 #include "ControllerInterface/ControllerInterface.h"
-
+#include "../../Core/Src/Host.h"
 #include "../../InputCommon/Src/InputConfig.h"
 
 namespace Wiimote
 {
 
-static InputPlugin g_plugin(WIIMOTE_INI_NAME, _trans("Wiimote"), "Wiimote");
+bool IsInit = false;
+
+static InputPlugin g_plugin(WIIMOTE_INI_NAME, _trans("Wiimote"), WII_PROFILE_DIR);
 InputPlugin *GetPlugin()
 {
 	return &g_plugin;
@@ -25,6 +28,9 @@ InputPlugin *GetPlugin()
 
 void Shutdown()
 {
+	if (Host_WiimoteConfigOpen())
+		return;
+
 	std::vector<ControllerEmu*>::const_iterator
 		i = g_plugin.controllers.begin(),
 		e = g_plugin.controllers.end();
@@ -36,20 +42,23 @@ void Shutdown()
 	//WiimoteReal::Shutdown();
 
 	g_controller_interface.Shutdown();
+
+	IsInit = false;
 }
 
 // if plugin isn't initialized, init and load config
 void Initialize(void* const hwnd)
 {
 	// add 4 wiimotes
-	for (unsigned int i = WIIMOTE_CHAN_0; i<MAX_BBMOTES; ++i)
-		g_plugin.controllers.push_back(new WiimoteEmu::Wiimote(i));
-	
+	if (!IsInit)
+		for (unsigned int i = WIIMOTE_CHAN_0; i<MAX_BBMOTES; ++i)
+			g_plugin.controllers.push_back(new WiimoteEmu::Wiimote(i));
+	IsInit = true;
 	
 	g_controller_interface.SetHwnd(hwnd);
 	g_controller_interface.Initialize();
 
-	g_plugin.LoadConfig(false);
+	g_plugin.LoadConfig();
 
 	WiimoteReal::Initialize();
 	

@@ -25,6 +25,7 @@ enum Hotkey
 	HK_READ_ONLY_MODE,
 
 	HK_FULLSCREEN,
+	HK_CAPTURE_CURSOR,
 	HK_SCREENSHOT,
 	HK_EXIT,
 
@@ -107,6 +108,7 @@ struct SCoreStartupParameter
 	bool bForceNTSCJ;
 	bool bHLE_BS2;
 	bool bEnableCheats;
+	bool bInputSettingsISO;
 	bool bMergeBlocks;
 	bool bEnableMemcardSaving;
 
@@ -175,6 +177,7 @@ struct SCoreStartupParameter
 	std::string m_strApploader;
 	std::string m_strUniqueID;
 	std::string m_strName;
+	std::string m_strRegion;
 	std::string m_strGameIni;
 
 	// Constructor just calls LoadDefaults

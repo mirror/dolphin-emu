@@ -3,6 +3,7 @@
 // Refer to the license.txt file included.
 
 #include "Common.h"
+#include "CommonPaths.h"
 #include "GCPadStatus.h"
 
 #include "ControllerInterface/ControllerInterface.h"
@@ -15,7 +16,9 @@
 namespace Pad
 {
 
-static InputPlugin g_plugin("GCPadNew", _trans("Pad"), "GCPad");
+bool IsInit = false;
+
+static InputPlugin g_plugin("GCPadNew", _trans("Pad"), GC_PROFILE_DIR);
 InputPlugin *GetPlugin()
 {
 	return &g_plugin;
@@ -23,6 +26,8 @@ InputPlugin *GetPlugin()
 
 void Shutdown()
 {
+	if (Host_PadConfigOpen()) return;
+
 	std::vector<ControllerEmu*>::const_iterator
 		i = g_plugin.controllers.begin(),
 		e = g_plugin.controllers.end();
@@ -31,20 +36,24 @@ void Shutdown()
 	g_plugin.controllers.clear();
 
 	g_controller_interface.Shutdown();
+
+	IsInit = false;
 }
 
 // if plugin isn't initialized, init and load config
 void Initialize(void* const hwnd)
 {
 	// add 4 gcpads
-	for (unsigned int i=0; i<4; ++i)
-		g_plugin.controllers.push_back(new GCPad(i));
+	if (!IsInit)
+		for (unsigned int i=0; i<4; ++i)
+			g_plugin.controllers.push_back(new GCPad(i));
+	IsInit = true;
 
 	g_controller_interface.SetHwnd(hwnd);
 	g_controller_interface.Initialize();
 
 	// load the saved controller config
-	g_plugin.LoadConfig(true);
+	g_plugin.LoadConfig();
 }
 
 void GetStatus(u8 _numPAD, SPADStatus* _pPADStatus)

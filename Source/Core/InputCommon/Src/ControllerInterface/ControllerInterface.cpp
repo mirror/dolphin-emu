@@ -1,7 +1,9 @@
 #include "ControllerInterface.h"
-
 #ifdef CIFACE_USE_XINPUT
 	#include "XInput/XInput.h"
+#endif
+#ifdef CIFACE_USE_RINPUT
+	#include "RInput/RInput.h"
 #endif
 #ifdef CIFACE_USE_DINPUT
 	#include "DInput/DInput.h"
@@ -19,7 +21,9 @@
 	#include "Android/Android.h"
 #endif
 
+#include "MathUtil.h"
 #include "Thread.h"
+#include "../../Core/Src/Host.h"
 
 namespace
 {
@@ -35,11 +39,16 @@ ControllerInterface g_controller_interface;
 //
 void ControllerInterface::Initialize()
 {
+	std::unique_lock<std::recursive_mutex> lk(update_lock);
+
 	if (m_is_init)
 		return;
 
 #ifdef CIFACE_USE_DINPUT
 	ciface::DInput::Init(m_devices, (HWND)m_hwnd);
+#endif
+#ifdef CIFACE_USE_RINPUT
+	ciface::RInput::Init(m_devices, (HWND)m_hwnd);
 #endif
 #ifdef CIFACE_USE_XINPUT
 	ciface::XInput::Init(m_devices);
@@ -65,9 +74,14 @@ void ControllerInterface::Initialize()
 //
 // remove all devices/ call library cleanup functions
 //
-void ControllerInterface::Shutdown()
+void ControllerInterface::Shutdown(bool force)
 {
+	std::unique_lock<std::recursive_mutex> lk(update_lock);
+
 	if (false == m_is_init)
+		return;
+
+	if ((Host_PadConfigOpen() || Host_WiimoteConfigOpen()) && !force)
 		return;
 
 	std::vector<Device*>::const_iterator
@@ -93,8 +107,11 @@ void ControllerInterface::Shutdown()
 #ifdef CIFACE_USE_XINPUT
 	// nothing needed
 #endif
+#ifdef CIFACE_USE_RINPUT
+	ciface::RInput::Shutdown();
+#endif
 #ifdef CIFACE_USE_DINPUT
-	// nothing needed
+	ciface::DInput::Shutdown();
 #endif
 #ifdef CIFACE_USE_XLIB
 	// nothing needed
@@ -114,6 +131,17 @@ void ControllerInterface::Shutdown()
 }
 
 //
+//		ReInit
+//
+// shutdown and initialize
+//
+void ControllerInterface::ReInit()
+{
+	g_controller_interface.Shutdown(true);
+	g_controller_interface.Initialize();
+}
+
+//
 //		SetHwnd
 //
 // sets the hwnd used for some crap when initializing, use before calling Init
@@ -121,6 +149,13 @@ void ControllerInterface::Shutdown()
 void ControllerInterface::SetHwnd( void* const hwnd )
 {
 	m_hwnd = hwnd;
+
+#ifdef CIFACE_USE_DINPUT
+	ciface::DInput::SetHWND((HWND)m_hwnd);
+#endif
+#ifdef CIFACE_USE_RINPUT
+	ciface::RInput::SetHWND((HWND)m_hwnd);
+#endif
 }
 
 //
@@ -256,6 +291,9 @@ ControlState ControllerInterface::InputReference::State( const ControlState igno
 	for (; ci!=ce; ++ci)
 	{
 		const ControlState istate = ci->control->ToInput()->GetState();
+		// the input is relative if one control is relative
+		if (!is_relative)
+			is_relative = ci->control->ToInput()->IsRelative();
 
 		switch (ci->mode)
 		{
@@ -278,7 +316,7 @@ ControlState ControllerInterface::InputReference::State( const ControlState igno
 		}
 	}
 
-	return std::min(1.0f, state * range);
+	return state * range;
 }
 
 //
@@ -425,6 +463,7 @@ void ControllerInterface::UpdateReference(ControllerInterface::ControlReference*
 			// reset stuff for next ctrl
 			devc.mode = (int)f;
 			ctrl_str.clear();
+			ref->is_relative = false;
 		}
 		else if ('`' == c)
 		{
@@ -475,10 +514,12 @@ ControllerInterface::Device::Control* ControllerInterface::InputReference::Detec
 		i = device->Inputs().begin(),
 		e = device->Inputs().end();
 	for (std::vector<bool>::iterator state = states.begin(); i != e; ++i)
-		*state++ = ((*i)->GetState() > (1 - INPUT_DETECT_THRESHOLD));
+		*state++ = ((*i)->GetState() > INPUT_DETECT_THRESHOLD);
 
 	while (time < ms)
 	{
+		// read WM_INPUT
+		Host_Yield();
 		device->UpdateInput();
 		i = device->Inputs().begin();
 		for (std::vector<bool>::iterator state = states.begin(); i != e; ++i,++state)

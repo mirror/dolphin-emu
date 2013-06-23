@@ -13,6 +13,7 @@
 // enable disable sources
 #ifdef _WIN32
 	#define CIFACE_USE_XINPUT
+	#define CIFACE_USE_RINPUT
 	#define CIFACE_USE_DINPUT_JOYSTICK
 	#define CIFACE_USE_DINPUT_KBM
 	#define CIFACE_USE_DINPUT
@@ -85,6 +86,8 @@ public:
 		public:
 			// things like absolute axes/ absolute mouse position will override this
 			virtual bool IsDetectable() { return true; }
+
+			virtual bool IsRelative() { return false; }
 
 			virtual ControlState GetState() const = 0;
 
@@ -202,15 +205,16 @@ public:
 		virtual ~ControlReference() {}
 
 		virtual ControlState State(const ControlState state = 0) = 0;
+		virtual ControlState IsRelative() { return is_relative; }
 		virtual Device::Control* Detect(const unsigned int ms, Device* const device) = 0;
 		size_t BoundCount() const { return m_controls.size(); }
 
 		ControlState		range;
 		std::string			expression;
-		const bool			is_input;
+		const bool			is_input;		
 
 	protected:
-		ControlReference(const bool _is_input) : range(1), is_input(_is_input) {}
+		ControlReference(const bool _is_input) : range(1), is_input(_is_input), is_relative(false) {}
 
 		struct DeviceControl
 		{
@@ -220,6 +224,7 @@ public:
 			int		mode;
 		};
 
+		bool				is_relative;
 		std::vector<DeviceControl>	m_controls;
 	};
 
@@ -253,8 +258,9 @@ public:
 	
 	void SetHwnd(void* const hwnd);
 	void Initialize();
-	void Shutdown();
+	void Shutdown(bool force = false);
 	bool IsInit() const { return m_is_init; }
+	void ReInit();
 
 	void UpdateReference(ControlReference* control, const DeviceQualifier& default_device) const;
 	bool UpdateInput(const bool force = false);

@@ -151,7 +151,8 @@ void Stop()
 
 	SCoreStartupParameter& StartUp = SConfig::GetInstance().m_LocalCoreStartupParameter;
 
-	StartUp.m_strUniqueID = "00000000";
+	StartUp.m_strGameIni.clear();
+
 	if (config_cache.valid)
 	{
 		config_cache.valid = false;

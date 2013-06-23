@@ -134,6 +134,7 @@ bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2)
 					return false;
 				}
 				m_strName = pVolume->GetName();
+				m_strRegion = pVolume->GetRegion();
 				m_strUniqueID = pVolume->GetUniqueID();
 				
 				// Check if we have a Wii disc

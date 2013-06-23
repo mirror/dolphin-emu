@@ -99,7 +99,7 @@ public:
 	virtual u32 Video_AccessEFB(EFBAccessType, u32, u32, u32) = 0;
 	virtual u32 Video_GetQueryResult(PerfQueryType type) = 0;
 
-	virtual void Video_AddMessage(const char* pstr, unsigned int milliseconds) = 0;
+	virtual void Video_AddMessage(const char* pstr, unsigned int milliseconds, u32 color) = 0;
 	virtual void Video_ClearMessages() = 0;
 	virtual bool Video_Screenshot(const char* filename) = 0;
 
@@ -151,7 +151,7 @@ class VideoBackendHardware : public VideoBackend
 	u32 Video_AccessEFB(EFBAccessType, u32, u32, u32);
 	u32 Video_GetQueryResult(PerfQueryType type);
 	
-	void Video_AddMessage(const char* pstr, unsigned int milliseconds);
+	void Video_AddMessage(const char* pstr, unsigned int milliseconds, u32 color);
 	void Video_ClearMessages();
 	bool Video_Screenshot(const char* filename);
 

@@ -273,6 +273,7 @@ void Wiimote::Update()
 
 	// Send the report
 	if (!rpt.empty() && m_channel > 0)
+		WiimoteEmu::Spy(NULL, rpt.data(), rpt.size());
 		Core::Callback_WiimoteInterruptChannel(index, m_channel,
 			rpt.data(), rpt.size());
 }

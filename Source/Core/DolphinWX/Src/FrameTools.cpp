@@ -121,6 +121,8 @@ void CFrame::CreateMenu()
 	emulationMenu->AppendSeparator();
 	emulationMenu->Append(IDM_TOGGLE_FULLSCREEN, GetMenuLabel(HK_FULLSCREEN));
 	emulationMenu->AppendSeparator();
+	emulationMenu->Append(IDM_CAPTURE_CURSOR, GetMenuLabel(HK_CAPTURE_CURSOR));
+	emulationMenu->AppendSeparator();
 	emulationMenu->Append(IDM_RECORD, GetMenuLabel(HK_START_RECORDING));
 	emulationMenu->Append(IDM_PLAYRECORD, GetMenuLabel(HK_PLAY_RECORDING));
 	emulationMenu->Append(IDM_RECORDEXPORT, GetMenuLabel(HK_EXPORT_RECORDING));
@@ -355,6 +357,9 @@ wxString CFrame::GetMenuLabel(int Id)
 
 		case HK_FULLSCREEN:
 			Label = _("&Fullscreen");
+			break;
+		case HK_CAPTURE_CURSOR:
+			Label = _("C&apture Cursor");
 			break;
 		case HK_SCREENSHOT:
 			Label = _("Take Screenshot");
@@ -921,6 +926,13 @@ void CFrame::StartGame(const std::string& filename)
 		m_RenderParent->SetFocus();
 #endif
 		
+		Pad::GetPlugin()->LoadConfig();
+		Wiimote::GetPlugin()->LoadConfig();
+		if (m_PadConfigDiag)
+			m_PadConfigDiag->UpdateGUI();
+		if (m_WiimoteConfigDiag)
+			m_WiimoteConfigDiag->UpdateGUI();
+
 		wxTheApp->Bind(wxEVT_KEY_DOWN, &CFrame::OnKeyDown, this);
 		wxTheApp->Bind(wxEVT_KEY_UP, &CFrame::OnKeyUp, this);
 		wxTheApp->Bind(wxEVT_RIGHT_DOWN, &CFrame::OnMouse, this);
@@ -1035,6 +1047,15 @@ void CFrame::DoStop()
 		X11Utils::InhibitScreensaver(X11Utils::XDisplayFromHandle(GetHandle()),
 				X11Utils::XWindowFromHandle(GetHandle()), false);
 #endif
+
+		g_controller_interface.SetHwnd(m_RenderParent ? m_RenderParent->GetHandle() : GetHandle());
+		Pad::GetPlugin()->LoadConfig();
+		Wiimote::GetPlugin()->LoadConfig();
+		if (m_PadConfigDiag)
+			m_PadConfigDiag->UpdateGUI();
+		if (m_WiimoteConfigDiag)
+			m_WiimoteConfigDiag->UpdateGUI();
+
 		m_RenderFrame->SetTitle(StrToWxStr(scm_rev_str));
 
 		// Destroy the renderer frame when not rendering to main
@@ -1153,58 +1174,43 @@ void CFrame::OnConfigDSP(wxCommandEvent& WXUNUSED (event))
 
 void CFrame::OnConfigPAD(wxCommandEvent& WXUNUSED (event))
 {
+	if (m_PadConfigDiag)
+	{
+		m_PadConfigDiag->SetFocus();
+		return;
+	}
 	InputPlugin *const pad_plugin = Pad::GetPlugin();
-	bool was_init = false;
-	if (g_controller_interface.IsInit())	// check if game is running
-	{
-		was_init = true;
-	}
-	else
-	{
 #if defined(HAVE_X11) && HAVE_X11
-		Window win = X11Utils::XWindowFromHandle(GetHandle());
-		Pad::Initialize((void *)win);
+	Window win = X11Utils::XWindowFromHandle(GetHandle());
+	Pad::Initialize((void *)win);
 #elif defined(__APPLE__)
-		Pad::Initialize((void *)this);
+	Pad::Initialize((void *)this);
 #else
-		Pad::Initialize(GetHandle());
+	Pad::Initialize(m_RenderParent ? m_RenderParent->GetHandle() : GetHandle());
 #endif
-	}
-	InputConfigDialog m_ConfigFrame(this, *pad_plugin, _trans("Dolphin GCPad Configuration"));
-	m_ConfigFrame.ShowModal();
-	m_ConfigFrame.Destroy();
-	if (!was_init)				// if game isn't running
-	{
-		Pad::Shutdown();
-	}
+	m_PadConfigDiag = new InputConfigDialog(this, *pad_plugin, _trans("Dolphin GCPad Configuration"));
+	m_PadConfigDiag->Show();
 }
 
 void CFrame::OnConfigWiimote(wxCommandEvent& WXUNUSED (event))
 {
-	InputPlugin *const wiimote_plugin = Wiimote::GetPlugin();
-	bool was_init = false;
-	if (g_controller_interface.IsInit())	// check if game is running
+	if (m_WiimoteConfigDiag)
 	{
-		was_init = true;
+		m_WiimoteConfigDiag->SetFocus();
+		return;
 	}
-	else
-	{
+	InputPlugin *const wiimote_plugin = Wiimote::GetPlugin();
+
 #if defined(HAVE_X11) && HAVE_X11
 		Window win = X11Utils::XWindowFromHandle(GetHandle());
 		Wiimote::Initialize((void *)win);
 #elif defined(__APPLE__)
 		Wiimote::Initialize((void *)this);
 #else
-		Wiimote::Initialize(GetHandle());
+	Wiimote::Initialize(m_RenderParent ? m_RenderParent->GetHandle() : GetHandle());
 #endif
-	}
-	WiimoteConfigDiag m_ConfigFrame(this, *wiimote_plugin);
-	m_ConfigFrame.ShowModal();
-	m_ConfigFrame.Destroy();
-	if (!was_init)				// if game isn't running
-	{
-		Wiimote::Shutdown();
-	}
+	m_WiimoteConfigDiag = new WiimoteConfigDiag(this, *wiimote_plugin);
+	m_WiimoteConfigDiag->Show();
 }
 
 void CFrame::OnConfigHotkey(wxCommandEvent& WXUNUSED (event))
@@ -1558,9 +1564,10 @@ void CFrame::UpdateGUI()
 	GetMenuBar()->FindItem(IDM_FRAMESTEP)->Enable(Running || Paused);
 	GetMenuBar()->FindItem(IDM_SCREENSHOT)->Enable(Running || Paused);
 	GetMenuBar()->FindItem(IDM_TOGGLE_FULLSCREEN)->Enable(Running || Paused);
+	GetMenuBar()->FindItem(IDM_CAPTURE_CURSOR)->Enable(Running);
 
 	// Update Menu Accelerators
-	for (unsigned int i = 0; i < NUM_HOTKEYS; i++)
+	for (unsigned int i = 0; GetMenuBar()->FindItem(GetCmdForHotkey(i)) && i < NUM_HOTKEYS; i++)
 		GetMenuBar()->FindItem(GetCmdForHotkey(i))->SetItemLabel(GetMenuLabel(i));
 
 	GetMenuBar()->FindItem(IDM_LOADSTATE)->Enable(Initialized);
@@ -1677,6 +1684,11 @@ void CFrame::UpdateGUI()
 	{
 		m_ToolBar->Refresh();
 	}
+
+	if (m_PadConfigDiag)
+		m_PadConfigDiag->UpdateGUI();
+	if (m_WiimoteConfigDiag)
+		m_WiimoteConfigDiag->UpdateGUI();
 
 	// Commit changes to manager
 	m_Mgr->Update();

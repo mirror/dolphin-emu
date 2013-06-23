@@ -178,6 +178,7 @@ void HotkeyConfigDialog::CreateHotkeyGUIControls(void)
 		_("Read-only mode"),
 
 		_("Toggle Fullscreen"),
+		_("Capture Cursor"),
 		_("Take Screenshot"),
 		_("Exit"),
 
@@ -234,17 +235,6 @@ void HotkeyConfigDialog::CreateHotkeyGUIControls(void)
 
 		wxGridBagSizer *sHotkeys = new wxGridBagSizer();
 
-		// Header line
-		for (int i = 0; i < HOTKEY_NUM_COLUMNS; i++)
-		{
-			wxBoxSizer *HeaderSizer = new wxBoxSizer(wxHORIZONTAL);
-			wxStaticText *StaticTextHeader = new wxStaticText(Page, wxID_ANY, _("Action"));
-			HeaderSizer->Add(StaticTextHeader, 1, wxALL, 2);
-			StaticTextHeader = new wxStaticText(Page, wxID_ANY, _("Key"), wxDefaultPosition, size);
-			HeaderSizer->Add(StaticTextHeader, 0, wxALL, 2);	
-			sHotkeys->Add(HeaderSizer, wxGBPosition(0, i), wxDefaultSpan, wxEXPAND | wxLEFT, (i > 0) ? 30 : 1);
-		}
-
 		int column_break = (page_breaks[j+1] + page_breaks[j] + 1) / 2;
 		
 		for (int i = page_breaks[j]; i < page_breaks[j+1]; i++)
@@ -266,7 +256,7 @@ void HotkeyConfigDialog::CreateHotkeyGUIControls(void)
 			sHotkey->Add(stHotkeys, 1, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL | wxALL, 2);
 			sHotkey->Add(m_Button_Hotkeys[i], 0, wxALL, 2);
 			sHotkeys->Add(sHotkey,
-					wxGBPosition((i < column_break) ? i - page_breaks[j] + 1 : i - column_break + 1,
+					wxGBPosition((i < column_break) ? i - page_breaks[j] : i - column_break,
 						(i < column_break) ? 0 : 1),
 					wxDefaultSpan, wxEXPAND | wxLEFT, (i < column_break) ? 1 : 30);
 		}

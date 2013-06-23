@@ -24,6 +24,7 @@
 #include "LogWindow.h"
 #include "LogConfigWindow.h"
 #include "TASInputDlg.h"
+#include "WiimoteConfigDiag.h"
 #include "Movie.h"
 #if defined(HAVE_X11) && HAVE_X11
 #include "X11Utils.h"
@@ -111,6 +112,8 @@ public:
 	NetPlaySetupDiag* g_NetPlaySetupDiag;
 	wxCheatsWindow* g_CheatsWindow;
 	TASInputDlg* g_TASInputDlg;
+	InputConfigDialog* m_PadConfigDiag;
+	WiimoteConfigDiag* m_WiimoteConfigDiag;
 
 	void InitBitmaps();
 	void DoPause();
@@ -171,7 +174,7 @@ private:
 	wxPanel* m_RenderParent;
 	CLogWindow* m_LogWindow;
 	LogConfigWindow* m_LogConfigWindow;
-	FifoPlayerDlg* m_FifoPlayerDlg;
+	FifoPlayerDlg* m_FifoPlayerDlg;	
 	bool UseDebugger;
 	bool m_bBatchMode;
 	bool m_bEdit;
@@ -258,7 +261,9 @@ private:
 	// Override window proc for tricks like screensaver disabling
 	WXLRESULT MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam);
 #endif
+	void Update();
 	// Event functions
+	void OnClose(wxCloseEvent &event);	
 	void OnQuit(wxCommandEvent& event);
 	void OnHelp(wxCommandEvent& event);
 	void OnToolBar(wxCommandEvent& event);
@@ -282,8 +287,7 @@ private:
 	void OnShowLag(wxCommandEvent& event);
 	void OnChangeDisc(wxCommandEvent& event);
 	void OnScreenshot(wxCommandEvent& event);
-	void OnActive(wxActivateEvent& event);
-	void OnClose(wxCloseEvent &event);	
+	void OnActive(wxActivateEvent& event);	
 	void OnLoadState(wxCommandEvent& event);
 	void OnSaveState(wxCommandEvent& event);
 	void OnLoadStateFromFile(wxCommandEvent& event);
@@ -304,6 +308,7 @@ private:
 	void OnConfigHotkey(wxCommandEvent& event);
 
 	void OnToggleFullscreen(wxCommandEvent& event);
+	void CaptureCursor(wxCommandEvent& event);
 	void OnToggleDualCore(wxCommandEvent& event);
 	void OnToggleSkipIdle(wxCommandEvent& event);
 	void OnToggleThrottle(wxCommandEvent& event);

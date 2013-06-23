@@ -24,6 +24,7 @@ public:
 
 		bool Exists(const char *key) const;
 		bool Delete(const char *key);
+		void Copy(IniFile::Section* _section);
 
 		std::string* GetLine(const char* key, std::string* valueOut, std::string* commentOut);
 		void Set(const char* key, const char* newValue);
@@ -126,12 +127,12 @@ public:
 	void SortSections();
 
 	Section* GetOrCreateSection(const char* section);
+	const Section* GetSection(const char* section) const;
+	Section* GetSection(const char* section);
 
 private:
 	std::vector<Section> sections;
 
-	const Section* GetSection(const char* section) const;
-	Section* GetSection(const char* section);
 	std::string* GetLine(const char* section, const char* key);
 	void CreateSection(const char* section);
 };

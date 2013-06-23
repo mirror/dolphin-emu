@@ -547,29 +547,19 @@ void SetWiiInputDisplayString(int remoteID, u8* const coreData, u8* const accelD
 
 	if(coreData)
 	{
-		wm_core buttons = *(wm_core*)coreData;
-		if(buttons & WiimoteEmu::Wiimote::PAD_LEFT)
-			g_InputDisplay[controllerID].append(" LEFT");
-		if(buttons & WiimoteEmu::Wiimote::PAD_RIGHT)
-			g_InputDisplay[controllerID].append(" RIGHT");
-		if(buttons & WiimoteEmu::Wiimote::PAD_DOWN)
-			g_InputDisplay[controllerID].append(" DOWN");
-		if(buttons & WiimoteEmu::Wiimote::PAD_UP)
-			g_InputDisplay[controllerID].append(" UP");
-		if(buttons & WiimoteEmu::Wiimote::BUTTON_A)
-			g_InputDisplay[controllerID].append(" A");
-		if(buttons & WiimoteEmu::Wiimote::BUTTON_B)
-			g_InputDisplay[controllerID].append(" B");
-		if(buttons & WiimoteEmu::Wiimote::BUTTON_PLUS)
-			g_InputDisplay[controllerID].append(" +");
-		if(buttons & WiimoteEmu::Wiimote::BUTTON_MINUS)
-			g_InputDisplay[controllerID].append(" -");
-		if(buttons & WiimoteEmu::Wiimote::BUTTON_ONE)
-			g_InputDisplay[controllerID].append(" 1");
-		if(buttons & WiimoteEmu::Wiimote::BUTTON_TWO)
-			g_InputDisplay[controllerID].append(" 2");
-		if(buttons & WiimoteEmu::Wiimote::BUTTON_HOME)
-			g_InputDisplay[controllerID].append(" HOME");
+		wm_core buttons;
+		memcpy(&buttons, coreData, sizeof(buttons));
+		if (buttons.left) g_InputDisplay[controllerID].append(" LEFT");
+		if (buttons.right) g_InputDisplay[controllerID].append(" RIGHT");
+		if (buttons.down) g_InputDisplay[controllerID].append(" DOWN");
+		if (buttons.up) g_InputDisplay[controllerID].append(" UP");
+		if (buttons.a) g_InputDisplay[controllerID].append(" A");
+		if (buttons.b) g_InputDisplay[controllerID].append(" B");
+		if (buttons.plus) g_InputDisplay[controllerID].append(" +");
+		if (buttons.minus) g_InputDisplay[controllerID].append(" -");
+		if (buttons.one) g_InputDisplay[controllerID].append(" 1");
+		if (buttons.two) g_InputDisplay[controllerID].append(" 2");
+		if (buttons.home) g_InputDisplay[controllerID].append(" HOME");
 	}
 
 	if(accelData)
