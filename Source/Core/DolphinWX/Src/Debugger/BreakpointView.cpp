@@ -81,8 +81,11 @@ void CBreakPointView::Update()
 		SetItem(Item, 3, temp);
 
 		size_t c = 0;
+		if (rMemCheck.bRange) szBuffer[c++] = 'n';
 		if (rMemCheck.OnRead) szBuffer[c++] = 'r';
 		if (rMemCheck.OnWrite) szBuffer[c++] = 'w';
+		if (rMemCheck.Log) szBuffer[c++] = 'l';
+		if (rMemCheck.Break) szBuffer[c++] = 'p';
 		szBuffer[c] = 0x00;
 		temp = StrToWxStr(szBuffer);
 		SetItem(Item, 4, temp);
