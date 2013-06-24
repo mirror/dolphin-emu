@@ -27,14 +27,10 @@ public:
 		, wxWindow* parent
 		, wxWindowID Id = wxID_ANY);
 
-	u32 GetSelection() {return(selection);}
+	u32 GetSelection() { return(selection); }
+	u32 GetAddress() { return(curAddress); }
 
-	void Center(u32 addr)
-	{
-		curAddress = addr;
-		selection = addr;
-		Refresh();
-	}
+	void Center(u32 addr);
 
 protected:
 	enum
@@ -61,7 +57,7 @@ protected:
 
 	DebugInterface* debugger;
 
-	int curAddress;
+	u32 curAddress;
 	int align;
 	int rowHeight;
 

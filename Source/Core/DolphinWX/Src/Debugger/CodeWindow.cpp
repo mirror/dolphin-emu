@@ -173,6 +173,27 @@ void CCodeWindow::OnCodeStep(wxCommandEvent& event)
 		case IDM_GOTOPC:
 			JumpToAddress(PC);
 			break;
+
+		case IDM_GOTO:
+		{
+			u32 address;
+			wxString s_address;
+			wxTextEntryDialog input_address(this
+				, "Address:"
+				, wxGetTextFromUserPromptStr
+				, wxString::Format("%08x", codeview->GetSelection()));
+			if (input_address.ShowModal() == wxID_OK)
+			{
+				s_address = input_address.GetValue().Trim().Trim(false);
+				if (AsciiToHex(WxStrToStr(s_address).c_str(), address))
+				{
+					address = address - address % 4;
+					JumpToAddress(address);
+					m_MemoryWindow->Center(address);
+				}
+			}
+			break;
+		}
 	}
 
 	UpdateButtonStates();
@@ -409,6 +430,7 @@ void CCodeWindow::CreateMenu(const SCoreStartupParameter& _LocalCoreStartupParam
 	pDebugMenu->Append(IDM_STEP, _("Step &Into\tF11"));
 	pDebugMenu->Append(IDM_STEPOVER, _("Step &Over\tF10"));
 	pDebugMenu->Append(IDM_TOGGLE_BREAKPOINT, _("Toggle &Breakpoint\tF9"));
+	pDebugMenu->Append(IDM_GOTO, _("&Goto\tCtrl+G"));
 
 	pMenuBar->Append(pDebugMenu, _("&Debug"));
 

@@ -38,6 +38,8 @@ private:
 
 	void PaintRow();
 
+	void Center_(u32 addr);
+
 	int memory;
 
 	enum EViewAsType

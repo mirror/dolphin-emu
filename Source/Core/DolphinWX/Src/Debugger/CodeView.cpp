@@ -48,6 +48,13 @@ CDebugView::CDebugView(DebugInterface* debuginterface
 {
 }
 
+void CDebugView::Center(u32 addr)
+{
+	curAddress = addr;
+	selection = addr;
+	Refresh();
+}
+
 int CDebugView::YToAddress(int y)
 {
 	wxRect rc = GetClientRect();
@@ -456,15 +463,14 @@ void CCodeView::OnMouseUpR()
 	bool isSymbol = symbol_db->GetSymbolFromAddr(selection) != 0;
 
 	//menu->Append(IDM_GOTOINMEMVIEW, "&Goto in mem view");
-	menu->Append(IDM_FOLLOWBRANCH,
-			StrToWxStr("&Follow branch"))->Enable(AddrToBranch(selection) ? true : false);
-	menu->AppendSeparator();
 #if wxUSE_CLIPBOARD
-
 	menu->Append(IDM_COPYFUNCTION, StrToWxStr("Copy &function"))->Enable(isSymbol);
 	menu->Append(IDM_COPYCODE, StrToWxStr("Copy &code line"));
 	menu->AppendSeparator();
 #endif
+	menu->Append(IDM_FOLLOWBRANCH,
+			StrToWxStr("&Follow branch"))->Enable(AddrToBranch(selection) ? true : false);
+	menu->AppendSeparator();
 	menu->Append(IDM_RENAMESYMBOL, StrToWxStr("Rename &symbol"))->Enable(isSymbol);
 	menu->AppendSeparator();
 	menu->Append(IDM_RUNTOHERE, _("&Run To Here"));

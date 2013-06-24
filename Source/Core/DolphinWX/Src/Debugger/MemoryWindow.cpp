@@ -29,8 +29,7 @@
 
 enum
 {
-	IDM_MEM_ADDRBOX = 350,
-	IDM_SYMBOLLIST,
+	IDM_SYMBOLLIST = 350,
 	IDM_SETVALBUTTON,
 	IDM_REFRESH,
 	IDM_DUMP_MEMORY,
@@ -46,7 +45,6 @@ enum
 };
 
 BEGIN_EVENT_TABLE(CMemoryWindow, wxPanel)
-	EVT_TEXT(IDM_MEM_ADDRBOX,		CMemoryWindow::OnAddrBoxChange)
 	EVT_LISTBOX(IDM_SYMBOLLIST,		CMemoryWindow::OnSymbolListChange)
 	EVT_HOST_COMMAND(wxID_ANY,		CMemoryWindow::OnHostMessage)
 	EVT_BUTTON(IDM_SETVALBUTTON,	CMemoryWindow::SetMemoryValue)
@@ -81,7 +79,7 @@ CMemoryWindow::CMemoryWindow(wxWindow* parent, wxWindowID id,
 	//sizerBig->Add(sizerLeft, 1, wxEXPAND);
 	sizerBig->Add(memview, 20, wxEXPAND);
 	sizerBig->Add(sizerRight, 0, wxEXPAND | wxALL, 3);
-	sizerRight->Add(addrbox = new wxTextCtrl(this, IDM_MEM_ADDRBOX, _T("")));
+
 	sizerRight->Add(valbox = new wxTextCtrl(this, IDM_VALBOX, _T("")));
 	sizerRight->Add(new wxButton(this, IDM_SETVALBUTTON, _("Set &Value")), 0, wxEXPAND);
 
@@ -150,16 +148,9 @@ void CMemoryWindow::Refresh(wxCommandEvent& event)
 
 void CMemoryWindow::SetMemoryValue(wxCommandEvent& event)
 {
-	std::string str_addr = WxStrToStr(addrbox->GetValue());
 	std::string str_val = WxStrToStr(valbox->GetValue());
 	u32 addr;
 	u32 val;
-
-	if (!TryParse(std::string("0x") + str_addr, &addr))
-	{
-		PanicAlert("Invalid Address: %s", str_addr.c_str());
-		return;
-	}
 
 	if (!TryParse(std::string("0x") + str_val, &val))
 	{
@@ -167,27 +158,18 @@ void CMemoryWindow::SetMemoryValue(wxCommandEvent& event)
 		return;
 	}
 
-	Memory::Write_U32(val, addr);
+	Memory::Write_U32(val, memview->GetSelection());
 	memview->Refresh();
 }
 
-void CMemoryWindow::OnAddrBoxChange(wxCommandEvent& event)
+void CMemoryWindow::Center(u32 addr)
 {
-	wxString txt = addrbox->GetValue();
-	if (txt.size())
-	{
-		u32 addr;
-		sscanf(WxStrToStr(txt).c_str(), "%08x", &addr);
-		memview->Center(addr & ~3);
-	}
-
-	event.Skip(1);
+	memview->Center(addr);
 }
 
 void CMemoryWindow::Update()
 {
 	memview->Refresh();
-	memview->Center(PC);
 }
 
 void CMemoryWindow::NotifyMapLoaded()
@@ -386,13 +368,7 @@ void CMemoryWindow::onSearch(wxCommandEvent& event)
 		unsigned char* pnt = &Dest.front();
 		unsigned int k = 0;
 		//grab
-		wxString txt = addrbox->GetValue();
-		u32 addr = 0;
-		if (txt.size())
-		{
-			sscanf(WxStrToStr(txt).c_str(), "%08x", &addr);
-		}
-		i = addr+4;
+		i = memview->GetSelection() + 4;
 		for( ; i < szRAM; i++)
 		{
 			for(k = 0; k < size; k++)
@@ -412,10 +388,7 @@ void CMemoryWindow::onSearch(wxCommandEvent& event)
 				wxChar tmpwxstr[128] = {0};
 				wxSprintf(tmpwxstr, _T("%08x"), i);
 				wxString tmpwx(tmpwxstr);
-				addrbox->SetValue(tmpwx);
-				//memview->curAddress = i;
-				//memview->Refresh();
-				OnAddrBoxChange(event);
+				Center(i);
 				return;
 			}
 		}
