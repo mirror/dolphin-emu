@@ -49,11 +49,11 @@ void PPCDebugInterface::getRawMemoryString(int memory, unsigned int address, cha
 	{
 		if (memory || Memory::IsRAMAddress(address, true, true))
 		{
-			snprintf(dest, max_size, "%08X%s", readExtraMemory(memory, address), memory ? " (ARAM)" : "");
+			snprintf(dest, max_size, "%d %08X", memory, readExtraMemory(memory, address));
 		}
 		else
 		{
-			strcpy(dest, memory ? "--ARAM--" : "--------");
+			snprintf(dest, max_size, "%d %s", memory,  "---");
 		}
 	}
 	else

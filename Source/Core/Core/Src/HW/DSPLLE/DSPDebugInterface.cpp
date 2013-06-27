@@ -35,7 +35,7 @@ void DSPDebugInterface::getRawMemoryString(int memory, unsigned int address, cha
 			sprintf(dest, "%04x", dsp_imem_read(address));
 			break;
 		default:
-			sprintf(dest, "--IMEM--");
+			sprintf(dest, "0 ---");
 			break;
 		}
 		break;
@@ -44,13 +44,13 @@ void DSPDebugInterface::getRawMemoryString(int memory, unsigned int address, cha
 		{
 		case 0:
 		case 1:
-			sprintf(dest, "%04x (DMEM)", dsp_dmem_read(address));
+			sprintf(dest, "1 %04x", dsp_dmem_read(address));
 			break;
 		case 0xf:
-			sprintf(dest, "%04x (MMIO)", g_dsp.ifx_regs[address & 0xFF]);
+			sprintf(dest, "2 %04x", g_dsp.ifx_regs[address & 0xFF]);
 			break;
 		default:
-			sprintf(dest, "--DMEM--");
+			sprintf(dest, "1 ---");
 			break;
 		}
 		break;
