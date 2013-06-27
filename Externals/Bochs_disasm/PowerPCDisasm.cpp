@@ -1190,7 +1190,7 @@ typedef unsigned int ppc_word;
 				int block = in & 0x3FFFFFF;
 				if (block) {
 					sprintf(dp->opcode, "JITblock");
-					sprintf(dp->operands, "%i", block);
+					sprintf(dp->operands, "0x%08x", block);
 				} else {
 					strcpy(dp->opcode, "");
 					strcpy(dp->operands, "---");
