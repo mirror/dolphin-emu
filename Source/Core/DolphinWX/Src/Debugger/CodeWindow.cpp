@@ -93,8 +93,8 @@ CCodeWindow::CCodeWindow(const SCoreStartupParameter& _LocalCoreStartupParameter
 	sizerBig->Add(sizerLeft, 2, wxEXPAND);
 	sizerBig->Add(codeview, 5, wxEXPAND);
 
-	sizerLeft->Add(callstack = new wxListBox(this, ID_CALLSTACKLIST,
-				wxDefaultPosition, wxSize(90, 100)), 0, wxEXPAND);
+	sizerLeft->Add(callstack = new wxListBoxEx(this, ID_CALLSTACKLIST,
+				wxDefaultPosition, wxSize(90, 100), wxArrayString(), wxLB_EXTENDED), 0, wxEXPAND);
 	sizerLeft->Add(symbols = new wxListBox(this, ID_SYMBOLLIST,
 				wxDefaultPosition, wxSize(90, 100), 0, NULL, wxLB_SORT), 1, wxEXPAND);
 	sizerLeft->Add(calls = new wxListBox(this, ID_CALLSLIST, wxDefaultPosition,
@@ -212,7 +212,12 @@ void CCodeWindow::OnAddrBoxChange(wxCommandEvent& event)
 
 void CCodeWindow::OnCallstackListChange(wxCommandEvent& event)
 {
-	int index   = callstack->GetSelection();
+	wxArrayInt selection;
+	callstack->GetSelections(selection);
+	int index = -1;
+	if (!selection.IsEmpty())
+		index = selection[0];
+
 	if (index >= 0)
 	{
 		u32 address = (u32)(u64)(callstack->GetClientData(index));

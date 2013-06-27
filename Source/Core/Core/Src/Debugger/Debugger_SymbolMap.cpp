@@ -57,7 +57,7 @@ bool GetCallstack(std::vector<CallstackEntry> &output)
 	int count = 1;
 
 	CallstackEntry entry;
-	entry.Name = StringFromFormat(" * %s [ LR = %08x ]\n", g_symbolDB.GetDescription(LR), LR - 4);
+	entry.Name = StringFromFormat(" * %s [ LR = %08x ]", g_symbolDB.GetDescription(LR), LR - 4);
 	entry.vAddress = LR - 4;
 	output.push_back(entry);
 	count++;
@@ -73,7 +73,7 @@ bool GetCallstack(std::vector<CallstackEntry> &output)
 		if (!str || strlen(str) == 0 || !strcmp(str, "Invalid"))
 			str = "(unknown)";
 
-		entry.Name = StringFromFormat(" * %s [ addr = %08x ]\n", str, func - 4);
+		entry.Name = StringFromFormat(" * %s [ addr = %08x ]", str, func - 4);
 		entry.vAddress = func - 4;
 		output.push_back(entry);
 

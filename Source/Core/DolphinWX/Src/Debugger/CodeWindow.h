@@ -111,7 +111,8 @@ class CCodeWindow
 			ID_CALLSTACKLIST,
 			ID_CALLERSLIST,
 			ID_CALLSLIST,
-			ID_SYMBOLLIST
+			ID_SYMBOLLIST,
+			ID_SELECT_ALL
 		};
 
 		void OnSymbolListChange(wxCommandEvent& event);
