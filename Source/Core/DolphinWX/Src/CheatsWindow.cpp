@@ -10,6 +10,7 @@
 #include "VolumeHandler.h"
 #include "ISOProperties.h"
 #include "HW/Memmap.h"
+#include "PowerPC/JitInterface.h"
 #include "Frame.h"
 #include "WxUtils.h"
 
@@ -274,6 +275,8 @@ void wxCheatsWindow::OnEvent_ApplyChanges_Press(wxCommandEvent& ev)
 		Gecko::SaveCodes(m_gameini, m_geckocode_panel->GetCodes());
 		m_gameini.Save(m_gameini_path);
 	}
+
+	JitInterface::ClearSafe();
 
 	ev.Skip();
 }
