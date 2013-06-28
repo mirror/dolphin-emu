@@ -64,6 +64,7 @@ class CMemoryWindow
 		void OnAddrBoxChange(wxCommandEvent& event);
 		void OnHostMessage(wxCommandEvent& event);
 		void SetMemoryValue(wxCommandEvent& event);
+		void Refresh(wxCommandEvent& event);
 		void OnDumpMemory(wxCommandEvent& event);
 		void OnDumpMem2(wxCommandEvent& event);
 		void OnDumpFakeVMEM(wxCommandEvent& event);

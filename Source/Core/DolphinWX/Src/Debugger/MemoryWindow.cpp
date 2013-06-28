@@ -32,6 +32,7 @@ enum
 	IDM_MEM_ADDRBOX = 350,
 	IDM_SYMBOLLIST,
 	IDM_SETVALBUTTON,
+	IDM_REFRESH,
 	IDM_DUMP_MEMORY,
 	IDM_DUMP_MEM2,
 	IDM_DUMP_FAKEVMEM,
@@ -49,6 +50,7 @@ BEGIN_EVENT_TABLE(CMemoryWindow, wxPanel)
 	EVT_LISTBOX(IDM_SYMBOLLIST,		CMemoryWindow::OnSymbolListChange)
 	EVT_HOST_COMMAND(wxID_ANY,		CMemoryWindow::OnHostMessage)
 	EVT_BUTTON(IDM_SETVALBUTTON,	CMemoryWindow::SetMemoryValue)
+	EVT_BUTTON(IDM_REFRESH,			CMemoryWindow::Refresh)
 	EVT_BUTTON(IDM_DUMP_MEMORY,		CMemoryWindow::OnDumpMemory)
 	EVT_BUTTON(IDM_DUMP_MEM2,		CMemoryWindow::OnDumpMem2)
 	EVT_BUTTON(IDM_DUMP_FAKEVMEM,	CMemoryWindow::OnDumpFakeVMEM)
@@ -81,11 +83,14 @@ CMemoryWindow::CMemoryWindow(wxWindow* parent, wxWindowID id,
 	sizerBig->Add(sizerRight, 0, wxEXPAND | wxALL, 3);
 	sizerRight->Add(addrbox = new wxTextCtrl(this, IDM_MEM_ADDRBOX, _T("")));
 	sizerRight->Add(valbox = new wxTextCtrl(this, IDM_VALBOX, _T("")));
-	sizerRight->Add(new wxButton(this, IDM_SETVALBUTTON, _("Set &Value")));
+	sizerRight->Add(new wxButton(this, IDM_SETVALBUTTON, _("Set &Value")), 0, wxEXPAND);
 
 	sizerRight->AddSpacer(5);
-	sizerRight->Add(new wxButton(this, IDM_DUMP_MEMORY, _("&Dump MRAM")));
-	sizerRight->Add(new wxButton(this, IDM_DUMP_MEM2, _("&Dump EXRAM")));
+	sizerRight->Add(new wxButton(this, IDM_REFRESH, _("&Refresh")), 0, wxEXPAND);
+
+	sizerRight->AddSpacer(5);
+	sizerRight->Add(new wxButton(this, IDM_DUMP_MEMORY, _("&Dump MRAM")), 0, wxEXPAND);
+	sizerRight->Add(new wxButton(this, IDM_DUMP_MEM2, _("&Dump EXRAM")), 0, wxEXPAND);
 
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.iTLBHack == 1)
 		sizerRight->Add(new wxButton(this, IDM_DUMP_FAKEVMEM, _("&Dump FakeVMEM")));
@@ -98,11 +103,10 @@ CMemoryWindow::CMemoryWindow(wxWindow* parent, wxWindowID id,
 	sizerRight->Add(sizerSearchType);
 	wxStaticBoxSizer* sizerDataTypes = new wxStaticBoxSizer(wxVERTICAL, this, _("Data Type"));
 
-	sizerDataTypes->SetMinSize(74, 40);
 	sizerDataTypes->Add(chk8 = new wxCheckBox(this, IDM_U8, _T("&U8")));
 	sizerDataTypes->Add(chk16 = new wxCheckBox(this, IDM_U16, _T("&U16")));
 	sizerDataTypes->Add(chk32 = new wxCheckBox(this, IDM_U32, _T("&U32")));
-	sizerRight->Add(sizerDataTypes);
+	sizerRight->Add(sizerDataTypes, 0, wxEXPAND);
 	SetSizer(sizerBig);
 	chkHex->SetValue(1); //Set defaults
 	chk8->SetValue(1);
@@ -137,6 +141,11 @@ void CMemoryWindow::Load(IniFile& _IniFile)
 void CMemoryWindow::JumpToAddress(u32 _Address)
 {
 	memview->Center(_Address);
+}
+
+void CMemoryWindow::Refresh(wxCommandEvent& event)
+{
+	memview->Refresh();
 }
 
 void CMemoryWindow::SetMemoryValue(wxCommandEvent& event)
