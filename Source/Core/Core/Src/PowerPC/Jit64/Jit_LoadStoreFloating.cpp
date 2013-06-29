@@ -168,7 +168,7 @@ void Jit64::stfd(UGeckoInstruction inst)
 			mem_mask |= Memory::ADDR_MASK_MEM1;
 	}
 #ifdef ENABLE_MEM_CHECK
-	if (Core::g_CoreStartupParameter.bEnableDebugging)
+	if (jo.debug)
 	{
 		mem_mask |= Memory::EXRAM_MASK;
 	}

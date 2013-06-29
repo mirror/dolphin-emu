@@ -49,22 +49,18 @@ class CCodeWindow
 		wxAuiToolBar * GetToolBar();
 		wxBitmap m_Bitmaps[ToolbarDebugBitmapMax];
 
-		bool UseInterpreter();
-		bool BootToPause();
-		bool AutomaticStart();
-		bool JITNoBlockCache();
-		bool JITBlockLinking();
 		void JumpToAddress(u32 _Address);
+
+		bool GenerateSymbols();
 
 		void Update();
 		void NotifyMapLoaded();
-		void CreateMenu(const SCoreStartupParameter& _LocalCoreStartupParameter,
-			   	wxMenuBar *pMenuBar);
+		void CreateMenu(wxMenuBar *pMenuBar);
 		void CreateMenuOptions(wxMenu *pMenu);
 		void CreateMenuSymbols(wxMenuBar *pMenuBar);
 		void RecreateToolbar(wxAuiToolBar*);
 		void PopulateToolbar(wxAuiToolBar* toolBar);
-		void UpdateButtonStates();
+		void UpdateGUI();
 		void OpenPages();
 		void UpdateManager();
 
@@ -85,6 +81,9 @@ class CCodeWindow
 
 		void OnCodeStep(wxCommandEvent& event);
 		void OnAddrBoxChange(wxCommandEvent& event);
+		void OnMenuCPU(wxCommandEvent& event);
+		void OnMenuCPURefresh(wxCommandEvent& event);
+		void OnMenuCPUChange(wxCommandEvent& event);
 		void OnSymbolsMenu(wxCommandEvent& event);
 		void OnJitMenu(wxCommandEvent& event);
 		void OnProfilerMenu(wxCommandEvent& event);
@@ -98,7 +97,6 @@ class CCodeWindow
 		GFXDebuggerPanel* m_VideoWindow;
 
 		// Settings
-		bool bAutomaticStart; bool bBootToPause;
 		bool bShowOnStart[IDM_VIDEOWINDOW - IDM_LOGWINDOW + 1];
 		int iNbAffiliation[IDM_CODEWINDOW - IDM_LOGWINDOW + 1];
 

@@ -20,15 +20,25 @@
 
 SCoreStartupParameter::SCoreStartupParameter()
 : hInstance(0),
-  bJITNoBlockCache(false), bJITBlockLinking(true),
-  bJITOff(false),
-  bJITLoadStoreOff(false), bJITLoadStorelXzOff(false),
-  bJITLoadStorelwzOff(false), bJITLoadStorelbzxOff(false),
-  bJITLoadStoreFloatingOff(false), bJITLoadStorePairedOff(false),
-  bJITFloatingPointOff(false), bJITIntegerOff(false),
-  bJITPairedOff(false), bJITSystemRegistersOff(false),
-  bJITBranchOff(false), bJITProfiledReJIT(false),
-  bJITILTimeProfiling(false), bJITILOutputIR(false),
+
+  bJITLargeCache(false),
+  bJITBlockLink(true),
+  bJIT(true),
+  bJITLoadStore(true),
+  bJITLoadStorelXz(true),
+  bJITLoadStorelwz(true),
+  bJITLoadStorelbzx(true),
+  bJITLoadStoreFloating(true),
+  bJITLoadStorePaired(true),
+  bJITFloatingPoint(true),
+  bJITInteger(true),
+  bJITPaired(true),
+  bJITSystemRegisters(true),
+  bJITBranch(true),
+  bJITProfiledReJIT(false),
+  bJITILTimeProfiling(false),
+  bJITILOutputIR(false),
+
   bEnableFPRF(false), 
   bCPUThread(true), bDSPThread(false), bDSPHLE(true),
   bSkipIdle(true), bNTSC(false), bForceNTSCJ(false),
@@ -54,7 +64,7 @@ SCoreStartupParameter::SCoreStartupParameter()
 void SCoreStartupParameter::LoadDefaults()
 {
 	bEnableDebugging = false;
-	iCPUCore = 1;
+	iCompiler = 0;
 	bCPUThread = false;
 	bSkipIdle = false;
 	bRunCompareServer = false;
@@ -81,14 +91,14 @@ void SCoreStartupParameter::LoadDefaults()
 	iHeight = 600;
 	bMax = false;
 
-	bJITOff = false; // debugger only settings
-	bJITLoadStoreOff = false;
-	bJITLoadStoreFloatingOff = false;
-	bJITLoadStorePairedOff = false;		// XXX not 64-bit clean
-	bJITFloatingPointOff = false;
-	bJITIntegerOff = false;
-	bJITPairedOff = false;
-	bJITSystemRegistersOff = false;
+	bJIT = true; // debugger only settings
+	bJITLoadStore = true;
+	bJITLoadStoreFloating = true;
+	bJITLoadStorePaired = true;		// XXX not 64-bit clean
+	bJITFloatingPoint = true;
+	bJITInteger = true;
+	bJITPaired = true;
+	bJITSystemRegisters = true;
 
 	m_strName = "NONE";
 	m_strUniqueID = "00000000";

@@ -68,7 +68,7 @@ void JitILAsmRoutineManager::Generate()
 			//The result of slice decrement should be in flags if somebody jumped here
 			FixupBranch bail = J_CC(CC_BE, true);
 
-			if (Core::g_CoreStartupParameter.bEnableDebugging)
+			if (jit->jo.debug)
 			{
 				TEST(32, M((void*)PowerPC::GetStatePtr()), Imm32(PowerPC::CPU_STEPPING));
 				FixupBranch notStepping = J_CC(CC_Z);

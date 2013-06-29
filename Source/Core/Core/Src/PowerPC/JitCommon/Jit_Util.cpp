@@ -15,6 +15,7 @@
 #include "x64ABI.h"
 #include "JitBase.h"
 #include "Jit_Util.h"
+#include "ConfigManager.h"
 
 using namespace Gen;
 
@@ -111,7 +112,7 @@ void EmuCodeBlock::SafeLoadToEAX(const Gen::OpArg & opAddress, int accessSize, s
 {
 #if defined(_M_X64)
 #ifdef ENABLE_MEM_CHECK
-	if (!Core::g_CoreStartupParameter.bMMU && !Core::g_CoreStartupParameter.bEnableDebugging && Core::g_CoreStartupParameter.bFastmem)
+	if (!Core::g_CoreStartupParameter.bMMU && !jit->jo.debug && Core::g_CoreStartupParameter.bFastmem)
 #else
 	if (!Core::g_CoreStartupParameter.bMMU && Core::g_CoreStartupParameter.bFastmem)
 #endif
@@ -128,7 +129,7 @@ void EmuCodeBlock::SafeLoadToEAX(const Gen::OpArg & opAddress, int accessSize, s
 		}
 
 #ifdef ENABLE_MEM_CHECK
-		if (Core::g_CoreStartupParameter.bEnableDebugging)
+		if (jit->jo.debug)
 		{
 			mem_mask |= Memory::EXRAM_MASK;
 		}
@@ -236,7 +237,7 @@ void EmuCodeBlock::SafeWriteRegToReg(X64Reg reg_value, X64Reg reg_addr, int acce
 	}
 
 #ifdef ENABLE_MEM_CHECK
-	if (Core::g_CoreStartupParameter.bEnableDebugging)
+	if (jit->jo.debug)
 	{
 		mem_mask |= Memory::EXRAM_MASK;
 	}
@@ -267,7 +268,7 @@ void EmuCodeBlock::SafeWriteFloatToReg(X64Reg xmm_value, X64Reg reg_addr)
 			mem_mask |= Memory::ADDR_MASK_MEM1;
 
 #ifdef ENABLE_MEM_CHECK
-		if (Core::g_CoreStartupParameter.bEnableDebugging)
+		if (jit->jo.debug)
 			mem_mask |= Memory::EXRAM_MASK;
 #endif
 		TEST(32, R(reg_addr), Imm32(mem_mask));

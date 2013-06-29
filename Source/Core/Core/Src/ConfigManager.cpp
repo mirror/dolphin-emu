@@ -121,7 +121,6 @@ SConfig::~SConfig()
 	delete m_SYSCONF;
 }
 
-
 void SConfig::SaveSettings()
 {
 	NOTICE_LOG(BOOT, "Saving settings to %s", File::GetUserPath(F_DOLPHINCONFIG_IDX).c_str());
@@ -216,7 +215,8 @@ void SConfig::SaveSettings()
 
 	// Core
 	ini.Set("Core", "HLE_BS2",			m_LocalCoreStartupParameter.bHLE_BS2);
-	ini.Set("Core", "CPUCore",			m_LocalCoreStartupParameter.iCPUCore);
+	ini.Set("Core", "Interpreter",		m_LocalCoreStartupParameter.bInterpreter);
+	ini.Set("Core", "Compiler",			m_LocalCoreStartupParameter.iCompiler);
 	ini.Set("Core", "Fastmem",			m_LocalCoreStartupParameter.bFastmem);
 	ini.Set("Core", "CPUThread",		m_LocalCoreStartupParameter.bCPUThread);
 	ini.Set("Core", "DSPThread",		m_LocalCoreStartupParameter.bDSPThread);
@@ -367,10 +367,11 @@ void SConfig::LoadSettings()
 
 		// Core
 		ini.Get("Core", "HLE_BS2",		&m_LocalCoreStartupParameter.bHLE_BS2,		false);
+		ini.Get("Core", "Interpreter",	&m_LocalCoreStartupParameter.bInterpreter,	false);
 #ifdef _M_ARM
-		ini.Get("Core", "CPUCore",		&m_LocalCoreStartupParameter.iCPUCore,		3);
+		ini.Get("Core", "Compiler",		&m_LocalCoreStartupParameter.iCompiler,		3);
 #else
-		ini.Get("Core", "CPUCore",		&m_LocalCoreStartupParameter.iCPUCore,		1);
+		ini.Get("Core", "Compiler",		&m_LocalCoreStartupParameter.iCompiler,		1);
 #endif
 		ini.Get("Core", "Fastmem",		&m_LocalCoreStartupParameter.bFastmem,		true);
 		ini.Get("Core", "DSPThread",	&m_LocalCoreStartupParameter.bDSPThread,	false);

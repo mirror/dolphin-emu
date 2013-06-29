@@ -261,7 +261,7 @@ void Jit64::reg_imm(UGeckoInstruction inst)
 	case 15:
 		if (a == 0) {	// lis
 			// Merge with next instruction if loading a 32-bits immediate value (lis + addi, lis + ori)
-			if (!js.isLastInstruction && !Core::g_CoreStartupParameter.bEnableDebugging)
+			if (!js.isLastInstruction && !jo.debug)
 			{
 				if ((js.next_inst.OPCD == 14) && (js.next_inst.RD == d) && (js.next_inst.RA == d)) // addi
 				{

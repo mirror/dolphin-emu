@@ -29,12 +29,12 @@ void Jit64::lXXx(UGeckoInstruction inst)
 	int a = inst.RA, b = inst.RB, d = inst.RD;
 
 	// Skip disabled JIT instructions
-	if (Core::g_CoreStartupParameter.bJITLoadStorelbzxOff && (inst.OPCD == 31) && (inst.SUBOP10 == 87))
-	{ Default(inst); return; }
-	if (Core::g_CoreStartupParameter.bJITLoadStorelXzOff && ((inst.OPCD == 34) || (inst.OPCD == 40) || (inst.OPCD == 32)))
-	{ Default(inst); return; }
-	if (Core::g_CoreStartupParameter.bJITLoadStorelwzOff && (inst.OPCD == 32))
-	{ Default(inst); return; }
+	if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bJITLoadStorelbzx && (inst.OPCD == 31) && (inst.SUBOP10 == 87))
+		{ Default(inst); return; }
+	if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bJITLoadStorelXz && ((inst.OPCD == 34) || (inst.OPCD == 40) || (inst.OPCD == 32)))
+		{ Default(inst); return; }
+	if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bJITLoadStorelwz && (inst.OPCD == 32))
+		{ Default(inst); return; }
 
 	// Determine memory access size and sign extend
 	int accessSize = 0;
@@ -106,7 +106,7 @@ void Jit64::lXXx(UGeckoInstruction inst)
 	// IMHO those Idles should always be skipped and replaced by a more controllable "native" Idle methode
 	// ... maybe the throttle one already do that :p
 	// if (CommandProcessor::AllowIdleSkipping() && PixelEngine::AllowIdleSkipping())
-	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bSkipIdle &&
+	if (jo.skipIdle &&
 		inst.OPCD == 32 && 
 		(inst.hex & 0xFFFF0000) == 0x800D0000 &&
 		(Memory::ReadUnchecked_U32(js.compilerPC + 4) == 0x28000000 ||

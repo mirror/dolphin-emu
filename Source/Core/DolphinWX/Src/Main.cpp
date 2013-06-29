@@ -383,7 +383,7 @@ void DolphinApp::AfterInit(wxTimerEvent& WXUNUSED(event))
 	// or if no default ISO exists, start the last loaded ISO
 	else if (main_frame->g_pCodeWindow)
 	{
-		if (main_frame->g_pCodeWindow->AutomaticStart())
+		if (SConfig::GetInstance().m_LocalCoreStartupParameter.bAutomaticStart)
 		{
 			main_frame->BootGame("");
 		}
@@ -561,11 +561,6 @@ void Host_UpdateMainFrame()
 {
 	wxCommandEvent event(wxEVT_HOST_COMMAND, IDM_UPDATEGUI);
 	main_frame->GetEventHandler()->AddPendingEvent(event);
-
-	if (main_frame->g_pCodeWindow)
-	{
-		main_frame->g_pCodeWindow->GetEventHandler()->AddPendingEvent(event);
-	}
 }
 
 void Host_UpdateTitle(const char* title)
@@ -619,19 +614,13 @@ void Host_RequestRenderWindowSize(int width, int height)
 
 void Host_SetStartupDebuggingParameters()
 {
-	SCoreStartupParameter& StartUp = SConfig::GetInstance().m_LocalCoreStartupParameter;
-	if (main_frame->g_pCodeWindow)
+	SCoreStartupParameter& boot = SConfig::GetInstance().m_LocalCoreStartupParameter;
+	if (!main_frame->g_pCodeWindow)
 	{
-		StartUp.bBootToPause = main_frame->g_pCodeWindow->BootToPause();
-		StartUp.bAutomaticStart = main_frame->g_pCodeWindow->AutomaticStart();
-		StartUp.bJITNoBlockCache = main_frame->g_pCodeWindow->JITNoBlockCache();
-		StartUp.bJITBlockLinking = main_frame->g_pCodeWindow->JITBlockLinking();
+		boot.bEnableDebugging = false;
+		boot.bBootToPause = false;
+		boot.bAutomaticStart = false;
 	}
-	else
-	{
-		StartUp.bBootToPause = false;
-	}
-	StartUp.bEnableDebugging = main_frame->g_pCodeWindow ? true : false; // RUNNING_DEBUG
 }
 
 void Host_UpdateStatusBar(const char* _pText, int Field)

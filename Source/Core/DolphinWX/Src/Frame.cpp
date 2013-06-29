@@ -231,7 +231,7 @@ EVT_AUINOTEBOOK_PAGE_CHANGED(wxID_ANY, CFrame::OnNotebookPageChanged)
 EVT_AUINOTEBOOK_TAB_RIGHT_UP(wxID_ANY, CFrame::OnTab)
 
 // Post events to child panels
-EVT_MENU_RANGE(IDM_INTERPRETER, IDM_ADDRBOX, CFrame::PostEvent)
+EVT_MENU_RANGE(IDM_DEBUG_BEGIN, IDM_DEBUG_END, CFrame::PostEvent)
 EVT_TEXT(IDM_ADDRBOX, CFrame::PostEvent)
 
 END_EVENT_TABLE()
@@ -478,8 +478,8 @@ void CFrame::OnClose(wxCloseEvent& event)
 void CFrame::PostEvent(wxCommandEvent& event)
 {
 	if (g_pCodeWindow &&
-		event.GetId() >= IDM_INTERPRETER &&
-		event.GetId() <= IDM_ADDRBOX)
+		event.GetId() >= IDM_DEBUG_BEGIN &&
+		event.GetId() <= IDM_DEBUG_END)
 	{
 		event.StopPropagation();
 		g_pCodeWindow->GetEventHandler()->AddPendingEvent(event);

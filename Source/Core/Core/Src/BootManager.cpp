@@ -44,7 +44,7 @@ struct ConfigCache
 {
 	bool valid, bCPUThread, bSkipIdle, bEnableFPRF, bMMU, bDCBZOFF,
 		bVBeamSpeedHack, bSyncGPU, bFastDiscSpeed, bMergeBlocks, bDSPHLE, bHLE_BS2;
-	int iTLBHack, iCPUCore;
+	int iTLBHack, iCompiler;
 	std::string strBackend;
 };
 static ConfigCache config_cache;
@@ -79,7 +79,7 @@ bool BootCore(const std::string& _rFilename)
 		config_cache.valid = true;
 		config_cache.bCPUThread = StartUp.bCPUThread;
 		config_cache.bSkipIdle = StartUp.bSkipIdle;
-		config_cache.iCPUCore = StartUp.iCPUCore;
+		config_cache.iCompiler = StartUp.iCompiler;
 		config_cache.bEnableFPRF = StartUp.bEnableFPRF;
 		config_cache.bMMU = StartUp.bMMU;
 		config_cache.bDCBZOFF = StartUp.bDCBZOFF;
@@ -105,7 +105,8 @@ bool BootCore(const std::string& _rFilename)
 		game_ini.Get("Core", "BlockMerging",		&StartUp.bMergeBlocks, StartUp.bMergeBlocks);
 		game_ini.Get("Core", "DSPHLE",				&StartUp.bDSPHLE, StartUp.bDSPHLE);
 		game_ini.Get("Core", "GFXBackend", &StartUp.m_strVideoBackend, StartUp.m_strVideoBackend.c_str());
-		game_ini.Get("Core", "CPUCore",				&StartUp.iCPUCore, StartUp.iCPUCore);
+		game_ini.Get("Core", "Interpreter",			&StartUp.bInterpreter, StartUp.bInterpreter);
+		game_ini.Get("Core", "JIT",					&StartUp.iCompiler, StartUp.iCompiler);
 		game_ini.Get("Core", "HLE_BS2",				&StartUp.bHLE_BS2, StartUp.bHLE_BS2);
 		VideoBackend::ActivateBackend(StartUp.m_strVideoBackend);
 
@@ -125,7 +126,7 @@ bool BootCore(const std::string& _rFilename)
 		StartUp.bDSPHLE = Movie::IsDSPHLE();
 		StartUp.bProgressive = Movie::IsProgressive();
 		StartUp.bFastDiscSpeed = Movie::IsFastDiscSpeed();
-		StartUp.iCPUCore = Movie::GetCPUMode();
+		StartUp.iCompiler = Movie::GetCPUMode();
 		StartUp.bSyncGPU = Movie::IsSyncGPU();
 		if (Movie::IsUsingMemcard() && Movie::IsStartingFromClearSave() && !StartUp.bWii)
 		{
@@ -157,7 +158,7 @@ void Stop()
 		config_cache.valid = false;
 		StartUp.bCPUThread = config_cache.bCPUThread;
 		StartUp.bSkipIdle = config_cache.bSkipIdle;
-		StartUp.iCPUCore = config_cache.iCPUCore;
+		StartUp.iCompiler = config_cache.iCompiler;
 		StartUp.bEnableFPRF = config_cache.bEnableFPRF;
 		StartUp.bMMU = config_cache.bMMU;
 		StartUp.bDCBZOFF = config_cache.bDCBZOFF;

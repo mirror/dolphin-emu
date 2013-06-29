@@ -4,8 +4,10 @@
 
 // Include
 #include "Common.h"
+#include "CommonPaths.h"
 
 #include <wx/wx.h>
+#include <wx/mimetype.h>
 
 #include "Host.h"
 
@@ -27,6 +29,7 @@
 #include "HW/CPU.h"
 #include "PowerPC/PowerPC.h"
 #include "PowerPC/JitInterface.h"
+#include "PowerPC/JitCommon/JitBase.h"
 #include "Debugger/PPCDebugInterface.h"
 #include "Debugger/Debugger_SymbolMap.h"
 #include "PowerPC/PPCAnalyst.h"
@@ -47,19 +50,23 @@ extern "C"  // Bitmaps
 // Main
 
 BEGIN_EVENT_TABLE(CCodeWindow, wxPanel)
+	// cpu
+	EVT_MENU_RANGE(IDM_CPU_BEGIN, IDM_CPU_END, CCodeWindow::OnMenuCPU)
+	EVT_MENU_RANGE(IDM_CPU_REFRESH_BEGIN, IDM_CPU_REFRESH_END, CCodeWindow::OnMenuCPURefresh)
+	EVT_MENU_RANGE(IDM_CPU_CHANGE_BEGIN, IDM_CPU_CHANGE_END, CCodeWindow::OnMenuCPUChange)
 
-	// Menu bar
-	EVT_MENU_RANGE(IDM_INTERPRETER, IDM_JITSROFF, CCodeWindow::OnCPUMode)
-	EVT_MENU(IDM_FONTPICKER, CCodeWindow::OnChangeFont)
-	EVT_MENU_RANGE(IDM_CLEARCODECACHE, IDM_SEARCHINSTRUCTION, CCodeWindow::OnJitMenu)
+	// symbols
 	EVT_MENU_RANGE(IDM_CLEARSYMBOLS, IDM_PATCHHLEFUNCTIONS, CCodeWindow::OnSymbolsMenu)
-	EVT_MENU_RANGE(IDM_PROFILEBLOCKS, IDM_WRITEPROFILE, CCodeWindow::OnProfilerMenu)
 
-	// Toolbar
-	EVT_MENU_RANGE(IDM_STEP, IDM_GOTOPC, CCodeWindow::OnCodeStep)
+	// profiler
+	EVT_MENU_RANGE(IDM_PROFILE_BEGIN, IDM_PROFILE_END, CCodeWindow::OnProfilerMenu)
+
+	// toolbar
+	EVT_MENU_RANGE(IDT_DEBUG_BEGIN, IDT_DEBUG_END, CCodeWindow::OnCodeStep)
 	EVT_TEXT(IDM_ADDRBOX, CCodeWindow::OnAddrBoxChange)
 
-	// Other
+	// other
+	EVT_MENU(IDM_FONTPICKER, CCodeWindow::OnChangeFont)
 	EVT_LISTBOX(ID_SYMBOLLIST,			CCodeWindow::OnSymbolListChange)
 	EVT_LISTBOX(ID_CALLSTACKLIST,		CCodeWindow::OnCallstackListChange)
 	EVT_LISTBOX(ID_CALLERSLIST,			CCodeWindow::OnCallersListChange)
@@ -132,7 +139,7 @@ void CCodeWindow::OnHostMessage(wxCommandEvent& event)
 
 		case IDM_UPDATEDISASMDIALOG:
 			Update();
-			if (codeview) codeview->Center(PC);
+			//if (codeview) codeview->Center(PC);
 			if (m_RegisterWindow) m_RegisterWindow->NotifyUpdate();
 			break;
 
@@ -196,9 +203,7 @@ void CCodeWindow::OnCodeStep(wxCommandEvent& event)
 		}
 	}
 
-	UpdateButtonStates();
-	// Update all toolbars in the aui manager
-	Parent->UpdateGUI();
+	UpdateGUI();
 }
 
 void CCodeWindow::JumpToAddress(u32 _Address)
@@ -300,9 +305,7 @@ void CCodeWindow::StepOver()
 			SingleStep();
 		}
 
-		UpdateButtonStates();
-		// Update all toolbars in the aui manager
-		Parent->UpdateGUI();
+		UpdateGUI();
 	}
 }
 
@@ -369,64 +372,57 @@ void CCodeWindow::UpdateCallstack()
 		callstack->Append(StrToWxStr("invalid callstack"));
 }
 
-// Create CPU Mode menus
-void CCodeWindow::CreateMenu(const SCoreStartupParameter& _LocalCoreStartupParameter, wxMenuBar *pMenuBar)
+void CCodeWindow::CreateMenu(wxMenuBar *pMenuBar)
 {
-	// CPU Mode
+	// CPU
 	wxMenu* pCoreMenu = new wxMenu;
 
-	wxMenuItem* interpreter = pCoreMenu->Append(IDM_INTERPRETER, _("&Interpreter core"), 
-		StrToWxStr("This is necessary to get break points"
-		" and stepping to work as explained in the Developer Documentation. But it can be very"
-		" slow, perhaps slower than 1 fps."), 
-		wxITEM_CHECK);
-	interpreter->Check(_LocalCoreStartupParameter.iCPUCore == 0);
-	pCoreMenu->AppendSeparator();
-
-	pCoreMenu->Append(IDM_JITBLOCKLINKING, _("&JIT Block Linking off"),
-		_("Provide safer execution by not linking the JIT blocks."), 
-		wxITEM_CHECK);
-
-	pCoreMenu->Append(IDM_JITNOBLOCKCACHE, _("&Disable JIT Cache"),
-		_("Avoid any involuntary JIT cache clearing, this may prevent Zelda TP from crashing.\n[This option must be selected before a game is started.]"), 
-		wxITEM_CHECK);
-	pCoreMenu->Append(IDM_CLEARCODECACHE, _("&Clear JIT cache"));
+	wxMenuItem* interpreter = pCoreMenu->AppendCheckItem(IDM_INTERPRETER, _("&Interpreter"));
 
 	pCoreMenu->AppendSeparator();
-	pCoreMenu->Append(IDM_LOGINSTRUCTIONS, _("&Log JIT instruction coverage"));
+	pCoreMenu->AppendRadioItem(IDM_COMPILER_DEFAULT, _("&Default"));
+	pCoreMenu->AppendRadioItem(IDM_COMPILER_IL, _("I&ntermediate language"));
+	pCoreMenu->AppendCheckItem(IDM_SKIP_IDLE, _("&Skip idle"));
+	pCoreMenu->AppendCheckItem(IDM_JIT_BLOCK_LINK, _("&Block link"));
+	pCoreMenu->Append(IDM_JIT_CLEAR_CACHE, _("&Reload code"));
+	pCoreMenu->Append(IDM_JIT_LARGE_CACHE, _("&Large cache")
+		, _("Store all recompiled code simultaneously"), wxITEM_CHECK);
+
+	wxMenu *disable = new wxMenu;
+
+	disable->AppendCheckItem(IDM_JIT, _("&All"), _("Disable recompilation"));
+
+	disable->AppendSeparator();
+	disable->AppendCheckItem(IDM_JIT_BRANCH, _("&Branch"), wxEmptyString);
+
+	disable->AppendSeparator();
+	disable->AppendCheckItem(IDM_JIT_LS, _("&LoadStore"));
+	disable->AppendCheckItem(IDM_JIT_LS_LBZX, _("   &lbzx"));
+	disable->AppendCheckItem(IDM_JIT_LS_LXZ, _("   l&Xz"));
+	disable->AppendCheckItem(IDM_JIT_LS_LWZ, _("   l&wz"));
+	disable->AppendCheckItem(IDM_JIT_LS_F, _("   &Floating"));
+	disable->AppendCheckItem(IDM_JIT_LS_P, _("   &Paired"));
+
+	disable->AppendSeparator();
+	disable->AppendCheckItem(IDM_JIT_I, _("&Integer"));
+	disable->AppendCheckItem(IDM_JIT_FP, _("&FloatingPoint"));
+	disable->AppendCheckItem(IDM_JIT_P, _("&Paired"));
+	disable->AppendCheckItem(IDM_JIT_SR, _("&SystemRegisters"));
+
+	pCoreMenu->AppendSubMenu(disable, _("Disable"));
+
+	pCoreMenu->AppendSeparator();
+	pCoreMenu->Append(IDM_LOGINSTRUCTIONS, _("&Log instruction coverage"));
 	pCoreMenu->Append(IDM_SEARCHINSTRUCTION, _("&Search for an op"));
 
-	pCoreMenu->AppendSeparator();
-	pCoreMenu->Append(IDM_JITOFF, _("&JIT off (JIT core)"),
-		_("Turn off all JIT functions, but still use the JIT core from Jit.cpp"),
-		wxITEM_CHECK);
-	pCoreMenu->Append(IDM_JITLSOFF, _("&JIT LoadStore off"),
-			wxEmptyString, wxITEM_CHECK);
-	pCoreMenu->Append(IDM_JITLSLBZXOFF, _("    &JIT LoadStore lbzx off"),
-			wxEmptyString, wxITEM_CHECK);
-	pCoreMenu->Append(IDM_JITLSLXZOFF, _("    &JIT LoadStore lXz off"),
-			wxEmptyString, wxITEM_CHECK);
-	pCoreMenu->Append(IDM_JITLSLWZOFF, _("&JIT LoadStore lwz off"),
-			wxEmptyString, wxITEM_CHECK);
-	pCoreMenu->Append(IDM_JITLSFOFF, _("&JIT LoadStore Floating off"),
-			wxEmptyString, wxITEM_CHECK);
-	pCoreMenu->Append(IDM_JITLSPOFF, _("&JIT LoadStore Paired off"),
-			wxEmptyString, wxITEM_CHECK);
-	pCoreMenu->Append(IDM_JITFPOFF, _("&JIT FloatingPoint off"),
-			wxEmptyString, wxITEM_CHECK);
-	pCoreMenu->Append(IDM_JITIOFF, _("&JIT Integer off"),
-			wxEmptyString, wxITEM_CHECK);
-	pCoreMenu->Append(IDM_JITPOFF, _("&JIT Paired off"),
-			wxEmptyString, wxITEM_CHECK);
-	pCoreMenu->Append(IDM_JITSROFF, _("&JIT SystemRegisters off"),
-			wxEmptyString, wxITEM_CHECK);
+	pMenuBar->Append(pCoreMenu, _("&CPU"));
 
-	pMenuBar->Append(pCoreMenu, _("&JIT"));
-
-
-	// Debug Menu
+	// Debug
 	wxMenu* pDebugMenu = new wxMenu;
 
+	pDebugMenu->AppendCheckItem(IDM_DEBUGGING, _("&Enable"));
+
+	pDebugMenu->AppendSeparator();
 	pDebugMenu->Append(IDM_STEP, _("Step &Into\tF11"));
 	pDebugMenu->Append(IDM_STEPOVER, _("Step &Over\tF10"));
 	pDebugMenu->Append(IDM_TOGGLE_BREAKPOINT, _("Toggle &Breakpoint\tF9"));
@@ -440,133 +436,153 @@ void CCodeWindow::CreateMenu(const SCoreStartupParameter& _LocalCoreStartupParam
 void CCodeWindow::CreateMenuOptions(wxMenu* pMenu)
 {
 	wxMenuItem* boottopause = pMenu->Append(IDM_BOOTTOPAUSE, _("Boot to pause"),
-		_("Start the game directly instead of booting to pause"), 
+		_("Start the game directly instead of booting to pause"),
 		wxITEM_CHECK);
-	boottopause->Check(bBootToPause);
 
-	wxMenuItem* automaticstart = pMenu->Append(IDM_AUTOMATICSTART, _("&Automatic start"), 
+	wxMenuItem* automaticstart = pMenu->Append(IDM_AUTOMATICSTART, _("&Automatic start"),
 		StrToWxStr(
 		"Automatically load the Default ISO when Dolphin starts, or the last game you loaded,"
 		" if you have not given it an elf file with the --elf command line. [This can be"
 		" convenient if you are bug-testing with a certain game and want to rebuild"
 		" and retry it several times, either with changes to Dolphin or if you are"
-		" developing a homebrew game.]"), 
+		" developing a homebrew game.]"),
 		wxITEM_CHECK);
-	automaticstart->Check(bAutomaticStart);
 
 	pMenu->Append(IDM_FONTPICKER, _("&Font..."), wxEmptyString, wxITEM_NORMAL);
 }
 
-// CPU Mode and JIT Menu
-void CCodeWindow::OnCPUMode(wxCommandEvent& event)
+void CCodeWindow::OnMenuCPU(wxCommandEvent& event)
 {
+	SCoreStartupParameter &boot = SConfig::GetInstance().m_LocalCoreStartupParameter;
+
 	switch (event.GetId())
 	{
-		case IDM_INTERPRETER:
-			PowerPC::SetMode(UseInterpreter() ? PowerPC::MODE_INTERPRETER : PowerPC::MODE_JIT);
-			break;
-		case IDM_BOOTTOPAUSE:
-			bBootToPause = !bBootToPause;
-			return;
-		case IDM_AUTOMATICSTART:
-			bAutomaticStart = !bAutomaticStart;
-			return;
-		case IDM_JITOFF:
-			Core::g_CoreStartupParameter.bJITOff = event.IsChecked();
-			break;
-		case IDM_JITLSOFF:
-			Core::g_CoreStartupParameter.bJITLoadStoreOff = event.IsChecked();
-			break;
-		case IDM_JITLSLXZOFF:
-			Core::g_CoreStartupParameter.bJITLoadStorelXzOff = event.IsChecked();
-			break;
-		case IDM_JITLSLWZOFF:
-			Core::g_CoreStartupParameter.bJITLoadStorelwzOff = event.IsChecked();
-			break;
-		case IDM_JITLSLBZXOFF:
-			Core::g_CoreStartupParameter.bJITLoadStorelbzxOff = event.IsChecked();
-			break;
-		case IDM_JITLSFOFF:
-			Core::g_CoreStartupParameter.bJITLoadStoreFloatingOff = event.IsChecked();
-			break;
-		case IDM_JITLSPOFF:
-			Core::g_CoreStartupParameter.bJITLoadStorePairedOff = event.IsChecked();
-			break;
-		case IDM_JITFPOFF:
-			Core::g_CoreStartupParameter.bJITFloatingPointOff = event.IsChecked();
-			break;
-		case IDM_JITIOFF:
-			Core::g_CoreStartupParameter.bJITIntegerOff = event.IsChecked();
-			break;
-		case IDM_JITPOFF:
-			Core::g_CoreStartupParameter.bJITPairedOff = event.IsChecked();
-			break;
-		case IDM_JITSROFF:
-			Core::g_CoreStartupParameter.bJITSystemRegistersOff = event.IsChecked();
-			break;
-	}
+	case IDM_BOOTTOPAUSE:
+		boot.bBootToPause = event.IsChecked();
+		return;
 
-	// Clear the JIT cache to enable these changes
-	JitInterface::ClearCache();
-	
-	// Update
-	UpdateButtonStates();
-}
+	case IDM_AUTOMATICSTART:
+		boot.bAutomaticStart = event.IsChecked();
+		return;
 
-void CCodeWindow::OnJitMenu(wxCommandEvent& event)
-{
-	switch (event.GetId())
+	case IDM_JIT_CLEAR_CACHE:
+		JitInterface::ClearSafe();
+		break;
+
+	case IDM_LOGINSTRUCTIONS:
+		PPCTables::LogCompiledInstructions();
+		break;
+
+	case IDM_SEARCHINSTRUCTION:
 	{
-		case IDM_LOGINSTRUCTIONS:
-			PPCTables::LogCompiledInstructions();
-			break;
-
-		case IDM_CLEARCODECACHE:
-			JitInterface::ClearCache();
-			break;
-
-		case IDM_SEARCHINSTRUCTION:
+		wxString str;
+		str = wxGetTextFromUser(_T(""), wxT("Op?"), wxEmptyString, this);
+		for (u32 addr = 0x80000000; addr < 0x80100000; addr += 4)
 		{
-			wxString str;
-			str = wxGetTextFromUser(_T(""), wxT("Op?"), wxEmptyString, this);
-			for (u32 addr = 0x80000000; addr < 0x80100000; addr += 4)
+			const char *name = PPCTables::GetInstructionName(Memory::ReadUnchecked_U32(addr));
+			auto const wx_name = WxStrToStr(str);
+			if (name && (wx_name == name))
 			{
-				const char *name = PPCTables::GetInstructionName(Memory::ReadUnchecked_U32(addr));
-				auto const wx_name = WxStrToStr(str);
-				if (name && (wx_name == name))
-				{
-					NOTICE_LOG(POWERPC, "Found %s at %08x", wx_name.c_str(), addr);
-				}
+				NOTICE_LOG(POWERPC, "Found %s at %08x", wx_name.c_str(), addr);
 			}
-			break;
 		}
+		break;
 	}
+	}
+
+	UpdateGUI();
 }
 
-// Shortcuts
-bool CCodeWindow::UseInterpreter()
+void CCodeWindow::OnMenuCPURefresh(wxCommandEvent& event)
 {
-	return GetMenuBar()->IsChecked(IDM_INTERPRETER);
+	SCoreStartupParameter &boot = SConfig::GetInstance().m_LocalCoreStartupParameter;
+
+	switch (event.GetId())
+	{
+	case IDM_JIT:
+		boot.bJIT = !event.IsChecked();
+		break;
+
+	case IDM_JIT_BRANCH:
+		boot.bJITBranch = !event.IsChecked();
+		break;
+
+	case IDM_JIT_LS:
+		boot.bJITLoadStore = !event.IsChecked();
+		break;
+	case IDM_JIT_LS_LXZ:
+		boot.bJITLoadStorelXz = !event.IsChecked();
+		break;
+	case IDM_JIT_LS_LWZ:
+		boot.bJITLoadStorelwz = !event.IsChecked();
+		break;
+	case IDM_JIT_LS_LBZX:
+		boot.bJITLoadStorelbzx = !event.IsChecked();
+		break;
+	case IDM_JIT_LS_F:
+		boot.bJITLoadStoreFloating = !event.IsChecked();
+		break;
+	case IDM_JIT_LS_P:
+		boot.bJITLoadStorePaired = !event.IsChecked();
+		break;
+
+	case IDM_JIT_I:
+		boot.bJITInteger = !event.IsChecked();
+		break;
+	case IDM_JIT_FP:
+		boot.bJITFloatingPoint = !event.IsChecked();
+		break;
+	case IDM_JIT_P:
+		boot.bJITPaired = !event.IsChecked();
+		break;
+	case IDM_JIT_SR:
+		boot.bJITSystemRegisters = !event.IsChecked();
+		break;
+	}
+
+	JitInterface::ClearSafe();
+
+	UpdateGUI();
 }
 
-bool CCodeWindow::BootToPause()
+void CCodeWindow::OnMenuCPUChange(wxCommandEvent& event)
 {
-	return GetMenuBar()->IsChecked(IDM_BOOTTOPAUSE);
-}
+	SCoreStartupParameter &boot = SConfig::GetInstance().m_LocalCoreStartupParameter;
 
-bool CCodeWindow::AutomaticStart()
-{
-	return GetMenuBar()->IsChecked(IDM_AUTOMATICSTART);
-}
+	switch (event.GetId())
+	{
+	case IDM_DEBUGGING:
+		boot.bEnableDebugging = event.IsChecked();
+		break;
 
-bool CCodeWindow::JITNoBlockCache()
-{
-	return GetMenuBar()->IsChecked(IDM_JITNOBLOCKCACHE);
-}
+	case IDM_INTERPRETER:
+		boot.bInterpreter = event.IsChecked();
+		break;
 
-bool CCodeWindow::JITBlockLinking()
-{
-	return GetMenuBar()->IsChecked(IDM_JITBLOCKLINKING);
+	case IDM_COMPILER_DEFAULT:
+		boot.iCompiler = 0;
+		break;
+
+	case IDM_COMPILER_IL:
+		boot.iCompiler = 1;
+		break;
+
+	case IDM_SKIP_IDLE:
+		boot.bSkipIdle = event.IsChecked();
+		break;
+
+	case IDM_JIT_BLOCK_LINK:
+		boot.bJITBlockLink = event.IsChecked();
+		break;
+
+	case IDM_JIT_LARGE_CACHE:
+		boot.bJITLargeCache = event.IsChecked();
+		break;
+	}
+
+	PowerPC::Change();
+
+	UpdateGUI();
 }
 
 // Toolbar
@@ -609,15 +625,17 @@ void CCodeWindow::Update()
 
 	codeview->Refresh();
 	UpdateCallstack();
-	UpdateButtonStates();
+	Parent->UpdateGUI();
 
 	// Do not automatically show the current PC position when a breakpoint is hit or
 	// when we pause since this can be called at other times too.
 	//codeview->Center(PC);
 }
 
-void CCodeWindow::UpdateButtonStates()
+void CCodeWindow::UpdateGUI()
 {
+	if (!codeview) return;
+
 	bool Initialized = (Core::GetState() != Core::CORE_UNINITIALIZED);
 	bool Pause = (Core::GetState() == Core::CORE_PAUSE);
 	bool Stepping = CCPU::IsStepping();
@@ -651,26 +669,14 @@ void CCodeWindow::UpdateButtonStates()
 
 	// Menu bar
 	// ------------------
-	GetMenuBar()->Enable(IDM_INTERPRETER, Pause); // CPU Mode
-
-	GetMenuBar()->Enable(IDM_JITNOBLOCKCACHE, !Initialized);
-
-	GetMenuBar()->Enable(IDM_JITOFF, Pause);
-	GetMenuBar()->Enable(IDM_JITLSOFF, Pause);
-	GetMenuBar()->Enable(IDM_JITLSLXZOFF, Pause);
-	GetMenuBar()->Enable(IDM_JITLSLWZOFF, Pause);
-	GetMenuBar()->Enable(IDM_JITLSLBZXOFF, Pause);
-	GetMenuBar()->Enable(IDM_JITLSFOFF, Pause);
-	GetMenuBar()->Enable(IDM_JITLSPOFF, Pause);
-	GetMenuBar()->Enable(IDM_JITFPOFF, Pause);
-	GetMenuBar()->Enable(IDM_JITIOFF, Pause);
-	GetMenuBar()->Enable(IDM_JITPOFF, Pause);
-	GetMenuBar()->Enable(IDM_JITSROFF, Pause);
-
-	GetMenuBar()->Enable(IDM_CLEARCODECACHE, Pause); // JIT Menu
+	// JIT
 	GetMenuBar()->Enable(IDM_SEARCHINSTRUCTION, Initialized);
+	GetMenuBar()->Enable(IDM_JIT_CLEAR_CACHE, Initialized);
+	GetMenuBar()->Enable(IDM_COMPILER_DEFAULT, !Initialized);
+	GetMenuBar()->Enable(IDM_COMPILER_IL, !Initialized);
 
-	GetMenuBar()->Enable(IDM_CLEARSYMBOLS, Initialized); // Symbols menu
+	// Symbols
+	GetMenuBar()->Enable(IDM_CLEARSYMBOLS, Initialized);
 	GetMenuBar()->Enable(IDM_SCANFUNCTIONS, Initialized);
 	GetMenuBar()->Enable(IDM_LOADMAPFILE, Initialized);
 	GetMenuBar()->Enable(IDM_SAVEMAPFILE, Initialized);
@@ -679,6 +685,32 @@ void CCodeWindow::UpdateButtonStates()
 	GetMenuBar()->Enable(IDM_RENAME_SYMBOLS, Initialized);
 	GetMenuBar()->Enable(IDM_USESIGNATUREFILE, Initialized);
 	GetMenuBar()->Enable(IDM_PATCHHLEFUNCTIONS, Initialized);
+
+	SCoreStartupParameter boot = SConfig::GetInstance().m_LocalCoreStartupParameter;
+
+	GetMenuBar()->Check(IDM_AUTOMATICSTART, boot.bAutomaticStart);
+	GetMenuBar()->Check(IDM_BOOTTOPAUSE, boot.bBootToPause);
+	GetMenuBar()->Check(IDM_DEBUGGING, boot.bEnableDebugging);
+
+	GetMenuBar()->Check(IDM_INTERPRETER, boot.bInterpreter);
+
+	GetMenuBar()->Check(IDM_COMPILER_DEFAULT, boot.iCompiler == 0);
+	GetMenuBar()->Check(IDM_COMPILER_IL, boot.iCompiler == 1);
+	GetMenuBar()->Check(IDM_SKIP_IDLE, boot.bSkipIdle);
+	GetMenuBar()->Check(IDM_JIT_BLOCK_LINK, boot.bJITBlockLink);
+
+	GetMenuBar()->Check(IDM_JIT_BRANCH, !boot.bJITBranch);
+	GetMenuBar()->Check(IDM_JIT, !boot.bJIT);
+	GetMenuBar()->Check(IDM_JIT_LS, !boot.bJITLoadStore);
+	GetMenuBar()->Check(IDM_JIT_LS_LXZ, !boot.bJITLoadStorelXz);
+	GetMenuBar()->Check(IDM_JIT_LS_LWZ, !boot.bJITLoadStorelwz);
+	GetMenuBar()->Check(IDM_JIT_LS_LBZX, !boot.bJITLoadStorelbzx);
+	GetMenuBar()->Check(IDM_JIT_LS_F, !boot.bJITLoadStoreFloating);
+	GetMenuBar()->Check(IDM_JIT_LS_P, !boot.bJITLoadStorePaired);
+	GetMenuBar()->Check(IDM_JIT_I, !boot.bJITInteger);
+	GetMenuBar()->Check(IDM_JIT_FP, !boot.bJITFloatingPoint);
+	GetMenuBar()->Check(IDM_JIT_P, !boot.bJITPaired);
+	GetMenuBar()->Check(IDM_JIT_SR, !boot.bJITSystemRegisters);
 
 	// Update Fonts
 	callstack->SetFont(DebuggerFont);

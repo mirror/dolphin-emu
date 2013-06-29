@@ -39,6 +39,7 @@ public:
 	
 	void Initialize(PPCSymbolDB *func_db, const char *prefix = "");
 	void Apply(PPCSymbolDB *func_db);
+	bool LoadApply(const char *filename, PPCSymbolDB *symbol_db);
 
 	static u32 ComputeCodeChecksum(u32 offsetStart, u32 offsetEnd);
 };

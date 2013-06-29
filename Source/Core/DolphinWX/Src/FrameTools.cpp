@@ -287,7 +287,7 @@ void CFrame::CreateMenu()
 
 	if (g_pCodeWindow)
 	{
-		g_pCodeWindow->CreateMenu(SConfig::GetInstance().m_LocalCoreStartupParameter, m_MenuBar);
+		g_pCodeWindow->CreateMenu(m_MenuBar);
 	}
 
 	// Help menu
@@ -1671,6 +1671,9 @@ void CFrame::UpdateGUI()
 		// Reset game loading flag
 		m_bGameLoading = false;
 	}
+
+	if (g_pCodeWindow)
+		g_pCodeWindow->UpdateGUI();
 
 	// Refresh toolbar
 	if (m_ToolBar)

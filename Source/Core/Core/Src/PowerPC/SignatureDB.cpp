@@ -124,6 +124,15 @@ void SignatureDB::Apply(PPCSymbolDB *symbol_db)
 	symbol_db->Index();
 }
 
+bool SignatureDB::LoadApply(const char *filename, PPCSymbolDB *symbol_db)
+{
+	if (!Load(filename))
+		return false;
+
+	Apply(symbol_db);
+	Clear();
+}
+
 void SignatureDB::Initialize(PPCSymbolDB *symbol_db, const char *prefix)
 {
 	std::string prefix_str(prefix);

@@ -28,6 +28,7 @@
 #include "../JitCommon/JitBackpatch.h"
 #include "../JitCommon/JitBase.h"
 #include "JitAsm.h"
+#include "ConfigManager.h"
 
 // Use these to control the instruction selection
 // #define INSTRUCTION_START Default(inst); return;
@@ -35,9 +36,9 @@
 #define INSTRUCTION_START
 
 #define JITDISABLE(type) \
-	if (Core::g_CoreStartupParameter.bJITOff || \
-	Core::g_CoreStartupParameter.bJIT##type##Off) \
-	{Default(inst); return;}
+	if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bJIT || \
+		!SConfig::GetInstance().m_LocalCoreStartupParameter.bJIT##type) \
+		{Default(inst); return;}
 
 #define MEMCHECK_START \
 	FixupBranch memException; \

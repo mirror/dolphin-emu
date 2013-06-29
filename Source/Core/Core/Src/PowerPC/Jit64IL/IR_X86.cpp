@@ -1356,7 +1356,7 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, bool UseProfile, bool Mak
 				mem_mask |= Memory::ADDR_MASK_MEM1;
 			}
 #ifdef ENABLE_MEM_CHECK
-			if (Core::g_CoreStartupParameter.bEnableDebugging)
+			if (Jit->jo.debug)
 			{
 				mem_mask |= Memory::EXRAM_MASK;
 			}

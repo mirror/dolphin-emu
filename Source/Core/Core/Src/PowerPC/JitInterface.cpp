@@ -38,28 +38,28 @@ namespace JitInterface
 		if (jit && p.GetMode() == PointerWrap::MODE_READ)
 			jit->GetBlockCache()->ClearSafe();
 	}
-	CPUCoreBase *InitJitCore(int core)
+	CPUCoreBase *InitJitCore()
 	{
 		bFakeVMEM = SConfig::GetInstance().m_LocalCoreStartupParameter.iTLBHack == 1;
 		bMMU = SConfig::GetInstance().m_LocalCoreStartupParameter.bMMU;
 	
 		CPUCoreBase *ptr = NULL;
-		switch(core)
+		switch(SConfig::GetInstance().m_LocalCoreStartupParameter.iCompiler)
 		{
 			#ifndef _M_GENERIC
-			case 1:
+			case 0:
 			{
 				ptr = new Jit64();
 				break;
 			}
-			case 2:
+			case 1:
 			{
 				ptr = new JitIL();
 				break;
 			}
 			#endif
 			#ifdef _M_ARM
-			case 3:
+			case 2:
 			{
 				ptr = new JitArm();
 				break;
@@ -67,7 +67,7 @@ namespace JitInterface
 			#endif
 			default:
 			{
-				PanicAlert("Unrecognizable cpu_core: %d", core);
+				PanicAlert("Unrecognised compiler: %d", SConfig::GetInstance().m_LocalCoreStartupParameter.iCompiler);
 				jit = NULL;
 				return NULL;
 				break;
@@ -77,24 +77,24 @@ namespace JitInterface
 		jit->Init();
 		return ptr;
 	}
-	void InitTables(int core)
+	void InitTables()
 	{
-		switch(core)
+		switch(SConfig::GetInstance().m_LocalCoreStartupParameter.iCompiler)
 		{
 			#ifndef _M_GENERIC
-			case 1:
+			case 0:
 			{
 				Jit64Tables::InitTables();
 				break;
 			}
-			case 2:
+			case 1:
 			{
 				JitILTables::InitTables();
 				break;
 			}
 			#endif
 			#ifdef _M_ARM
-			case 3:
+			case 2:
 			{
 				JitArmTables::InitTables();
 				break;
@@ -102,7 +102,7 @@ namespace JitInterface
 			#endif
 			default:
 			{
-				PanicAlert("Unrecognizable cpu_core: %d", core);
+				PanicAlert("Unrecognised compiler: %d", SConfig::GetInstance().m_LocalCoreStartupParameter.iCompiler);
 				break;
 			}
 		}

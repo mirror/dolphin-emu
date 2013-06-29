@@ -44,7 +44,7 @@ namespace HW
 		DVDInterface::Init();
 		GPFifo::Init();
 		ExpansionInterface::Init();
-		CCPU::Init(SConfig::GetInstance().m_LocalCoreStartupParameter.iCPUCore);
+		CCPU::Init();
 		SystemTimers::Init();
 
 		if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii)

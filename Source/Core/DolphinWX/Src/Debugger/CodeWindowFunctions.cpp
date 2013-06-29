@@ -30,6 +30,7 @@
 #include "LogManager.h"
 #include "HW/CPU.h"
 #include "PowerPC/PowerPC.h"
+#include "PowerPC/JitInterface.h"
 #include "Debugger/PPCDebugInterface.h"
 #include "Debugger/Debugger_SymbolMap.h"
 #include "PowerPC/PPCAnalyst.h"
@@ -38,7 +39,6 @@
 #include "PowerPC/SignatureDB.h"
 #include "PowerPC/PPCTables.h"
 #include "PowerPC/JitCommon/JitBase.h"
-#include "PowerPC/JitCommon/JitCache.h" // for ClearCache()
 
 #include "ConfigManager.h"
 
@@ -55,9 +55,26 @@ void CCodeWindow::Load()
 	if (!fontDesc.empty())
 		DebuggerFont.SetNativeFontInfoUserDesc(StrToWxStr(fontDesc));
 
-	// Boot to pause or not
-	ini.Get("General", "AutomaticStart", &bAutomaticStart, false);
-	ini.Get("General", "BootToPause", &bBootToPause, true);
+	SCoreStartupParameter &boot = SConfig::GetInstance().m_LocalCoreStartupParameter;
+
+	ini.Get("General", "AutomaticStart", &boot.bAutomaticStart, false);
+	ini.Get("General", "BootToPause", &boot.bBootToPause, false);
+	ini.Get("General", "EnableDebugging", &boot.bEnableDebugging, true);
+
+	ini.Get("Compile", "LargeCache", &boot.bJITLargeCache, false);
+	ini.Get("Compile", "CompileBlockLink", &boot.bJITBlockLink, true);
+	ini.Get("Compile", "CompileBranch", &boot.bJITBranch, true);
+	ini.Get("Compile", "Compile", &boot.bJIT, true);
+	ini.Get("Compile", "CompileLoadStore", &boot.bJITLoadStore, true);
+	ini.Get("Compile", "CompileLoadStorelXz", &boot.bJITLoadStorelXz, true);
+	ini.Get("Compile", "CompileLoadStorelwz", &boot.bJITLoadStorelwz, true);
+	ini.Get("Compile", "CompileLoadStorelbzx", &boot.bJITLoadStorelbzx, true);
+	ini.Get("Compile", "CompileLoadStoreFloating", &boot.bJITLoadStoreFloating, true);
+	ini.Get("Compile", "CompileLoadStorePaired", &boot.bJITLoadStorePaired, true);
+	ini.Get("Compile", "CompileFloatingPoint", &boot.bJITFloatingPoint, true);
+	ini.Get("Compile", "CompileInteger", &boot.bJITInteger, true);
+	ini.Get("Compile", "CompilePaired", &boot.bJITPaired, true);
+	ini.Get("Compile", "CompileSystemRegisters", &boot.bJITSystemRegisters, true);
 
 	const char* SettingName[] = {
 		"Log",
@@ -97,10 +114,6 @@ void CCodeWindow::Save()
 	ini.Set("General", "DebuggerFont",
 		   	WxStrToStr(DebuggerFont.GetNativeFontInfoUserDesc()));
 
-	// Boot to pause or not
-	ini.Set("General", "AutomaticStart", GetMenuBar()->IsChecked(IDM_AUTOMATICSTART));
-	ini.Set("General", "BootToPause", GetMenuBar()->IsChecked(IDM_BOOTTOPAUSE));
-
 	const char* SettingName[] = {
 		"Log",
 		"LogConfig",
@@ -108,11 +121,32 @@ void CCodeWindow::Save()
 		"Registers",
 		"Breakpoints",
 		"Memory",
-		"JIT", 
+		"JIT",
 		"Sound",
 		"Video",
 		"Code"
 	};
+
+	SCoreStartupParameter boot = SConfig::GetInstance().m_LocalCoreStartupParameter;
+
+	ini.Set("General", "AutomaticStart", boot.bAutomaticStart);
+	ini.Set("General", "BootToPause", boot.bBootToPause);
+	ini.Set("General", "EnableDebugging", boot.bEnableDebugging);
+
+	ini.Set("Compile", "LargeCache", boot.bJITLargeCache);
+	ini.Set("Compile", "CompileBlockLink", boot.bJITBlockLink);
+	ini.Set("Compile", "CompileBranch", boot.bJITBranch);
+	ini.Set("Compile", "Compile", boot.bJIT);
+	ini.Set("Compile", "CompileLoadStore", boot.bJITLoadStore);
+	ini.Set("Compile", "CompileLoadStorelXz", boot.bJITLoadStorelXz);
+	ini.Set("Compile", "CompileLoadStorelwz", boot.bJITLoadStorelwz);
+	ini.Set("Compile", "CompileLoadStorelbzx", boot.bJITLoadStorelbzx);
+	ini.Set("Compile", "CompileLoadStoreFloating", boot.bJITLoadStoreFloating);
+	ini.Set("Compile", "CompileLoadStorePaired", boot.bJITLoadStorePaired);
+	ini.Set("Compile", "CompileFloatingPoint", boot.bJITFloatingPoint);
+	ini.Set("Compile", "CompileInteger", boot.bJITInteger);
+	ini.Set("Compile", "CompilePaired", boot.bJITPaired);
+	ini.Set("Compile", "CompileSystemRegisters", boot.bJITSystemRegisters);
 
 	// Save windows settings
 	for (int i = IDM_LOGWINDOW; i <= IDM_VIDEOWINDOW; i++)
@@ -136,10 +170,15 @@ void CCodeWindow::CreateMenuSymbols(wxMenuBar *pMenuBar)
 {
 	wxMenu *pSymbolsMenu = new wxMenu;
 	pSymbolsMenu->Append(IDM_CLEARSYMBOLS, _("&Clear symbols"));
-	pSymbolsMenu->Append(IDM_SCANFUNCTIONS, _("&Generate symbol map"));
+	pSymbolsMenu->Append(IDM_SCANFUNCTIONS, _("&Generate symbols"));
+
 	pSymbolsMenu->AppendSeparator();
-	pSymbolsMenu->Append(IDM_LOADMAPFILE, _("&Load symbol map"));
-	pSymbolsMenu->Append(IDM_SAVEMAPFILE, _("&Save symbol map"));
+	pSymbolsMenu->Append(IDM_LOADMAPFILE, _("&Load symbols"));
+	pSymbolsMenu->Append(IDM_SAVEMAPFILE, _("&Save symbols"));
+
+	pSymbolsMenu->AppendSeparator();
+	pSymbolsMenu->Append(IDM_RENAME_SYMBOLS, _("&Rename symbols from file..."));
+
 	pSymbolsMenu->AppendSeparator();
 	pSymbolsMenu->Append(IDM_SAVEMAPFILEWITHCODES, _("Save code"),
 		StrToWxStr("Save the entire disassembled code. This may take a several seconds"
@@ -154,7 +193,6 @@ void CCodeWindow::CreateMenuSymbols(wxMenuBar *pMenuBar)
 	pSymbolsMenu->Append(IDM_USESIGNATUREFILE, _("&Use signature file..."));
 	pSymbolsMenu->AppendSeparator();
 	pSymbolsMenu->Append(IDM_PATCHHLEFUNCTIONS, _("&Patch HLE functions"));
-	pSymbolsMenu->Append(IDM_RENAME_SYMBOLS, _("&Rename symbols from file..."));
 	pMenuBar->Append(pSymbolsMenu, _("&Symbols"));
 
 	wxMenu *pProfilerMenu = new wxMenu;
@@ -219,24 +257,11 @@ void CCodeWindow::OnSymbolsMenu(wxCommandEvent& event)
 		g_symbolDB.Clear();
 		Host_NotifyMapLoaded();
 		break;
+
 	case IDM_SCANFUNCTIONS:
-		{
-		PPCAnalyst::FindFunctions(0x80000000, 0x81800000, &g_symbolDB);
-		SignatureDB db;
-		if (db.Load((File::GetSysDirectory() + TOTALDB).c_str()))
-		{
-			db.Apply(&g_symbolDB);
-			Parent->StatusBarMessage("Generated symbol names from '%s'", TOTALDB);
-		}
-		else
-		{
-			Parent->StatusBarMessage("'%s' not found, no symbol names generated", TOTALDB);
-		}
-		// HLE::PatchFunctions();
-		// Update GUI
-		NotifyMapLoaded();
+		GenerateSymbols();
 		break;
-		}
+
 	case IDM_LOADMAPFILE:
 		if (!File::Exists(mapfile))
 		{
@@ -255,9 +280,11 @@ void CCodeWindow::OnSymbolsMenu(wxCommandEvent& event)
 		HLE::PatchFunctions();
 		NotifyMapLoaded();
 		break;
+
 	case IDM_SAVEMAPFILE:
 		g_symbolDB.SaveMap(mapfile.c_str());
 		break;
+
 	case IDM_SAVEMAPFILEWITHCODES:
 		g_symbolDB.SaveMap(mapfile.c_str(), true);
 		break;
@@ -322,6 +349,7 @@ void CCodeWindow::OnSymbolsMenu(wxCommandEvent& event)
 			}
 		}
 		break;
+
 	case IDM_USESIGNATUREFILE:
 		{
 			wxString path = wxFileSelector(
@@ -337,11 +365,43 @@ void CCodeWindow::OnSymbolsMenu(wxCommandEvent& event)
 		}
 		NotifyMapLoaded();
 		break;
+
 	case IDM_PATCHHLEFUNCTIONS:
+		if (g_symbolDB.IsEmpty())
+		{
+			if(!AskYesNo(
+				"No symbols are generated. Do you want to generate symbols?"
+				, "Confirm"
+				, wxYES_NO))
+				break;
+			if (!GenerateSymbols())
+				return;
+		}
+
 		HLE::PatchFunctions();
+		JitInterface::ClearSafe();
 		Update();
 		break;
 	}
+}
+
+bool CCodeWindow::GenerateSymbols()
+{
+	PPCAnalyst::FindFunctions(0x80000000, 0x81800000, &g_symbolDB);
+	SignatureDB db;
+	if (db.LoadApply((File::GetSysDirectory() + TOTALDB).c_str(), &g_symbolDB))
+	{
+		Parent->StatusBarMessage("Generated symbols from \"%s\"", TOTALDB);
+	}
+	else
+	{
+		Parent->StatusBarMessage("\"%s\" not found, no symbols generated", TOTALDB);
+		return false;
+	}
+
+	// HLE::PatchFunctions();
+	NotifyMapLoaded();
+	return true;
 }
 
 void CCodeWindow::NotifyMapLoaded()

@@ -71,27 +71,31 @@ struct SCoreStartupParameter
 {
 	void* hInstance;  // HINSTANCE but we don't want to include <windows.h>
 
-	// Settings
+	// debugger
 	bool bEnableDebugging;
+
 	bool bAutomaticStart;
 	bool bBootToPause;
 
-	// 0 = Interpreter
-	// 1 = Jit
-	// 2 = JitIL
-	int iCPUCore;
+	bool bInterpreter;
+	int iCompiler;
 
 	// JIT (shared between JIT and JITIL)
-	bool bJITNoBlockCache, bJITBlockLinking;
-	bool bJITOff;
-	bool bJITLoadStoreOff, bJITLoadStorelXzOff, bJITLoadStorelwzOff, bJITLoadStorelbzxOff;
-	bool bJITLoadStoreFloatingOff;
-	bool bJITLoadStorePairedOff;
-	bool bJITFloatingPointOff;
-	bool bJITIntegerOff;
-	bool bJITPairedOff;
-	bool bJITSystemRegistersOff;
-	bool bJITBranchOff;
+	bool bJITLargeCache;
+	bool bJITBlockLink;
+	bool bJITBranch;
+	// disable to use JIT with optional compilation disabled
+	bool bJIT;
+	bool bJITLoadStore;
+	bool bJITLoadStorelXz;
+	bool bJITLoadStorelwz;
+	bool bJITLoadStorelbzx;
+	bool bJITLoadStoreFloating;
+	bool bJITLoadStorePaired;
+	bool bJITFloatingPoint;
+	bool bJITInteger;
+	bool bJITPaired;
+	bool bJITSystemRegisters;
 	bool bJITProfiledReJIT;
 	bool bJITILTimeProfiling;
 	bool bJITILOutputIR;
