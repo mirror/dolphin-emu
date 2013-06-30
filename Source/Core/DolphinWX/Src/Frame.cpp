@@ -267,8 +267,8 @@ CFrame::CFrame(wxFrame* parent,
 	ConsoleListener *Console = LogManager::GetInstance()->GetConsoleListener();
 	if (SConfig::GetInstance().m_InterfaceConsole) Console->Open();
 
-	// Start debugging maximized
-	if (UseDebugger) this->Maximize(true);
+	Maximize(SConfig::GetInstance().m_LocalCoreStartupParameter.bMax);
+
 	// Debugger class
 	if (UseDebugger)
 	{
@@ -513,6 +513,8 @@ void CFrame::OnResize(wxSizeEvent& event)
 		SConfig::GetInstance().m_LocalCoreStartupParameter.iWidth = GetSize().GetWidth();
 		SConfig::GetInstance().m_LocalCoreStartupParameter.iHeight = GetSize().GetHeight();
 	}
+
+	SConfig::GetInstance().m_LocalCoreStartupParameter.bMax = IsMaximized();
 
 	// Make sure the logger pane is a sane size
 	if (!g_pCodeWindow && m_LogWindow && m_Mgr->GetPane(_T("Pane 1")).IsShown() &&

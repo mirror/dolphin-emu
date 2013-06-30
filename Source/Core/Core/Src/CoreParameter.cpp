@@ -46,7 +46,7 @@ SCoreStartupParameter::SCoreStartupParameter()
   bRenderWindowAutoSize(false), bKeepWindowOnTop(false),
   bFullscreen(false), bRenderToMain(false),
   bProgressive(false), bDisableScreenSaver(false),
-  iPosX(100), iPosY(100), iWidth(800), iHeight(600)
+  iPosX(100), iPosY(100), iWidth(800), iHeight(600), bMax(false)
 {
 	LoadDefaults();
 }
@@ -79,6 +79,7 @@ void SCoreStartupParameter::LoadDefaults()
 	iPosY = 100;
 	iWidth = 800;
 	iHeight = 600;
+	bMax = false;
 
 	bJITOff = false; // debugger only settings
 	bJITLoadStoreOff = false;
