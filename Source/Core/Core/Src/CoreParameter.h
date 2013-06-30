@@ -147,7 +147,7 @@ struct SCoreStartupParameter
 	bool bFullscreen, bRenderToMain;
 	bool bProgressive, bDisableScreenSaver;
 
-	int iPosX, iPosY, iWidth, iHeight;
+	int iPosX, iPosY, iWidth, iHeight, bMax;
 
 	enum EBootBS2
 	{
