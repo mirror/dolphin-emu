@@ -61,6 +61,8 @@ void CCodeWindow::Load()
 	ini.Get("General", "BootToPause", &boot.bBootToPause, false);
 	ini.Get("General", "EnableDebugging", &boot.bEnableDebugging, true);
 
+	ini.Get("Log", "LogGecko", &boot.bLogGecko,	false);
+
 	ini.Get("Compile", "LargeCache", &boot.bJITLargeCache, false);
 	ini.Get("Compile", "CompileBlockLink", &boot.bJITBlockLink, true);
 	ini.Get("Compile", "CompileBranch", &boot.bJITBranch, true);
@@ -132,6 +134,8 @@ void CCodeWindow::Save()
 	ini.Set("General", "AutomaticStart", boot.bAutomaticStart);
 	ini.Set("General", "BootToPause", boot.bBootToPause);
 	ini.Set("General", "EnableDebugging", boot.bEnableDebugging);
+
+	ini.Set("Log", "LogGecko", boot.bLogGecko);
 
 	ini.Set("Compile", "LargeCache", boot.bJITLargeCache);
 	ini.Set("Compile", "CompileBlockLink", boot.bJITBlockLink);

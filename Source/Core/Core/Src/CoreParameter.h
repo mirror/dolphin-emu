@@ -75,6 +75,8 @@ struct SCoreStartupParameter
 	bool bEnableDebugging;
 	bool bLogMemory;
 
+	bool bLogGecko;
+
 	bool bAutomaticStart;
 	bool bBootToPause;
 

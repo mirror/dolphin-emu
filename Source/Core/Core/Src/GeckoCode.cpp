@@ -12,6 +12,8 @@
 #include "PowerPC/PowerPC.h"
 #include "CommonPaths.h"
 
+using namespace std;
+
 namespace Gecko
 {
 
@@ -51,6 +53,8 @@ static bool	code_handler_installed = false;
 
 // the currently active codes
 std::vector<GeckoCode>	active_codes;
+
+vector<pair<LogTypes::LOG_LEVELS, string>> log;
 
 // return true if code execution is on
 inline bool CodeExecution()
@@ -211,6 +215,8 @@ bool RunGeckoCode(GeckoCode& gecko_code)
 	pointer_address = 0x80000000;
 	code_execution_counter = 0;
 
+	log.clear();
+
 	current_code = codes_start = &*gecko_code.codes.begin();
 	codes_end = &*gecko_code.codes.end();
 	for (; current_code < codes_end; ++current_code)
@@ -250,6 +256,25 @@ bool RunGeckoCode(GeckoCode& gecko_code)
 		}
 	}
 
+	bool memoryChanged = false;
+	vector<pair<LogTypes::LOG_LEVELS, string>>::iterator i = log.begin(),
+		e = log.end();
+	for (; i != e; ++i)
+	{
+		if ((*i).first > LogTypes::LNOTICE)
+		{
+			memoryChanged = true;
+			break;
+		}
+	}
+
+	if (memoryChanged)
+	{
+		i = log.begin();
+		for (; i != e; ++i)
+			GENERIC_LOG_(LogTypes::GECKO, (*i).first, false, true, (*i).second.c_str());
+	}
+
 	return true;
 }
 
@@ -282,7 +307,7 @@ void RunCodeHandler()
 		u8 *gameId = Memory::GetPointer(0x80000000);
 		u8 *wiirdId = Memory::GetPointer(0x80001800);
 
-		if (!code_handler_installed || memcmp(gameId, wiirdId, 6))
+		if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bLogGecko && (!code_handler_installed || memcmp(gameId, wiirdId, 6)))
 			code_handler_installed = InstallCodeHandler();
 
 		if (code_handler_installed)
@@ -325,6 +350,7 @@ bool RamWriteAndFill()
 	const GeckoCode::Code& code = *current_code;
 	u32 new_addr = code.GetAddress();
 	const u32& data = code.data;
+	u32 current;
 
 	u32 count = (data >> 16) + 1;	// note: +1
 
@@ -334,6 +360,10 @@ bool RamWriteAndFill()
 	case DATATYPE_8BIT :
 		while (count--)
 		{
+			current = Memory::Read_U8(new_addr);
+			if (current != data)
+				log.push_back(make_pair(LogTypes::LWARNING, StringFromFormat("%08x %08x changing %02x to %02x at %08x", code.address, code.data, current, data, new_addr)));
+
 			Memory::Write_U8((u8)data, new_addr);
 			++new_addr;
 		}
@@ -343,6 +373,10 @@ bool RamWriteAndFill()
 	case DATATYPE_16BIT :
 		while (count--)
 		{
+			current =  Memory::Read_U16(new_addr);
+			if (current != data)
+				log.push_back(make_pair(LogTypes::LWARNING, StringFromFormat("%08x %08x changing %04x to %04x at %04x", code.address, code.data, current, data, new_addr)));
+
 			Memory::Write_U16((u16)data, new_addr);
 			new_addr += 2;
 		}
@@ -350,6 +384,10 @@ bool RamWriteAndFill()
 
 		// CST2: 32bits Write
 	case DATATYPE_32BIT :
+		current =  Memory::Read_U32(new_addr);
+		if (current != data)
+			log.push_back(make_pair(LogTypes::LWARNING, StringFromFormat("%08x %08x changing %08x to %08x at %08x", code.address, code.data, current, data, new_addr)));
+
 		Memory::Write_U32((u32)data, new_addr);
 		break;
 
@@ -470,6 +508,8 @@ bool RegularIf()
 			read_value = Memory::Read_U32(new_addr);
 			data_value = data;
 		}
+
+		log.push_back(make_pair(LogTypes::LNOTICE, StringFromFormat("%08x %08x comparing %08x %08x\n", code.address, code.data, read_value, data_value)));
 
 		switch (code.subtype & 0x3)
 		{
@@ -745,6 +785,8 @@ bool RegisterOps()
 
 		if (false == MathOperation(geckreg, left_val, right_val, code.t))
 			return false;
+
+		log.push_back(make_pair(LogTypes::LNOTICE, StringFromFormat("%08x %08x writing %08x to register %d", code.address, code.data, geckreg, code.n)));
 	}
 		break;
 
@@ -1042,6 +1084,8 @@ bool AsmSwitchRange()
 			const u32 addr = (code.use_po ? pointer_address : base_address);
 			if (addr < (data & 0xFFFF0000) || addr > (data << 16))
 				++code_execution_counter;
+
+			log.push_back(make_pair(LogTypes::LNOTICE, StringFromFormat("%08x %08x %08x < %08x || %08x > %08x", code.address, code.data, addr, data & 0xFFFF0000, addr, data << 16)));
 		}
 	}
 		break;
@@ -1077,6 +1121,7 @@ bool EndCodes()
 	case 0x0 :
 		// clears the code execution status
 		code_execution_counter = 0;
+		log.push_back(make_pair(LogTypes::LNOTICE, StringFromFormat("%08x %08x", code.address, code.data)));
 		break;
 
 		// CST1 : Endif (+else)

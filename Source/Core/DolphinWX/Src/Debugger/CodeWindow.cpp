@@ -424,6 +424,7 @@ void CCodeWindow::CreateMenu(wxMenuBar *pMenuBar)
 
 	pDebugMenu->AppendSeparator();
 	pDebugMenu->AppendCheckItem(IDM_LOG_MEMORY, _("&Log memory"));
+	pDebugMenu->AppendCheckItem(IDM_LOG_GECKO, _("&Log Gecko"));
 
 	pDebugMenu->AppendSeparator();
 	pDebugMenu->Append(IDM_STEP, _("Step &Into\tF11"));
@@ -470,6 +471,9 @@ void CCodeWindow::OnMenuCPU(wxCommandEvent& event)
 
 	case IDM_LOG_MEMORY:
 		boot.bLogMemory = event.IsChecked();
+
+	case IDM_LOG_GECKO:
+		boot.bLogGecko = event.IsChecked();
 		return;
 
 	case IDM_JIT_CLEAR_CACHE:
