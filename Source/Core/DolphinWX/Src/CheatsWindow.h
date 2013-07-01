@@ -106,6 +106,7 @@ class wxCheatsWindow : public wxDialog
 	protected:
 
 		// --- GUI Controls ---
+		wxButton *btn_reload;
 		wxButton* button_apply;
 		wxNotebook *m_Notebook_Main;
 
@@ -128,6 +129,8 @@ class wxCheatsWindow : public wxDialog
 		void Load_GeckoCodes();
 
 		// --- Wx Events Handlers ---
+
+		void OnReload(wxCommandEvent& event);
 
 		// $ Close Button
 		void OnEvent_ButtonClose_Press(wxCommandEvent& event);

@@ -88,6 +88,9 @@ void wxCheatsWindow::Init_ChildControls()
 	m_Notebook_Main->AddPage(m_Tab_Log, _("Logging"));
 
 	// Button Strip
+	btn_reload = new wxButton(panel, wxID_ANY, _("Reload"), wxDefaultPosition, wxDefaultSize);
+	btn_reload->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &wxCheatsWindow::OnReload, this);
+
 	button_apply = new wxButton(panel, wxID_APPLY, _("Apply"), wxDefaultPosition, wxDefaultSize);
 	button_apply->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &wxCheatsWindow::OnEvent_ApplyChanges_Press, this);
 	wxButton* const button_cancel = new wxButton(panel, wxID_CANCEL, _("Cancel"), wxDefaultPosition, wxDefaultSize);
@@ -95,14 +98,16 @@ void wxCheatsWindow::Init_ChildControls()
 
 	Bind(wxEVT_CLOSE_WINDOW, &wxCheatsWindow::OnEvent_Close, this);
 
-	wxStdDialogButtonSizer* const sButtons = new wxStdDialogButtonSizer();
-	sButtons->AddButton(button_apply);
-	sButtons->AddButton(button_cancel);
-	sButtons->Realize();
+	wxBoxSizer* const sButtons = new wxBoxSizer(wxHORIZONTAL);
+
+	sButtons->Add(btn_reload);
+	sButtons->AddStretchSpacer(1);
+	sButtons->Add(button_cancel);
+	sButtons->Add(button_apply);
 
 	wxBoxSizer* const sMain = new wxBoxSizer(wxVERTICAL);
 	sMain->Add(m_Notebook_Main, 1, wxEXPAND|wxALL, 5);
-	sMain->Add(sButtons, 0, wxRIGHT | wxBOTTOM | wxALIGN_RIGHT, 5);
+	sMain->Add(sButtons, 0, wxLEFT | wxRIGHT | wxRIGHT | wxBOTTOM | wxEXPAND, 5);
 	panel->SetSizerAndFit(sMain);
 
 	wxBoxSizer* const frame_szr = new wxBoxSizer(wxVERTICAL);
@@ -220,6 +225,11 @@ void wxCheatsWindow::OnEvent_Close(wxCloseEvent& ev)
 	Destroy();
 }
 
+void wxCheatsWindow::OnReload(wxCommandEvent& WXUNUSED (event))
+{
+	UpdateGUI();
+}
+
 // load codes for a new ISO ID
 void wxCheatsWindow::UpdateGUI()
 {
@@ -230,6 +240,7 @@ void wxCheatsWindow::UpdateGUI()
 	Load_GeckoCodes();
 
 	// enable controls
+	btn_reload->Enable(Core::IsRunning());
 	button_apply->Enable(Core::IsRunning());
 
 	// write the ISO name in the title
@@ -514,7 +525,7 @@ CreateCodeDialog::CreateCodeDialog(IniFile& ini, wxWindow* const parent, ARPanel
 	sizer_main->Add(textctrl_code, 0, wxALL, 5);
 	sizer_main->Add(sizer_value_label, 0, wxALL, 5);
 	sizer_main->Add(textctrl_value, 0, wxALL, 5);
-	sizer_main->Add(CreateButtonSizer(wxOK | wxCANCEL | wxNO_DEFAULT), 0, wxALL, 5); 
+	sizer_main->Add(CreateButtonSizer(wxOK | wxCANCEL | wxNO_DEFAULT), 0, wxALL, 5);
 
 	Bind(wxEVT_COMMAND_BUTTON_CLICKED, &CreateCodeDialog::PressOK, this, wxID_OK);
 	Bind(wxEVT_COMMAND_BUTTON_CLICKED, &CreateCodeDialog::PressCancel, this, wxID_CANCEL);
