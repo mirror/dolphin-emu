@@ -190,6 +190,7 @@ EVT_MENU(IDM_MEMCARD, CFrame::OnMemcard)
 EVT_MENU(IDM_IMPORTSAVE, CFrame::OnImportSave)
 EVT_MENU(IDM_CHEATS, CFrame::OnShow_CheatsWindow)
 EVT_MENU(IDM_CHANGEDISC, CFrame::OnChangeDisc)
+EVT_MENU(IDM_RESTART, CFrame::OnRestart)
 EVT_MENU(IDM_MENU_INSTALLWAD, CFrame::OnInstallWAD)
 EVT_MENU(IDM_LIST_INSTALLWAD, CFrame::OnInstallWAD)
 EVT_MENU(IDM_LOAD_WII_MENU, CFrame::OnLoadWiiMenu)
@@ -408,6 +409,18 @@ bool CFrame::RendererIsFullscreen()
 
 void CFrame::OnQuit(wxCommandEvent& WXUNUSED (event))
 {
+	Close(true);
+}
+
+void CFrame::OnRestart(wxCommandEvent& WXUNUSED (event))
+{
+	if (Core::GetState() != Core::CORE_UNINITIALIZED)
+	{
+		wxMessageBox(wxT("You must stop the emulation before restarting."), wxT("Notice"), wxOK, this);
+		return;
+	}
+	// Get exe name and restart
+	wxExecute(wxString::Format("%s %s", wxTheApp->argv[0], UseDebugger ? "" : "-d"));
 	Close(true);
 }
 
