@@ -18,6 +18,7 @@
 
 #include "Host.h" // Core
 #include "HW/Wiimote.h"
+#include "HW/Memmap.h"
 
 #include "WxUtils.h"
 #include "Globals.h" // Local
@@ -118,6 +119,10 @@ bool DolphinApp::Initialize(int& c, wxChar **v)
 
 bool DolphinApp::OnInit()
 {
+#ifdef _WIN32
+	Memory::ArtMoneyPointer();
+#endif
+
 	InitLanguageSupport();
 
 	// Declarations and definitions
