@@ -152,7 +152,7 @@ void MemChecks::AddFromStrings(const TMemChecksStr& mcs)
 
 void MemChecks::Add(const TMemCheck& _rMemoryCheck)
 {
-	if (GetMemCheck(_rMemoryCheck.StartAddress) == 0)
+	if (GetMemCheck(_rMemoryCheck.StartAddress, 1) == 0)
 		m_MemChecks.push_back(_rMemoryCheck);
 }
 
@@ -168,16 +168,16 @@ void MemChecks::Remove(u32 _Address)
 	}
 }
 
-TMemCheck *MemChecks::GetMemCheck(u32 address)
+TMemCheck *MemChecks::GetMemCheck(u32 address, u8 size)
 {
 	for (TMemChecks::iterator i = m_MemChecks.begin(); i != m_MemChecks.end(); ++i)
 	{
 		if (i->bRange)
 		{
-			if (address >= i->StartAddress && address <= i->EndAddress)
+			if (i->StartAddress >= address && i->EndAddress <= address + size - 1)
 				return &(*i);
 		}
-		else if (i->StartAddress == address)
+		else if (i->StartAddress >= address && i->StartAddress <= address + size - 1)
 			return &(*i);
 	}
 

@@ -92,7 +92,7 @@ public:
 	void Add(const TMemCheck& _rMemoryCheck);
 
 	// memory breakpoint
-	TMemCheck *GetMemCheck(u32 address);
+	TMemCheck *GetMemCheck(u32 address, u8 size);
     void Remove(u32 _Address);
 
 	void Clear() { m_MemChecks.clear(); };
