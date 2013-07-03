@@ -15,8 +15,26 @@
 // ------------
 // Aui events
 
-void CFrame::OnManagerResize(wxAuiManagerEvent& event)
+
+void CFrame::OnManagerSize(wxSizeEvent& event)
 {
+	event.Skip();
+
+	if (IsShown())
+	{
+		m_RenderEventCount = 5;
+		SetPaneSize();
+	}
+}
+
+void CFrame::OnManagerRender(wxAuiManagerEvent& event)
+{
+	event.Skip();
+
+	if (m_RenderEventCount <= 0)
+		UpdateCurrentPerspective();
+	m_RenderEventCount--;
+
 	if (!g_pCodeWindow && m_LogWindow &&
 			m_Mgr->GetPane(_T("Pane 1")).IsShown() &&
 			!m_Mgr->GetPane(_T("Pane 1")).IsFloating())
@@ -25,7 +43,7 @@ void CFrame::OnManagerResize(wxAuiManagerEvent& event)
 		m_LogWindow->y = m_Mgr->GetPane(_T("Pane 1")).rect.GetHeight();
 		m_LogWindow->winpos = m_Mgr->GetPane(_T("Pane 1")).dock_direction;
 	}
-	event.Skip();
+
 	ResizeConsole();
 }
 
@@ -38,7 +56,7 @@ void CFrame::OnPaneClose(wxAuiManagerEvent& event)
 
 	if (!g_pCodeWindow)
 	{
-		if (nb->GetPage(0)->GetId() == IDM_LOGWINDOW || 
+		if (nb->GetPage(0)->GetId() == IDM_LOGWINDOW ||
 				nb->GetPage(0)->GetId() == IDM_LOGCONFIGWINDOW ||
 				nb->GetPage(0)->GetId() == IDM_CONSOLEWINDOW)
 		{
@@ -494,7 +512,7 @@ void CFrame::DoRemovePage(wxWindow *Win, bool bHide)
 void CFrame::DoAddPage(wxWindow *Win, int i, bool Float)
 {
 	if (!Win) return;
-	
+
 	// Ensure accessor remains within valid bounds.
 	if (i < 0 || i > GetNotebookCount()-1)
 		i = 0;
@@ -580,7 +598,7 @@ void CFrame::OnDropDownToolbarItem(wxAuiToolBarEvent& event)
 				wxMenuItem* mItem = new wxMenuItem(menuPopup, IDM_PERSPECTIVES_0 + i,
 						StrToWxStr(Perspectives[i].Name),
 						wxT(""), wxITEM_CHECK);
-				
+
 				menuPopup->Append(mItem);
 
 				if (i == ActivePerspective)
@@ -834,7 +852,7 @@ void CFrame::SetPaneSize()
 				continue;
 
 			// Width and height of the active perspective
-			u32 W = Perspectives[ActivePerspective].Width[j],
+			int W = Perspectives[ActivePerspective].Width[j],
 				H = Perspectives[ActivePerspective].Height[j];
 
 			// Check limits
@@ -844,7 +862,10 @@ void CFrame::SetPaneSize()
 			// Convert percentages to pixel lengths
 			W = (W * iClientX) / 100;
 			H = (H * iClientY) / 100;
-			m_Mgr->GetAllPanes()[i].BestSize(W,H).MinSize(W,H);
+
+			wxAuiPaneInfo &pane = m_Mgr->GetAllPanes()[i];
+			pane.BestSize(-1, -1).MinSize(W, H);
+			pane.Hide();
 
 			j++;
 		}
@@ -853,11 +874,24 @@ void CFrame::SetPaneSize()
 
 	for (u32 i = 0; i < m_Mgr->GetAllPanes().GetCount(); i++)
 	{
-		if (!m_Mgr->GetAllPanes()[i].window->IsKindOf(CLASSINFO(wxAuiToolBar)))
+		wxAuiPaneInfo &pane = m_Mgr->GetAllPanes()[i];
+		if (!pane.window->IsKindOf(CLASSINFO(wxAuiToolBar)))
 		{
-			m_Mgr->GetAllPanes()[i].MinSize(-1,-1);
+			pane.Show();
 		}
 	}
+	m_Mgr->Update();
+
+	for (u32 i = 0; i < m_Mgr->GetAllPanes().GetCount(); i++)
+	{
+		wxAuiPaneInfo &pane = m_Mgr->GetAllPanes()[i];
+		if (!pane.window->IsKindOf(CLASSINFO(wxAuiToolBar)))
+		{
+			pane.MinSize(-1, -1);
+		}
+	}
+	m_Mgr->Update();
+	Refresh();
 }
 
 void CFrame::ReloadPanes()
@@ -953,6 +987,9 @@ void CFrame::LoadIniPerspectives()
 
 void CFrame::UpdateCurrentPerspective()
 {
+	if (Perspectives.size() < ActivePerspective)
+		return;
+
 	SPerspectives *current = &Perspectives[ActivePerspective];
 	current->Perspective = m_Mgr->SavePerspective();
 

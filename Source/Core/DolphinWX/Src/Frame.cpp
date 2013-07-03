@@ -257,6 +257,7 @@ CFrame::CFrame(wxFrame* parent,
 	, m_FifoPlayerDlg(NULL), UseDebugger(_UseDebugger)
 	, m_bBatchMode(_BatchMode), m_bEdit(false), m_bTabSplit(false), m_bNoDocking(false)
 	, m_bGameLoading(false)
+	, m_RenderEventCount(0)
 {
 	for (int i = 0; i <= IDM_CODEWINDOW - IDM_LOGWINDOW; i++)
 		bFloatWindow[i] = false;
@@ -362,7 +363,8 @@ CFrame::CFrame(wxFrame* parent,
 	// -------------------------
 	// Connect event handlers
 
-	m_Mgr->Bind(wxEVT_AUI_RENDER, &CFrame::OnManagerResize, this);
+	m_Mgr->Bind(wxEVT_SIZE, &CFrame::OnManagerSize, this);
+	m_Mgr->Bind(wxEVT_AUI_RENDER, &CFrame::OnManagerRender, this);
 	// ----------
 
 	// Update controls

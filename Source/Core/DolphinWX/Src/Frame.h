@@ -151,6 +151,7 @@ public:
 	wxAuiManager *m_Mgr;
 	wxAuiToolBar *m_ToolBar, *m_ToolBarDebug, *m_ToolBarAui;
 	bool bFloatWindow[IDM_CODEWINDOW - IDM_LOGWINDOW + 1];
+	int m_RenderEventCount;
 
 	// Perspectives (Should find a way to make all of this private)
 	void DoAddPage(wxWindow *Win, int i, bool Float);
@@ -307,7 +308,8 @@ private:
 	void OnToggleDualCore(wxCommandEvent& event);
 	void OnToggleSkipIdle(wxCommandEvent& event);
 	void OnToggleThrottle(wxCommandEvent& event);
-	void OnManagerResize(wxAuiManagerEvent& event);
+	void OnManagerRender(wxAuiManagerEvent& event);
+	void OnManagerSize(wxSizeEvent& event);
 	void OnMove(wxMoveEvent& event);
 	void OnResize(wxSizeEvent& event);
 	void OnToggleToolbar(wxCommandEvent& event);
