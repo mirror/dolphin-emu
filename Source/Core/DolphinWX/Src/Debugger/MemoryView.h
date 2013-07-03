@@ -16,12 +16,20 @@ public:
 	void OnPaint(wxPaintEvent& event);
 	void OnMouseDownL(wxMouseEvent& event);
 	void OnMouseMove(wxMouseEvent& event);
+    void OnMouseScroll(wxMouseEvent& event);
 	void OnMouseUpL(wxMouseEvent& event);
 	void OnMouseDownR(wxMouseEvent& event);
 	void OnPopupMenu(wxCommandEvent& event);
 
 	u32 GetSelection() { return selection ; }
 	int GetMemoryType() { return memory; }
+
+	void SetWordNum(int w = 0) 
+	{
+		if(w)
+			wordNum = w;
+		align = insSz * ((viewAsType == VIEWAS_HEX) ? wordNum : 1); 
+	}
 
 	void Center(u32 addr)
 	{
@@ -37,6 +45,8 @@ private:
 
 	DebugInterface* debugger;
 
+    int insSz;
+	int wordNum;
 	int align;
 	int rowHeight;
 

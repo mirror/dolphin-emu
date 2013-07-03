@@ -36,12 +36,10 @@ enum
 	IDM_DUMP_MEM2,
 	IDM_DUMP_FAKEVMEM,
 	IDM_VALBOX,
-	IDM_U8,
-	IDM_U16,
-	IDM_U32,
+	IDM_DATATYPE,
 	IDM_SEARCH,
-	IDM_ASCII,
-	IDM_HEX
+	IDM_SEARCHTYPE,
+	IDM_WORDNUM
 };
 
 BEGIN_EVENT_TABLE(CMemoryWindow, wxPanel)
@@ -52,12 +50,9 @@ BEGIN_EVENT_TABLE(CMemoryWindow, wxPanel)
 	EVT_BUTTON(IDM_DUMP_MEMORY,		CMemoryWindow::OnDumpMemory)
 	EVT_BUTTON(IDM_DUMP_MEM2,		CMemoryWindow::OnDumpMem2)
 	EVT_BUTTON(IDM_DUMP_FAKEVMEM,	CMemoryWindow::OnDumpFakeVMEM)
-	EVT_CHECKBOX(IDM_U8,			CMemoryWindow::U8)
-	EVT_CHECKBOX(IDM_U16,			CMemoryWindow::U16)
-	EVT_CHECKBOX(IDM_U32,			CMemoryWindow::U32)
+	EVT_RADIOBUTTON(IDM_DATATYPE,	CMemoryWindow::onDataTypeChange)
 	EVT_BUTTON(IDM_SEARCH,			CMemoryWindow::onSearch)
-	EVT_CHECKBOX(IDM_ASCII,			CMemoryWindow::onAscii)
-	EVT_CHECKBOX(IDM_HEX,			CMemoryWindow::onHex)
+	EVT_SPINCTRL(IDM_WORDNUM,		CMemoryWindow::onWordNumChange)
 END_EVENT_TABLE()
 
 CMemoryWindow::CMemoryWindow(wxWindow* parent, wxWindowID id,
@@ -91,21 +86,25 @@ CMemoryWindow::CMemoryWindow(wxWindow* parent, wxWindowID id,
 		sizerRight->Add(new wxButton(this, IDM_DUMP_FAKEVMEM, _("&Dump FakeVMEM")));
 
 	wxStaticBoxSizer* sizerSearchType = new wxStaticBoxSizer(wxVERTICAL, this, _("Search"));
-
 	sizerSearchType->Add(btnSearch = new wxButton(this, IDM_SEARCH, _("Search")));
-	sizerSearchType->Add(chkAscii = new wxCheckBox(this, IDM_ASCII, _T("&Ascii ")));
-	sizerSearchType->Add(chkHex = new wxCheckBox(this, IDM_HEX, _("&Hex")));
+	sizerSearchType->Add(radAscii = new wxRadioButton(this, IDM_SEARCHTYPE, _T("&Ascii "), wxDefaultPosition, wxDefaultSize, wxRB_GROUP));
+	sizerSearchType->Add(radHex = new wxRadioButton(this, IDM_SEARCHTYPE, _("&Hex")));
 	sizerRight->Add(sizerSearchType);
-	wxStaticBoxSizer* sizerDataTypes = new wxStaticBoxSizer(wxVERTICAL, this, _("Data Type"));
 
+	wxStaticBoxSizer* sizerDataTypes = new wxStaticBoxSizer(wxVERTICAL, this, _("Data Type"));
 	sizerDataTypes->SetMinSize(74, 40);
-	sizerDataTypes->Add(chk8 = new wxCheckBox(this, IDM_U8, _T("&U8")));
-	sizerDataTypes->Add(chk16 = new wxCheckBox(this, IDM_U16, _T("&U16")));
-	sizerDataTypes->Add(chk32 = new wxCheckBox(this, IDM_U32, _T("&U32")));
+	sizerDataTypes->Add(rad8 = new wxRadioButton(this, IDM_DATATYPE, _T("&U8"), wxDefaultPosition, wxDefaultSize, wxRB_GROUP));
+	sizerDataTypes->Add(rad16 = new wxRadioButton(this, IDM_DATATYPE, _T("&U16")));
+	sizerDataTypes->Add(rad32 = new wxRadioButton(this, IDM_DATATYPE, _T("&U32")));
 	sizerRight->Add(sizerDataTypes);
+
+	wxStaticBoxSizer* sizerWordNumber = new wxStaticBoxSizer(wxVERTICAL, this, _("Words"));
+	sizerWordNumber->Add(spnWord = new wxSpinCtrl(this, IDM_WORDNUM, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 8, 1));
+	sizerRight->Add(sizerWordNumber);
+
 	SetSizer(sizerBig);
-	chkHex->SetValue(1); //Set defaults
-	chk8->SetValue(1);
+	radHex->SetValue(1); //Set defaults
+	rad8->SetValue(1);
 
 	//sizerLeft->Fit(this);
 	sizerRight->Fit(this);
@@ -256,28 +255,16 @@ void CMemoryWindow::OnDumpFakeVMEM( wxCommandEvent& event )
 	DumpArray(File::GetUserPath(F_FAKEVMEMDUMP_IDX), Memory::m_pVirtualFakeVMEM, Memory::FAKEVMEM_SIZE);
 }
 
-void CMemoryWindow::U8(wxCommandEvent& event)
+void CMemoryWindow::onDataTypeChange(wxCommandEvent& event)
 {
-	chk16->SetValue(0);
-	chk32->SetValue(0);
-	memview->dataType = 0;
+	memview->dataType = rad8->GetValue() ? 0 : (rad16->GetValue() ? 1 : 2);
 	memview->Refresh();
 }
 
-void CMemoryWindow::U16(wxCommandEvent& event)
+void CMemoryWindow::onWordNumChange(wxSpinEvent& event)
 {
-	chk8->SetValue(0);
-	chk32->SetValue(0);
-	memview->dataType = 1;
-	memview->Refresh();
-}
-
-void CMemoryWindow::U32(wxCommandEvent& event)
-{
-	chk16->SetValue(0);
-	chk8->SetValue(0);
-	memview->dataType = 2;
-	memview->Refresh();
+	memview->SetWordNum(spnWord->GetValue());
+	memview->Refresh(); 
 }
 
 void CMemoryWindow::onSearch(wxCommandEvent& event)
@@ -319,7 +306,7 @@ void CMemoryWindow::onSearch(wxCommandEvent& event)
 	unsigned char *tmp2 = 0;
 	char* tmpstr = 0;
 
-	if (chkHex->GetValue())
+	if (radHex->GetValue())
 	{
 		//We are looking for hex
 		//If it's uneven
@@ -414,12 +401,3 @@ void CMemoryWindow::onSearch(wxCommandEvent& event)
 	}
 }
 
-void CMemoryWindow::onAscii(wxCommandEvent& event)
-{
-	chkHex->SetValue(0);
-}
-
-void CMemoryWindow::onHex(wxCommandEvent& event)
-{
-	chkAscii->SetValue(0);
-}
