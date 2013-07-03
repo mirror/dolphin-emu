@@ -423,6 +423,9 @@ void CCodeWindow::CreateMenu(wxMenuBar *pMenuBar)
 	pDebugMenu->AppendCheckItem(IDM_DEBUGGING, _("&Enable"));
 
 	pDebugMenu->AppendSeparator();
+	pDebugMenu->AppendCheckItem(IDM_LOG_MEMORY, _("&Log memory"));
+
+	pDebugMenu->AppendSeparator();
 	pDebugMenu->Append(IDM_STEP, _("Step &Into\tF11"));
 	pDebugMenu->Append(IDM_STEPOVER, _("Step &Over\tF10"));
 	pDebugMenu->Append(IDM_TOGGLE_BREAKPOINT, _("Toggle &Breakpoint\tF9"));
@@ -463,6 +466,10 @@ void CCodeWindow::OnMenuCPU(wxCommandEvent& event)
 
 	case IDM_AUTOMATICSTART:
 		boot.bAutomaticStart = event.IsChecked();
+		return;
+
+	case IDM_LOG_MEMORY:
+		boot.bLogMemory = event.IsChecked();
 		return;
 
 	case IDM_JIT_CLEAR_CACHE:
@@ -692,10 +699,12 @@ void CCodeWindow::UpdateGUI()
 
 	GetMenuBar()->Check(IDM_AUTOMATICSTART, boot.bAutomaticStart);
 	GetMenuBar()->Check(IDM_BOOTTOPAUSE, boot.bBootToPause);
+
 	GetMenuBar()->Check(IDM_DEBUGGING, boot.bEnableDebugging);
+	GetMenuBar()->Check(IDM_LOG_MEMORY, boot.bLogMemory);
+	GetMenuBar()->Check(IDM_LOG_GECKO, boot.bLogGecko);
 
 	GetMenuBar()->Check(IDM_INTERPRETER, boot.bInterpreter);
-
 	GetMenuBar()->Check(IDM_COMPILER_DEFAULT, boot.iCompiler == 0);
 	GetMenuBar()->Check(IDM_COMPILER_IL, boot.iCompiler == 1);
 	GetMenuBar()->Check(IDM_SKIP_IDLE, boot.bSkipIdle);

@@ -73,6 +73,7 @@ struct SCoreStartupParameter
 
 	// debugger
 	bool bEnableDebugging;
+	bool bLogMemory;
 
 	bool bAutomaticStart;
 	bool bBootToPause;

@@ -21,6 +21,8 @@
 #define round_page(x) ((((unsigned long)(x)) + PAGE_MASK) & ~(PAGE_MASK))
 #endif
 
+using namespace std;
+
 // This is purposely not a full wrapper for virtualalloc/mmap, but it
 // provides exactly the primitive operations that Dolphin needs.
 
@@ -50,7 +52,7 @@ void* AllocateExecutableMemory(size_t size, bool low)
 
 	// printf("Mapped executable memory at %p (size %ld)\n", ptr,
 	//	(unsigned long)size);
-	
+
 #if defined(__FreeBSD__)
 	if (ptr == MAP_FAILED)
 	{
@@ -58,7 +60,7 @@ void* AllocateExecutableMemory(size_t size, bool low)
 #else
 	if (ptr == NULL)
 	{
-#endif	
+#endif
 		PanicAlert("Failed to allocate executable memory");
 	}
 #if !defined(_WIN32) && defined(__x86_64__) && !defined(MAP_32BIT)
@@ -127,11 +129,11 @@ void FreeMemoryPages(void* ptr, size_t size)
 	if (ptr)
 	{
 #ifdef _WIN32
-	
+
 		if (!VirtualFree(ptr, 0, MEM_RELEASE))
 			PanicAlert("FreeMemoryPages failed!\n%s", GetLastErrorMsg());
 		ptr = NULL; // Is this our responsibility?
-	
+
 #else
 		munmap(ptr, size);
 #endif
@@ -194,4 +196,19 @@ std::string MemUsage()
 #else
 	return "";
 #endif
+}
+
+void MemoryLog(DebugInterface *debug_interface, u32 iValue, u32 addr, bool write, int size, u32 pc)
+{
+	string s = StringFromFormat(
+		"%08x (%s) %s%i %0*x at %08x (%s)",
+			pc, debug_interface->getDescription(pc).c_str(),
+			write ? "Write" : "Read", size*8, size*2, iValue, addr,
+			debug_interface->getDescription(addr).c_str()
+			);
+
+	if (write)
+		WARN_LOG(MEMMAP, "%s", s.c_str());
+	else
+		NOTICE_LOG(MEMMAP, "%s", s.c_str());
 }

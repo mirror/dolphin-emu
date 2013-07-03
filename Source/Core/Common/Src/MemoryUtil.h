@@ -11,6 +11,9 @@
 #endif
 #include <string>
 
+#include "Common.h"
+#include "DebugInterface.h"
+
 void* AllocateExecutableMemory(size_t size, bool low = true);
 void* AllocateMemoryPages(size_t size);
 void FreeMemoryPages(void* ptr, size_t size);
@@ -19,6 +22,7 @@ void FreeAlignedMemory(void* ptr);
 void WriteProtectMemory(void* ptr, size_t size, bool executable = false);
 void UnWriteProtectMemory(void* ptr, size_t size, bool allowExecute = false);
 std::string MemUsage();
+void MemoryLog(DebugInterface *debug_interface, u32 iValue, u32 addr, bool write, int size, u32 pc);
 
 inline int GetPageSize() { return 4096; }
 
