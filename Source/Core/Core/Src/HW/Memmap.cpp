@@ -396,15 +396,6 @@ void Clear()
 		memset(m_pEXRAM, 0, EXRAM_SIZE);
 }
 
-bool AreMemoryBreakpointsActivated()
-{
-#ifndef ENABLE_MEM_CHECK
-	return false;
-#else
-	return true;
-#endif
-}
-
 u32 Read_Instruction(const u32 em_address)
 {
 	UGeckoInstruction inst = ReadUnchecked_U32(em_address);

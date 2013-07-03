@@ -167,12 +167,11 @@ void Jit64::stfd(UGeckoInstruction inst)
 		Core::g_CoreStartupParameter.iTLBHack) {
 			mem_mask |= Memory::ADDR_MASK_MEM1;
 	}
-#ifdef ENABLE_MEM_CHECK
+
 	if (jo.debug)
 	{
 		mem_mask |= Memory::EXRAM_MASK;
 	}
-#endif
 
 	gpr.FlushLockX(ABI_PARAM1);
 	gpr.Lock(a);

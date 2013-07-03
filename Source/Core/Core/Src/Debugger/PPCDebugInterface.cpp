@@ -2,6 +2,7 @@
 // Licensed under GPLv2
 // Refer to the license.txt file included.
 
+#include "ConfigManager.h"
 #include "Debugger_SymbolMap.h"
 #include "DebugInterface.h"
 #include "PPCDebugInterface.h"
@@ -120,14 +121,12 @@ void PPCDebugInterface::toggleBreakpoint(unsigned int address)
 
 bool PPCDebugInterface::isMemCheck(unsigned int address)
 {
-	return (Memory::AreMemoryBreakpointsActivated()
-		&& PowerPC::memchecks.GetMemCheck(address, 4));
+	return (PowerPC::memchecks.GetMemCheck(address, 4));
 }
 
 void PPCDebugInterface::toggleMemCheck(unsigned int address)
 {
-	if (Memory::AreMemoryBreakpointsActivated()
-		&& !PowerPC::memchecks.GetMemCheck(address, 4))
+	if (!PowerPC::memchecks.GetMemCheck(address, 4))
 	{
 		// Add Memory Check
 		TMemCheck MemCheck;

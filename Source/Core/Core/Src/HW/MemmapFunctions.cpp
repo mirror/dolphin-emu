@@ -24,6 +24,7 @@
 #include "../Core.h"
 #include "../PowerPC/PowerPC.h"
 #include "VideoBackendBase.h"
+#include "ConfigManager.h"
 
 namespace Memory
 {
@@ -347,14 +348,15 @@ u8 Read_U8(const u32 _Address)
 {
 	u8 _var = 0;
 	ReadFromHardware<u8>(_var, _Address, _Address, FLAG_READ);
-#ifdef ENABLE_MEM_CHECK
-	TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 1);
-	if (mc)
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableDebugging)
 	{
-		mc->numHits++;
-		mc->Action(&PowerPC::debug_interface, _var, _Address, false, 1, PC);
+		TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 1);
+		if (mc)
+		{
+			mc->numHits++;
+			mc->Action(&PowerPC::debug_interface, _var, _Address, false, 1, PC);
+		}
 	}
-#endif
 	return (u8)_var;
 }
 
@@ -362,14 +364,15 @@ u16 Read_U16(const u32 _Address)
 {
 	u16 _var = 0;
 	ReadFromHardware<u16>(_var, _Address, _Address, FLAG_READ);
-#ifdef ENABLE_MEM_CHECK
-	TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 2);
-	if (mc)
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableDebugging)
 	{
-		mc->numHits++;
-		mc->Action(&PowerPC::debug_interface, _var, _Address, false, 2, PC);
+		TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 2);
+		if (mc)
+		{
+			mc->numHits++;
+			mc->Action(&PowerPC::debug_interface, _var, _Address, false, 2, PC);
+		}
 	}
-#endif
 	return (u16)_var;
 }
 
@@ -377,14 +380,15 @@ u32 Read_U32(const u32 _Address)
 {
 	u32 _var = 0;
 	ReadFromHardware<u32>(_var, _Address, _Address, FLAG_READ);
-#ifdef ENABLE_MEM_CHECK
-	TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 4);
-	if (mc)
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableDebugging)
 	{
-		mc->numHits++;
-		mc->Action(&PowerPC::debug_interface, _var, _Address, false, 4, PC);
+		TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 4);
+		if (mc)
+		{
+			mc->numHits++;
+			mc->Action(&PowerPC::debug_interface, _var, _Address, false, 4, PC);
+		}
 	}
-#endif
 	return _var;
 }
 
@@ -392,14 +396,15 @@ u64 Read_U64(const u32 _Address)
 {
 	u64 _var = 0;
 	ReadFromHardware<u64>(_var, _Address, _Address, FLAG_READ);
-#ifdef ENABLE_MEM_CHECK
-	TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 8);
-	if (mc)
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableDebugging)
 	{
-		mc->numHits++;
-		mc->Action(&PowerPC::debug_interface, (u32)_var, _Address, false, 8, PC);
+		TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 8);
+		if (mc)
+		{
+			mc->numHits++;
+			mc->Action(&PowerPC::debug_interface, (u32)_var, _Address, false, 8, PC);
+		}
 	}
-#endif
 	return _var;
 }
 
@@ -415,28 +420,30 @@ u32 Read_U16_ZX(const u32 _Address)
 
 void Write_U8(const u8 _Data, const u32 _Address)	
 {
-#ifdef ENABLE_MEM_CHECK
-	TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 1);
-	if (mc)
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableDebugging)
 	{
-		mc->numHits++;
-		mc->Action(&PowerPC::debug_interface, _Data,_Address,true,1,PC);
+		TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 1);
+		if (mc)
+		{
+			mc->numHits++;
+			mc->Action(&PowerPC::debug_interface, _Data,_Address,true,1,PC);
+		}
 	}
-#endif
 	WriteToHardware<u8>(_Address, _Data, _Address, FLAG_WRITE);
 }
 
 
 void Write_U16(const u16 _Data, const u32 _Address)
 {
-#ifdef ENABLE_MEM_CHECK
-	TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 2);
-	if (mc)
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableDebugging)
 	{
-		mc->numHits++;
-		mc->Action(&PowerPC::debug_interface, _Data,_Address,true,2,PC);
+		TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 2);
+		if (mc)
+		{
+			mc->numHits++;
+			mc->Action(&PowerPC::debug_interface, _Data,_Address,true,2,PC);
+		}
 	}
-#endif
 
 	WriteToHardware<u16>(_Address, _Data, _Address, FLAG_WRITE);
 }
@@ -447,14 +454,16 @@ void Write_U16_Swap(const u16 _Data, const u32 _Address) {
 
 void Write_U32(const u32 _Data, const u32 _Address)
 {	
-#ifdef ENABLE_MEM_CHECK
-	TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 4);
-	if (mc)
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableDebugging)
 	{
-		mc->numHits++;
-		mc->Action(&PowerPC::debug_interface, _Data,_Address,true,4,PC);
+		TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 4);
+		if (mc)
+		{
+			mc->numHits++;
+			mc->Action(&PowerPC::debug_interface, _Data,_Address,true,4,PC);
+		}
 	}
-#endif
+
 	WriteToHardware<u32>(_Address, _Data, _Address, FLAG_WRITE);
 }
 void Write_U32_Swap(const u32 _Data, const u32 _Address)
@@ -464,14 +473,15 @@ void Write_U32_Swap(const u32 _Data, const u32 _Address)
 
 void Write_U64(const u64 _Data, const u32 _Address)
 {
-#ifdef ENABLE_MEM_CHECK
-	TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 8);
-	if (mc)
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableDebugging)
 	{
-		mc->numHits++;
-		mc->Action(&PowerPC::debug_interface, (u32)_Data,_Address,true,8,PC);
+		TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address, 8);
+		if (mc)
+		{
+			mc->numHits++;
+			mc->Action(&PowerPC::debug_interface, (u32)_Data,_Address,true,8,PC);
+		}
 	}
-#endif
 
 	WriteToHardware<u64>(_Address, _Data, _Address + 4, FLAG_WRITE);
 }

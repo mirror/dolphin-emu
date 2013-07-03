@@ -667,6 +667,8 @@ void CCodeWindow::UpdateGUI()
 
 	if (ToolBar) ToolBar->Realize();
 
+
+
 	// Menu bar
 	// ------------------
 	// JIT
