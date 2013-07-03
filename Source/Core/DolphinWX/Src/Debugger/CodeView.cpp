@@ -40,8 +40,11 @@ BEGIN_EVENT_TABLE(CCodeView, wxControl)
 	EVT_LEFT_DOWN(CCodeView::OnMouseDown)
 	EVT_LEFT_UP(CCodeView::OnMouseUpL)
 	EVT_MOTION(CCodeView::OnMouseMove)
+	EVT_MOUSEWHEEL(CCodeView::OnMouseScroll)
 	EVT_RIGHT_DOWN(CCodeView::OnMouseDown)
 	EVT_RIGHT_UP(CCodeView::OnMouseUpR)
+	EVT_MIDDLE_DOWN(CCodeView::OnMouseDownM)
+	EVT_MIDDLE_UP(CCodeView::OnMouseUpM)
 	EVT_MENU(-1, CCodeView::OnPopupMenu)
 	EVT_SIZE(CCodeView::OnResize)
 END_EVENT_TABLE()
@@ -130,6 +133,15 @@ void CCodeView::OnMouseMove(wxMouseEvent& event)
 	event.Skip(true);
 }
 
+void CCodeView::OnMouseScroll(wxMouseEvent& event)
+{
+    curAddress -= event.m_wheelRotation * align / event.m_wheelDelta;
+	selection = curAddress;
+    Refresh();
+	RaiseEvent();
+    event.Skip(true);
+}
+
 void CCodeView::RaiseEvent()
 {
 	wxCommandEvent ev(wxEVT_CODEVIEW_CHANGE, GetId());
@@ -147,6 +159,25 @@ void CCodeView::OnMouseUpL(wxMouseEvent& event)
 		Refresh();
 	}
 	RaiseEvent();
+	event.Skip(true);
+}
+
+void CCodeView::OnMouseDownM(wxMouseEvent& event)
+{
+	selection = curAddress;
+	selecting = true;
+	event.Skip(true);
+}
+
+void CCodeView::OnMouseUpM(wxMouseEvent& event)
+{
+	u32 dest = AddrToBranch(selection);
+	if (dest)
+	{
+		Center(dest);
+		RaiseEvent();
+	}
+	selecting = false;
 	event.Skip(true);
 }
 

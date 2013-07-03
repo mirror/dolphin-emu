@@ -28,8 +28,11 @@ public:
 	void OnErase(wxEraseEvent& event);
 	void OnMouseDown(wxMouseEvent& event);
 	void OnMouseMove(wxMouseEvent& event);
+	void OnMouseScroll(wxMouseEvent& event);
 	void OnMouseUpL(wxMouseEvent& event);
 	void OnMouseUpR(wxMouseEvent& event);
+	void OnMouseDownM(wxMouseEvent& event);
+	void OnMouseUpM(wxMouseEvent& event);
 	void OnPopupMenu(wxCommandEvent& event);
 	void InsertBlrNop(int);
 
