@@ -34,6 +34,7 @@ BEGIN_EVENT_TABLE(CMemoryView, wxControl)
 	EVT_LEFT_UP(CMemoryView::OnMouseUpL)
 	EVT_MOTION(CMemoryView::OnMouseMove)
 	EVT_RIGHT_DOWN(CMemoryView::OnMouseDownR)
+    EVT_MOUSEWHEEL(CMemoryView::OnMouseScroll)
 	EVT_MENU(-1, CMemoryView::OnPopupMenu)
 	EVT_SIZE(CMemoryView::OnResize)
 END_EVENT_TABLE()
@@ -42,7 +43,9 @@ CMemoryView::CMemoryView(DebugInterface* debuginterface, wxWindow* parent)
 	: wxControl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize)
 	, curAddress(debuginterface->getPC())
 	, debugger(debuginterface)
-	, align(debuginterface->getInstructionSize(0))
+	, insSz(debuginterface->getInstructionSize(0))
+	, wordNum(1)
+	, align(insSz)
 	, rowHeight(13)
 	, selection(0)
 	, oldSelection(0)
@@ -121,6 +124,13 @@ void CMemoryView::OnMouseUpL(wxMouseEvent& event)
 	event.Skip(true);
 }
 
+void CMemoryView::OnMouseScroll(wxMouseEvent& event)
+{
+    curAddress -= event.m_wheelRotation * align / event.m_wheelDelta;
+    Refresh();
+    event.Skip(true);
+}
+
 void CMemoryView::OnPopupMenu(wxCommandEvent& event)
 {
 #if wxUSE_CLIPBOARD
@@ -150,15 +160,18 @@ void CMemoryView::OnPopupMenu(wxCommandEvent& event)
 
 		case IDM_VIEWASFP:
 			viewAsType = VIEWAS_FP;
+			SetWordNum();
 			Refresh();
 			break;
 
 		case IDM_VIEWASASCII:
 			viewAsType = VIEWAS_ASCII;
+			SetWordNum();
 			Refresh();
 			break;
 		case IDM_VIEWASHEX:
 			viewAsType = VIEWAS_HEX;
+			SetWordNum();
 			Refresh();
 			break;
 	}
@@ -236,8 +249,6 @@ void CMemoryView::OnPaint(wxPaintEvent& event)
 
 	dc.SetPen(nullPen);
 	dc.SetBrush(bgBrush);
-	dc.DrawRectangle(0, 0, 16, rc.height);
-	dc.DrawRectangle(0, 0, rc.width, 5+8);
 
 	// TODO - clean up this freaking mess!!!!!
 	for (int row = -numRows; row <= numRows; row++)
@@ -252,7 +263,6 @@ void CMemoryView::OnPaint(wxPaintEvent& event)
 		wxBrush rowBrush(wxColor(col >> 16, col >> 8, col));
 		dc.SetBrush(nullBrush);
 		dc.SetPen(nullPen);
-		dc.DrawRectangle(0, rowY1, 16, rowY2);
 
 		if (selecting && (address == selection))
 			dc.SetPen(selPen);
@@ -275,7 +285,6 @@ void CMemoryView::OnPaint(wxPaintEvent& event)
 			debugger->getRawMemoryString(memory, address, mem, 256);
 			dc.SetTextForeground(_T("#000080"));
 			dc.DrawText(StrToWxStr(mem), 17+fontSize*(8), rowY1);
-			dc.SetTextForeground(_T("#000000"));
 		}
 
 		if (debugger->isAlive())
@@ -286,7 +295,7 @@ void CMemoryView::OnPaint(wxPaintEvent& event)
 			if (viewAsType == VIEWAS_FP)
 			{
 				float flt = *(float *)(&mem_data);
-				sprintf(dis, "f: %f", flt);
+				sprintf(dis, "%f", flt);
 			}
 			else if (viewAsType == VIEWAS_ASCII)
 			{
@@ -314,7 +323,7 @@ void CMemoryView::OnPaint(wxPaintEvent& event)
 					debugger->readExtraMemory(memory, address+28)
 				};
 
-				for (int i = 0; i < 8; i++)
+				for (int i = 0; i < wordNum; i++)
 				{
 					char buf[32] = "";
 					switch (dataType)
@@ -343,32 +352,32 @@ void CMemoryView::OnPaint(wxPaintEvent& event)
 					}
 					strcat(dis, buf);
 				}
-				curAddress += 32;
 			}
 			else
 			{
 				sprintf(dis, "INVALID VIEWAS TYPE");
 			}
 
-			char desc[256] = "";
+			dc.SetTextForeground(_T("#000000"));
 			if (viewAsType != VIEWAS_HEX)
-				dc.DrawText(StrToWxStr(dis), textPlacement + fontSize*(8 + 8), rowY1);
+				dc.DrawText(StrToWxStr(dis), textPlacement + fontSize*(16), rowY1);
 			else
 				dc.DrawText(StrToWxStr(dis), textPlacement, rowY1);
 
-			if (desc[0] == 0)
-				strcpy(desc, debugger->getDescription(address).c_str());
+			char desc[256] = "";
+			strcpy(desc, debugger->getDescription(address).c_str());
 
 			dc.SetTextForeground(_T("#0000FF"));
 
+			int descOff = 17+fontSize*(8 + 32 + 18);
 			if (strlen(desc))
-				dc.DrawText(StrToWxStr(desc), 17+fontSize*((8+8+8+30)*2), rowY1);
+				dc.DrawText(StrToWxStr(desc), descOff, rowY1);
 
 			// Show blue memory check dot
 			if (debugger->isMemCheck(address))
 			{
 				dc.SetBrush(mcBrush);
-				dc.DrawRectangle(8, rowY1 + 1, 11, 11);
+				dc.DrawRectangle(3, rowY1 + 1, 11, 11);
 			}
 		}
 	}
