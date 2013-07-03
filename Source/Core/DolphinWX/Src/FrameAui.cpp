@@ -513,7 +513,6 @@ void CFrame::DoAddPage(wxWindow *Win, int i, bool Float)
 // Toolbar
 void CFrame::OnDropDownSettingsToolbar(wxAuiToolBarEvent& event)
 {
-	event.Skip();
 	ClearStatusBar();
 
 	if (event.IsDropDownClicked())
@@ -551,11 +550,15 @@ void CFrame::OnDropDownSettingsToolbar(wxAuiToolBarEvent& event)
 			Tb->SetToolSticky(event.GetId(), false);
 		}
 	}
+	else
+	{
+		wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, event.GetId());
+		OnToolBar(e);
+	}
 }
 
 void CFrame::OnDropDownToolbarItem(wxAuiToolBarEvent& event)
 {
-	event.Skip();
 	ClearStatusBar();
 
 	if (event.IsDropDownClicked())
@@ -597,6 +600,11 @@ void CFrame::OnDropDownToolbarItem(wxAuiToolBarEvent& event)
 
 		// make sure the button is "un-stuck"
 		tb->SetToolSticky(event.GetId(), false);
+	}
+	else
+	{
+		wxCommandEvent e(wxEVT_COMMAND_MENU_SELECTED, event.GetId());
+		OnToolBar(e);
 	}
 }
 
@@ -640,7 +648,7 @@ void CFrame::OnDropDownToolbarSelect(wxCommandEvent& event)
 						_("Enter a name for the new perspective:"),
 						_("Create new perspective"));
 				wxString DefaultValue = wxString::Format(_("Perspective %d"),
-						Perspectives.size() + 1);
+						int(Perspectives.size() + 1));
 				dlg.SetValue(DefaultValue);
 
 				int Return = 0;
