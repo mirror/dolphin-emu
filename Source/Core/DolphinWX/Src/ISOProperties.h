@@ -33,6 +33,14 @@ struct PHackData
 	std::string PHZFar;
 };
 
+struct ISO
+{
+	std::string id;
+	u8 version;
+	std::string name;
+	DiscIO::IVolume::ECountry country;
+};
+
 class CISOProperties : public wxDialog
 {
 public:
@@ -195,6 +203,7 @@ private:
 
 	IniFile GameIni;
 	std::string GameIniFile;
+	ISO m_ISO;
 
 	void LoadGameConfig();
 	void PatchList_Load();
