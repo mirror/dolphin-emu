@@ -29,9 +29,9 @@
 
 enum
 {
-	IDM_MEM_ADDRBOX = 350,
-	IDM_SYMBOLLIST,
+	IDM_SYMBOLLIST = 350,
 	IDM_SETVALBUTTON,
+	IDM_REFRESH,
 	IDM_DUMP_MEMORY,
 	IDM_DUMP_MEM2,
 	IDM_DUMP_FAKEVMEM,
@@ -45,10 +45,10 @@ enum
 };
 
 BEGIN_EVENT_TABLE(CMemoryWindow, wxPanel)
-	EVT_TEXT(IDM_MEM_ADDRBOX,		CMemoryWindow::OnAddrBoxChange)
 	EVT_LISTBOX(IDM_SYMBOLLIST,		CMemoryWindow::OnSymbolListChange)
 	EVT_HOST_COMMAND(wxID_ANY,		CMemoryWindow::OnHostMessage)
 	EVT_BUTTON(IDM_SETVALBUTTON,	CMemoryWindow::SetMemoryValue)
+	EVT_BUTTON(IDM_REFRESH,			CMemoryWindow::Refresh)
 	EVT_BUTTON(IDM_DUMP_MEMORY,		CMemoryWindow::OnDumpMemory)
 	EVT_BUTTON(IDM_DUMP_MEM2,		CMemoryWindow::OnDumpMem2)
 	EVT_BUTTON(IDM_DUMP_FAKEVMEM,	CMemoryWindow::OnDumpFakeVMEM)
@@ -79,13 +79,16 @@ CMemoryWindow::CMemoryWindow(wxWindow* parent, wxWindowID id,
 	//sizerBig->Add(sizerLeft, 1, wxEXPAND);
 	sizerBig->Add(memview, 20, wxEXPAND);
 	sizerBig->Add(sizerRight, 0, wxEXPAND | wxALL, 3);
-	sizerRight->Add(addrbox = new wxTextCtrl(this, IDM_MEM_ADDRBOX, _T("")));
+
 	sizerRight->Add(valbox = new wxTextCtrl(this, IDM_VALBOX, _T("")));
-	sizerRight->Add(new wxButton(this, IDM_SETVALBUTTON, _("Set &Value")));
+	sizerRight->Add(new wxButton(this, IDM_SETVALBUTTON, _("Set &Value")), 0, wxEXPAND);
 
 	sizerRight->AddSpacer(5);
-	sizerRight->Add(new wxButton(this, IDM_DUMP_MEMORY, _("&Dump MRAM")));
-	sizerRight->Add(new wxButton(this, IDM_DUMP_MEM2, _("&Dump EXRAM")));
+	sizerRight->Add(new wxButton(this, IDM_REFRESH, _("&Refresh")), 0, wxEXPAND);
+
+	sizerRight->AddSpacer(5);
+	sizerRight->Add(new wxButton(this, IDM_DUMP_MEMORY, _("&Dump MRAM")), 0, wxEXPAND);
+	sizerRight->Add(new wxButton(this, IDM_DUMP_MEM2, _("&Dump EXRAM")), 0, wxEXPAND);
 
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.iTLBHack == 1)
 		sizerRight->Add(new wxButton(this, IDM_DUMP_FAKEVMEM, _("&Dump FakeVMEM")));
@@ -98,11 +101,10 @@ CMemoryWindow::CMemoryWindow(wxWindow* parent, wxWindowID id,
 	sizerRight->Add(sizerSearchType);
 	wxStaticBoxSizer* sizerDataTypes = new wxStaticBoxSizer(wxVERTICAL, this, _("Data Type"));
 
-	sizerDataTypes->SetMinSize(74, 40);
 	sizerDataTypes->Add(chk8 = new wxCheckBox(this, IDM_U8, _T("&U8")));
 	sizerDataTypes->Add(chk16 = new wxCheckBox(this, IDM_U16, _T("&U16")));
 	sizerDataTypes->Add(chk32 = new wxCheckBox(this, IDM_U32, _T("&U32")));
-	sizerRight->Add(sizerDataTypes);
+	sizerRight->Add(sizerDataTypes, 0, wxEXPAND);
 	SetSizer(sizerBig);
 	chkHex->SetValue(1); //Set defaults
 	chk8->SetValue(1);
@@ -139,18 +141,16 @@ void CMemoryWindow::JumpToAddress(u32 _Address)
 	memview->Center(_Address);
 }
 
+void CMemoryWindow::Refresh(wxCommandEvent& event)
+{
+	memview->Refresh();
+}
+
 void CMemoryWindow::SetMemoryValue(wxCommandEvent& event)
 {
-	std::string str_addr = WxStrToStr(addrbox->GetValue());
 	std::string str_val = WxStrToStr(valbox->GetValue());
 	u32 addr;
 	u32 val;
-
-	if (!TryParse(std::string("0x") + str_addr, &addr))
-	{
-		PanicAlert("Invalid Address: %s", str_addr.c_str());
-		return;
-	}
 
 	if (!TryParse(std::string("0x") + str_val, &val))
 	{
@@ -158,27 +158,18 @@ void CMemoryWindow::SetMemoryValue(wxCommandEvent& event)
 		return;
 	}
 
-	Memory::Write_U32(val, addr);
+	Memory::Write_U32(val, memview->GetSelection());
 	memview->Refresh();
 }
 
-void CMemoryWindow::OnAddrBoxChange(wxCommandEvent& event)
+void CMemoryWindow::Center(u32 addr)
 {
-	wxString txt = addrbox->GetValue();
-	if (txt.size())
-	{
-		u32 addr;
-		sscanf(WxStrToStr(txt).c_str(), "%08x", &addr);
-		memview->Center(addr & ~3);
-	}
-
-	event.Skip(1);
+	memview->Center(addr);
 }
 
 void CMemoryWindow::Update()
 {
 	memview->Refresh();
-	memview->Center(PC);
 }
 
 void CMemoryWindow::NotifyMapLoaded()
@@ -377,13 +368,7 @@ void CMemoryWindow::onSearch(wxCommandEvent& event)
 		unsigned char* pnt = &Dest.front();
 		unsigned int k = 0;
 		//grab
-		wxString txt = addrbox->GetValue();
-		u32 addr = 0;
-		if (txt.size())
-		{
-			sscanf(WxStrToStr(txt).c_str(), "%08x", &addr);
-		}
-		i = addr+4;
+		i = memview->GetSelection() + 4;
 		for( ; i < szRAM; i++)
 		{
 			for(k = 0; k < size; k++)
@@ -403,10 +388,7 @@ void CMemoryWindow::onSearch(wxCommandEvent& event)
 				wxChar tmpwxstr[128] = {0};
 				wxSprintf(tmpwxstr, _T("%08x"), i);
 				wxString tmpwx(tmpwxstr);
-				addrbox->SetValue(tmpwx);
-				//memview->curAddress = i;
-				//memview->Refresh();
-				OnAddrBoxChange(event);
+				Center(i);
 				return;
 			}
 		}

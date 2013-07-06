@@ -13,6 +13,7 @@
 #include "FileSearch.h"
 
 #include "Core.h" // Core
+#include "PowerPC/PowerPC.h"
 #include "HW/EXI.h"
 #include "HW/SI.h"
 #include "HW/DSPHLE/DSPHLE.h"
@@ -32,21 +33,6 @@
 #include "VideoBackendBase.h"
 
 #define TEXT_BOX(page, text) new wxStaticText(page, wxID_ANY, text, wxDefaultPosition, wxDefaultSize)
-
-struct CPUCore
-{
-	int CPUid;
-	const char *name;
-};
-const CPUCore CPUCores[] = {
-	{0, wxTRANSLATE("Interpreter (VERY slow)")},
-#ifdef _M_ARM
-	{3, wxTRANSLATE("Arm JIT (experimental)")},
-#else
-	{1, wxTRANSLATE("JIT Recompiler (recommended)")},
-	{2, wxTRANSLATE("JITIL experimental recompiler")},
-#endif
-};
 
 extern CFrame* main_frame;
 
@@ -101,7 +87,7 @@ static const wxLanguage langIds[] =
 #define WXSTR_TRANS(a)		wxString(wxGetTranslation(wxT(a)))
 #ifdef WIN32
 //only used with xgettext to be picked up as translatable string.
-//win32 does not have wx on its path, the provided wxALL_FILES 
+//win32 does not have wx on its path, the provided wxALL_FILES
 //translation does not work there.
 #define unusedALL_FILES wxTRANSLATE("All files (*.*)|*.*");
 #endif
@@ -118,7 +104,8 @@ EVT_CHECKBOX(ID_ENABLECHEATS, CConfigMain::CoreSettingsChanged)
 EVT_CHOICE(ID_FRAMELIMIT, CConfigMain::CoreSettingsChanged)
 EVT_CHECKBOX(ID_FRAMELIMIT_USEFPSFORLIMITING, CConfigMain::CoreSettingsChanged)
 
-EVT_RADIOBOX(ID_CPUENGINE, CConfigMain::CoreSettingsChanged)
+EVT_RADIOBOX(ID_COMPILER, CConfigMain::CoreSettingsChanged)
+EVT_CHECKBOX(ID_INTERPRETER, CConfigMain::CoreSettingsChanged)
 EVT_CHECKBOX(ID_NTSCJ, CConfigMain::CoreSettingsChanged)
 
 
@@ -212,10 +199,9 @@ void CConfigMain::UpdateGUI()
 	{
 		// Disable the Core stuff on GeneralPage
 		CPUThread->Disable();
-		SkipIdle->Disable();
 		EnableCheats->Disable();
-		
-		CPUEngine->Disable();
+
+		Compiler->Disable();
 		_NTSCJ->Disable();
 
 		// Disable stuff on AudioPage
@@ -248,15 +234,18 @@ void CConfigMain::InitializeGUILists()
 	for (int i = 10; i <= 120; i += 5)	// from 10 to 120
 		arrayStringFor_Framelimit.Add(wxString::Format(wxT("%i"), i));
 
-	// Emulator Engine
-	for (unsigned int a = 0; a < (sizeof(CPUCores) / sizeof(CPUCore)); ++a)
-		arrayStringFor_CPUEngine.Add(wxGetTranslation(CPUCores[a].name));
-		
-	// DSP Engine 
+	// Compiler
+	arrayStringFor_CPUEngine.Add(wxTRANSLATE("Default"));
+	arrayStringFor_CPUEngine.Add(wxTRANSLATE("Intermediate language"));
+#ifdef _M_ARM
+	arrayStringFor_CPUEngine.Add(wxTRANSLATE("Arm (experimental)"));
+#endif
+
+	// DSP Engine
 	arrayStringFor_DSPEngine.Add(_("DSP HLE emulation (fast)"));
 	arrayStringFor_DSPEngine.Add(_("DSP LLE recompiler"));
 	arrayStringFor_DSPEngine.Add(_("DSP LLE interpreter (slow)"));
-	
+
 	// Gamecube page
 	// GC Language arrayStrings
 	arrayStringFor_GCSystemLang.Add(_("English"));
@@ -266,16 +255,15 @@ void CConfigMain::InitializeGUILists()
 	arrayStringFor_GCSystemLang.Add(_("Italian"));
 	arrayStringFor_GCSystemLang.Add(_("Dutch"));
 
-	
 	// Wii page
 	// Sensorbar Position
 	arrayStringFor_WiiSensBarPos.Add(_("Bottom"));
 	arrayStringFor_WiiSensBarPos.Add(_("Top"));
-	
+
 	// Aspect ratio
 	arrayStringFor_WiiAspectRatio.Add(wxT("4:3"));
 	arrayStringFor_WiiAspectRatio.Add(wxT("16:9"));
-	
+
 	// Wii Language arrayStrings
 	arrayStringFor_WiiSystemLang = arrayStringFor_GCSystemLang;
 	arrayStringFor_WiiSystemLang.Insert(_("Japanese"), 0);
@@ -316,7 +304,7 @@ void CConfigMain::InitializeGUILists()
 void CConfigMain::InitializeGUIValues()
 {
 	const SCoreStartupParameter& startup_params = SConfig::GetInstance().m_LocalCoreStartupParameter;
-	
+
 	// General - Basic
 	CPUThread->SetValue(startup_params.bCPUThread);
 	SkipIdle->SetValue(startup_params.bSkipIdle);
@@ -325,11 +313,9 @@ void CConfigMain::InitializeGUIValues()
 	UseFPSForLimiting->SetValue(SConfig::GetInstance().b_UseFPS);
 
 	// General - Advanced
-	for (unsigned int a = 0; a < (sizeof(CPUCores) / sizeof(CPUCore)); ++a)
-		if (CPUCores[a].CPUid == startup_params.iCPUCore)
-			CPUEngine->SetSelection(a);
+	Compiler->SetSelection(startup_params.iCompiler);
+	Interpreter->SetValue(startup_params.bInterpreter);
 	_NTSCJ->SetValue(startup_params.bForceNTSCJ);
-
 
 	// Display - Interface
 	ConfirmStop->SetValue(startup_params.bConfirmStop);
@@ -471,7 +457,7 @@ void CConfigMain::InitializeGUIValues()
 	WiiEuRGB60->SetValue(!!SConfig::GetInstance().m_SYSCONF->GetData<u8>("IPL.E60"));
 	WiiAspectRatio->SetSelection(SConfig::GetInstance().m_SYSCONF->GetData<u8>("IPL.AR"));
 	WiiSystemLang->SetSelection(SConfig::GetInstance().m_SYSCONF->GetData<u8>("IPL.LNG"));
-	
+
 	// Wii - Devices
 	WiiSDCard->SetValue(SConfig::GetInstance().m_WiiSDCard);
 	WiiKeyboard->SetValue(SConfig::GetInstance().m_WiiKeyboard);
@@ -525,7 +511,7 @@ void CConfigMain::InitializeGUITooltips()
 void CConfigMain::CreateGUIControls()
 {
 	InitializeGUILists();
-	
+
 	// Create the notebook and pages
 	Notebook = new wxNotebook(this, ID_NOTEBOOK, wxDefaultPosition, wxDefaultSize);
 	wxPanel* const GeneralPage = new wxPanel(Notebook, ID_GENERALPAGE, wxDefaultPosition, wxDefaultSize);
@@ -550,8 +536,10 @@ void CConfigMain::CreateGUIControls()
 	// Framelimit
 	Framelimit = new wxChoice(GeneralPage, ID_FRAMELIMIT, wxDefaultPosition, wxDefaultSize, arrayStringFor_Framelimit, 0, wxDefaultValidator);
 	UseFPSForLimiting = new wxCheckBox(GeneralPage, ID_FRAMELIMIT_USEFPSFORLIMITING, _("Limit by FPS"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator);
+
 	// Core Settings - Advanced
-	CPUEngine = new wxRadioBox(GeneralPage, ID_CPUENGINE, _("CPU Emulator Engine"), wxDefaultPosition, wxDefaultSize, arrayStringFor_CPUEngine, 0, wxRA_SPECIFY_ROWS);
+	Compiler = new wxRadioBox(GeneralPage, ID_COMPILER, _("Compiler"), wxDefaultPosition, wxDefaultSize, arrayStringFor_CPUEngine, 0, wxRA_SPECIFY_ROWS);
+	Interpreter = new wxCheckBox(GeneralPage, ID_INTERPRETER, wxTRANSLATE("Interpreter"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator);
 	_NTSCJ = new wxCheckBox(GeneralPage, ID_NTSCJ, _("Force Console as NTSC-J"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator);
 
 	// Populate the General settings
@@ -566,7 +554,8 @@ void CConfigMain::CreateGUIControls()
 	sbBasic->Add(sFramelimit);
 
 	wxStaticBoxSizer* const sbAdvanced = new wxStaticBoxSizer(wxVERTICAL, GeneralPage, _("Advanced Settings"));
-	sbAdvanced->Add(CPUEngine, 0, wxALL, 5);
+	sbAdvanced->Add(Compiler, 0, wxALL, 5);
+	sbAdvanced->Add(Interpreter, 0, wxALL, 5);
 	sbAdvanced->Add(_NTSCJ, 0, wxALL, 5);
 
 	wxBoxSizer* const sGeneralPage = new wxBoxSizer(wxVERTICAL);
@@ -615,7 +604,7 @@ void CConfigMain::CreateGUIControls()
 		if (-1 == theme_selection->FindString(wxname))
 			theme_selection->Append(wxname);
 	});
-	
+
 	theme_selection->SetStringSelection(StrToWxStr(SConfig::GetInstance().m_LocalCoreStartupParameter.theme_name));
 
 	// std::function = avoid error on msvc
@@ -641,7 +630,7 @@ void CConfigMain::CreateGUIControls()
 	sDisplayPage->Add(sbInterface, 0, wxEXPAND | wxALL, 5);
 	DisplayPage->SetSizer(sDisplayPage);
 
-	
+
 	// Audio page
 	DSPEngine = new wxRadioBox(AudioPage, ID_DSPENGINE, _("DSP Emulator Engine"),
 				wxDefaultPosition, wxDefaultSize, arrayStringFor_DSPEngine, 0, wxRA_SPECIFY_ROWS);
@@ -792,7 +781,7 @@ void CConfigMain::CreateGUIControls()
 	sWiiPage->Add(sbWiiDeviceSettings, 0, wxEXPAND|wxALL, 5);
 	WiiPage->SetSizer(sWiiPage);
 
-	
+
 	// Paths page
 	ISOPaths = new wxListBox(PathsPage, ID_ISOPATHS, wxDefaultPosition, wxDefaultSize, arrayStringFor_ISOPaths, wxLB_SINGLE, wxDefaultValidator);
 	RecursiveISOPath = new wxCheckBox(PathsPage, ID_RECURSIVEISOPATH, _("Search Subfolders"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator);
@@ -876,26 +865,35 @@ void CConfigMain::CoreSettingsChanged(wxCommandEvent& event)
 	case ID_CPUTHREAD:
 		SConfig::GetInstance().m_LocalCoreStartupParameter.bCPUThread = CPUThread->IsChecked();
 		break;
+
 	case ID_IDLESKIP:
-		SConfig::GetInstance().m_LocalCoreStartupParameter.bSkipIdle = SkipIdle->IsChecked();
+		SConfig::GetInstance().m_LocalCoreStartupParameter.bSkipIdle = event.IsChecked();
+		PowerPC::Change();
 		break;
+
 	case ID_ENABLECHEATS:
 		SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableCheats = EnableCheats->IsChecked();
 		break;
+
 	case ID_FRAMELIMIT:
 		SConfig::GetInstance().m_Framelimit = Framelimit->GetSelection();
 		AudioCommon::UpdateSoundStream();
 		break;
+
 	case ID_FRAMELIMIT_USEFPSFORLIMITING:
 		SConfig::GetInstance().b_UseFPS = UseFPSForLimiting->IsChecked();
 		break;
+
 	// Core - Advanced
-	case ID_CPUENGINE:
-		SConfig::GetInstance().m_LocalCoreStartupParameter.iCPUCore = CPUCores[CPUEngine->GetSelection()].CPUid;
-		if (main_frame->g_pCodeWindow)
-			main_frame->g_pCodeWindow->GetMenuBar()->Check(IDM_INTERPRETER,
-				SConfig::GetInstance().m_LocalCoreStartupParameter.iCPUCore?false:true);
+	case ID_COMPILER:
+		SConfig::GetInstance().m_LocalCoreStartupParameter.iCompiler = Compiler->GetSelection();
 		break;
+
+	case ID_INTERPRETER:
+		SConfig::GetInstance().m_LocalCoreStartupParameter.bInterpreter = event.IsChecked();
+		PowerPC::Change();
+		break;
+
 	case ID_NTSCJ:
 		SConfig::GetInstance().m_LocalCoreStartupParameter.bForceNTSCJ = _NTSCJ->IsChecked();
 		break;
@@ -984,7 +982,7 @@ void CConfigMain::AddAudioBackends()
 {
 	std::vector<std::string> backends = AudioCommon::GetSoundBackends();
 	// I'm sure Billiard will change this into an auto sometimes soon :P
-	for (std::vector<std::string>::const_iterator iter = backends.begin(); 
+	for (std::vector<std::string>::const_iterator iter = backends.begin();
 		 iter != backends.end(); ++iter)
 	{
 		BackendSelection->Append(wxGetTranslation(StrToWxStr(*iter)));

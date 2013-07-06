@@ -17,6 +17,7 @@
 
 #include "../../Core.h"
 #include "MemoryUtil.h"
+#include "ConfigManager.h"
 
 #include "../../HW/Memmap.h"
 #include "../JitInterface.h"
@@ -47,6 +48,9 @@ using namespace Gen;
 
 #define INVALID_EXIT 0xFFFFFFFF
 
+const std::string msgReload = "Reloading code";
+const std::string msgReloadBlock = "Reloading code";
+
 bool JitBlock::ContainsAddress(u32 em_address)
 {
 	// WARNING - THIS DOES NOT WORK WITH INLINING ENABLED.
@@ -60,7 +64,10 @@ bool JitBlock::ContainsAddress(u32 em_address)
 
 	void JitBaseBlockCache::Init()
 	{
-		MAX_NUM_BLOCKS = 65536*2;
+		if (SConfig::GetInstance().m_LocalCoreStartupParameter.bJITLargeCache)
+			MAX_NUM_BLOCKS = 65536*8;
+		else
+			MAX_NUM_BLOCKS = 65536*2;
 
 #if defined USE_OPROFILE && USE_OPROFILE
 		agent = op_open_agent();
@@ -121,9 +128,9 @@ bool JitBlock::ContainsAddress(u32 em_address)
 	void JitBaseBlockCache::Clear()
 	{
 		if (IsFull())
-			Core::DisplayMessage("Clearing block cache.", 3000);
+			Core::DisplayMessage(msgReload.c_str(), 3000);
 		else
-			Core::DisplayMessage("Clearing code cache.", 3000);
+			Core::DisplayMessage(msgReloadBlock.c_str(), 3000);
 
 		for (int i = 0; i < num_blocks; i++)
 		{
@@ -139,6 +146,7 @@ bool JitBlock::ContainsAddress(u32 em_address)
 	void JitBaseBlockCache::ClearSafe()
 	{
 #ifdef JIT_UNLIMITED_ICACHE
+		Core::DisplayMessage(msgReload.c_str(), 3000);
 		memset(iCache, JIT_ICACHE_INVALID_BYTE, JIT_ICACHE_SIZE);
 		memset(iCacheEx, JIT_ICACHE_INVALID_BYTE, JIT_ICACHEEX_SIZE);
 		memset(iCacheVMEM, JIT_ICACHE_INVALID_BYTE, JIT_ICACHE_SIZE);

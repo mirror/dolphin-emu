@@ -171,9 +171,7 @@ EVT_MENU(IDM_CONFIG_PAD_PLUGIN, CFrame::OnConfigPAD)
 EVT_MENU(IDM_CONFIG_WIIMOTE_PLUGIN, CFrame::OnConfigWiimote)
 EVT_MENU(IDM_CONFIG_HOTKEYS, CFrame::OnConfigHotkey)
 
-EVT_MENU(IDM_SAVE_PERSPECTIVE, CFrame::OnToolBar)
 EVT_AUITOOLBAR_TOOL_DROPDOWN(IDM_SAVE_PERSPECTIVE, CFrame::OnDropDownToolbarItem)
-EVT_MENU(IDM_EDIT_PERSPECTIVES, CFrame::OnToolBar)
 EVT_AUITOOLBAR_TOOL_DROPDOWN(IDM_EDIT_PERSPECTIVES, CFrame::OnDropDownSettingsToolbar)
 // Drop down
 EVT_MENU(IDM_PERSPECTIVES_ADD_PANE, CFrame::OnToolBar)
@@ -233,7 +231,7 @@ EVT_AUINOTEBOOK_PAGE_CHANGED(wxID_ANY, CFrame::OnNotebookPageChanged)
 EVT_AUINOTEBOOK_TAB_RIGHT_UP(wxID_ANY, CFrame::OnTab)
 
 // Post events to child panels
-EVT_MENU_RANGE(IDM_INTERPRETER, IDM_ADDRBOX, CFrame::PostEvent)
+EVT_MENU_RANGE(IDM_DEBUG_BEGIN, IDM_DEBUG_END, CFrame::PostEvent)
 EVT_TEXT(IDM_ADDRBOX, CFrame::PostEvent)
 
 END_EVENT_TABLE()
@@ -259,6 +257,7 @@ CFrame::CFrame(wxFrame* parent,
 	, m_FifoPlayerDlg(NULL), UseDebugger(_UseDebugger)
 	, m_bBatchMode(_BatchMode), m_bEdit(false), m_bTabSplit(false), m_bNoDocking(false)
 	, m_bGameLoading(false)
+	, m_RenderEventCount(0)
 {
 	for (int i = 0; i <= IDM_CODEWINDOW - IDM_LOGWINDOW; i++)
 		bFloatWindow[i] = false;
@@ -269,8 +268,8 @@ CFrame::CFrame(wxFrame* parent,
 	ConsoleListener *Console = LogManager::GetInstance()->GetConsoleListener();
 	if (SConfig::GetInstance().m_InterfaceConsole) Console->Open();
 
-	// Start debugging maximized
-	if (UseDebugger) this->Maximize(true);
+	Maximize(SConfig::GetInstance().m_LocalCoreStartupParameter.bMax);
+
 	// Debugger class
 	if (UseDebugger)
 	{
@@ -364,7 +363,8 @@ CFrame::CFrame(wxFrame* parent,
 	// -------------------------
 	// Connect event handlers
 
-	m_Mgr->Bind(wxEVT_AUI_RENDER, &CFrame::OnManagerResize, this);
+	m_Mgr->Bind(wxEVT_SIZE, &CFrame::OnManagerSize, this);
+	m_Mgr->Bind(wxEVT_AUI_RENDER, &CFrame::OnManagerRender, this);
 	// ----------
 
 	// Update controls
@@ -478,8 +478,8 @@ void CFrame::OnClose(wxCloseEvent& event)
 void CFrame::PostEvent(wxCommandEvent& event)
 {
 	if (g_pCodeWindow &&
-		event.GetId() >= IDM_INTERPRETER &&
-		event.GetId() <= IDM_ADDRBOX)
+		event.GetId() >= IDM_DEBUG_BEGIN &&
+		event.GetId() <= IDM_DEBUG_END)
 	{
 		event.StopPropagation();
 		g_pCodeWindow->GetEventHandler()->AddPendingEvent(event);
@@ -515,6 +515,8 @@ void CFrame::OnResize(wxSizeEvent& event)
 		SConfig::GetInstance().m_LocalCoreStartupParameter.iWidth = GetSize().GetWidth();
 		SConfig::GetInstance().m_LocalCoreStartupParameter.iHeight = GetSize().GetHeight();
 	}
+
+	SConfig::GetInstance().m_LocalCoreStartupParameter.bMax = IsMaximized();
 
 	// Make sure the logger pane is a sane size
 	if (!g_pCodeWindow && m_LogWindow && m_Mgr->GetPane(_T("Pane 1")).IsShown() &&

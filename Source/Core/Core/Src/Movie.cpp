@@ -53,7 +53,7 @@ u64 g_recordingStartTime; // seconds since 1970 that recording started
 bool bSaveConfig, bSkipIdle, bDualCore, bProgressive, bDSPHLE, bFastDiscSpeed = false;
 bool bMemcard, g_bClearSave, bSyncGPU = false;
 std::string videoBackend = "unknown";
-int iCPUCore = 1;
+int iCompiler = 0;
 bool g_bDiscChange = false;
 std::string g_discChange = "";
 std::string author = "";
@@ -151,7 +151,7 @@ void Init()
 	g_bFrameStep = false;
 	g_bFrameStop = false;
 	bSaveConfig = false;
-	iCPUCore = SConfig::GetInstance().m_LocalCoreStartupParameter.iCPUCore;
+	iCompiler = SConfig::GetInstance().m_LocalCoreStartupParameter.iCompiler;
 	if (IsPlayingInput())
 	{
 		ReadHeader();
@@ -341,7 +341,7 @@ bool IsFastDiscSpeed()
 
 int GetCPUMode()
 {
-	return iCPUCore;
+	return iCompiler;
 }
 
 bool IsStartingFromClearSave()
@@ -675,7 +675,7 @@ void ReadHeader()
 		bProgressive = tmpHeader.bProgressive;
 		bDSPHLE = tmpHeader.bDSPHLE;
 		bFastDiscSpeed = tmpHeader.bFastDiscSpeed;
-		iCPUCore = tmpHeader.CPUCore;
+		iCompiler = tmpHeader.Compiler;
 		g_bClearSave = tmpHeader.bClearSave;
 		bMemcard = tmpHeader.bMemcard;
 		bongos = tmpHeader.bongos;
@@ -1095,7 +1095,7 @@ void SaveRecording(const char *filename)
 	header.bDSPHLE = bDSPHLE;
 	header.bFastDiscSpeed = bFastDiscSpeed;
 	strncpy((char *)header.videoBackend, videoBackend.c_str(),ARRAYSIZE(header.videoBackend));
-	header.CPUCore = iCPUCore;
+	header.Compiler = iCompiler;
 	header.bEFBAccessEnable = g_ActiveConfig.bEFBAccessEnable;
 	header.bEFBCopyEnable = g_ActiveConfig.bEFBCopyEnable;
 	header.bCopyEFBToTexture = g_ActiveConfig.bCopyEFBToTexture;
@@ -1165,7 +1165,7 @@ void GetSettings()
 	bFastDiscSpeed = SConfig::GetInstance().m_LocalCoreStartupParameter.bFastDiscSpeed;
 	videoBackend = g_video_backend->GetName();
 	bSyncGPU = SConfig::GetInstance().m_LocalCoreStartupParameter.bSyncGPU;
-	iCPUCore = SConfig::GetInstance().m_LocalCoreStartupParameter.iCPUCore;
+	iCompiler = SConfig::GetInstance().m_LocalCoreStartupParameter.iCompiler;
 	if (!Core::g_CoreStartupParameter.bWii)
 		g_bClearSave = !File::Exists(SConfig::GetInstance().m_strMemoryCardA);
 	bMemcard = SConfig::GetInstance().m_EXIDevice[0] == EXIDEVICE_MEMORYCARD;

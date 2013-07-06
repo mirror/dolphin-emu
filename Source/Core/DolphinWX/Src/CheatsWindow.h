@@ -24,6 +24,7 @@
 #include "ActionReplay.h"
 
 #include "GeckoCodeDiag.h"
+#include "ISOProperties.h"
 
 #include "Filesystem.h"
 #include "IniFile.h"
@@ -31,11 +32,13 @@
 class CreateCodeDialog : public wxDialog
 {
 public:
-	CreateCodeDialog(wxWindow* const parent, const u32 address);
+	CreateCodeDialog(IniFile& ini, wxWindow* const parent, ARPanel* const ar, const u32 address);
 
 protected:
 
 	const u32 code_address;
+	IniFile m_gameini;
+	ARPanel* m_ar;
 
 	wxTextCtrl *textctrl_name, *textctrl_code, *textctrl_value;
 	wxCheckBox *checkbox_use_hex;
@@ -48,7 +51,7 @@ protected:
 class CheatSearchTab : public wxPanel
 {
 public:
-	CheatSearchTab(wxWindow* const parent);
+	CheatSearchTab(IniFile& ini, wxWindow* const parent, ARPanel* const ar);
 
 protected:
 
@@ -63,6 +66,8 @@ protected:
 
 	std::vector<CheatSearchResult>	search_results;
 	unsigned int search_type_size;
+	ARPanel* m_ar;
+	IniFile& m_gameini;
 
 	wxChoice* search_type;
 	wxListBox*	lbox_search_results;
@@ -100,34 +105,19 @@ class wxCheatsWindow : public wxDialog
 
 	protected:
 
-		struct ARCodeIndex {
-			u32 uiIndex;
-			size_t index;
-		};
-
 		// --- GUI Controls ---
+		wxButton *btn_reload;
 		wxButton* button_apply;
 		wxNotebook *m_Notebook_Main;
 
-		wxPanel *m_Tab_Cheats;
+		ARPanel *m_Tab_Cheats;
 		wxPanel *m_Tab_Log;
 
 		wxCheckBox *m_CheckBox_LogAR;
 
-		wxStaticText *m_Label_Codename;
-		wxStaticText *m_Label_NumCodes;
-
 		wxCheckListBox *m_CheckListBox_CheatsList;
 
 		wxTextCtrl *m_TextCtrl_Log;
-
-		wxListBox *m_ListBox_CodesList;
-
-		wxStaticBox *m_GroupBox_Info;
-
-		wxArrayString m_CheatStringList;
-
-		std::vector<ARCodeIndex> indexList;
 
 		Gecko::CodeConfigPanel *m_geckocode_panel;
 		IniFile m_gameini;
@@ -140,13 +130,11 @@ class wxCheatsWindow : public wxDialog
 
 		// --- Wx Events Handlers ---
 
+		void OnReload(wxCommandEvent& event);
+
 		// $ Close Button
 		void OnEvent_ButtonClose_Press(wxCommandEvent& event);
 		void OnEvent_Close(wxCloseEvent& ev);
-
-		// $ Cheats List
-		void OnEvent_CheatsList_ItemSelected(wxCommandEvent& event);
-		void OnEvent_CheatsList_ItemToggled(wxCommandEvent& event);
 
 		// $ Apply Changes Button
 		void OnEvent_ApplyChanges_Press(wxCommandEvent& event);

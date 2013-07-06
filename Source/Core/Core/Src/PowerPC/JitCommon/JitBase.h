@@ -24,12 +24,16 @@ class JitBase : public CPUCoreBase
 protected:
 	struct JitOptions
 	{
+		bool debug;
 		bool optimizeStack;
 		bool enableBlocklink;
+		bool skipIdle;
 		bool fpAccurateFcmp;
 		bool optimizeGatherPipe;
 		bool fastInterrupts;
 		bool accurateSinglePrecision;
+
+		JitOptions() : debug(false), skipIdle(true) {}
 	};
 	struct JitState
 	{

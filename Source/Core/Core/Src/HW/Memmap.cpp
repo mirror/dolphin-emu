@@ -13,6 +13,7 @@
 #include "MemoryUtil.h"
 #include "MemArena.h"
 #include "ChunkFile.h"
+#include "Crypto/md5.h"
 
 #include "Memmap.h"
 #include "../Core.h"
@@ -128,7 +129,7 @@ template <class T, u8 *P> void HW_Write_Memory(T _Data, const u32 _Address)
 }
 
 // Create shortcuts to the hardware devices' read and write functions.
-// This can be seen as an alternative to a switch() or if() table. 
+// This can be seen as an alternative to a switch() or if() table.
 #define BLOCKSIZE 4
 #define CP_START		0x00 //0x0000 >> 10
 #define WII_IPC_START	0x00 //0x0000 >> 10
@@ -395,18 +396,9 @@ void Clear()
 		memset(m_pEXRAM, 0, EXRAM_SIZE);
 }
 
-bool AreMemoryBreakpointsActivated()
-{
-#ifndef ENABLE_MEM_CHECK
-	return false;
-#else
-	return true;
-#endif
-}
-
 u32 Read_Instruction(const u32 em_address)
 {
-	UGeckoInstruction inst = ReadUnchecked_U32(em_address);	
+	UGeckoInstruction inst = ReadUnchecked_U32(em_address);
 	return inst.hex;
 }
 
@@ -574,5 +566,66 @@ bool IsRAMAddress(const u32 addr, bool allow_locked_cache, bool allow_fake_vmem)
 		return false;
 	}
 }
+
+#ifdef _WIN32
+#include <psapi.h>
+using namespace std;
+void ArtMoneyPointer()
+{
+	std::ofstream out;
+	OpenFStream(out, "dolphin.emul", std::ios::out);
+	if (out.fail())
+		return;
+
+	CHAR name[MAX_PATH];
+	GetModuleBaseNameA(GetCurrentProcess(), 0, name, MAX_PATH);
+
+	DWORD base = DWORD(GetModuleHandleA(name));
+
+	string gc = "*Nintendo GameCube";
+	string wii = "*Nintendo Wii";
+
+	u8 md5_hash[16];
+	md5_file(name, md5_hash);
+	string emu = StringFromFormat("%s;%s;R;%s"
+		, scm_rev_str
+		, name
+		, ArrayToString(md5_hash, 16, 16, false).c_str());
+
+	u32 flags = 0;
+	flags |= MV_WII_ONLY;
+	MemoryMap_Setup(views, num_views, flags, &g_arena);
+
+	string ram1 = StringFromFormat(
+		";RAM1 24MB"
+		";80000000"
+		";%s+P%x"
+		";1800000"
+		, name
+		, u64(&Memory::m_pRAM) - base);
+
+	string ram2 = StringFromFormat(
+		";RAM2 64MB"
+		";90000000"
+		";%s+P%x"
+		";4000000"
+		, name
+		, u64(&Memory::m_pEXRAM) - base);
+
+	MemoryMap_Shutdown(views, num_views, flags, &g_arena);
+
+	out << gc << endl;
+	out << emu;
+	out << ram1 << endl;
+	out << endl;
+
+	out << wii << endl;
+	out << emu;
+	out << ram1 << endl;
+	out << ram2 << endl;
+
+	out.close();
+}
+#endif
 
 }  // namespace

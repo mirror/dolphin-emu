@@ -412,7 +412,7 @@ void EmuThread()
 	CBoot::BootUp();
 
 	// Setup our core, but can't use dynarec if we are compare server
-	if (_CoreParameter.iCPUCore && (!_CoreParameter.bRunCompareServer ||
+	if (!_CoreParameter.bInterpreter && (!_CoreParameter.bRunCompareServer ||
 					_CoreParameter.bRunCompareClient))
 		PowerPC::SetMode(PowerPC::MODE_JIT);
 	else
@@ -682,8 +682,14 @@ void UpdateTitle()
 	u32 Speed = DrawnVideo * (100 * 1000) / (VideoInterface::TargetRefreshRate * ElapseTime);
 
 	// Settings are shown the same for both extended and summary info
-	std::string SSettings = StringFromFormat("%s %s | %s | %s", cpu_core_base->GetName(),	_CoreParameter.bCPUThread ? "DC" : "SC", 
-		g_video_backend->GetName().c_str(), _CoreParameter.bDSPHLE ? "HLE" : "LLE");
+	std::string CPUName = "Changing …";
+	if (PowerPC::GetState() != PowerPC::CPU_CHANGE)
+		CPUName = cpu_core_base->GetName();
+	std::string SSettings = StringFromFormat("%s %s | %s | %s"
+		, CPUName.c_str()
+		, _CoreParameter.bCPUThread ? "DC" : "SC"
+		, g_video_backend->GetName().c_str()
+		, _CoreParameter.bDSPHLE ? "HLE" : "LLE");
 
 	// Use extended or summary information. The summary information does not print the ticks data,
 	// that's more of a debugging interest, it can always be optional of course if someone is interested.

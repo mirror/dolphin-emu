@@ -8,6 +8,7 @@
 #include "Atomic.h"
 #include "MathUtil.h"
 #include "ChunkFile.h"
+#include "ConfigManager.h"
 
 #include "../HW/Memmap.h"
 #include "../HW/CPU.h"
@@ -32,6 +33,8 @@ namespace PowerPC
 // STATE_TO_SAVE
 PowerPCState GC_ALIGNED16(ppcState);
 volatile CPUState state = CPU_STEPPING;
+
+CPUState old_state;
 
 Interpreter * const interpreter = Interpreter::getInstance();
 CoreMode mode;
@@ -113,7 +116,7 @@ void ResetRegisters()
 	SystemTimers::DecrementerSet();
 }
 
-void Init(int cpu_core)
+void Init()
 {
 	FPURoundMode::SetPrecisionMode(FPURoundMode::PREC_53);
 
@@ -142,27 +145,23 @@ void Init(int cpu_core)
 	ppcState.pagetable_hashmask = 0;
 
 	ResetRegisters();
-	PPCTables::InitTables(cpu_core);
+	PPCTables::InitTables();
 
 	// We initialize the interpreter because
 	// it is used on boot and code window independently.
 	interpreter->Init();
 
-	switch (cpu_core)
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bInterpreter)
+		cpu_core_base = interpreter;
+
+	else
 	{
-		case 0:
+		cpu_core_base = JitInterface::InitJitCore();
+		if (!cpu_core_base) // Handle Situations where JIT core isn't available
 		{
+			WARN_LOG(POWERPC, "Jit core %d not available. Defaulting to interpreter.", SConfig::GetInstance().m_LocalCoreStartupParameter.iCompiler);
 			cpu_core_base = interpreter;
-			break;
 		}
-		default:
-			cpu_core_base = JitInterface::InitJitCore(cpu_core);
-			if (!cpu_core_base) // Handle Situations where JIT core isn't available
-			{
-				WARN_LOG(POWERPC, "Jit core %d not available. Defaulting to interpreter.", cpu_core);
-				cpu_core_base = interpreter;
-			}
-		break;
 	}
 
 	if (cpu_core_base != interpreter)
@@ -193,9 +192,6 @@ CoreMode GetMode()
 
 void SetMode(CoreMode new_mode)
 {
-	if (new_mode == mode)
-		return;  // We don't need to do anything.
-
 	mode = new_mode;
 
 	switch (mode)
@@ -208,6 +204,8 @@ void SetMode(CoreMode new_mode)
 		// Don't really need to do much. It'll work, the cache will refill itself.
 		cpu_core_base = JitInterface::GetCore();
 		if (!cpu_core_base) // Has a chance to not get a working JIT core if one isn't active on host
+			cpu_core_base = JitInterface::InitJitCore();
+		if (!cpu_core_base)
 			cpu_core_base = interpreter;
 		break;
 	}
@@ -233,6 +231,35 @@ CPUState GetState()
 volatile CPUState *GetStatePtr()
 {
 	return &state;
+}
+
+void Restore()
+{
+	state = old_state;
+	Host_UpdateDisasmDialog();
+}
+
+void Change()
+{
+	if (state == CPU_STEPPING)
+		DoChange();
+	else
+	{
+		old_state = state;
+		state = CPU_CHANGE;
+	}
+	Host_UpdateDisasmDialog();
+}
+
+void DoChange()
+{
+	JitInterface::Shutdown();
+	PowerPC::SetMode(SConfig::GetInstance().m_LocalCoreStartupParameter.bInterpreter ? PowerPC::MODE_INTERPRETER : PowerPC::MODE_JIT);
+
+	if (state != CPU_STEPPING)
+		PowerPC::Restore();
+
+	Host_UpdateDisasmDialog();
 }
 
 void Start()

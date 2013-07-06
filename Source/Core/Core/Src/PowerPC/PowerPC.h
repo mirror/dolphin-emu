@@ -73,6 +73,7 @@ struct GC_ALIGNED64(PowerPCState)
 enum CPUState
 {
 	CPU_RUNNING = 0,
+	CPU_CHANGE = 1,
 	CPU_STEPPING = 2,
 	CPU_POWERDOWN = 3,
 };
@@ -83,7 +84,7 @@ extern BreakPoints breakpoints;
 extern MemChecks memchecks;
 extern PPCDebugInterface debug_interface;
 
-void Init(int cpu_core);
+void Init();
 void Shutdown();
 void DoState(PointerWrap &p);
 
@@ -95,6 +96,9 @@ void CheckExceptions();
 void CheckExternalExceptions();
 void CheckBreakPoints();
 void RunLoop();
+void Change();
+void DoChange();
+void Restore();
 void Start();
 void Pause();
 void Stop();

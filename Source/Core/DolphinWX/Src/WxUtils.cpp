@@ -6,8 +6,59 @@
 
 #include <wx/wx.h>
 #include <wx/string.h>
+#include <wx/clipbrd.h>
 
 #include "WxUtils.h"
+
+
+BEGIN_EVENT_TABLE(wxListBoxEx, wxListBox)
+	EVT_MENU(wxID_COPY, wxListBoxEx::OnCopy)
+	EVT_MENU(wxID_SELECTALL, wxListBoxEx::OnSelectAll)
+END_EVENT_TABLE()
+
+wxListBoxEx::wxListBoxEx(wxWindow *parent
+	, wxWindowID id
+	, const wxPoint& pos
+	, wxSize size
+	, const wxArrayString& choices
+	, long style
+	, const wxValidator& validator
+	, const wxString& name) :
+	wxListBox(parent, id, pos, size, choices, style, validator, name)
+{
+	wxAcceleratorEntry entries[2];
+	entries[0].Set(wxACCEL_CTRL, 'C', wxID_COPY);
+	entries[1].Set(wxACCEL_CTRL, 'A', wxID_SELECTALL);
+	wxAcceleratorTable accel(WXSIZEOF(entries), entries);
+	SetAcceleratorTable(accel);
+}
+
+void wxListBoxEx::OnSelectAll(wxCommandEvent& event)
+{
+	event.Skip();
+
+	for (int i = 0; i < GetCount(); i++)
+		SetSelection(i, true);
+}
+
+void wxListBoxEx::OnCopy(wxCommandEvent& event)
+{
+	event.Skip();
+
+	if (!wxTheClipboard->Open())
+		return;
+
+	wxString s;
+
+	for (int i = 0; i < GetCount(); i++)
+	{
+		s.Append(GetString(i));
+		s.Append("\n");
+	}
+
+	wxTheClipboard->SetData(new wxTextDataObject(s));
+	wxTheClipboard->Close();
+}
 
 namespace WxUtils {
 

@@ -11,6 +11,8 @@
 #include "Host.h"
 #include "PowerPC/PowerPC.h"
 #include "FileUtil.h"
+#include "ConfigManager.h"
+#include "Core.h"
 
 extern "C" {
 #include "../../resources/toolbar_add_breakpoint.c"
@@ -21,6 +23,16 @@ extern "C" {
 class CBreakPointBar : public wxAuiToolBar
 {
 public:
+	enum
+	{
+		ID_DELETE = 2000,
+		ID_CLEAR,
+		ID_ADDBP,
+		ID_ADDMC,
+		ID_LOAD,
+		ID_SAVE
+	};
+
 	CBreakPointBar(CBreakPointWindow* parent, const wxWindowID id)
 		: wxAuiToolBar(parent, id, wxDefaultPosition, wxDefaultSize,
 				wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_TEXT)
@@ -43,12 +55,8 @@ public:
 		AddTool(ID_ADDBP, wxT("+BP"), m_Bitmaps[Toolbar_Add_BP]);
 		Bind(wxEVT_COMMAND_TOOL_CLICKED, &CBreakPointWindow::OnAddBreakPoint, parent, ID_ADDBP);
 
-		// Add memory breakpoints if you can use them
-		if (Memory::AreMemoryBreakpointsActivated())
-		{
-			AddTool(ID_ADDMC, wxT("+MC"), m_Bitmaps[Toolbar_Add_MC]);
-			Bind(wxEVT_COMMAND_TOOL_CLICKED, &CBreakPointWindow::OnAddMemoryCheck, parent, ID_ADDMC);
-		}
+		AddTool(ID_ADDMC, wxT("+MC"), m_Bitmaps[Toolbar_Add_MC]);
+		Bind(wxEVT_COMMAND_TOOL_CLICKED, &CBreakPointWindow::OnAddMemoryCheck, parent, ID_ADDMC);
 
 		AddTool(ID_LOAD, wxT("Load"), m_Bitmaps[Toolbar_Delete]);
 		Bind(wxEVT_COMMAND_TOOL_CLICKED, &CBreakPointWindow::LoadAll, parent, ID_LOAD);
@@ -65,16 +73,6 @@ private:
 		Toolbar_Add_BP,
 		Toolbar_Add_MC,
 		Num_Bitmaps
-	};
-
-	enum
-	{
-		ID_DELETE = 2000,
-		ID_CLEAR,
-		ID_ADDBP,
-		ID_ADDMC,
-		ID_LOAD,
-		ID_SAVE
 	};
 
 	wxBitmap m_Bitmaps[Num_Bitmaps];
@@ -96,7 +94,8 @@ CBreakPointWindow::CBreakPointWindow(CCodeWindow* _pCodeWindow, wxWindow* parent
 
 	m_BreakPointListView = new CBreakPointView(this, wxID_ANY);
 
-	m_mgr.AddPane(new CBreakPointBar(this, wxID_ANY), wxAuiPaneInfo().ToolbarPane().Top().
+	m_ToolBar = new CBreakPointBar(this, wxID_ANY);
+	m_mgr.AddPane(m_ToolBar, wxAuiPaneInfo().ToolbarPane().Top().
 			LeftDockable(false).RightDockable(false).BottomDockable(false).Floatable(false));
 	m_mgr.AddPane(m_BreakPointListView, wxAuiPaneInfo().CenterPane());
 	m_mgr.Update();

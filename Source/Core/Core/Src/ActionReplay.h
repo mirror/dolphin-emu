@@ -25,6 +25,8 @@ struct ARCode
 	bool active;
 };
 
+extern std::vector<ActionReplay::ARCode> arCodes;
+
 void RunAllActive();
 bool RunCode(const ARCode &arcode);
 void LoadCodes(IniFile &ini, bool forceLoad);

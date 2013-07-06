@@ -9,8 +9,8 @@ namespace JitInterface
 {
 	void DoState(PointerWrap &p);
 	
-	CPUCoreBase *InitJitCore(int core);
-	void InitTables(int core);
+	CPUCoreBase *InitJitCore();
+	void InitTables();
 	CPUCoreBase *GetCore();
 
 	// Debugging

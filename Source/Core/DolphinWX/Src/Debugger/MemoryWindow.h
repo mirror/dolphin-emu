@@ -38,6 +38,7 @@ class CMemoryWindow
 		void Save(IniFile& _IniFile) const;
 		void Load(IniFile& _IniFile);
 
+		void Center(u32 addr);
 		void Update();
 		void NotifyMapLoaded();
 
@@ -50,7 +51,6 @@ class CMemoryWindow
 		wxListBox* symbols;
 
 		wxButton* buttonGo;
-		wxTextCtrl* addrbox;
 		wxTextCtrl* valbox;
 
 		void U8(wxCommandEvent& event);
@@ -61,9 +61,9 @@ class CMemoryWindow
 		void onHex(wxCommandEvent& event);
 		void OnSymbolListChange(wxCommandEvent& event);
 		void OnCallstackListChange(wxCommandEvent& event);
-		void OnAddrBoxChange(wxCommandEvent& event);
 		void OnHostMessage(wxCommandEvent& event);
 		void SetMemoryValue(wxCommandEvent& event);
+		void Refresh(wxCommandEvent& event);
 		void OnDumpMemory(wxCommandEvent& event);
 		void OnDumpMem2(wxCommandEvent& event);
 		void OnDumpFakeVMEM(wxCommandEvent& event);

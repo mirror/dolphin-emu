@@ -62,7 +62,7 @@ using namespace PowerPC;
 // will be as small to be negligible, so I haven't dirtied up the code with that. AMD recommends it in their
 // optimization manuals, though.
 //
-// We support block linking. Reserve space at the exits of every block for a full 5-byte jmp. Save 16-bit offsets 
+// We support block linking. Reserve space at the exits of every block for a full 5-byte jmp. Save 16-bit offsets
 // from the starts of each block, marking the exits so that they can be nicely patched at any time.
 //
 // Blocks do NOT use call/ret, they only jmp to each other and to the dispatcher when necessary.
@@ -96,7 +96,7 @@ using namespace PowerPC;
     CR2-CR4 are non-volatile, rest of CR is volatile -> dropped on blr.
 	R5-R12 are volatile -> dropped on blr.
   * classic inlining across calls.
-  
+
 Low hanging fruit:
 stfd -- guaranteed in memory
 cmpl
@@ -249,14 +249,15 @@ void JitIL::Init()
 {
 	jo.optimizeStack = true;
 
-	if (Core::g_CoreStartupParameter.bEnableDebugging)
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableDebugging)
 	{
+		jo.debug = true;
 		jo.enableBlocklink = false;
-		Core::g_CoreStartupParameter.bSkipIdle = false;
+		jo.skipIdle = false;
 	}
 	else
 	{
-		if (!Core::g_CoreStartupParameter.bJITBlockLinking)
+		if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bJITBlockLink)
 			jo.enableBlocklink = false;
 		else
 			// Speed boost, but not 100% safe
@@ -391,22 +392,22 @@ void JitIL::WriteExit(u32 destination, int exit_num)
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bJITILTimeProfiling) {
 		ABI_CallFunction((void *)JitILProfiler::End);
 	}
-	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount)); 
+	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount));
 
 	//If nobody has taken care of this yet (this can be removed when all branches are done)
 	JitBlock *b = js.curBlock;
 	b->exitAddress[exit_num] = destination;
 	b->exitPtrs[exit_num] = GetWritableCodePtr();
-	
+
 	// Link opportunity!
 	int block = blocks.GetBlockNumberFromStartAddress(destination);
-	if (block >= 0 && jo.enableBlocklink) 
+	if (block >= 0 && jo.enableBlocklink)
 	{
 		// It exists! Joy of joy!
 		JMP(blocks.GetBlock(block)->checkedEntry, true);
 		b->linkStatus[exit_num] = true;
 	}
-	else 
+	else
 	{
 		MOV(32, M(&PC), Imm32(destination));
 		JMP(asm_routines.dispatcher, true);
@@ -420,7 +421,7 @@ void JitIL::WriteExitDestInOpArg(const Gen::OpArg& arg)
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bJITILTimeProfiling) {
 		ABI_CallFunction((void *)JitILProfiler::End);
 	}
-	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount)); 
+	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount));
 	JMP(asm_routines.dispatcher, true);
 }
 
@@ -431,7 +432,7 @@ void JitIL::WriteRfiExitDestInOpArg(const Gen::OpArg& arg)
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bJITILTimeProfiling) {
 		ABI_CallFunction((void *)JitILProfiler::End);
 	}
-	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount)); 
+	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount));
 	JMP(asm_routines.testExceptions, true);
 }
 
@@ -441,7 +442,7 @@ void JitIL::WriteExceptionExit()
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bJITILTimeProfiling) {
 		ABI_CallFunction((void *)JitILProfiler::End);
 	}
-	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount)); 
+	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount));
 	JMP(asm_routines.testExceptions, true);
 }
 
@@ -479,17 +480,17 @@ void JitIL::Trace()
 		sprintf(reg, "f%02d: %016x ", i, riPS0(i));
 		strncat(fregs, reg, 750);
 	}
-#endif	
+#endif
 
-	DEBUG_LOG(DYNA_REC, "JITIL PC: %08x SRR0: %08x SRR1: %08x CRfast: %02x%02x%02x%02x%02x%02x%02x%02x FPSCR: %08x MSR: %08x LR: %08x %s %s", 
-		PC, SRR0, SRR1, PowerPC::ppcState.cr_fast[0], PowerPC::ppcState.cr_fast[1], PowerPC::ppcState.cr_fast[2], PowerPC::ppcState.cr_fast[3], 
-		PowerPC::ppcState.cr_fast[4], PowerPC::ppcState.cr_fast[5], PowerPC::ppcState.cr_fast[6], PowerPC::ppcState.cr_fast[7], PowerPC::ppcState.fpscr, 
+	DEBUG_LOG(DYNA_REC, "JITIL PC: %08x SRR0: %08x SRR1: %08x CRfast: %02x%02x%02x%02x%02x%02x%02x%02x FPSCR: %08x MSR: %08x LR: %08x %s %s",
+		PC, SRR0, SRR1, PowerPC::ppcState.cr_fast[0], PowerPC::ppcState.cr_fast[1], PowerPC::ppcState.cr_fast[2], PowerPC::ppcState.cr_fast[3],
+		PowerPC::ppcState.cr_fast[4], PowerPC::ppcState.cr_fast[5], PowerPC::ppcState.cr_fast[6], PowerPC::ppcState.cr_fast[7], PowerPC::ppcState.fpscr,
 		PowerPC::ppcState.msr, PowerPC::ppcState.spr[8], regs, fregs);
 }
 
 void STACKALIGN JitIL::Jit(u32 em_address)
 {
-	if (GetSpaceLeft() < 0x10000 || blocks.IsFull() || Core::g_CoreStartupParameter.bJITNoBlockCache)
+	if (GetSpaceLeft() < 0x10000 || blocks.IsFull())
 	{
 		ClearCache();
 	}
@@ -508,7 +509,7 @@ const u8* JitIL::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 	// A broken block is a block that does not end in a branch
 	bool broken_block = false;
 
-	if (Core::g_CoreStartupParameter.bEnableDebugging)
+	if (jo.debug)
 	{
 		// Comment out the following to disable breakpoints (speed-up)
 		if (!Profiler::g_ProfileBlocks)
@@ -568,7 +569,7 @@ const u8* JitIL::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 
 	const u8 *normalEntry = GetCodePtr();
 	b->normalEntry = normalEntry;
-	
+
 	if (ImHereDebug)
 		ABI_CallFunction((void *)&ImHere); // Used to get a trace of the last few blocks before a crash, sometimes VERY useful
 
@@ -608,7 +609,7 @@ const u8* JitIL::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 	ibuild.Reset();
 
 	js.downcountAmount = 0;
-	if (!Core::g_CoreStartupParameter.bEnableDebugging)
+	if (!jo.debug)
 	{
 		for (int i = 0; i < size_of_merged_addresses; ++i)
 		{
@@ -671,7 +672,7 @@ const u8* JitIL::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 				ibuild.EmitExtExceptionCheck(ibuild.EmitIntConst(ops[i].address));
 			}
 
-			if (Core::g_CoreStartupParameter.bEnableDebugging && breakpoints.IsAddressBreakPoint(ops[i].address) && GetState() != CPU_STEPPING)
+			if (jo.debug && breakpoints.IsAddressBreakPoint(ops[i].address) && GetState() != CPU_STEPPING)
 			{
 				ibuild.EmitBreakPointCheck(ibuild.EmitIntConst(ops[i].address));
 			}

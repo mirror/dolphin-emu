@@ -27,6 +27,12 @@
 
 // Zelda and many more games seem to pass the Acid Test. 
 
+#undef JITDISABLE
+#define JITDISABLE(type) \
+	if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bJIT || \
+		!SConfig::GetInstance().m_LocalCoreStartupParameter.bJIT##type) \
+		{Default(inst); ibuild.EmitInterpreterBranch(); return;}
+
 //#define NORMALBRANCH_START Default(inst); ibuild.EmitInterpreterBranch(); return;
 #define NORMALBRANCH_START
 
@@ -46,6 +52,7 @@ void JitIL::bx(UGeckoInstruction inst)
 {
 	NORMALBRANCH_START
 	INSTRUCTION_START;
+	JITDISABLE(Branch)
 
 	// We must always process the following sentence
 	// even if the blocks are merged by PPCAnalyst::Flatten().
@@ -113,6 +120,8 @@ static IREmitter::InstLoc TestBranch(IREmitter::IRBuilder& ibuild, UGeckoInstruc
 void JitIL::bcx(UGeckoInstruction inst)
 {
 	NORMALBRANCH_START
+	JITDISABLE(Branch)
+
 	if (inst.LK)
 		ibuild.EmitStoreLink(
 			ibuild.EmitIntConst(js.compilerPC + 4));
@@ -125,7 +134,7 @@ void JitIL::bcx(UGeckoInstruction inst)
 	else
 		destination = js.compilerPC + SignExt16(inst.BD << 2);
 
-	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bSkipIdle &&
+	if (jo.skipIdle &&
 		inst.hex == 0x4182fff8 &&			
 		(Memory::ReadUnchecked_U32(js.compilerPC - 8) & 0xFFFF0000) == 0x800D0000 &&
 		(Memory::ReadUnchecked_U32(js.compilerPC - 4) == 0x28000000 ||
@@ -144,6 +153,8 @@ void JitIL::bcx(UGeckoInstruction inst)
 void JitIL::bcctrx(UGeckoInstruction inst)
 {
 	NORMALBRANCH_START
+	JITDISABLE(Branch)
+
 	if ((inst.BO & 4) == 0) {
 		IREmitter::InstLoc c = ibuild.EmitLoadCTR();
 		c = ibuild.EmitSub(c, ibuild.EmitIntConst(1));
@@ -173,6 +184,7 @@ void JitIL::bcctrx(UGeckoInstruction inst)
 void JitIL::bclrx(UGeckoInstruction inst)
 {
 	NORMALBRANCH_START
+	JITDISABLE(Branch)
 
 	if (!js.isLastInstruction &&
 		(inst.BO & (1 << 4)) && (inst.BO & (1 << 2))) {

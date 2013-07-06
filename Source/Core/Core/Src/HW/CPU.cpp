@@ -7,11 +7,13 @@
 
 #include "../DSPEmulator.h"
 #include "../PowerPC/PowerPC.h"
+#include "../PowerPC/JitInterface.h"
 #include "../Host.h"
 #include "../Core.h"
 #include "CPU.h"
 #include "DSP.h"
 #include "Movie.h"
+#include "ConfigManager.h"
 
 #include "VideoBackendBase.h"
 
@@ -22,9 +24,9 @@ namespace
 	static std::mutex m_csCpuOccupied;
 }
 
-void CCPU::Init(int cpu_core)
+void CCPU::Init()
 {
-	PowerPC::Init(cpu_core);
+	PowerPC::Init();
 	m_SyncEvent = 0;
 }
 
@@ -44,6 +46,10 @@ void CCPU::Run()
 reswitch:
 		switch (PowerPC::GetState())
 		{
+		case PowerPC::CPU_CHANGE:
+			PowerPC::DoChange();
+			goto reswitch;
+
 		case PowerPC::CPU_RUNNING:
 			//1: enter a fast runloop
 			PowerPC::RunLoop();

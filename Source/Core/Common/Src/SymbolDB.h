@@ -96,6 +96,8 @@ public:
 	const XFuncMap &Symbols() const {return functions;}
 	XFuncMap &AccessSymbols() {return functions;}
 
+	const bool &IsEmpty() const { return functions.size() == 0; }
+
 	// deprecated
 	XFuncMap::iterator GetIterator() { return functions.begin(); }
 	XFuncMap::const_iterator GetConstIterator() { return functions.begin(); }

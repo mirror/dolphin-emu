@@ -14,13 +14,13 @@
 #include "FileUtil.h"
 
 void GenericLog(LogTypes::LOG_LEVELS level, LogTypes::LOG_TYPE type, 
-		const char *file, int line, const char* fmt, ...)
+		bool logFile, bool logType, const char *file, int line, const char* fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
 	if (LogManager::GetInstance())
 		LogManager::GetInstance()->Log(level, type,
-			file, line, fmt, args);
+			logFile, logType, file, line, fmt, args);
 	va_end(args);
 }
 
@@ -45,6 +45,7 @@ LogManager::LogManager()
 	m_Log[LogTypes::STREAMINGINTERFACE] = new LogContainer("Stream",		"StreamingInt");
 	m_Log[LogTypes::DSPINTERFACE]		= new LogContainer("DSP",			"DSPInterface");
 	m_Log[LogTypes::DVDINTERFACE]		= new LogContainer("DVD",			"DVDInterface");
+	m_Log[LogTypes::GECKO]				= new LogContainer("Gecko",			"Gecko"				, false);
 	m_Log[LogTypes::GPFIFO]				= new LogContainer("GP",			"GPFifo");
 	m_Log[LogTypes::EXPANSIONINTERFACE]	= new LogContainer("EXI",			"ExpansionInt");
 	m_Log[LogTypes::AUDIO_INTERFACE]	= new LogContainer("AI",			"AudioInt");
@@ -107,7 +108,7 @@ LogManager::~LogManager()
 }
 
 void LogManager::Log(LogTypes::LOG_LEVELS level, LogTypes::LOG_TYPE type, 
-	const char *file, int line, const char *format, va_list args)
+	bool logFile, bool logType, const char *file, int line, const char *format, va_list args)
 {
 	char temp[MAX_MSGLEN];
 	char msg[MAX_MSGLEN * 2];
@@ -119,13 +120,35 @@ void LogManager::Log(LogTypes::LOG_LEVELS level, LogTypes::LOG_TYPE type,
 	CharArrayFromFormatV(temp, MAX_MSGLEN, format, args);
 
 	static const char level_to_char[7] = "-NEWID";
-	sprintf(msg, "%s %s:%u %c[%s]: %s\n",
-		Common::Timer::GetTimeFormatted().c_str(),
-		file, line, level_to_char[(int)level],
-		log->GetShortName(), temp);
+	if (logFile && logType)
+		sprintf(msg, "%s %s:%d %c[%s] %s\n"
+			, Common::Timer::GetTimeFormatted().c_str()
+			, file
+			, line
+			, level_to_char[(int)level]
+			, log->GetShortName()
+			, temp);
+	else if (logFile)
+		sprintf(msg, "%s %s:%d %s\n"
+			, Common::Timer::GetTimeFormatted().c_str()
+			, file
+			, line
+			, temp);
+	else if (logType)
+		sprintf(msg, "%s %c[%s] %s\n"
+			, Common::Timer::GetTimeFormatted().c_str()
+			, level_to_char[(int)level]
+			, log->GetShortName()
+			, temp);
+	else
+		sprintf(msg, "%s %s\n"
+			, Common::Timer::GetTimeFormatted().c_str()
+			, temp);
+
 #ifdef ANDROID
 	Host_SysMessage(msg);	
 #endif
+
 	log->Trigger(level, msg);
 }
 

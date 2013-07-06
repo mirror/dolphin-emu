@@ -15,7 +15,7 @@ class CCPU
 {
 public:
 	// init 
-	static void Init(int cpu_core);
+	static void Init();
 
 	// shutdown
 	static void Shutdown();

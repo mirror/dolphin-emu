@@ -95,7 +95,7 @@ void JitIL::reg_imm(UGeckoInstruction inst)
 void JitIL::cmpXX(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Integer)
+	//JITDISABLE(Integer)
 	IREmitter::InstLoc lhs, rhs, res;
 	lhs = ibuild.EmitLoadGReg(inst.RA);
 	if (inst.OPCD == 31) {

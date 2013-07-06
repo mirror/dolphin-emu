@@ -2,6 +2,7 @@
 // Licensed under GPLv2
 // Refer to the license.txt file included.
 
+#include "ConfigManager.h"
 #include "Debugger_SymbolMap.h"
 #include "DebugInterface.h"
 #include "PPCDebugInterface.h"
@@ -49,11 +50,11 @@ void PPCDebugInterface::getRawMemoryString(int memory, unsigned int address, cha
 	{
 		if (memory || Memory::IsRAMAddress(address, true, true))
 		{
-			snprintf(dest, max_size, "%08X%s", readExtraMemory(memory, address), memory ? " (ARAM)" : "");
+			snprintf(dest, max_size, "%d %08X", memory, readExtraMemory(memory, address));
 		}
 		else
 		{
-			strcpy(dest, memory ? "--ARAM--" : "--------");
+			snprintf(dest, max_size, "%d %s", memory,  "---");
 		}
 	}
 	else
@@ -120,14 +121,12 @@ void PPCDebugInterface::toggleBreakpoint(unsigned int address)
 
 bool PPCDebugInterface::isMemCheck(unsigned int address)
 {
-	return (Memory::AreMemoryBreakpointsActivated()
-		&& PowerPC::memchecks.GetMemCheck(address));
+	return (PowerPC::memchecks.GetMemCheck(address, 4));
 }
 
 void PPCDebugInterface::toggleMemCheck(unsigned int address)
 {
-	if (Memory::AreMemoryBreakpointsActivated()
-		&& !PowerPC::memchecks.GetMemCheck(address))
+	if (!PowerPC::memchecks.GetMemCheck(address, 4))
 	{
 		// Add Memory Check
 		TMemCheck MemCheck;

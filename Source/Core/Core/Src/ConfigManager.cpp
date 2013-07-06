@@ -125,7 +125,6 @@ SConfig::~SConfig()
 	delete m_SYSCONF;
 }
 
-
 void SConfig::SaveSettings()
 {
 	NOTICE_LOG(BOOT, "Saving settings to %s", File::GetUserPath(F_DOLPHINCONFIG_IDX).c_str());
@@ -171,6 +170,7 @@ void SConfig::SaveSettings()
 	ini.Set("Interface", "MainWindowPosY",		(m_LocalCoreStartupParameter.iPosY == -32000) ? 0 : m_LocalCoreStartupParameter.iPosY); // TODO - HAX
 	ini.Set("Interface", "MainWindowWidth",		m_LocalCoreStartupParameter.iWidth);
 	ini.Set("Interface", "MainWindowHeight",	m_LocalCoreStartupParameter.iHeight);
+	ini.Set("Interface", "MainWindowMax",		m_LocalCoreStartupParameter.bMax);
 	ini.Set("Interface", "Language",			m_InterfaceLanguage);
 	ini.Set("Interface", "ShowToolbar",			m_InterfaceToolbar);
 	ini.Set("Interface", "ShowStatusbar",		m_InterfaceStatusbar);
@@ -219,7 +219,8 @@ void SConfig::SaveSettings()
 
 	// Core
 	ini.Set("Core", "HLE_BS2",			m_LocalCoreStartupParameter.bHLE_BS2);
-	ini.Set("Core", "CPUCore",			m_LocalCoreStartupParameter.iCPUCore);
+	ini.Set("Core", "Interpreter",		m_LocalCoreStartupParameter.bInterpreter);
+	ini.Set("Core", "Compiler",			m_LocalCoreStartupParameter.iCompiler);
 	ini.Set("Core", "Fastmem",			m_LocalCoreStartupParameter.bFastmem);
 	ini.Set("Core", "CPUThread",		m_LocalCoreStartupParameter.bCPUThread);
 	ini.Set("Core", "DSPThread",		m_LocalCoreStartupParameter.bDSPThread);
@@ -318,6 +319,7 @@ void SConfig::LoadSettings()
 		ini.Get("Interface", "MainWindowPosY",		&m_LocalCoreStartupParameter.iPosY,				100);
 		ini.Get("Interface", "MainWindowWidth",		&m_LocalCoreStartupParameter.iWidth,			800);
 		ini.Get("Interface", "MainWindowHeight",	&m_LocalCoreStartupParameter.iHeight,			600);
+		ini.Get("Interface", "MainWindowMax",		&m_LocalCoreStartupParameter.bMax,				false);
 		ini.Get("Interface", "Language",			&m_InterfaceLanguage,							0);
 		ini.Get("Interface", "ShowToolbar",			&m_InterfaceToolbar,							true);
 		ini.Get("Interface", "ShowStatusbar",		&m_InterfaceStatusbar,							true);
@@ -368,10 +370,11 @@ void SConfig::LoadSettings()
 
 		// Core
 		ini.Get("Core", "HLE_BS2",		&m_LocalCoreStartupParameter.bHLE_BS2,		false);
+		ini.Get("Core", "Interpreter",	&m_LocalCoreStartupParameter.bInterpreter,	false);
 #ifdef _M_ARM
-		ini.Get("Core", "CPUCore",		&m_LocalCoreStartupParameter.iCPUCore,		3);
+		ini.Get("Core", "Compiler",		&m_LocalCoreStartupParameter.iCompiler,		3);
 #else
-		ini.Get("Core", "CPUCore",		&m_LocalCoreStartupParameter.iCPUCore,		1);
+		ini.Get("Core", "Compiler",		&m_LocalCoreStartupParameter.iCompiler,		1);
 #endif
 		ini.Get("Core", "Fastmem",		&m_LocalCoreStartupParameter.bFastmem,		true);
 		ini.Get("Core", "DSPThread",	&m_LocalCoreStartupParameter.bDSPThread,	false);

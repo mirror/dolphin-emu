@@ -250,12 +250,8 @@ bool CBoot::BootUp()
 		{
 			PPCAnalyst::FindFunctions(0x80004000, 0x811fffff, &g_symbolDB);
 			SignatureDB db;
-			if (db.Load((File::GetSysDirectory() + TOTALDB).c_str()))
-			{
-				db.Apply(&g_symbolDB);
+			if (db.LoadApply((File::GetSysDirectory() + TOTALDB).c_str(), &g_symbolDB))
 				HLE::PatchFunctions();
-				db.Clear();
-			}
 		}
 
 		/* Try to load the symbol map if there is one, and then scan it for

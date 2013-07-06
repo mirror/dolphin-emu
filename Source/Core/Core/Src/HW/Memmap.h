@@ -22,11 +22,6 @@
 #include <string>
 #include "Common.h"
 
-// Enable memory checks in the Debug/DebugFast builds, but NOT in release
-#if defined(_DEBUG) || defined(DEBUGFAST)
-	#define ENABLE_MEM_CHECK
-#endif
-
 // Global declarations
 class PointerWrap;
 
@@ -91,7 +86,10 @@ void Shutdown();
 void DoState(PointerWrap &p);
 
 void Clear();
-bool AreMemoryBreakpointsActivated();
+
+#ifdef _WIN32
+void ArtMoneyPointer();
+#endif
 
 // ONLY for use by GUI
 u8 ReadUnchecked_U8(const u32 _Address);

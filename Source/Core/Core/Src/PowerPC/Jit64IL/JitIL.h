@@ -27,14 +27,15 @@
 #include "IR.h"
 #include "../JitCommon/JitBase.h"
 #include "JitILAsm.h"
+#include "ConfigManager.h"
 
-// #define INSTRUCTION_START Default(inst); return;
+ //#define INSTRUCTION_START Default(inst); return;
 // #define INSTRUCTION_START PPCTables::CountInstruction(inst);
 #define INSTRUCTION_START
 
 #define JITDISABLE(type) \
-	if (Core::g_CoreStartupParameter.bJITOff || \
-		Core::g_CoreStartupParameter.bJIT##type##Off) \
+	if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bJIT || \
+		!SConfig::GetInstance().m_LocalCoreStartupParameter.bJIT##type) \
 		{Default(inst); return;}
 
 #ifdef _M_X64

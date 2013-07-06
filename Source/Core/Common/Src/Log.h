@@ -32,6 +32,7 @@ enum LOG_TYPE {
 	DYNA_REC,
 	EXPANSIONINTERFACE,
 	POWERPC,
+	GECKO,
 	GPFIFO,
 	OSHLE,
 	MASTER_LOG,
@@ -77,9 +78,9 @@ enum LOG_LEVELS {
 }  // namespace
 
 void GenericLog(LOGTYPES_LEVELS level, LOGTYPES_TYPE type,
-		const char *file, int line, const char *fmt, ...)
+		bool logFile, bool logType, const char *file, int line, const char *fmt, ...)
 #ifdef __GNUC__
-		__attribute__((format(printf, 5, 6)))
+		__attribute__((format(printf, 7, 8)))
 #endif
 		;
 
@@ -92,20 +93,33 @@ void GenericLog(LOGTYPES_LEVELS level, LOGTYPES_TYPE type,
 #endif // logging
 
 #ifdef GEKKO
-#define GENERIC_LOG(t, v, ...)
+#define GENERIC_LOG_(t, v, true, ...)
 #else
-// Let the compiler optimize this out
-#define GENERIC_LOG(t, v, ...) { \
+// let the compiler optimization remove log levels
+#define GENERIC_LOG_(t, v, bf, bT, ...) { \
 	if (v <= MAX_LOGLEVEL) \
-		GenericLog(v, t, __FILE__, __LINE__, __VA_ARGS__); \
+		GenericLog(v, t, bf, bT, __FILE__, __LINE__, __VA_ARGS__); \
 	}
 #endif
+#define GENERIC_LOG(t, v, ...) GENERIC_LOG_(t, v, true, true, __VA_ARGS__)
 
-#define ERROR_LOG(t,...) do { GENERIC_LOG(LogTypes::t, LogTypes::LERROR, __VA_ARGS__) } while (0)
-#define WARN_LOG(t,...) do { GENERIC_LOG(LogTypes::t, LogTypes::LWARNING, __VA_ARGS__) } while (0)
-#define NOTICE_LOG(t,...) do { GENERIC_LOG(LogTypes::t, LogTypes::LNOTICE, __VA_ARGS__) } while (0)
-#define INFO_LOG(t,...) do { GENERIC_LOG(LogTypes::t, LogTypes::LINFO, __VA_ARGS__) } while (0)
-#define DEBUG_LOG(t,...) do { GENERIC_LOG(LogTypes::t, LogTypes::LDEBUG, __VA_ARGS__) } while (0)
+#define LOG1(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LNOTICE, false, false, __VA_ARGS__) } while (0)
+#define LOG2(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LERROR, false, false, __VA_ARGS__) } while (0)
+#define LOG3(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LWARNING, false, false, __VA_ARGS__) } while (0)
+#define LOG4(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LINFO, false, false, __VA_ARGS__) } while (0)
+#define LOG5(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LDEBUG, false, false, __VA_ARGS__) } while (0)
+
+#define LOG11(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LNOTICE, false, true, __VA_ARGS__) } while (0)
+#define LOG21(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LERROR, false, true, __VA_ARGS__) } while (0)
+#define LOG31(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LWARNING, false, true, __VA_ARGS__) } while (0)
+#define LOG41(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LINFO, false, true, __VA_ARGS__) } while (0)
+#define LOG51(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LDEBUG, false, true, __VA_ARGS__) } while (0)
+
+#define NOTICE_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::LNOTICE, __VA_ARGS__) } while (0)
+#define ERROR_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::LERROR, __VA_ARGS__) } while (0)
+#define WARN_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::LWARNING, __VA_ARGS__) } while (0)
+#define INFO_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::LINFO, __VA_ARGS__) } while (0)
+#define DEBUG_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::LDEBUG, __VA_ARGS__) } while (0)
 
 #if MAX_LOGLEVEL >= DEBUG_LEVEL
 #define _dbg_assert_(_t_, _a_) \

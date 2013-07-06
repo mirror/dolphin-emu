@@ -137,23 +137,11 @@ bool UsesFPU(UGeckoInstruction _inst)
 	}
 }
 
-void InitTables(int cpu_core)
+void InitTables()
 {
 	// Interpreter ALWAYS needs to be initialized
 	InterpreterTables::InitTables();
-	switch (cpu_core)
-	{
-	case 0:
-		{
-			// Interpreter
-			break;
-		}
-	default:
-		{
-			JitInterface::InitTables(cpu_core);
-			break;
-		}
-	}
+	JitInterface::InitTables();
 }
 
 #define OPLOG
