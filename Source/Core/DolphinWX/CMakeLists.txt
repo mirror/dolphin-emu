@@ -163,7 +163,7 @@ endif()
 if(wxWidgets_FOUND)
 	set(DOLPHIN_EXE ${DOLPHIN_EXE_BASE})
 else()
-	set(DOLPHIN_EXE ${DOLPHIN_EXE_BASE}-nogui)
+	set(DOLPHIN_EXE ${DOLPHIN_EXE_BASE}-cli)
 endif()
 
 if(USE_UPNP)
