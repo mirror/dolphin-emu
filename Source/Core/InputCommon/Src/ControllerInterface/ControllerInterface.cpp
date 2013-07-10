@@ -8,6 +8,9 @@
 #endif
 #ifdef CIFACE_USE_XLIB
 	#include "Xlib/Xlib.h"
+	#ifdef CIFACE_USE_X11_XINPUT2
+		#include "Xlib/Xinput2/Xinput2.h"
+	#endif
 #endif
 #ifdef CIFACE_USE_OSX
 	#include "OSX/OSX.h"
@@ -48,6 +51,9 @@ void ControllerInterface::Initialize()
 #endif
 #ifdef CIFACE_USE_XLIB
 	ciface::Xlib::Init(m_devices, m_hwnd);
+	#ifdef CIFACE_USE_X11_XINPUT2
+		ciface::Xinput2::Init(m_devices, m_hwnd);
+	#endif
 #endif
 #ifdef CIFACE_USE_OSX
 	ciface::OSX::Init(m_devices, m_hwnd);
