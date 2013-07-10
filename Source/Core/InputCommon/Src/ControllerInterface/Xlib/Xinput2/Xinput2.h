@@ -27,7 +27,7 @@ private:
 		struct
 		{
 			float x, y;
-		} cursor;
+		} cursor, axis;
 	};
 	
 	class Key : public Input
@@ -73,8 +73,23 @@ private:
 		const bool m_positive;
 	};
 	
+	class Axis : public Input
+	{
+	public:
+		std::string GetName() const;
+		bool IsDetectable() { return false; }
+		Axis(u8 index, bool positive, float& axis)
+			: m_axis(axis), m_index(index), m_positive(positive) {}
+		ControlState GetState() const;
+
+	private:
+		float& m_axis; // deliberately not const
+		const u8 m_index;
+		const bool m_positive;
+	};
+	
 private:
-	void SelectEventsForDevice (XIEventMask *mask, int deviceid);
+	void SelectEventsForDevice (Window window, XIEventMask *mask, int deviceid);
 	void UpdateCursor ();
 	
 public:

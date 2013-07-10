@@ -1,5 +1,6 @@
 #include "Xinput2.h"
 #include <X11/XKBlib.h>
+#include <cmath>
 
 namespace ciface
 {
@@ -46,17 +47,11 @@ void Init(std::vector<Core::Device*>& devices, void* const hwnd)
 	XIFreeDeviceInfo (all_masters);
 }
 
-void KeyboardMouse::SelectEventsForDevice (XIEventMask *mask, int deviceid)
+// Apply the event mask to the device and all its slaves.
+void KeyboardMouse::SelectEventsForDevice (Window window, XIEventMask *mask, int deviceid)
 {
 	mask->deviceid = deviceid;
-	XISelectEvents (m_display, m_window, mask, 1);
-	
-	// FIXME:
-	// Should not have to do this, but for some reason keyboards are showing 
-	// up with their deviceids equal to their sourceids instead of to the 
-	// appropriate master's deviceid, meaning that if we stopped here we'd
-	// mask them out. The Xinput demo programs aren't doing this, so it's 
-	// definitely something going on in this code.
+	XISelectEvents (m_display, window, mask, 1);
 	
 	XIDeviceInfo	*all_slaves, *current_slave;
 	int				num_slaves;
@@ -69,7 +64,7 @@ void KeyboardMouse::SelectEventsForDevice (XIEventMask *mask, int deviceid)
 		if ((current_slave->use != XISlavePointer && current_slave->use != XISlaveKeyboard) || current_slave->attachment != deviceid)
 			continue;
 		mask->deviceid = current_slave->deviceid;
-		XISelectEvents (m_display, m_window, mask, 1);
+		XISelectEvents (m_display, window, mask, 1);
 	}
 	
 	XIFreeDeviceInfo (all_slaves);
@@ -94,16 +89,16 @@ KeyboardMouse::KeyboardMouse(Window window, int opcode, int pointer, int keyboar
 	
 	mask.mask_len = sizeof(mask_buf);
 	mask.mask = mask_buf;
-	
 	memset (mask_buf, 0, sizeof(mask_buf));
+
 	XISetMask (mask_buf, XI_ButtonPress);
 	XISetMask (mask_buf, XI_ButtonRelease);
-	SelectEventsForDevice (&mask, pointer_deviceid);
-	
-	memset (mask_buf, 0, sizeof(mask_buf));
+	XISetMask (mask_buf, XI_RawMotion);
 	XISetMask (mask_buf, XI_KeyPress);
 	XISetMask (mask_buf, XI_KeyRelease);
-	SelectEventsForDevice (&mask, keyboard_deviceid);
+
+	SelectEventsForDevice (DefaultRootWindow(m_display), &mask, pointer_deviceid);
+	SelectEventsForDevice (DefaultRootWindow(m_display), &mask, keyboard_deviceid);
 	
 	// Keyboard Keys
 	for (int i = min_keycode; i <= max_keycode; ++i)
@@ -119,9 +114,12 @@ KeyboardMouse::KeyboardMouse(Window window, int opcode, int pointer, int keyboar
 	for (int i = 0; i < 5; i++)
 		AddInput (new Button(i, m_state.buttons));
 
-	// Mouse Cursor, X-/+ and Y-/+
+	// Mouse Cursor/Axis, X-/+ and Y-/+
 	for (int i = 0; i != 4; ++i)
+	{
 		AddInput(new Cursor(!!(i & 2), !!(i & 1), (&m_state.cursor.x)[!!(i & 2)]));
+		AddInput(new Axis(!!(i & 2), !!(i & 1), (&m_state.axis.x)[!!(i & 2)]));
+	}
 }
 
 KeyboardMouse::~KeyboardMouse()
@@ -187,6 +185,7 @@ bool KeyboardMouse::UpdateInput()
 		
 		// only one of these will get used
 		XIDeviceEvent *dev_event = (XIDeviceEvent*)event.xcookie.data;
+		XIRawEvent *raw_event = (XIRawEvent*)event.xcookie.data;
 		
 		switch (event.xcookie.evtype)
 		{
@@ -201,6 +200,15 @@ bool KeyboardMouse::UpdateInput()
 			break;
 		case XI_KeyRelease:
 			m_state.keyboard[dev_event->detail / 8] &= ~(1<<(dev_event->detail % 8));
+			break;
+		case XI_RawMotion:
+			// always safe because there is always at least one byte in 
+			// raw_event->valuators.mask, and if a bit is set in the mask,
+			// then the value in raw_values is also available.
+			if (XIMaskIsSet (raw_event->valuators.mask, 0))
+				m_state.axis.x += raw_event->raw_values[0];
+			if (XIMaskIsSet (raw_event->valuators.mask, 1))
+				m_state.axis.y += raw_event->raw_values[1];
 			break;
 		}
 		
@@ -271,6 +279,14 @@ ControlState KeyboardMouse::Cursor::GetState() const
 	return std::max(0.0f, m_cursor / (m_positive ? 1.0f : -1.0f));
 }
 
+ControlState KeyboardMouse::Axis::GetState() const
+{
+	double ret = std::max(0.0f, m_axis / (m_positive ? 1.0f : -1.0f));
+	if ((m_positive && m_axis > 0.0f) || (!m_positive && m_axis < 0.0f))
+		m_axis -= std::min (sqrt(ret), ret) / (m_positive ? 1.0f : -1.0f);
+	return ret/4.0f;
+}
+
 std::string KeyboardMouse::Key::GetName() const
 {
 	return m_keyname;
@@ -281,6 +297,14 @@ std::string KeyboardMouse::Cursor::GetName() const
 	static char tmpstr[] = "Cursor ..";
 	tmpstr[7] = (char)('X' + m_index);
 	tmpstr[8] = (m_positive ? '+' : '-');
+	return tmpstr;
+}
+
+std::string KeyboardMouse::Axis::GetName() const
+{
+	static char tmpstr[] = "Axis ..";
+	tmpstr[5] = (char)('X' + m_index);
+	tmpstr[6] = (m_positive ? '+' : '-');
 	return tmpstr;
 }
 
