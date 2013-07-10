@@ -63,6 +63,15 @@ struct wm_ir_extended
 	u8 yhi : 2;
 };
 
+struct wm_nc_bt
+{
+	u8 z : 1; // buttons
+	u8 c : 1;
+	u8 axL : 2; // accelerometer
+	u8 ayL : 2;
+	u8 azL : 2;
+};
+
 struct wm_extension
 {
 	u8 jx; // joystick x, y
@@ -70,7 +79,8 @@ struct wm_extension
 	u8 ax; // accelerometer
 	u8 ay;
 	u8 az;
-	u8 bt; // buttons
+	wm_nc_bt bt;
+
 };
 
 struct wm_classic_extension
@@ -262,6 +272,11 @@ struct wm_read_data
 #define WM_SPACE_REGS1 1
 #define WM_SPACE_REGS2 2
 #define WM_SPACE_INVALID 3
+
+#define WIIMOTE_REG_SPEAKER 0xa2
+#define WIIMOTE_REG_EXT 0xa4
+#define WIIMOTE_REG_MP 0xa6
+#define WIIMOTE_REG_IR 0xb0
 
 #define WM_READ_DATA_REPLY 0x21
 struct wm_read_data_reply
