@@ -152,23 +152,6 @@ void KeyboardMouse::UpdateCursor()
 	m_state.cursor.y = win_y / (float)win_attribs.height * 2 - 1;
 }
 
-// This function is used as a callback to filter out the X11 events we don't
-// care about.
-
-// "Bool" with a capital B is defined in xlib.h. Not to be confused with the 
-// C++ built-in bool type with a lowercase b. Likewize for capitalized True 
-// and False. Does not need to be fixed. Xlib expects us to use those types.
-static Bool EventPredicate (Display *dpy, XEvent *event, XPointer arg)
-{
-	int xi_opcode = *(int *)arg;
-	
-	if (event->xcookie.type != GenericEvent)
-		return False;
-	if (event->xcookie.extension != xi_opcode)
-		return False;
-	return True;
-}
-
 bool KeyboardMouse::UpdateInput()
 {
 	XFlush (m_display);
@@ -178,8 +161,14 @@ bool KeyboardMouse::UpdateInput()
 	
 	// then, iterate through the events we're interested in
 	XEvent event;
-	while (XCheckIfEvent (m_display, &event, EventPredicate, (XPointer)(&xi_opcode)))
+	while (XPending (m_display)) 
 	{
+		XNextEvent (m_display, &event);
+		
+		if (event.xcookie.type != GenericEvent)
+			continue;
+		if (event.xcookie.extension != xi_opcode)
+			continue;
 		if (!XGetEventData (m_display, &event.xcookie))
 			continue;
 		
