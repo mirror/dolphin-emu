@@ -17,7 +17,7 @@ static const u8 nunchuck_id[] = { 0x00, 0x00, 0xa4, 0x20, 0x00, 0x00 };
 static const u8 nunchuck_calibration[] =
 {
 	0x80, 0x80, 0x80, 0x00, // accelerometer x, y, z neutral
-	0xb3, 0xb3, 0xb3, 0x00, //  x, y, z g-force values 
+	0xb3, 0xb3, 0xb3, 0x00, //  x, y, z g-force values
 
 	// 0x80 = analog stick x and y axis center
 	0xff, 0x00, 0x80,
@@ -66,7 +66,7 @@ Nunchuk::Nunchuk(UDPWrapper *wrp) : Attachment(_trans("Nunchuk")) , m_udpWrap(wr
 void Nunchuk::GetState(u8* const data, const bool focus)
 {
 	wm_extension* const ncdata = (wm_extension*)data;
-	ncdata->bt = 0;
+	memset(&ncdata->bt, 0, sizeof(ncdata->bt));
 
 	// stick / not using calibration data for stick, o well
 	m_stick->GetState(&ncdata->jx, &ncdata->jy, 0x80, focus ? 127 : 0);
@@ -84,12 +84,12 @@ void Nunchuk::GetState(u8* const data, const bool focus)
 		// shake
 		EmulateShake(&accel, calib, m_shake, m_shake_step);
 		// buttons
-		m_buttons->GetState(&ncdata->bt, nunchuk_button_bitmasks);
+		m_buttons->GetState((u8*)&ncdata->bt, nunchuk_button_bitmasks);
 	}
-	
+
 	// flip the button bits :/
-	ncdata->bt ^= 0x03;
-	
+	*(u8*)&ncdata->bt ^= 0x03;
+
 	if (m_udpWrap->inst)
 	{
 		if (m_udpWrap->updNun)
@@ -99,9 +99,9 @@ void Nunchuk::GetState(u8* const data, const bool focus)
 			m_udpWrap->inst->getNunchuck(x, y, mask);
 			// buttons
 			if (mask & UDPWM_NC)
-				ncdata->bt &= ~WiimoteEmu::Nunchuk::BUTTON_C;
+				ncdata->bt.c = 0;
 			if (mask & UDPWM_NZ)
-				ncdata->bt &= ~WiimoteEmu::Nunchuk::BUTTON_Z;
+				ncdata->bt.z = 0;
 			// stick
 			if (ncdata->jx == 0x80 && ncdata->jy == 0x80)
 			{
@@ -116,7 +116,7 @@ void Nunchuk::GetState(u8* const data, const bool focus)
 			accel.x = x;
 			accel.y = y;
 			accel.z = z;
-		}	
+		}
 	}
 
 	wm_accel* dt = (wm_accel*)&ncdata->ax;

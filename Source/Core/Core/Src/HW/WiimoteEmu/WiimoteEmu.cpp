@@ -875,6 +875,7 @@ void Wiimote::ControlChannel(const u16 _channelID, const void* _pData, u32 _Size
 			HidOutputReport((wm_report*)hidp->data);
 
 			u8 handshake = HID_HANDSHAKE_SUCCESS;
+			WiimoteEmu::Spy(this, &handshake, 1);
 			Core::Callback_WiimoteInterruptChannel(m_index, _channelID, &handshake, 1);
 		}
 		break;
@@ -892,6 +893,8 @@ void Wiimote::ControlChannel(const u16 _channelID, const void* _pData, u32 _Size
 
 void Wiimote::InterruptChannel(const u16 _channelID, const void* _pData, u32 _Size)
 {
+	Spy(this, _pData, _Size);
+
 	// this all good?
 	m_reporting_channel = _channelID;
 

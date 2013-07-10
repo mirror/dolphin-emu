@@ -63,6 +63,12 @@ struct wm_ir_extended
 	u8 yhi : 2;
 };
 
+struct wm_nc_bt
+{
+	u8 z : 1; // buttons
+	u8 c : 1;
+};
+
 struct wm_extension
 {
 	u8 jx; // joystick x, y
@@ -70,7 +76,10 @@ struct wm_extension
 	u8 ax; // accelerometer
 	u8 ay;
 	u8 az;
-	u8 bt; // buttons
+	wm_nc_bt bt;
+	u8 axL : 2;
+	u8 ayL : 2;
+	u8 azL : 2;
 };
 
 struct wm_classic_extension

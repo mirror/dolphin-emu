@@ -243,6 +243,7 @@ private:
 	}	m_reg_speaker;
 };
 
+extern Wiimote* spy_wm;
 void Spy(Wiimote* wm_, const void* data_, int size_);
 
 }
