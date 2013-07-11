@@ -59,7 +59,7 @@ static const u8 eeprom_data_16D0[] = {
 	0x77, 0x88, 0x00, 0x00, 0x2B, 0x01, 0xE8, 0x13
 };
 
-const ReportFeatures reporting_mode_features[] = 
+const ReportFeatures reporting_mode_features[] =
 {
 	//0x30: Core Buttons
 	{ 2, 0, 0, 0, 4 },
@@ -96,7 +96,7 @@ void EmulateShake(AccelData* const accel
 
 	// peak G-force
 	double shake_intensity;
-	
+
 	// shake is a bitfield of X,Y,Z shake button states
 	static const unsigned int btns[] = { 0x01, 0x02, 0x04 };
 	unsigned int shake = 0;
@@ -456,7 +456,7 @@ void Wiimote::GetIRData(u8* const data, bool use_accel)
 	{
 		float xx = 10000, yy = 0, zz = 0;
 		double nsin,ncos;
-		
+
 		if (use_accel)
 		{
 			double ax,az,len;
@@ -465,7 +465,7 @@ void Wiimote::GetIRData(u8* const data, bool use_accel)
 			len=sqrt(ax*ax+az*az);
 			if (len)
 			{
-				ax/=len; 
+				ax/=len;
 				az/=len; //normalizing the vector
 				nsin=ax;
 				ncos=az;
@@ -492,13 +492,13 @@ void Wiimote::GetIRData(u8* const data, bool use_accel)
 		UDPTLayer::GetIR(m_udp, &xx, &yy, &zz);
 
 		Vertex v[4];
-		
+
 		static const int camWidth=1024;
 		static const int camHeight=768;
-		static const double bndup=-0.315447;	
-		static const double bnddown=0.85;	
-		static const double bndleft=0.443364;		
-		static const double bndright=-0.443364;	
+		static const double bndup=-0.315447;
+		static const double bnddown=0.85;
+		static const double bndleft=0.443364;
+		static const double bndright=-0.443364;
 		static const double dist1=100.f/camWidth; //this seems the optimal distance for zelda
 		static const double dist2=1.2f*dist1;
 
@@ -552,7 +552,7 @@ void Wiimote::GetIRData(u8* const data, bool use_accel)
 		wm_ir_basic* const irdata = (wm_ir_basic*)data;
 		for (unsigned int i=0; i<2; ++i)
 		{
-			if (x[i*2] < 1024 && y[i*2] < 768) 
+			if (x[i*2] < 1024 && y[i*2] < 768)
 			{
 				irdata[i].x1 = u8(x[i*2]);
 				irdata[i].x1hi = x[i*2] >> 8;
@@ -615,7 +615,7 @@ void Wiimote::GetExtData(u8* const data)
 		// Bit 0 of byte 4 is moved to bit 7 of byte 5
 		// Bit 3 of byte 5 is moved to bit 4 of byte 5, overwriting it
 		// Bit 1 of byte 5 is moved to bit 3 of byte 5
-		// Bit 0 of byte 5 is moved to bit 2 of byte 5, overwriting it 
+		// Bit 0 of byte 5 is moved to bit 2 of byte 5, overwriting it
 		case 0x5:
 			//data[5] & (1 << 7)
 			//data[4] & (1 << 0)
@@ -658,7 +658,7 @@ void Wiimote::Update()
 
 	u8 data[MAX_PAYLOAD];
 	memset(data, 0, sizeof(data));
-	
+
 	// figure out what data we need
 	s8 rptf_size = MAX_PAYLOAD;
 
@@ -675,28 +675,28 @@ void Wiimote::Update()
 	{
 		data[0] = 0xA1;
 		data[1] = m_reporting_mode;
-	
+
 		// core buttons
 		if (rptf.core)
 			GetCoreData(data + rptf.core);
-	
+
 		// acceleration
 		if (rptf.accel)
 			GetAccelData(data + rptf.accel, rptf.core?(data+rptf.core):NULL);
-	
+
 		// IR
 		if (rptf.ir)
-			GetIRData(data + rptf.ir, (rptf.accel != 0)); 
-	
+			GetIRData(data + rptf.ir, (rptf.accel != 0));
+
 		// extension
 		if (rptf.ext)
 			GetExtData(data + rptf.ext);
-	
+
 		// hybrid wiimote stuff (for now, it's not supported while recording)
 		if (WIIMOTE_SRC_HYBRID == g_wiimote_sources[m_index] && !Movie::IsRecordingInput())
 		{
 			using namespace WiimoteReal;
-	
+
 			std::lock_guard<std::recursive_mutex> lk(g_refresh_lock);
 			if (g_wiimotes[m_index])
 			{
@@ -711,11 +711,11 @@ void Wiimote::Update()
 						if (real_data[1] >= WM_REPORT_CORE)
 						{
 							const ReportFeatures& real_rptf = reporting_mode_features[real_data[1] - WM_REPORT_CORE];
-	
+
 							// force same report type from real-wiimote
 							if (&real_rptf != &rptf)
 								rptf_size = 0;
-	
+
 							// core
 							// mix real-buttons with emu-buttons in the status struct, and in the report
 							if (real_rptf.core && rptf.core)
@@ -723,15 +723,41 @@ void Wiimote::Update()
 								m_status.buttons |= *(wm_core*)(real_data + real_rptf.core);
 								*(wm_core*)(data + rptf.core) = m_status.buttons;
 							}
-	
+
 							// accel
 							// use real-accel data always i guess
 							if (real_rptf.accel && rptf.accel)
 								memcpy(data + rptf.accel, real_data + real_rptf.accel, sizeof(wm_accel));
-	
+
 							// ir
-							// TODO
-	
+							// use if visible
+							if (m_reporting_mode == WM_REPORT_CORE_ACCEL_IR12)
+							{
+								for (int i = 0; i < 2; i++)
+								{
+									wm_ir_basic *ir = (wm_ir_basic*)(real_data + real_rptf.ir + i * sizeof(wm_ir_basic));
+									if (ir->x1 < 0xff || ir->x2 < 0xff)
+									{
+										memcpy(data + rptf.ir, real_data + real_rptf.ir, sizeof(wm_ir_basic) * 2);
+										break;
+									}
+								}
+							}
+							else if (m_reporting_mode == WM_REPORT_CORE_IR10_EXT9
+								|| m_reporting_mode == WM_REPORT_CORE_ACCEL_IR10_EXT6)
+							{
+									for (int i = 0; i < 4; i++)
+									{
+										wm_ir_extended *ir = (wm_ir_extended*)(real_data + real_rptf.ir + i * sizeof
+(wm_ir_extended));
+										if (ir->x < 0xff) {
+											memcpy(data + rptf.ir, real_data + real_rptf.ir, sizeof
+(wm_ir_extended) * 4);
+											break;
+										}
+									}
+							}
+
 							// ext
 							// use real-ext data if an emu-extention isn't chosen
 							if (real_rptf.ext && rptf.ext && (0 == m_extension->switch_extension))
@@ -743,7 +769,7 @@ void Wiimote::Update()
 							// use real-acks if an emu-extension isn't chosen
 							rptf_size = -1;
 						break;
-	
+
 						// use all status reports, after modification of the extension bit
 					case WM_STATUS_REPORT :
 						//if (m_extension->switch_extension)
@@ -752,14 +778,14 @@ void Wiimote::Update()
 							((wm_status_report*)(real_data + 2))->extension = 1;
 						rptf_size = -1;
 						break;
-	
+
 						// use all read-data replies
 					case WM_READ_DATA_REPLY:
 						rptf_size = -1;
 						break;
-	
+
 					}
-	
+
 					// copy over report from real-wiimote
 					if (-1 == rptf_size)
 					{
@@ -787,7 +813,7 @@ void Wiimote::Update()
 	}
 }
 
-void Wiimote::ControlChannel(const u16 _channelID, const void* _pData, u32 _Size) 
+void Wiimote::ControlChannel(const u16 _channelID, const void* _pData, u32 _Size)
 {
 	// Check for custom communication
 	if (99 == _channelID)
@@ -816,7 +842,7 @@ void Wiimote::ControlChannel(const u16 _channelID, const void* _pData, u32 _Size
 	case HID_TYPE_SET_REPORT :
 		if (HID_PARAM_INPUT == hidp->param)
 		{
-			PanicAlert("HID_TYPE_SET_REPORT - INPUT"); 
+			PanicAlert("HID_TYPE_SET_REPORT - INPUT");
 		}
 		else
 		{
