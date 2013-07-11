@@ -325,15 +325,23 @@ bool Wiimote::Prepare(int _index)
 
 	// Turn off rumble
 	u8 rumble_report[] = {WM_SET_REPORT | WM_BT_OUTPUT, WM_RUMBLE, 0};
-	
+
+	// Set the active LEDs
+	u8 const led_report_[] = {WM_SET_REPORT | WM_BT_OUTPUT, WM_LEDS, u8(WIIMOTE_LED_1 << (index%WIIMOTE_BALANCE_BOARD))};
+
 	// Request status report
 	u8 const req_status_report[] = {WM_SET_REPORT | WM_BT_OUTPUT, WM_REQUEST_STATUS, 0};
 	// TODO: check for sane response?
 
-	return (IOWrite(mode_report, sizeof(mode_report))
-		&& IOWrite(led_report, sizeof(led_report))
-		&& (SLEEP(200), IOWrite(rumble_report, sizeof(rumble_report)))
-		&& IOWrite(req_status_report, sizeof(req_status_report)));
+	if (SConfig::GetInstance().m_SYSCONF->GetData<bool>("BT.MOT"))
+		return (IOWrite(mode_report, sizeof(mode_report))
+			&& IOWrite(led_report, sizeof(led_report))
+			&& (SLEEP(200), IOWrite(rumble_report, sizeof(rumble_report)))
+			&& IOWrite(req_status_report, sizeof(req_status_report)));
+	else
+		return (IOWrite(mode_report, sizeof(mode_report))
+			&& IOWrite(led_report_, sizeof(led_report))
+			&& IOWrite(req_status_report, sizeof(req_status_report)));
 }
 
 void Wiimote::EmuStart()
