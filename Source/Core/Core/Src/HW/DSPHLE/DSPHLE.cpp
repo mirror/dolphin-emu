@@ -136,6 +136,7 @@ void DSPHLE::DoState(PointerWrap &p)
 	p.Do(isHLE);
 	if (isHLE != true && p.GetMode() == PointerWrap::MODE_READ)
 	{
+		p.message.append("Audio: LLE");
 		Core::DisplayMessage("State is incompatible with current DSP engine. Aborting load state.", 3000);
 		p.SetMode(PointerWrap::MODE_VERIFY);
 		return;

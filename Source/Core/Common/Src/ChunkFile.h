@@ -45,6 +45,7 @@ public:
 
 	u8 **ptr;
 	Mode mode;
+	std::string message;
 
 public:
 	PointerWrap(u8 **ptr_, Mode mode_) : ptr(ptr_), mode(mode_) {}

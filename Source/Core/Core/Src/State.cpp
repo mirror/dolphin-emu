@@ -17,6 +17,7 @@
 #include "HW/CPU.h"
 #include "PowerPC/JitCommon/JitBase.h"
 #include "VideoBackendBase.h"
+#include "Host.h"
 
 #include <lzo/lzo1x.h>
 #include "HW/Memmap.h"
@@ -445,7 +446,7 @@ void LoadFileStateData(const std::string& filename, std::vector<u8>& ret_data)
 	ret_data.swap(buffer);
 }
 
-void LoadAs(const std::string& filename)
+bool LoadAs(const std::string& filename, bool abort)
 {
 	// Stop the core while we load the state
 	bool wasUnpaused = Core::PauseAndLock(true);
@@ -475,6 +476,7 @@ void LoadAs(const std::string& filename)
 
 	bool loaded = false;
 	bool loadedSuccessfully = false;
+	std::string message;
 
 	// brackets here are so buffer gets freed ASAP
 	{
@@ -488,6 +490,7 @@ void LoadAs(const std::string& filename)
 			DoState(p);
 			loaded = true;
 			loadedSuccessfully = (p.GetMode() == PointerWrap::MODE_READ);
+			message = p.message;
 		}
 	}
 
@@ -505,6 +508,13 @@ void LoadAs(const std::string& filename)
 		{
 			// failed to load
 			Core::DisplayMessage("Unable to Load : Can't load state from other revisions !", 4000);
+
+			if (abort) {
+				g_loadDepth--;
+				Core::PauseAndLock(false, wasUnpaused);
+				CriticalAlertT("Can't open state with current settings because it's saved with\n\n%s", message.c_str());
+				return false;
+			}
 
 			// since we could be in an inconsistent state now (and might crash or whatever), undo.
 			if (g_loadDepth < 2)
@@ -527,6 +537,8 @@ void LoadAs(const std::string& filename)
 
 	// resume dat core
 	Core::PauseAndLock(false, wasUnpaused);
+
+	return true;
 }
 
 void SetOnAfterLoadCallback(CallbackFunc callback)

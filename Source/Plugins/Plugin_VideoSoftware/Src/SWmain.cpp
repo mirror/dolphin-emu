@@ -85,8 +85,11 @@ void VideoSoftware::DoState(PointerWrap& p)
 	bool software = true;
 	p.Do(software);
 	if (p.GetMode() == PointerWrap::MODE_READ && software == false)
+	{
+		p.message.append("Video: not software");
 		// change mode to abort load of incompatible save state.
 		p.SetMode(PointerWrap::MODE_VERIFY);
+	}
 
 	// TODO: incomplete?
 	SWCommandProcessor::DoState(p);

@@ -304,7 +304,12 @@ void CpuThread()
 	#endif
 
 	if (!g_stateFileName.empty())
-		State::LoadAs(g_stateFileName);
+		if (!State::LoadAs(g_stateFileName, true))
+		{
+			Host_Message(WM_USER_STOP);
+			SetStateFileName("");
+			return;
+		}
 	SetStateFileName("");
 
 	g_bStarted = true;

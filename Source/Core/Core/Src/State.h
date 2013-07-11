@@ -44,7 +44,7 @@ void Load(int slot);
 void Verify(int slot);
 
 void SaveAs(const std::string &filename, bool wait = false);
-void LoadAs(const std::string &filename);
+bool LoadAs(const std::string &filename, bool abort = false);
 void VerifyAt(const std::string &filename);
 u32 GetVersion(PointerWrap &p);
 bool IsCorrectVersion(const std::string filename);
