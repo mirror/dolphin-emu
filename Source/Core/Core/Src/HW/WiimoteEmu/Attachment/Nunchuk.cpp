@@ -31,7 +31,8 @@ static const u8 nunchuk_button_bitmasks[] =
 	Nunchuk::BUTTON_Z,
 };
 
-Nunchuk::Nunchuk(UDPWrapper *wrp) : Attachment(_trans("Nunchuk")) , m_udpWrap(wrp)
+Nunchuk::Nunchuk(UDPWrapper *wrp, WiimoteEmu::ExtensionReg& _reg)
+	: Attachment(_trans("Nunchuk"), _reg) , m_udpWrap(wrp)
 {
 	// buttons
 	groups.push_back(m_buttons = new Buttons("Buttons"));
@@ -55,9 +56,9 @@ Nunchuk::Nunchuk(UDPWrapper *wrp) : Attachment(_trans("Nunchuk")) , m_udpWrap(wr
 
 	// set up register
 	// calibration
-	memcpy(&reg[0x20], nunchuck_calibration, sizeof(nunchuck_calibration));
+	memcpy(&calibration, nunchuck_calibration, sizeof(nunchuck_calibration));
 	// id
-	memcpy(&reg[0xfa], nunchuck_id, sizeof(nunchuck_id));
+	memcpy(&id, nunchuck_id, sizeof(nunchuck_id));
 
 	// this should get set to 0 on disconnect, but it isn't, o well
 	memset(m_shake_step, 0, sizeof(m_shake_step));
@@ -68,11 +69,29 @@ void Nunchuk::GetState(u8* const data, const bool focus)
 	wm_extension* const ncdata = (wm_extension*)data;
 	memset(&ncdata->bt, 0, sizeof(ncdata->bt));
 
-	// stick / not using calibration data for stick, o well
-	m_stick->GetState(&ncdata->jx, &ncdata->jy, 0x80, focus ? 127 : 0);
-	
+	// stick
+	//u8 dummy;
+	float x, y, dummy;
+	nu_cal &cal = *(nu_cal*)&reg.calibration;
+
+	m_stick->GetState(&x, &dummy, cal.jx.center
+		, max(abs(cal.jx.max - cal.jx.center), abs(cal.jx.min - cal.jx.center))
+		);
+	m_stick->GetState(&dummy, &y, cal.jy.center
+		, max(abs(cal.jy.max - cal.jy.center), abs(cal.jy.min - cal.jy.center))
+		);
+
+	ncdata->jx = u8(trim(x));
+	ncdata->jy = u8(trim(y));
+
+	if (!focus)
+	{
+		ncdata->jx = cal.jx.center;
+		ncdata->jy = cal.jy.center;
+	}
+
 	AccelData accel;
-	accel_cal* calib = (accel_cal*)&reg[0x20];
+	accel_cal* calib = (accel_cal*)&reg.calibration[0];
 
 	// tilt
 	EmulateTilt(&accel, m_tilt, focus);
