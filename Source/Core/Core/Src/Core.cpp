@@ -408,7 +408,7 @@ void Thread::GPU()
 	// Load and Init Wiimotes - only if we are booting in wii mode
 	if (g_CoreStartupParameter.bWii)
 	{
-		Wiimote::Initialize(g_pWindowHandle, !g_stateFileName.empty());
+		Wiimote::Initialize(g_pWindowHandle, true);
 
 		// Activate wiimotes which don't have source set to "None"
 		for (unsigned int i = 0; i != MAX_BBMOTES; ++i)
