@@ -40,7 +40,7 @@ Nunchuk::Nunchuk(UDPWrapper *wrp, WiimoteEmu::ExtensionReg& _reg)
 	m_buttons->controls.push_back(new ControlGroup::Input("Z"));
 
 	// stick
-	groups.push_back(m_stick = new AnalogStick("Stick"));
+	groups.push_back(m_stick = new AnalogStick("Stick", 1));
 
 	// swing
 	groups.push_back(m_swing = new Force("Swing"));

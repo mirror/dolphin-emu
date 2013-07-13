@@ -119,8 +119,10 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 						}
 						else
 						{
-							max = (82.0 / 127.0) * 100;
-							diagonal = (58.0 / 127.0) * 100;
+							//max = (82.0 / 127.0) * 100;
+							//diagonal = (58.0 / 127.0) * 100;
+							max = 127;
+							diagonal = 100;
 						}
 
 						// polygon corners
