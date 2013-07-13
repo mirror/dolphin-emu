@@ -27,14 +27,14 @@ private:
 		struct
 		{
 			float x, y;
-		} cursor, axis;
+		} cursor, axis, proportionalAxis;
 	};
 	
 	class Key : public Input
 	{
 		friend class KeyboardMouse;
 	public:
-		std::string GetName() const;
+		std::string GetName() const { return m_keyname; }
 		Key(Display* display, KeyCode keycode, const char* keyboard);
 		ControlState GetState() const;
 		
@@ -61,31 +61,31 @@ private:
 	class Cursor : public Input
 	{
 	public:
-		std::string GetName() const;
+		std::string GetName() const { return name; }
 		bool IsDetectable() { return false; }
-		Cursor(u8 index, bool positive, const float& cursor)
-			: m_cursor(cursor), m_index(index), m_positive(positive) {}
+		Cursor(u8 index, bool positive, const float& cursor);
 		ControlState GetState() const;
-
+	
 	private:
 		const float& m_cursor;
 		const u8 m_index;
 		const bool m_positive;
+		std::string name;
 	};
 	
 	class Axis : public Input
 	{
 	public:
-		std::string GetName() const;
+		std::string GetName() const { return name; }
 		bool IsDetectable() { return false; }
-		Axis(u8 index, bool positive, float& axis)
-			: m_axis(axis), m_index(index), m_positive(positive) {}
+		Axis(u8 index, bool positive, const float& axis);
 		ControlState GetState() const;
 
 	private:
-		float& m_axis; // deliberately not const
+		const float& m_axis;
 		const u8 m_index;
 		const bool m_positive;
+		std::string name;
 	};
 	
 private:

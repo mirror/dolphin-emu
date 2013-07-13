@@ -2,6 +2,8 @@
 #include <X11/XKBlib.h>
 #include <cmath>
 
+#define MOUSE_AXIS_SENSITIVITY		8
+
 namespace ciface
 {
 namespace Xinput2
@@ -70,7 +72,8 @@ void KeyboardMouse::SelectEventsForDevice (Window window, XIEventMask *mask, int
 	XIFreeDeviceInfo (all_slaves);
 }
 
-KeyboardMouse::KeyboardMouse(Window window, int opcode, int pointer, int keyboard) : m_window(window), xi_opcode(opcode), pointer_deviceid(pointer), keyboard_deviceid(keyboard)
+KeyboardMouse::KeyboardMouse(Window window, int opcode, int pointer, int keyboard) 
+	: m_window(window), xi_opcode(opcode), pointer_deviceid(pointer), keyboard_deviceid(keyboard)
 {
 	memset(&m_state, 0, sizeof(m_state));
 	
@@ -159,6 +162,8 @@ bool KeyboardMouse::UpdateInput()
 	// first, get the absolute position of the mouse pointer
 	UpdateCursor ();
 	
+	float delta_x = 0.0f, delta_y = 0.0f;
+	
 	// then, iterate through the events we're interested in
 	XEvent event;
 	while (XPending (m_display)) 
@@ -195,14 +200,19 @@ bool KeyboardMouse::UpdateInput()
 			// raw_event->valuators.mask, and if a bit is set in the mask,
 			// then the value in raw_values is also available.
 			if (XIMaskIsSet (raw_event->valuators.mask, 0))
-				m_state.axis.x += raw_event->raw_values[0];
+				delta_x += raw_event->raw_values[0];
 			if (XIMaskIsSet (raw_event->valuators.mask, 1))
-				m_state.axis.y += raw_event->raw_values[1];
+				delta_y += raw_event->raw_values[1];
 			break;
 		}
 		
 		XFreeEventData (m_display, &event.xcookie);
 	}
+	
+	m_state.axis.x += delta_x;
+	m_state.axis.x /= 2;
+	m_state.axis.y += delta_y;
+	m_state.axis.y /= 2;
 	
 	return true;
 }
@@ -263,38 +273,26 @@ ControlState KeyboardMouse::Button::GetState() const
 	return ((m_buttons & (1 << m_index)) != 0);
 }
 
+KeyboardMouse::Cursor::Cursor(u8 index, bool positive, const float& cursor)
+	: m_cursor(cursor), m_index(index), m_positive(positive)
+{
+	name = std::string ("Cursor ")+(char)('X' + m_index)+(m_positive ? '+' : '-');
+}
+
 ControlState KeyboardMouse::Cursor::GetState() const
 {
 	return std::max(0.0f, m_cursor / (m_positive ? 1.0f : -1.0f));
 }
 
+KeyboardMouse::Axis::Axis(u8 index, bool positive, const float& axis)
+	: m_axis(axis), m_index(index), m_positive(positive)
+{
+	name = std::string ("Axis ")+(char)('X' + m_index)+(m_positive ? '+' : '-');
+}
+
 ControlState KeyboardMouse::Axis::GetState() const
 {
-	double ret = std::max(0.0f, m_axis / (m_positive ? 1.0f : -1.0f));
-	if ((m_positive && m_axis > 0.0f) || (!m_positive && m_axis < 0.0f))
-		m_axis -= std::min (sqrt(ret), ret) / (m_positive ? 1.0f : -1.0f);
-	return ret/4.0f;
-}
-
-std::string KeyboardMouse::Key::GetName() const
-{
-	return m_keyname;
-}
-
-std::string KeyboardMouse::Cursor::GetName() const
-{
-	static char tmpstr[] = "Cursor ..";
-	tmpstr[7] = (char)('X' + m_index);
-	tmpstr[8] = (m_positive ? '+' : '-');
-	return tmpstr;
-}
-
-std::string KeyboardMouse::Axis::GetName() const
-{
-	static char tmpstr[] = "Axis ..";
-	tmpstr[5] = (char)('X' + m_index);
-	tmpstr[6] = (m_positive ? '+' : '-');
-	return tmpstr;
+	return std::max(0.0f, m_axis / (m_positive ? MOUSE_AXIS_SENSITIVITY : -MOUSE_AXIS_SENSITIVITY));
 }
 
 std::string KeyboardMouse::Button::GetName() const
