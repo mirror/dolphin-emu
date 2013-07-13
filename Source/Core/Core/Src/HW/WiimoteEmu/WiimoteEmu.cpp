@@ -759,8 +759,32 @@ void Wiimote::Update()
 							}
 
 							// ext
+							u16 id = Common::swap16(*(u16*)&m_reg_ext.constant_id[4]);
+							if (id == 0x0000)
+							{
+								u8 ext_data[6];
+								memcpy(ext_data, &data[rptf.ext], 6);
+								if (m_reg_ext.encryption == 0xaa)
+									wiimote_decrypt(&m_ext_key, ext_data, 0x00, 0x06);
+
+								nu_cal cal = *(nu_cal*)&m_reg_ext.calibration;
+								wm_extension nc = *(wm_extension*)ext_data;
+								bool active =
+									nc.ax != cal.cal_zero.x
+									|| nc.ay != cal.cal_zero.y
+									|| nc.az != cal.cal_g.z
+									|| nc.jx != cal.jx.center
+									|| nc.jy != cal.jy.center
+									|| nc.bt.c != 1
+									|| nc.bt.z != 1;
+
+								if (!active)
+									memcpy(data + rptf.ext, real_data + real_rptf.ext, sizeof
+(wm_extension));
+							}
+
 							// use real-ext data if an emu-extention isn't chosen
-							if (real_rptf.ext && rptf.ext && (0 == m_extension->switch_extension))
+							else if (real_rptf.ext && rptf.ext && (0 == m_extension->switch_extension))
 								memcpy(data + rptf.ext, real_data + real_rptf.ext, sizeof(wm_extension));
 						}
 						else if (WM_ACK_DATA != real_data[1] || m_extension->active_extension > 0)
