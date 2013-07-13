@@ -163,6 +163,7 @@ bool KeyboardMouse::UpdateInput()
 	UpdateCursor ();
 	
 	float delta_x = 0.0f, delta_y = 0.0f;
+	double delta_delta;
 	
 	// then, iterate through the events we're interested in
 	XEvent event;
@@ -200,9 +201,19 @@ bool KeyboardMouse::UpdateInput()
 			// raw_event->valuators.mask, and if a bit is set in the mask,
 			// then the value in raw_values is also available.
 			if (XIMaskIsSet (raw_event->valuators.mask, 0))
-				delta_x += raw_event->raw_values[0];
+			{
+			    delta_delta = raw_event->raw_values[0];
+			    // test for inf and nan
+			    if (delta_delta == delta_delta && 1+delta_delta != delta_delta)
+				    delta_x += delta_delta;
+			}
 			if (XIMaskIsSet (raw_event->valuators.mask, 1))
-				delta_y += raw_event->raw_values[1];
+			{
+				delta_delta = raw_event->raw_values[1];
+				// test for inf and nan
+				if (delta_delta == delta_delta && 1+delta_delta != delta_delta)
+				    delta_y += delta_delta;
+			}
 			break;
 		}
 		
