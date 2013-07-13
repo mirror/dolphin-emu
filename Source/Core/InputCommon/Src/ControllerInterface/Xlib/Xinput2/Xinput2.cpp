@@ -220,10 +220,13 @@ bool KeyboardMouse::UpdateInput()
 		XFreeEventData (m_display, &event.xcookie);
 	}
 	
+#define SMOOTHING_AMT 1.5f
+    m_state.axis.x *= SMOOTHING_AMT;
 	m_state.axis.x += delta_x;
-	m_state.axis.x /= 2;
+	m_state.axis.x /= SMOOTHING_AMT+1.0f;
+	m_state.axis.y *= SMOOTHING_AMT;
 	m_state.axis.y += delta_y;
-	m_state.axis.y /= 2;
+	m_state.axis.y /= SMOOTHING_AMT+1.0f;
 	
 	return true;
 }
