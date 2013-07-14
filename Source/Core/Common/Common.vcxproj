@@ -171,6 +171,7 @@
     <ClCompile Include="Src\ExtendedTrace.cpp" />
     <ClCompile Include="Src\FileSearch.cpp" />
     <ClCompile Include="Src\FileUtil.cpp" />
+    <ClCompile Include="Src\Gekko.cpp" />
     <ClCompile Include="Src\Hash.cpp" />
     <ClCompile Include="Src\IniFile.cpp" />
     <ClCompile Include="Src\LogManager.cpp" />
@@ -228,6 +229,7 @@
     <ClInclude Include="Src\FileSearch.h" />
     <ClInclude Include="Src\FileUtil.h" />
     <ClInclude Include="Src\FixedSizeQueue.h" />
+    <ClInclude Include="Src\Gekko.h" />
     <ClInclude Include="Src\Hash.h" />
     <ClInclude Include="Src\IniFile.h" />
     <ClInclude Include="Src\LinearDiskCache.h" />

@@ -423,7 +423,7 @@ std::string CodeToUTF8(const char* fromcode, const std::basic_string<T>& input)
 {
 	std::string result;
 
-#if defined(ANDROID)
+#if defined(ANDROID) || defined(GEKKO)
 	result = (char*)input.c_str();
 #else
 	iconv_t const conv_desc = iconv_open("UTF-8", fromcode);
