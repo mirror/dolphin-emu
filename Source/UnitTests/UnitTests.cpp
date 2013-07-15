@@ -23,6 +23,8 @@
 #include "PowerPC/PowerPC.h"
 #include "HW/SI_DeviceGCController.h"
 
+bool Host_IsCLI() { return true; }
+
 void AudioJitTests();
 
 using namespace std;

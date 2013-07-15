@@ -78,6 +78,7 @@ struct SCoreStartupParameter
 	bool bEnableDebugging;
 	bool bAutomaticStart;
 	bool bBootToPause;
+	bool bBenchmark;
 
 	// 0 = Interpreter
 	// 1 = Jit
@@ -141,13 +142,13 @@ struct SCoreStartupParameter
 
 	// Display settings
 	std::string strFullscreenResolution;
-	int iRenderWindowXPos, iRenderWindowYPos;
-	int iRenderWindowWidth, iRenderWindowHeight;
+	int iRenderWindowXPos, iRenderWindowYPos, iCLIRenderWindowXPos, iCLIRenderWindowYPos;
+	int iRenderWindowWidth, iRenderWindowHeight, iCLIRenderWindowWidth, iCLIRenderWindowHeight;
 	bool bRenderWindowAutoSize, bKeepWindowOnTop;
 	bool bFullscreen, bRenderToMain;
 	bool bProgressive, bDisableScreenSaver;
 
-	int iPosX, iPosY, iWidth, iHeight;
+	int iPosX, iPosY, iWidth, iHeight, bMax;
 
 	enum EBootBS2
 	{

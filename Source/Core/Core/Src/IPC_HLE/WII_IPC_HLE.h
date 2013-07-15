@@ -41,9 +41,8 @@ IWII_IPC_HLE_Device* AccessDeviceByID(u32 _ID);
 int getFreeDeviceId();
 
 // Update
+int GetTicksToNextIPCUpdate();
 void Update();
-
-// Update Devices
 void UpdateDevices();
 
 void ExecuteCommand(u32 _Address);

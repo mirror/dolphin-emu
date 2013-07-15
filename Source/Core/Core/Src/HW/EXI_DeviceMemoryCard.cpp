@@ -154,7 +154,7 @@ void CEXIMemoryCard::Flush(bool exiting)
 	flushData.memcardSize = memory_card_size;
 	flushData.bExiting = exiting;
 
-	flushThread = std::thread(innerFlush, &flushData);
+	flushThread.Run(innerFlush, &flushData, "innerFlush");
 	if (exiting)
 		flushThread.join();
 

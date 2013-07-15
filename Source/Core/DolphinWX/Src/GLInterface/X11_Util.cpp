@@ -107,7 +107,7 @@ void *cXInterface::CreateWindow(void)
 	XMapRaised(GLWin.evdpy, GLWin.win);
 	XSync(GLWin.evdpy, True);
 
-	GLWin.xEventThread = std::thread(&cXInterface::XEventThread, this);
+	GLWin.xEventThread.Run(&cXInterface::XEventThread, this);
 	// Control window size and picture scaling
 	GLInterface->SetBackBufferDimensions(GLWin.width, GLWin.height);
 
@@ -152,7 +152,7 @@ void cX11Window::CreateXWindow(void)
 	XMapRaised(GLWin.evdpy, GLWin.win);
 	XSync(GLWin.evdpy, True);
 
-	GLWin.xEventThread = std::thread(&cX11Window::XEventThread, this);
+	GLWin.xEventThread.Run(&cX11Window::XEventThread, this, "GUI");
 }
 
 void cX11Window::DestroyXWindow(void)

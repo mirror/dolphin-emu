@@ -23,9 +23,13 @@ bool OpenALStream::Start()
 	pDeviceList = new ALDeviceList();
 	if ((pDeviceList) && (pDeviceList->GetNumDevices()))
 	{
+		WARN_LOG(AUDIO, "Found device");
+		for (s32 i = 0; i < pDeviceList->GetNumDevices(); i++)
+			WARN_LOG(AUDIO, "\t%s", pDeviceList->GetDeviceName(i));
+
 		char *defDevName = pDeviceList->GetDeviceName(pDeviceList->GetDefaultDevice());
 
-		WARN_LOG(AUDIO, "Found OpenAL device %s", defDevName);
+		NOTICE_LOG(AUDIO, "Select device %s", defDevName);
 
 		pDevice = alcOpenDevice(defDevName);
 		if (pDevice)
@@ -39,7 +43,7 @@ bool OpenALStream::Start()
 				//period_size_in_millisec = 1000 / refresh;
 
 				alcMakeContextCurrent(pContext);
-				thread = std::thread(std::mem_fun(&OpenALStream::SoundLoop), this);
+				thread.Run(std::mem_fun(&OpenALStream::SoundLoop), this, "Audio - OpenAL");
 				bReturn = true;
 			}
 			else
@@ -122,8 +126,6 @@ void OpenALStream::Clear(bool mute)
 
 void OpenALStream::SoundLoop()
 {
-	Common::SetCurrentThreadName("Audio thread - openal");
-
 	bool surround_capable = Core::g_CoreStartupParameter.bDPL2Decoder;
 #if defined(__APPLE__)
 	bool float32_capable = false;

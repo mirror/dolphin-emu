@@ -6,6 +6,7 @@
 #include "Common.h"
 #include "MemoryUtil.h"
 #include "StringUtil.h"
+#include "Thread.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -14,6 +15,9 @@
 #include <errno.h>
 #include <stdio.h>
 #endif
+
+namespace Memory
+{
 
 #if !defined(_WIN32) && defined(__x86_64__) && !defined(MAP_32BIT)
 #include <unistd.h>
@@ -24,7 +28,7 @@
 // This is purposely not a full wrapper for virtualalloc/mmap, but it
 // provides exactly the primitive operations that Dolphin needs.
 
-void* AllocateExecutableMemory(size_t size, bool low)
+void* AllocateExecutable(size_t size, bool low)
 {
 #if defined(_WIN32)
 	void* ptr = VirtualAlloc(0, size, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
@@ -50,7 +54,7 @@ void* AllocateExecutableMemory(size_t size, bool low)
 
 	// printf("Mapped executable memory at %p (size %ld)\n", ptr,
 	//	(unsigned long)size);
-	
+
 #if defined(__FreeBSD__)
 	if (ptr == MAP_FAILED)
 	{
@@ -58,7 +62,7 @@ void* AllocateExecutableMemory(size_t size, bool low)
 #else
 	if (ptr == NULL)
 	{
-#endif	
+#endif
 		PanicAlert("Failed to allocate executable memory");
 	}
 #if !defined(_WIN32) && defined(__x86_64__) && !defined(MAP_32BIT)
@@ -81,7 +85,7 @@ void* AllocateExecutableMemory(size_t size, bool low)
 	return ptr;
 }
 
-void* AllocateMemoryPages(size_t size)
+void* AllocatePages(size_t size)
 {
 #ifdef _WIN32
 	void* ptr = VirtualAlloc(0, size, MEM_COMMIT, PAGE_READWRITE);
@@ -99,7 +103,7 @@ void* AllocateMemoryPages(size_t size)
 	return ptr;
 }
 
-void* AllocateAlignedMemory(size_t size,size_t alignment)
+void* AllocateAligned(size_t size,size_t alignment)
 {
 #ifdef _WIN32
 	void* ptr =  _aligned_malloc(size,alignment);
@@ -122,23 +126,23 @@ void* AllocateAlignedMemory(size_t size,size_t alignment)
 	return ptr;
 }
 
-void FreeMemoryPages(void* ptr, size_t size)
+void FreePages(void* ptr, size_t size)
 {
 	if (ptr)
 	{
 #ifdef _WIN32
-	
+
 		if (!VirtualFree(ptr, 0, MEM_RELEASE))
 			PanicAlert("FreeMemoryPages failed!\n%s", GetLastErrorMsg());
 		ptr = NULL; // Is this our responsibility?
-	
+
 #else
 		munmap(ptr, size);
 #endif
 	}
 }
 
-void FreeAlignedMemory(void* ptr)
+void FreeAligned(void* ptr)
 {
 	if (ptr)
 	{
@@ -150,7 +154,7 @@ void FreeAlignedMemory(void* ptr)
 	}
 }
 
-void WriteProtectMemory(void* ptr, size_t size, bool allowExecute)
+void WriteProtect(void* ptr, size_t size, bool allowExecute)
 {
 #ifdef _WIN32
 	DWORD oldValue;
@@ -161,7 +165,7 @@ void WriteProtectMemory(void* ptr, size_t size, bool allowExecute)
 #endif
 }
 
-void UnWriteProtectMemory(void* ptr, size_t size, bool allowExecute)
+void UnWriteProtect(void* ptr, size_t size, bool allowExecute)
 {
 #ifdef _WIN32
 	DWORD oldValue;
@@ -172,14 +176,14 @@ void UnWriteProtectMemory(void* ptr, size_t size, bool allowExecute)
 #endif
 }
 
-std::string MemUsage()
+std::string Allocation()
 {
 #ifdef _WIN32
 #pragma comment(lib, "psapi")
 	DWORD processID = GetCurrentProcessId();
 	HANDLE hProcess;
 	PROCESS_MEMORY_COUNTERS pmc;
-	std::string Ret;
+	std::string Ret = "";
 
 	// Print information about the memory usage of the process.
 
@@ -194,4 +198,15 @@ std::string MemUsage()
 #else
 	return "";
 #endif
+}
+
+void AllocationMessage(std::string Message)
+{
+	ERROR_LOG(CONSOLE, "\"%s\" %d\t\t%s\t\t%s"
+		, Common::Thread::GetCurrentName().c_str()
+		, Common::CurrentThreadId()
+		, Allocation().c_str()
+		, Message.c_str());
+}
+
 }

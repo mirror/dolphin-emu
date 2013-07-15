@@ -105,6 +105,7 @@ bool CreateEmptyFile(const std::string &filename);
 // Scans the directory tree gets, starting from _Directory and adds the
 // results into parentEntry. Returns the number of files+directories found
 u32 ScanDirectoryTree(const std::string &directory, FSTEntry& parentEntry);
+void ScanDirectoryTreeRecursive(std::vector<std::string> &directory, FSTEntry& parentEntry);
 
 // deletes the given directory and anything under it. Returns true on success.
 bool DeleteDirRecursively(const std::string &directory);
@@ -121,6 +122,9 @@ bool SetCurrentDir(const std::string &directory);
 // Returns a pointer to a string with a Dolphin data dir in the user's home
 // directory. To be used in "multi-user" mode (that is, installed).
 const std::string& GetUserPath(const unsigned int DirIDX, const std::string &newPath="");
+
+// search in save state dir if file doesn't exist
+bool SearchStateDir(std::string &filename);
 
 // probably doesn't belong here
 std::string GetThemeDir(const std::string& theme_name);

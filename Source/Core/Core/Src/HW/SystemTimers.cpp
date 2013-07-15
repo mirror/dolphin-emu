@@ -58,8 +58,10 @@ IPC_HLE_PERIOD: For the Wiimote this is the call schedule:
 
 
 #include "Common.h"
+#include "MemoryUtil.h"
 #include "Atomic.h"
 #include "../PatchEngine.h"
+#include "Movie.h"
 #include "SystemTimers.h"
 #include "../HW/DSP.h"
 #include "../HW/AudioInterface.h"
@@ -70,6 +72,7 @@ IPC_HLE_PERIOD: For the Wiimote this is the call schedule:
 #include "../CoreTiming.h"
 #include "../ConfigManager.h"
 #include "../IPC_HLE/WII_IPC_HLE.h"
+#include "IPC_HLE/WII_IPC_HLE_Device_usb.h"
 #include "../DSPEmulator.h"
 #include "Thread.h"
 #include "Timer.h"
@@ -127,7 +130,8 @@ int
 
 	// This is completely arbitrary. If we find that we need lower latency, we can just
 	// increase this number.
-	IPC_HLE_PERIOD;
+	IPC_HLE_PERIOD,
+	IPC_HLE_INPUT_PERIOD;
 
 
 
@@ -163,7 +167,7 @@ void IPC_HLE_UpdateCallback(u64 userdata, int cyclesLate)
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii)
 	{
 		WII_IPC_HLE_Interface::Update();
-		CoreTiming::ScheduleEvent(IPC_HLE_PERIOD - cyclesLate, et_IPC_HLE);
+		CoreTiming::ScheduleEvent(WII_IPC_HLE_Interface::GetTicksToNextIPCUpdate() - cyclesLate, et_IPC_HLE);
 	}
 }
 
@@ -175,6 +179,9 @@ void VICallback(u64 userdata, int cyclesLate)
 
 void SICallback(u64 userdata, int cyclesLate)
 {
+	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bCPUThread && (Movie::IsRecordingInput() || Movie::IsPlayingInput()))
+		return;
+
 	SerialInterface::UpdateDevices();
 	CoreTiming::ScheduleEvent(SerialInterface::GetTicksToNextSIPoll() - cyclesLate, et_SI);
 }
@@ -245,10 +252,11 @@ void Init()
 		// AyuanX: TO BE TWEAKED
 		// Now the 1500 is a pure assumption
 		// We need to figure out the real frequency though
+		IPC_HLE_PERIOD = 25;
 
-		// FYI, WII_IPC_HLE_Interface::Update is also called in WII_IPCInterface::Write32
-		const int freq = 1500;
-		IPC_HLE_PERIOD = GetTicksPerSecond() / (freq * VideoInterface::GetNumFields());
+		// the Wiimote is read at some of these updates
+		// The Real Wiimote sends report every ~5ms (200 Hz).
+		IPC_HLE_INPUT_PERIOD = 200;
 	}
 
 	// System internal sample rate is fixed at 32KHz * 4 (16bit Stereo) / 32 bytes DMA
@@ -277,7 +285,8 @@ void Init()
 
 	CoreTiming::ScheduleEvent(VideoInterface::GetTicksPerLine(), et_VI);
 	CoreTiming::ScheduleEvent(0, et_DSP);
-	CoreTiming::ScheduleEvent(VideoInterface::GetTicksPerFrame(), et_SI);
+	if (!(SConfig::GetInstance().m_LocalCoreStartupParameter.bCPUThread && (Movie::IsRecordingInput() || Movie::IsPlayingInput())))
+		CoreTiming::ScheduleEvent(VideoInterface::GetTicksPerFrame(), et_SI);
 	CoreTiming::ScheduleEvent(AUDIO_DMA_PERIOD, et_AudioDMA);
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bSyncGPU)
 		CoreTiming::ScheduleEvent(CP_PERIOD, et_CP);
@@ -285,12 +294,16 @@ void Init()
 	CoreTiming::ScheduleEvent(VideoInterface::GetTicksPerFrame(), et_PatchEngine);
 
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii)
-		CoreTiming::ScheduleEvent(IPC_HLE_PERIOD, et_IPC_HLE);
+		CoreTiming::ScheduleEvent(WII_IPC_HLE_Interface::GetTicksToNextIPCUpdate(), et_IPC_HLE);
+
+	Memory::AllocationMessage("SystemTimers");
 }
 
 void Shutdown()
 {
 	Common::Timer::RestoreResolution();
+
+	Memory::AllocationMessage("SystemTimers Shutdown");
 }
 
 }  // namespace

@@ -15,9 +15,11 @@
 #define _GLIBCXX_USE_SCHED_YIELD
 #endif
 #include <thread>
+#define THREAD_ID std::thread::native_handle_type
 #elif __has_include(<thread>) && !ANDROID
 // Clang + libc++
 #include <thread>
+#define THREAD_ID pthread_t
 #else
 
 // partial std::thread implementation for win32/pthread
@@ -309,7 +311,6 @@ inline thread::id get_id()
 
 #undef USE_RVALUE_REFERENCES
 #undef USE_BEGINTHREADEX
-#undef THREAD_ID
 #undef THREAD_RETURN
 #undef THREAD_HANDLE
 

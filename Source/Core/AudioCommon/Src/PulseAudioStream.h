@@ -40,7 +40,7 @@ private:
 	void Write(const void *data, size_t bytes);
 
 	std::vector<s16> mix_buffer;
-	std::thread thread;
+	Common::Thread thread;
 	volatile bool run_thread;
 
 	pa_simple* pa;

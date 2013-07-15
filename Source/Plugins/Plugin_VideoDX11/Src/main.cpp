@@ -24,6 +24,7 @@
 #include "EmuWindow.h"
 #include "IndexGenerator.h"
 #include "FileUtil.h"
+#include "MemoryUtil.h"
 #include "Globals.h"
 #include "IniFile.h"
 #include "VideoConfigDiag.h"
@@ -164,6 +165,7 @@ bool VideoBackend::Initialize(void *&window_handle)
 
 	s_BackendInitialized = true;
 
+	Memory::AllocationMessage("Initialize");
 	return true;
 }
 
@@ -197,6 +199,8 @@ void VideoBackend::Video_Prepare()
 
 	// Tell the host that the window is ready
 	Host_Message(WM_USER_CREATE);
+
+	Memory::AllocationMessage("DX11 Video Prepare");
 }
 
 void VideoBackend::Shutdown()
@@ -230,6 +234,8 @@ void VideoBackend::Shutdown()
 		g_renderer = NULL;
 		g_texture_cache = NULL;
 	}
+
+	Memory::AllocationMessage("VideoBackend Shutdown");
 }
 
 void VideoBackend::Video_Cleanup() {

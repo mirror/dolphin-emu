@@ -24,14 +24,17 @@ System Requirements:
 * Graphics: Any reasonably modern graphics card (Direct3D9/OpenGL 2.1, shader model 3.0).
 
 [Command line usage]
-Usage: Dolphin [-h] [-d] [-l] [-e <str>] [-b] [-V <str>] [-A <str>]
-  -h, --help                	Show this help message
-  -d, --debugger            	Opens the debugger
-  -l, --logger              	Opens the logger
-  -e, --exec=<str>          	Loads the specified file (DOL,ELF,WAD,GCM,ISO)
-  -b, --batch             	Exit Dolphin with emulator
-  -V, --video_backend=<str>  	Specify a video plugin
-  -A, --audio_emulation=<str>	Low level (LLE) or high level (HLE) audio
+Usage: Dolphin [-hdlbBI] [--version] [-e <str>] [-V <str>] [-A <str>]
+  --version                   Print version
+  -A, --audio_emulation=<str> Low level (LLE) or high level (HLE) audio
+  -b, --batch                 Exit Dolphin with emulator
+  -B, --benchmark             Run benchmark from the specified movie
+  -c, --cli                   Run Dolphin without graphical interface
+  -d, --debugger              Opens the debugger
+  -e, --exec=<str>            Loads the specified file (ciso, dff, dol, dtm, elf, gcm, gcz, iso, sav, s##, tmd, wad, wbfs)
+  -h, --help                  Show this help message
+  -l, --logger                Opens the logger
+  -V, --video_backend=<str>   Specify a video plugin.
 
 [Libraries]
 Cg: Cg Shading API (http://developer.nvidia.com/object/cg_toolkit.html)

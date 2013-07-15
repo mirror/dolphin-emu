@@ -21,6 +21,8 @@ public:
 	void UpdateHandle();
 	void Close();
 	bool IsOpen();
+	bool IsConhost();
+	bool IsNonCmdConhost();
 	void LetterSpace(int Width, int Height);
 	void BufferWidthHeight(int BufferWidth, int BufferHeight, int ScreenWidth, int ScreenHeight, bool BufferFirst);
 	void PixelSpace(int Left, int Top, int Width, int Height, bool);
@@ -32,8 +34,14 @@ public:
 
 private:
 #ifdef _WIN32
+	void AttachConsole();
+	DWORD GetParentPID();
 	HWND GetHwnd(void);
+	void SetCmdhost();
+	void Write(HANDLE hConsole_, LogTypes::LOG_LEVELS, const char *Text, WORD color);
 	HANDLE hConsole;
+	HANDLE hHostConsole;
+	bool isNonCmdConhost;
 #endif
 	bool bUseColor;
 };

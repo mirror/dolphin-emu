@@ -261,10 +261,10 @@ int DSPJitTester::TestAll(bool verbose_fail)
 	SDSP dsp;
 	memset(&dsp, 0, sizeof(SDSP));
 	//from DSPCore_Init
-	dsp.irom = (u16*)AllocateMemoryPages(DSP_IROM_BYTE_SIZE);
-	dsp.iram = (u16*)AllocateMemoryPages(DSP_IRAM_BYTE_SIZE);
-	dsp.dram = (u16*)AllocateMemoryPages(DSP_DRAM_BYTE_SIZE);
-	dsp.coef = (u16*)AllocateMemoryPages(DSP_COEF_BYTE_SIZE);
+	dsp.irom = (u16*)Memory::AllocatePages(DSP_IROM_BYTE_SIZE);
+	dsp.iram = (u16*)Memory::AllocatePages(DSP_IRAM_BYTE_SIZE);
+	dsp.dram = (u16*)Memory::AllocatePages(DSP_DRAM_BYTE_SIZE);
+	dsp.coef = (u16*)Memory::AllocatePages(DSP_COEF_BYTE_SIZE);
 
 	// Fill roms with distinct patterns.
 	for (int i = 0; i < DSP_IROM_SIZE; i++)
@@ -282,10 +282,10 @@ int DSPJitTester::TestAll(bool verbose_fail)
 	failed += TestOne(test_values.begin(), dsp);
 	failed_only = verbose;
 
-	FreeMemoryPages(dsp.irom, DSP_IROM_BYTE_SIZE);
-	FreeMemoryPages(dsp.iram, DSP_IRAM_BYTE_SIZE);
-	FreeMemoryPages(dsp.dram, DSP_DRAM_BYTE_SIZE);
-	FreeMemoryPages(dsp.coef, DSP_COEF_BYTE_SIZE);
+	Memory::FreePages(dsp.irom, DSP_IROM_BYTE_SIZE);
+	Memory::FreePages(dsp.iram, DSP_IRAM_BYTE_SIZE);
+	Memory::FreePages(dsp.dram, DSP_DRAM_BYTE_SIZE);
+	Memory::FreePages(dsp.coef, DSP_COEF_BYTE_SIZE);
 
 	return failed;
 }

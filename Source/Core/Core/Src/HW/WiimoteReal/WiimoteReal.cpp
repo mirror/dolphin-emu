@@ -320,15 +320,23 @@ bool Wiimote::Prepare(int _index)
 
 	// Turn off rumble
 	u8 rumble_report[] = {WM_SET_REPORT | WM_BT_OUTPUT, WM_RUMBLE, 0};
-	
+
+	// Set the active LEDs
+	u8 const led_report_[] = {WM_SET_REPORT | WM_BT_OUTPUT, WM_LEDS, u8(WIIMOTE_LED_1 << (index%WIIMOTE_BALANCE_BOARD))};
+
 	// Request status report
 	u8 const req_status_report[] = {WM_SET_REPORT | WM_BT_OUTPUT, WM_REQUEST_STATUS, 0};
 	// TODO: check for sane response?
 
-	return (IOWrite(mode_report, sizeof(mode_report))
-		&& IOWrite(led_report, sizeof(led_report))
-		&& (SLEEP(200), IOWrite(rumble_report, sizeof(rumble_report)))
-		&& IOWrite(req_status_report, sizeof(req_status_report)));
+	if (SConfig::GetInstance().m_SYSCONF->GetData<bool>("BT.MOT"))
+		return (IOWrite(mode_report, sizeof(mode_report))
+			&& IOWrite(led_report, sizeof(led_report))
+			&& (SLEEP(200), IOWrite(rumble_report, sizeof(rumble_report)))
+			&& IOWrite(req_status_report, sizeof(req_status_report)));
+	else
+		return (IOWrite(mode_report, sizeof(mode_report))
+			&& IOWrite(led_report_, sizeof(led_report))
+			&& IOWrite(req_status_report, sizeof(req_status_report)));
 }
 
 void Wiimote::EmuStart()
@@ -418,7 +426,7 @@ void WiimoteScanner::StartScanning()
 	if (!m_run_thread)
 	{
 		m_run_thread = true;
-		m_scan_thread = std::thread(std::mem_fun(&WiimoteScanner::ThreadFunc), this);
+		m_scan_thread.Run(std::mem_fun(&WiimoteScanner::ThreadFunc), this, "Wiimote Scanning");
 	}
 }
 
@@ -442,8 +450,6 @@ void CheckForDisconnectedWiimotes()
 
 void WiimoteScanner::ThreadFunc()
 {
-	Common::SetCurrentThreadName("Wiimote Scanning Thread");
-
 	NOTICE_LOG(WIIMOTE, "Wiimote scanning has started.");
 
 	while (m_run_thread)
@@ -483,7 +489,7 @@ void WiimoteScanner::ThreadFunc()
 void Wiimote::StartThread()
 {
 	m_run_thread = true;
-	m_wiimote_thread = std::thread(std::mem_fun(&Wiimote::ThreadFunc), this);
+	m_wiimote_thread.Run(std::mem_fun(&Wiimote::ThreadFunc), this, "Wiimote");
 }
 
 void Wiimote::StopThread()
@@ -495,8 +501,6 @@ void Wiimote::StopThread()
 
 void Wiimote::ThreadFunc()
 {
-	Common::SetCurrentThreadName("Wiimote Device Thread");
-
 	// main loop
 	while (m_run_thread && IsConnected())
 	{

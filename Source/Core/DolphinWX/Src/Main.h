@@ -26,6 +26,7 @@ private:
 
 	wxTimer *m_afterinit;
 	bool BatchMode;
+	bool BenchmarkMode;
 	bool LoadFile;
 	bool playMovie;
 	wxString FileToLoad;

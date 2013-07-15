@@ -477,30 +477,8 @@ void CGameListCtrl::ScanForISOs()
 
 	if (SConfig::GetInstance().m_RecursiveISOFolder)
 	{
-		for (u32 i = 0; i < Directories.size(); i++)
-		{
-			File::FSTEntry FST_Temp;
-			File::ScanDirectoryTree(Directories[i], FST_Temp);
-			for (u32 j = 0; j < FST_Temp.children.size(); j++)
-			{
-				if (FST_Temp.children[j].isDirectory)
-				{
-					bool duplicate = false;
-					for (u32 k = 0; k < Directories.size(); k++)
-					{
-						if (strcmp(Directories[k].c_str(),
-									FST_Temp.children[j].physicalName.c_str()) == 0)
-						{
-							duplicate = true;
-							break;
-						}
-					}
-					if (!duplicate)
-						Directories.push_back(
-								FST_Temp.children[j].physicalName.c_str());
-				}
-			}
-		}
+		File::FSTEntry FST_Temp;
+		File::ScanDirectoryTreeRecursive(Directories, FST_Temp);
 	}
 
 	CFileSearch::XStringVector Extensions;

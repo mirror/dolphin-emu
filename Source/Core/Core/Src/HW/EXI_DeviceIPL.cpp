@@ -91,7 +91,7 @@ CEXIIPL::CEXIIPL() :
 	m_bNTSC = SConfig::GetInstance().m_LocalCoreStartupParameter.bNTSC;
 
 	// Create the IPL
-	m_pIPL = (u8*)AllocateMemoryPages(ROM_SIZE);
+	m_pIPL = (u8*)Memory::AllocatePages(ROM_SIZE);
 	
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bHLE_BS2)
 	{
@@ -118,7 +118,7 @@ CEXIIPL::CEXIIPL() :
 	// We Overwrite language selection here since it's possible on the GC to change the language as you please
 	g_SRAM.lang = SConfig::GetInstance().m_LocalCoreStartupParameter.SelectedLanguage;
 
-	WriteProtectMemory(m_pIPL, ROM_SIZE);
+	Memory::WriteProtect(m_pIPL, ROM_SIZE);
 	m_uAddress = 0;		
 }
 
@@ -131,7 +131,7 @@ CEXIIPL::~CEXIIPL()
 
 	if (m_pIPL != NULL)
 	{
-		FreeMemoryPages(m_pIPL, ROM_SIZE);
+		Memory::FreePages(m_pIPL, ROM_SIZE);
 		m_pIPL = NULL;
 	}
 

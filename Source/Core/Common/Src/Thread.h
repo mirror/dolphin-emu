@@ -13,6 +13,8 @@
 #include "CommonTypes.h"
 #include <stdio.h>
 #include <string.h>
+#include <string>
+#include <map>
 
 // This may not be defined outside _WIN32
 #ifndef _WIN32
@@ -28,7 +30,56 @@
 namespace Common
 {
 
-int CurrentThreadId();
+class Thread
+{
+public:
+	Thread()
+		: name()
+		{}
+
+	~Thread();
+
+	template <typename C>
+	void Run(C func, std::string name_)
+	{
+		thread = std::thread(func);
+		SetName(name_);
+	}
+
+	template <typename C, typename A>
+	void Run(C func, A arg, std::string name_)
+	{
+		thread = std::thread(func, arg);
+		SetName(name_);
+	}
+
+	bool joinable() const;
+	void join();
+	std::thread::id get_id() const;
+	std::thread::native_handle_type native_handle();
+
+	THREAD_ID GetID() const;
+	std::string GetName() const;
+	void SetName(std::string name);
+
+	static void SetCurrentName(std::string name);
+	static std::string GetCurrentName();
+	static std::string GetCurrentName(THREAD_ID id);
+
+private:
+	static std::mutex *mutex;
+	std::thread thread;
+
+	std::string name;
+	static void SetNameNative(THREAD_ID id, const char* to, const char* from = 0);
+
+	static void Add(std::string name);
+	static void Add(THREAD_ID id, std::string name);
+	static void Remove(THREAD_ID id);
+	static std::map<THREAD_ID, std::string> *threads;
+};
+
+THREAD_ID CurrentThreadId();
 
 void SetThreadAffinity(std::thread::native_handle_type thread, u32 mask);
 void SetCurrentThreadAffinity(u32 mask);
@@ -148,8 +199,6 @@ inline void YieldCPU()
 {
 	std::this_thread::yield();
 }
-	
-void SetCurrentThreadName(const char *name);
 	
 } // namespace Common
 

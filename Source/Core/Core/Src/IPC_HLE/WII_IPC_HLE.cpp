@@ -42,6 +42,7 @@ They will also generate a true or false return for UpdateInterrupts() in WII_IPC
 #include "../ConfigManager.h"
 #include "../HW/CPU.h"
 #include "../HW/Memmap.h"
+#include "../HW/VideoInterface.h"
 #include "../HW/WII_IPC.h"
 #include "../Debugger/Debugger_SymbolMap.h"
 #include "../PowerPC/PowerPC.h"
@@ -551,7 +552,13 @@ void EnqReply(u32 _Address, int cycles_in_future)
 	CoreTiming::ScheduleEvent(cycles_in_future, enque_reply, _Address);
 }
 
-// This is called every IPC_HLE_PERIOD from SystemTimers.cpp
+// documentation is in SystemTimers
+int GetTicksToNextIPCUpdate()
+{
+	return SystemTimers::GetTicksPerSecond() / (VideoInterface::TargetRefreshRate * SystemTimers::IPC_HLE_PERIOD);
+}
+
+// documentation is in SystemTimers
 // Takes care of routing ipc <-> ipc HLE
 void Update()
 {

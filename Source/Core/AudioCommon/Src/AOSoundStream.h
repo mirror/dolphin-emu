@@ -16,7 +16,7 @@
 class AOSound : public SoundStream
 {
 #if defined(HAVE_AO) && HAVE_AO
-	std::thread thread;
+	Common::Thread thread;
 	std::mutex soundCriticalSection;
 	Common::Event soundSyncEvent;
 

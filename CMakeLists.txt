@@ -166,7 +166,7 @@ if(NOT MSVC)
 endif(NOT MSVC)
 
 # gcc uses some optimizations which might break stuff without this flag
-add_definitions(-fno-strict-aliasing -fno-exceptions)
+add_definitions(-fno-strict-aliasing)
 
 check_and_add_flag(VISIBILITY_INLINES_HIDDEN -fvisibility-inlines-hidden)
 

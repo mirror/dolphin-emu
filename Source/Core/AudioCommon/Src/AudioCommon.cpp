@@ -4,6 +4,7 @@
 
 #include "AudioCommon.h"
 #include "FileUtil.h"
+#include "MemoryUtil.h"
 #include "Mixer.h"
 #include "NullSoundStream.h"
 #include "DSoundStream.h"
@@ -83,6 +84,7 @@ namespace AudioCommon
 		}
 
 		INFO_LOG(DSPHLE, "Done shutting down sound stream");	
+		Memory::AllocationMessage("AudioCommon ShutdownSoundStream");
 	}
 
 	std::vector<std::string> GetSoundBackends() 

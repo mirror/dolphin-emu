@@ -12,8 +12,6 @@
 
 void AOSound::SoundLoop()
 {
-	Common::SetCurrentThreadName("Audio thread - ao");
-
 	uint_32 numBytesToRender = 256;
 	ao_initialize();
 	default_driver = ao_default_driver_id();
@@ -50,7 +48,7 @@ bool AOSound::Start()
 {
 	memset(realtimeBuffer, 0, sizeof(realtimeBuffer));
 
-	thread = std::thread(std::mem_fun(&AOSound::SoundLoop), this);
+	thread.Run(std::mem_fun(&AOSound::SoundLoop), this, "Audio - AO");
 	return true;
 }
 

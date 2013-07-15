@@ -22,9 +22,11 @@
 #include "WxUtils.h"
 #include "Globals.h" // Local
 #include "Main.h"
+#include "CLI.h"
 #include "ConfigManager.h"
 #include "Debugger/CodeWindow.h"
 #include "Debugger/JitWindow.h"
+#include "Debugger/DSPDebugWindow.h"
 #include "ExtendedTrace.h"
 #include "BootManager.h"
 #include "Frame.h"
@@ -118,6 +120,8 @@ bool DolphinApp::Initialize(int& c, wxChar **v)
 
 bool DolphinApp::OnInit()
 {
+	Common::Thread::SetCurrentName("GUI");
+	LogManager::Init();
 	InitLanguageSupport();
 
 	// Declarations and definitions
@@ -128,6 +132,7 @@ bool DolphinApp::OnInit()
 
 	wxString videoBackendName;
 	wxString audioEmulationName;
+	wxString configPath;
 
 #if wxUSE_CMDLINE_PARSER // Parse command lines
 	wxCmdLineEntryDesc cmdLineDesc[] =
@@ -136,6 +141,16 @@ bool DolphinApp::OnInit()
 			wxCMD_LINE_SWITCH, "h", "help",
 			"Show this help message",
 			wxCMD_LINE_VAL_NONE, wxCMD_LINE_OPTION_HELP
+		},
+		{
+			wxCMD_LINE_SWITCH, "", "version",
+			"Print version.",
+			wxCMD_LINE_VAL_NONE, wxCMD_LINE_PARAM_OPTIONAL
+		},
+		{
+			wxCMD_LINE_SWITCH, "c", "cli",
+			"Run without graphical interface.",
+			wxCMD_LINE_VAL_NONE, wxCMD_LINE_PARAM_OPTIONAL
 		},
 		{
 			wxCMD_LINE_SWITCH, "d", "debugger",
@@ -148,9 +163,19 @@ bool DolphinApp::OnInit()
 			wxCMD_LINE_VAL_NONE, wxCMD_LINE_PARAM_OPTIONAL
 		},
 		{
+			wxCMD_LINE_OPTION, "C", "config",
+			"Configuration path",
+			wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL
+		},
+		{
 			wxCMD_LINE_OPTION, "e", "exec",
 			"Loads the specified file (DOL,ELF,GCM,ISO,WAD)",
 			wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL
+		},
+		{
+			wxCMD_LINE_SWITCH, "B", "benchmark",
+			"Running benchmark from the specified demo.",
+			wxCMD_LINE_VAL_NONE, wxCMD_LINE_PARAM_OPTIONAL
 		},
 		{
 			wxCMD_LINE_SWITCH, "b", "batch",
@@ -184,10 +209,26 @@ bool DolphinApp::OnInit()
 		return false;
 	} 
 
+	if (parser.Found(wxT("version")))
+	{
+		fprintf(stderr, "%s\n", scm_rev_str);
+		return false;
+	}
+
+	CLI::isCLI = parser.Found(wxT("cli"));
 	UseDebugger = parser.Found(wxT("debugger"));
 	UseLogger = parser.Found(wxT("logger"));
+
+	// config path
+	if (parser.Found(wxT("config"), &configPath))
+	{
+		File::GetUserPath(D_CONFIG_IDX, File::GetUserPath(D_CONFIG_IDX) + WxStrToStr(configPath) + DIR_SEP);
+		NOTICE_LOG(CONSOLE, "Configuration path: %s", File::GetUserPath(D_CONFIG_IDX).c_str());
+	}
+
 	LoadFile = parser.Found(wxT("exec"), &FileToLoad);
 	BatchMode = parser.Found(wxT("batch"));
+	BenchmarkMode = parser.Found(wxT("benchmark"));
 	selectVideoBackend = parser.Found(wxT("video_backend"),
 		&videoBackendName);
 	selectAudioEmulation = parser.Found(wxT("audio_emulation"),
@@ -196,13 +237,14 @@ bool DolphinApp::OnInit()
 #endif // wxUSE_CMDLINE_PARSER
 
 #if defined _DEBUG && defined _WIN32
-	int tmpflag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
-	tmpflag |= _CRTDBG_DELAY_FREE_MEM_DF;
-	_CrtSetDbgFlag(tmpflag);
+	//_CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_REPORT_FLAG) |= _CRTDBG_DELAY_FREE_MEM_DF);
 #endif
 
+	// benchmark enable CLI mode because the GUI doesn't have meaning
+	if (BenchmarkMode) CLI::isCLI = true;
+
 	// Register message box and translation handlers
-	RegisterMsgAlertHandler(&wxMsgAlert);
+	if (!CLI::isCLI) RegisterMsgAlertHandler(&wxMsgAlert);
 	RegisterStringTranslator(&wxStringTranslator);
 
 	// "ExtendedTrace" looks freakin' dangerous!!!
@@ -264,12 +306,18 @@ bool DolphinApp::OnInit()
 	File::CreateFullPath(File::GetUserPath(D_STATESAVES_IDX));
 	File::CreateFullPath(File::GetUserPath(D_MAILLOGS_IDX));
 
-	LogManager::Init();
+	LogManager::GetInstance()->LoadSettings();
 	SConfig::Init();
 	VideoBackend::PopulateList();
 	WiimoteReal::LoadSettings();
 
-	if (selectVideoBackend && videoBackendName != wxEmptyString)
+	if (BenchmarkMode)
+	{
+		SConfig::GetInstance().m_LocalCoreStartupParameter.bBenchmark = true;
+		SConfig::GetInstance().m_Framelimit = 0;
+	}
+
+	if (selectVideoBackend && !videoBackendName.IsEmpty())
 		SConfig::GetInstance().m_LocalCoreStartupParameter.m_strVideoBackend =
 			WxStrToStr(videoBackendName);
 
@@ -282,6 +330,13 @@ bool DolphinApp::OnInit()
 	}
 
 	VideoBackend::ActivateBackend(SConfig::GetInstance().m_LocalCoreStartupParameter.m_strVideoBackend);
+
+	// run benchmark without interface
+	if (CLI::isCLI)
+	{
+		CLI::Entry(WxStrToStr(FileToLoad));
+		return false;
+	}
 
 	// Enable the PNG image handler for screenshots
 	wxImage::AddHandler(new wxPNGHandler);
@@ -370,7 +425,7 @@ void DolphinApp::AfterInit(wxTimerEvent& WXUNUSED(event))
 	}
 
 	// First check if we have an exec command line.
-	else if (LoadFile && FileToLoad != wxEmptyString)
+	else if (LoadFile)
 	{
 		main_frame->BootGame(WxStrToStr(FileToLoad));
 	}
@@ -439,6 +494,8 @@ void DolphinApp::OnFatalException()
 // ------------
 // Talk to GUI
 
+bool Host_IsCLI() { return CLI::isCLI; }
+
 void Host_SysMessage(const char *fmt, ...) 
 {
 	va_list list;
@@ -450,7 +507,11 @@ void Host_SysMessage(const char *fmt, ...)
 
 	if (msg[strlen(msg)-1] == '\n') msg[strlen(msg)-1] = 0;
 	//wxMessageBox(StrToWxStr(msg));
-	PanicAlert("%s", msg);
+
+	if (CLI::isCLI)
+		fprintf(stderr, "%s", msg);
+	else
+		PanicAlert("%s", msg);
 }
 
 bool wxMsgAlert(const char* caption, const char* text, bool yes_no, int /*Style*/)
@@ -486,8 +547,13 @@ CFrame* DolphinApp::GetCFrame()
 
 void Host_Message(int Id)
 {
-	wxCommandEvent event(wxEVT_HOST_COMMAND, Id);
-	main_frame->GetEventHandler()->AddPendingEvent(event);
+	if (CLI::isCLI)
+		CLI::Message(Id);
+	else
+	{
+		wxCommandEvent event(wxEVT_HOST_COMMAND, Id);
+		main_frame->GetEventHandler()->AddPendingEvent(event);
+	}
 }
 
 #ifdef _WIN32
@@ -505,13 +571,18 @@ void* Host_GetInstance()
 
 void* Host_GetRenderHandle()
 {
-	return main_frame->GetRenderHandle();
+	if (CLI::isCLI)
+		return CLI::GetRenderHandle();
+	else
+		return main_frame->GetRenderHandle();
 }
 
 // OK, this thread boundary is DANGEROUS on linux
 // wxPostEvent / wxAddPendingEvent is the solution.
 void Host_NotifyMapLoaded()
 {
+	if (CLI::isCLI) return;
+
 	wxCommandEvent event(wxEVT_HOST_COMMAND, IDM_NOTIFYMAPLOADED);
 	main_frame->GetEventHandler()->AddPendingEvent(event);
 
@@ -521,9 +592,18 @@ void Host_NotifyMapLoaded()
 	}
 }
 
+void Host_RefreshDSPDebuggerWindow()
+{
+	if (CLI::isCLI) return;
+
+	if (m_DebuggerFrame)
+		m_DebuggerFrame->Refresh();
+}
 
 void Host_UpdateLogDisplay()
 {
+	if (CLI::isCLI) return;
+
 	wxCommandEvent event(wxEVT_HOST_COMMAND, IDM_UPDATELOGDISPLAY);
 	main_frame->GetEventHandler()->AddPendingEvent(event);
 
@@ -536,6 +616,8 @@ void Host_UpdateLogDisplay()
 
 void Host_UpdateDisasmDialog()
 {
+	if (CLI::isCLI) return;
+
 	wxCommandEvent event(wxEVT_HOST_COMMAND, IDM_UPDATEDISASMDIALOG);
 	main_frame->GetEventHandler()->AddPendingEvent(event);
 
@@ -548,23 +630,33 @@ void Host_UpdateDisasmDialog()
 
 void Host_ShowJitResults(unsigned int address)
 {
+	if (CLI::isCLI) return;
 	if (main_frame->g_pCodeWindow && main_frame->g_pCodeWindow->m_JitWindow)
 		main_frame->g_pCodeWindow->m_JitWindow->ViewAddr(address);
 }
 
 void Host_UpdateMainFrame()
 {
-	wxCommandEvent event(wxEVT_HOST_COMMAND, IDM_UPDATEGUI);
-	main_frame->GetEventHandler()->AddPendingEvent(event);
-
-	if (main_frame->g_pCodeWindow)
+	if (CLI::isCLI)
 	{
-		main_frame->g_pCodeWindow->GetEventHandler()->AddPendingEvent(event);
+		CLI::UpdateMainFrame();
+	}
+	else
+	{
+		wxCommandEvent event(wxEVT_HOST_COMMAND, IDM_UPDATEGUI);
+		main_frame->GetEventHandler()->AddPendingEvent(event);
+
+		if (main_frame->g_pCodeWindow)
+		{
+			main_frame->g_pCodeWindow->GetEventHandler()->AddPendingEvent(event);
+		}
 	}
 }
 
 void Host_UpdateTitle(const char* title)
 {
+	if (CLI::isCLI) return;
+
 	wxCommandEvent event(wxEVT_HOST_COMMAND, IDM_UPDATETITLE);
 	event.SetString(StrToWxStr(title));
 	main_frame->GetEventHandler()->AddPendingEvent(event);
@@ -572,6 +664,8 @@ void Host_UpdateTitle(const char* title)
 
 void Host_UpdateBreakPointView()
 {
+	if (CLI::isCLI) return;
+
 	wxCommandEvent event(wxEVT_HOST_COMMAND, IDM_UPDATEBREAKPOINTS);
 	main_frame->GetEventHandler()->AddPendingEvent(event);
 
@@ -602,11 +696,15 @@ bool Host_GetKeyState(int keycode)
 
 void Host_GetRenderWindowSize(int& x, int& y, int& width, int& height)
 {
-	main_frame->GetRenderWindowSize(x, y, width, height);
+	if (CLI::isCLI)
+		CLI::GetRenderWindowSize(x, y, width, height);
+	else
+		main_frame->GetRenderWindowSize(x, y, width, height);
 }
 
 void Host_RequestRenderWindowSize(int width, int height)
 {
+	if (CLI::isCLI) return;
 	wxCommandEvent event(wxEVT_HOST_COMMAND, IDM_WINDOWSIZEREQUEST);
 	event.SetClientData(new std::pair<int, int>(width, height));
 	main_frame->GetEventHandler()->AddPendingEvent(event);
@@ -614,23 +712,31 @@ void Host_RequestRenderWindowSize(int width, int height)
 
 void Host_SetStartupDebuggingParameters()
 {
-	SCoreStartupParameter& StartUp = SConfig::GetInstance().m_LocalCoreStartupParameter;
-	if (main_frame->g_pCodeWindow)
+	if (CLI::isCLI)
 	{
-		StartUp.bBootToPause = main_frame->g_pCodeWindow->BootToPause();
-		StartUp.bAutomaticStart = main_frame->g_pCodeWindow->AutomaticStart();
-		StartUp.bJITNoBlockCache = main_frame->g_pCodeWindow->JITNoBlockCache();
-		StartUp.bJITBlockLinking = main_frame->g_pCodeWindow->JITBlockLinking();
+		CLI::SetStartupDebuggingParameters();
 	}
 	else
 	{
-		StartUp.bBootToPause = false;
+		SCoreStartupParameter& StartUp = SConfig::GetInstance().m_LocalCoreStartupParameter;
+		if (main_frame->g_pCodeWindow)
+		{
+			StartUp.bBootToPause = main_frame->g_pCodeWindow->BootToPause();
+			StartUp.bAutomaticStart = main_frame->g_pCodeWindow->AutomaticStart();
+			StartUp.bJITNoBlockCache = main_frame->g_pCodeWindow->JITNoBlockCache();
+			StartUp.bJITBlockLinking = main_frame->g_pCodeWindow->JITBlockLinking();
+		}
+		else
+		{
+			StartUp.bBootToPause = false;
+		}
+		StartUp.bEnableDebugging = main_frame->g_pCodeWindow ? true : false; // RUNNING_DEBUG
 	}
-	StartUp.bEnableDebugging = main_frame->g_pCodeWindow ? true : false; // RUNNING_DEBUG
 }
 
 void Host_UpdateStatusBar(const char* _pText, int Field)
 {
+	if (CLI::isCLI) return;
 	wxCommandEvent event(wxEVT_HOST_COMMAND, IDM_UPDATESTATUSBAR);
 	// Set the event string
 	event.SetString(StrToWxStr(_pText));
@@ -642,6 +748,8 @@ void Host_UpdateStatusBar(const char* _pText, int Field)
 
 void Host_SetWiiMoteConnectionState(int _State)
 {
+	if (CLI::isCLI) return;
+
 	static int currentState = -1;
 	if (_State == currentState)
 		return;
@@ -665,10 +773,14 @@ void Host_SetWiiMoteConnectionState(int _State)
 
 bool Host_RendererHasFocus()
 {
-	return main_frame->RendererHasFocus();
+	if (CLI::isCLI)
+		return true;
+	else
+		return main_frame->RendererHasFocus();
 }
 
 void Host_ConnectWiimote(int wm_idx, bool connect)
 {
+	if (CLI::isCLI) return;
 	CFrame::ConnectWiimote(wm_idx, connect);
 }

@@ -723,7 +723,7 @@ public:
 	void AllocCodeSpace(int size)
 	{
 		region_size = size;
-		region = (u8*)AllocateExecutableMemory(region_size);
+		region = (u8*)Memory::AllocateExecutable(region_size);
 		SetCodePtr(region);
 	}
 
@@ -739,7 +739,7 @@ public:
 	// Call this when shutting down. Don't rely on the destructor, even though it'll do the job.
 	void FreeCodeSpace()
 	{
-		FreeMemoryPages(region, region_size);
+		Memory::FreePages(region, region_size);
 		region = NULL;
 		region_size = 0;
 	}
@@ -753,7 +753,7 @@ public:
 	// Start over if you need to change the code (call FreeCodeSpace(), AllocCodeSpace()).
 	void WriteProtect()
 	{
-		WriteProtectMemory(region, region_size, true);
+		Memory::WriteProtect(region, region_size, true);
 	}
 
 	void ResetCodePtr()

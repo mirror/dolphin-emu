@@ -260,7 +260,7 @@ void Init(bool hle)
 		g_ARAM.wii_mode = false;
 		g_ARAM.size = ARAM_SIZE;
 		g_ARAM.mask = ARAM_MASK;
-		g_ARAM.ptr = (u8 *)AllocateMemoryPages(g_ARAM.size);
+		g_ARAM.ptr = (u8 *)Memory::AllocatePages(g_ARAM.size);
 	}
 
 	memset(&g_audioDMA, 0, sizeof(g_audioDMA));
@@ -279,12 +279,14 @@ void Init(bool hle)
 void Shutdown()
 {
 	if (!g_ARAM.wii_mode)
-		FreeMemoryPages(g_ARAM.ptr, g_ARAM.size);
+		Memory::FreePages(g_ARAM.ptr, g_ARAM.size);
 	g_ARAM.ptr = NULL;
 
 	dsp_emulator->Shutdown();
 	delete dsp_emulator;
 	dsp_emulator = NULL;
+
+	Memory::AllocationMessage("DSP Shutdown");
 }
 
 void Read16(u16& _uReturnValue, const u32 _iAddress)

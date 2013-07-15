@@ -49,6 +49,9 @@ std::string WxStrToStr(const wxString& str)
 
 wxString StrToWxStr(const std::string& str)
 {
-	//return wxString::FromUTF8Unchecked(str.c_str());
-	return wxString::FromUTF8(str.c_str());
+	wxString s = wxString::FromUTF8(str.c_str());
+	if (s.IsEmpty())
+		return wxString::Format("%s", str.c_str());
+	else
+		return s;
 }

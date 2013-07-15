@@ -34,7 +34,7 @@ void GamepadPage::ConfigExtension(wxCommandEvent& event)
 		main_szr->Add(dlg.CreateButtonSizer(wxOK), 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 5);
 		dlg.SetSizerAndFit(main_szr);
 		dlg.Center();
-
+		UpdateGUI();
 		dlg.ShowModal();
 
 		// remove the new groups that were just added, now that the window closed

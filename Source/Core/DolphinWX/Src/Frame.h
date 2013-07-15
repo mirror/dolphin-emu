@@ -126,7 +126,7 @@ public:
 	void ClearStatusBar();
 	void GetRenderWindowSize(int& x, int& y, int& width, int& height);
 	void OnRenderWindowSizeRequest(int width, int height);
-	void BootGame(const std::string& filename);
+	void BootGame(std::string filename);
 	void OnRenderParentClose(wxCloseEvent& event);
 	void OnRenderParentMove(wxMoveEvent& event);
 	bool RendererHasFocus();
@@ -209,6 +209,8 @@ private:
 	void CreateMenu();
 
 	// Utility
+	wxString GetISO();
+	bool IsISOSet();
 	wxString GetMenuLabel(int Id);
 	wxWindow * GetNotebookPageFromId(wxWindowID Id);
 	wxAuiNotebook * GetNotebookFromId(u32 NBId);
@@ -337,7 +339,6 @@ private:
 	void OnGameListCtrl_ItemActivated(wxListEvent& event);
 	void OnRenderParentResize(wxSizeEvent& event);
 	bool RendererIsFullscreen();
-	void StartGame(const std::string& filename);
 
 	// Event table
 	DECLARE_EVENT_TABLE();

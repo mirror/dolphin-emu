@@ -7,8 +7,6 @@
 
 #include <string>
 
-class GameListItem;
-
 namespace BootManager
 {
 bool BootCore(const std::string& _rFilename);

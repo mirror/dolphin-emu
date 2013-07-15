@@ -53,7 +53,7 @@ static const u16 classic_dpad_bitmasks[] =
 	Classic::PAD_UP, Classic::PAD_DOWN, Classic::PAD_LEFT, Classic::PAD_RIGHT 
 };
 
-Classic::Classic() : Attachment(_trans("Classic"))
+Classic::Classic(WiimoteEmu::ExtensionReg& _reg) : Attachment(_trans("Classic"), _reg)
 {
 	// buttons
 	groups.push_back(m_buttons = new Buttons("Buttons"));
@@ -61,8 +61,8 @@ Classic::Classic() : Attachment(_trans("Classic"))
 		m_buttons->controls.push_back(new ControlGroup::Input(classic_button_names[i]));
 
 	// sticks
-	groups.push_back(m_left_stick = new AnalogStick(_trans("Left Stick")));
-	groups.push_back(m_right_stick = new AnalogStick(_trans("Right Stick")));
+	groups.push_back(m_left_stick = new AnalogStick(_trans("Left Stick"), 1));
+	groups.push_back(m_right_stick = new AnalogStick(_trans("Right Stick"), 1));
 
 	// triggers
 	groups.push_back(m_triggers = new MixedTriggers("Triggers"));
@@ -76,9 +76,9 @@ Classic::Classic() : Attachment(_trans("Classic"))
 
 	// set up register
 	// calibration
-	memcpy(&reg[0x20], classic_calibration, sizeof(classic_calibration));
+	memcpy(&calibration, classic_calibration, sizeof(classic_calibration));
 	// id
-	memcpy(&reg[0xfa], classic_id, sizeof(classic_id));
+	memcpy(&id, classic_id, sizeof(classic_id));
 }
 
 void Classic::GetState(u8* const data, const bool focus)

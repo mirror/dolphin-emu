@@ -14,9 +14,11 @@
 
 #include <vector>
 #include <string>
+#include <functional>
 
 #include "Common.h"
 #include "CoreParameter.h"
+#include "Thread.h"
 
 namespace Core
 {
@@ -24,6 +26,30 @@ namespace Core
 // Get core parameters
 // TODO: kill, use SConfig instead
 extern SCoreStartupParameter g_CoreStartupParameter;
+
+class Thread
+{
+public:
+	void RunCPU()
+	{
+		if (g_CoreStartupParameter.m_BootType == SCoreStartupParameter::BOOT_DFF)
+			cpu.Run(std::mem_fun(&Thread::FIFO), this, "FIFO");
+		else
+			cpu.Run(std::mem_fun(&Thread::CPU), this, "CPU");
+	}
+
+	void RunGPU()
+	{
+		gpu.Run(std::mem_fun(&Thread::GPU), this, "GPU");
+	}
+
+	void CPU();
+	void GPU();
+	void FIFO();
+
+	Common::Thread cpu;
+	Common::Thread gpu;
+};
 
 extern bool isTabPressed;
 
@@ -39,8 +65,6 @@ enum EState
 
 bool Init();
 void Stop();
-
-std::string StopMessage(bool, std::string);
 
 bool IsRunning();
 bool IsRunningAndStarted(); // is running and the cpu loop has been entered

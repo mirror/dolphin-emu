@@ -153,7 +153,7 @@ void ReadThreadHandler(CEXIETHERNET* self)
 bool CEXIETHERNET::RecvInit()
 {
 #ifdef __linux__
-	readThread = std::thread(ReadThreadHandler, this);
+	readThread.Run(ReadThreadHandler, this, "EXI Ethernet");
 	return true;
 #else
 	NOTIMPLEMENTED("RecvInit");

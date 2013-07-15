@@ -20,6 +20,7 @@
 
 SCoreStartupParameter::SCoreStartupParameter()
 : hInstance(0),
+  bBenchmark(false),
   bJITNoBlockCache(false), bJITBlockLinking(true),
   bJITOff(false),
   bJITLoadStoreOff(false), bJITLoadStorelXzOff(false),
@@ -46,7 +47,7 @@ SCoreStartupParameter::SCoreStartupParameter()
   bRenderWindowAutoSize(false), bKeepWindowOnTop(false),
   bFullscreen(false), bRenderToMain(false),
   bProgressive(false), bDisableScreenSaver(false),
-  iPosX(100), iPosY(100), iWidth(800), iHeight(600)
+  iPosX(100), iPosY(100), iWidth(800), iHeight(600), bMax(false)
 {
 	LoadDefaults();
 }
@@ -80,6 +81,7 @@ void SCoreStartupParameter::LoadDefaults()
 	iPosY = 100;
 	iWidth = 800;
 	iHeight = 600;
+	bMax = false;
 
 	bJITOff = false; // debugger only settings
 	bJITLoadStoreOff = false;
@@ -105,7 +107,7 @@ bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2)
 			bool bootDrive = cdio_is_cdrom(m_strFilename);
 			// Check if the file exist, we may have gotten it from a --elf command line
 			// that gave an incorrect file name 
-			if (!bootDrive && !File::Exists(m_strFilename))
+			if (!bootDrive && !File::Exists(m_strFilename) && !m_strFilename.empty())
 			{
 				PanicAlertT("The specified file \"%s\" does not exist", m_strFilename.c_str());
 				return false;

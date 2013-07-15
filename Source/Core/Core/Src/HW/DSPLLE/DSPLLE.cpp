@@ -49,6 +49,7 @@ void DSPLLE::DoState(PointerWrap &p)
 	p.Do(isHLE);
 	if (isHLE != false && p.GetMode() == PointerWrap::MODE_READ)
 	{
+		p.message.append("Audio: HLE");
 		Core::DisplayMessage("State is incompatible with current DSP engine. Aborting load state.", 3000);
 		p.SetMode(PointerWrap::MODE_VERIFY);
 		return;
@@ -72,9 +73,9 @@ void DSPLLE::DoState(PointerWrap &p)
 	p.Do(g_dsp.ifx_regs);
 	p.Do(g_dsp.mbox[0]);
 	p.Do(g_dsp.mbox[1]);
-	UnWriteProtectMemory(g_dsp.iram, DSP_IRAM_BYTE_SIZE, false);
+	Memory::UnWriteProtect(g_dsp.iram, DSP_IRAM_BYTE_SIZE, false);
 	p.DoArray(g_dsp.iram, DSP_IRAM_SIZE);
-	WriteProtectMemory(g_dsp.iram, DSP_IRAM_BYTE_SIZE, false);
+	Memory::WriteProtect(g_dsp.iram, DSP_IRAM_BYTE_SIZE, false);
 	if (p.GetMode() == PointerWrap::MODE_READ)
 		DSPHost_CodeLoaded((const u8*)g_dsp.iram, DSP_IRAM_BYTE_SIZE);
 	p.DoArray(g_dsp.dram, DSP_DRAM_SIZE);
@@ -104,8 +105,6 @@ void DSPLLE::DoState(PointerWrap &p)
 // Regular thread
 void DSPLLE::dsp_thread(DSPLLE *dsp_lle)
 {
-	Common::SetCurrentThreadName("DSP thread");
-
 	while (dsp_lle->m_bIsRunning)
 	{
 		int cycles = (int)dsp_lle->m_cycle_count;
@@ -155,7 +154,7 @@ bool DSPLLE::Initialize(void *hWnd, bool bWii, bool bDSPThread)
 	InitInstructionTable();
 
 	if (m_bDSPThread)
-		m_hDSPThread = std::thread(dsp_thread, this);
+		m_hDSPThread.Run(dsp_thread, this, "DSP thread");
 
 	Host_RefreshDSPDebuggerWindow();
 

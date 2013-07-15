@@ -17,6 +17,7 @@
 #include "HW/CPU.h"
 #include "PowerPC/JitCommon/JitBase.h"
 #include "VideoBackendBase.h"
+#include "Host.h"
 
 #include <lzo/lzo1x.h>
 #include "HW/Memmap.h"
@@ -56,7 +57,7 @@ static std::mutex g_cs_undo_load_buffer;
 static std::mutex g_cs_current_buffer;
 static Common::Event g_compressAndDumpStateSyncEvent;
 
-static std::thread g_save_thread;
+static Common::Thread g_save_thread;
 
 // Don't forget to increase this after doing changes on the savestate system
 static const u32 STATE_VERSION = 20;
@@ -75,7 +76,32 @@ void EnableCompression(bool compression)
 	g_use_compression = compression;
 }
 
-void DoState(PointerWrap &p)
+// get ISO ID
+bool GetISOID(std::string &isoID_, std::string filename)
+{
+	File::IOFile g_recordfd;
+	if (!g_recordfd.Open(filename, "rb"))
+	{
+		PanicAlertT("Can't open %s.", filename.c_str());
+		isoID_ = "";
+		return false;
+	}
+
+	char isoID[7];
+	g_recordfd.ReadArray(&isoID, 1);
+	isoID[6] = '\0';
+	isoID_ = std::string(isoID);
+
+	if (isoID_.empty())
+	{
+		PanicAlertT("Can't find ISO ID in %s.", filename.c_str());
+		return false;
+	}
+
+	return true;
+}
+
+u32 GetVersion(PointerWrap &p)
 {
 	u32 version = STATE_VERSION;
 	{
@@ -84,6 +110,12 @@ void DoState(PointerWrap &p)
 		p.Do(cookie);
 		version = cookie - COOKIE_BASE;
 	}
+	return version;
+}
+
+void DoState(PointerWrap &p)
+{
+	u32 version = GetVersion(p);
 
 	if (version != STATE_VERSION)
 	{
@@ -214,9 +246,6 @@ void CompressAndDumpState(CompressAndDumpState_args save_args)
 	const size_t buffer_size = (save_args.buffer_vector)->size();
 	std::string& filename = save_args.filename;
 
-	// For easy debugging
-	Common::SetCurrentThreadName("SaveState thread");
-
 	// Moving to last overwritten save-state
 	if (File::Exists(filename))
 	{
@@ -319,7 +348,7 @@ void SaveAs(const std::string& filename, bool wait)
 		save_args.wait = wait;
 
 		Flush();
-		g_save_thread = std::thread(CompressAndDumpState, save_args);
+		g_save_thread.Run(CompressAndDumpState, save_args, "State");
 		g_compressAndDumpStateSyncEvent.Wait();
 
 		g_last_filename = filename;
@@ -361,7 +390,7 @@ void LoadFileStateData(const std::string& filename, std::vector<u8>& ret_data)
 	StateHeader header;
 	f.ReadArray(&header, 1);
 	
-	if (memcmp(SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str(), header.gameID, 6)) 
+	if (Core::IsRunning() && memcmp(SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str(), header.gameID, 6))
 	{
 		Core::DisplayMessage(StringFromFormat("State belongs to a different game (ID %.*s)",
 			6, header.gameID), 2000);
@@ -414,7 +443,7 @@ void LoadFileStateData(const std::string& filename, std::vector<u8>& ret_data)
 	ret_data.swap(buffer);
 }
 
-void LoadAs(const std::string& filename)
+bool LoadAs(const std::string& filename, bool abort)
 {
 	// Stop the core while we load the state
 	bool wasUnpaused = Core::PauseAndLock(true);
@@ -444,6 +473,7 @@ void LoadAs(const std::string& filename)
 
 	bool loaded = false;
 	bool loadedSuccessfully = false;
+	std::string message;
 
 	// brackets here are so buffer gets freed ASAP
 	{
@@ -457,6 +487,7 @@ void LoadAs(const std::string& filename)
 			DoState(p);
 			loaded = true;
 			loadedSuccessfully = (p.GetMode() == PointerWrap::MODE_READ);
+			message = p.message;
 		}
 	}
 
@@ -475,6 +506,13 @@ void LoadAs(const std::string& filename)
 			// failed to load
 			Core::DisplayMessage("Unable to Load : Can't load state from other revisions !", 4000);
 
+			if (abort) {
+				g_loadDepth--;
+				Core::PauseAndLock(false, wasUnpaused);
+				CriticalAlertT("Can't open state with current settings because it's saved with\n\n%s", message.c_str());
+				return false;
+			}
+
 			// since we could be in an inconsistent state now (and might crash or whatever), undo.
 			if (g_loadDepth < 2)
 				UndoLoadState();
@@ -492,13 +530,41 @@ void LoadAs(const std::string& filename)
 		_CrtSetDbgFlag(tmpflag);
 #endif
 
+	Movie::SetStartTime();
+
 	// resume dat core
 	Core::PauseAndLock(false, wasUnpaused);
+
+	return true;
 }
 
 void SetOnAfterLoadCallback(CallbackFunc callback)
 {
 	g_onAfterLoadCb = callback;
+}
+
+bool IsCorrectVersion(const std::string filename)
+{
+	std::vector<u8> buffer;
+	LoadFileStateData(filename, buffer);
+
+	if (buffer.empty())
+	{
+		PanicAlertT("Can't read %s", filename.c_str());
+		return false;
+	}
+
+	u8 *ptr = &buffer[0];
+	PointerWrap p(&ptr, PointerWrap::MODE_READ);
+	u32 version = GetVersion(p);
+
+	if (version != STATE_VERSION)
+	{
+		CriticalAlertT("The savestate is version %u but the current version is %d.", version, STATE_VERSION);
+		return false;
+	}
+
+	return true;
 }
 
 void VerifyAt(const std::string& filename)

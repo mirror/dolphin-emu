@@ -171,6 +171,7 @@ void SConfig::SaveSettings()
 	ini.Set("Interface", "MainWindowPosY",		(m_LocalCoreStartupParameter.iPosY == -32000) ? 0 : m_LocalCoreStartupParameter.iPosY); // TODO - HAX
 	ini.Set("Interface", "MainWindowWidth",		m_LocalCoreStartupParameter.iWidth);
 	ini.Set("Interface", "MainWindowHeight",	m_LocalCoreStartupParameter.iHeight);
+	ini.Set("Interface", "MainWindowMax",		m_LocalCoreStartupParameter.bMax);
 	ini.Set("Interface", "Language",			m_InterfaceLanguage);
 	ini.Set("Interface", "ShowToolbar",			m_InterfaceToolbar);
 	ini.Set("Interface", "ShowStatusbar",		m_InterfaceStatusbar);
@@ -195,6 +196,10 @@ void SConfig::SaveSettings()
 	ini.Set("Display", "RenderWindowYPos",		m_LocalCoreStartupParameter.iRenderWindowYPos);
 	ini.Set("Display", "RenderWindowWidth",		m_LocalCoreStartupParameter.iRenderWindowWidth);
 	ini.Set("Display", "RenderWindowHeight",	m_LocalCoreStartupParameter.iRenderWindowHeight);
+	ini.Set("Display", "CLIRenderWindowXPos",	m_LocalCoreStartupParameter.iCLIRenderWindowXPos);
+	ini.Set("Display", "CLIRenderWindowYPos",	m_LocalCoreStartupParameter.iCLIRenderWindowYPos);
+	ini.Set("Display", "CLIRenderWindowWidth",	m_LocalCoreStartupParameter.iCLIRenderWindowWidth);
+	ini.Set("Display", "CLIRenderWindowHeight",	m_LocalCoreStartupParameter.iCLIRenderWindowHeight);
 	ini.Set("Display", "RenderWindowAutoSize",	m_LocalCoreStartupParameter.bRenderWindowAutoSize);
 	ini.Set("Display", "KeepWindowOnTop",		m_LocalCoreStartupParameter.bKeepWindowOnTop);
 	ini.Set("Display", "ProgressiveScan",		m_LocalCoreStartupParameter.bProgressive);
@@ -318,6 +323,7 @@ void SConfig::LoadSettings()
 		ini.Get("Interface", "MainWindowPosY",		&m_LocalCoreStartupParameter.iPosY,				100);
 		ini.Get("Interface", "MainWindowWidth",		&m_LocalCoreStartupParameter.iWidth,			800);
 		ini.Get("Interface", "MainWindowHeight",	&m_LocalCoreStartupParameter.iHeight,			600);
+		ini.Get("Interface", "MainWindowMax",		&m_LocalCoreStartupParameter.bMax,				false);
 		ini.Get("Interface", "Language",			&m_InterfaceLanguage,							0);
 		ini.Get("Interface", "ShowToolbar",			&m_InterfaceToolbar,							true);
 		ini.Get("Interface", "ShowStatusbar",		&m_InterfaceStatusbar,							true);
@@ -343,6 +349,10 @@ void SConfig::LoadSettings()
 		ini.Get("Display", "RenderWindowYPos",		&m_LocalCoreStartupParameter.iRenderWindowYPos,	-1);
 		ini.Get("Display", "RenderWindowWidth",		&m_LocalCoreStartupParameter.iRenderWindowWidth, 640);
 		ini.Get("Display", "RenderWindowHeight",	&m_LocalCoreStartupParameter.iRenderWindowHeight, 480);
+		ini.Get("Display", "CLIRenderWindowXPos",	&m_LocalCoreStartupParameter.iCLIRenderWindowXPos,	-1);
+		ini.Get("Display", "CLIRenderWindowYPos",	&m_LocalCoreStartupParameter.iCLIRenderWindowYPos,	-1);
+		ini.Get("Display", "CLIRenderWindowWidth",	&m_LocalCoreStartupParameter.iCLIRenderWindowWidth, 640);
+		ini.Get("Display", "CLIRenderWindowHeight",	&m_LocalCoreStartupParameter.iCLIRenderWindowHeight, 480);
 		ini.Get("Display", "RenderWindowAutoSize",	&m_LocalCoreStartupParameter.bRenderWindowAutoSize, false);
 		ini.Get("Display", "KeepWindowOnTop",		&m_LocalCoreStartupParameter.bKeepWindowOnTop, false);
 		ini.Get("Display", "ProgressiveScan",		&m_LocalCoreStartupParameter.bProgressive, false);

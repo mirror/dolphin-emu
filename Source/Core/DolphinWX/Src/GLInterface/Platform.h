@@ -144,7 +144,7 @@ typedef struct {
 	Window parent;
 	XVisualInfo *vi;
 	XSetWindowAttributes attr;
-	std::thread xEventThread;
+	Common::Thread xEventThread;
 	int x, y;
 	unsigned int width, height;
 #elif defined(ANDROID)

@@ -23,6 +23,7 @@
 // The host can be just a command line app that opens a window, or a full blown debugger
 // interface.
 
+bool Host_IsCLI();
 bool Host_RendererHasFocus();
 void Host_ConnectWiimote(int wm_idx, bool connect);
 bool Host_GetKeyState(int keycode);

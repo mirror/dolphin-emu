@@ -8,7 +8,6 @@
 #endif
 
 #include "Atomic.h"
-#include "Thread.h"
 #include "Timer.h"
 #include "Common.h"
 #include "CommonPaths.h"
@@ -73,7 +72,6 @@ const char *Callback_ISOName(void);
 void Callback_WiimoteInterruptChannel(int _number, u16 _channelID, const void* _pData, u32 _Size);
 
 // Function declarations
-void EmuThread();
 
 void Stop();
 
@@ -83,9 +81,9 @@ bool g_bStarted = false;
 bool g_bRealWiimote = false;
 void *g_pWindowHandle = NULL;
 std::string g_stateFileName;
-std::thread g_EmuThread;
 
-static std::thread g_cpu_thread;
+Thread g_thread;
+
 static bool g_requestRefreshInfo = false;
 static int g_pauseAndLockDepth = 0;
 
@@ -97,14 +95,6 @@ void SetStateFileName(std::string val) { g_stateFileName = val; }
 
 // Display messages and return values
 
-// Formatted stop message
-std::string StopMessage(bool bMainThread, std::string Message)
-{
-	return StringFromFormat("Stop [%s %i]\t%s\t%s",
-		bMainThread ? "Main Thread" : "Video Thread", Common::CurrentThreadId(), MemUsage().c_str(), Message.c_str());
-}
-
-// 
 bool PanicAlertToVideo(const char* text, bool yes_no)
 {
 	DisplayMessage(text, 3000);
@@ -122,7 +112,7 @@ void DisplayMessage(const char *message, int time_in_ms)
 			return;
 
 	g_video_backend->Video_AddMessage(message, time_in_ms);
-	
+
 	if (_CoreParameter.bRenderToMain &&
 		SConfig::GetInstance().m_InterfaceStatusbar)
 	{
@@ -132,6 +122,8 @@ void DisplayMessage(const char *message, int time_in_ms)
 	{
 		Host_UpdateTitle(message);
 	}
+
+	NOTICE_LOG(CONSOLE, message);
 }
 
 void Callback_DebuggerBreak()
@@ -161,7 +153,9 @@ bool IsRunningInCurrentThread()
 
 bool IsCPUThread()
 {
-	return (g_cpu_thread.joinable() ? (g_cpu_thread.get_id() == std::this_thread::get_id()) : !g_bStarted);
+	return (g_thread.cpu.joinable()
+		? (g_thread.cpu.get_id() == std::this_thread::get_id())
+		: !g_bStarted);
 }
 
 bool IsGPUThread()
@@ -170,7 +164,8 @@ bool IsGPUThread()
 		SConfig::GetInstance().m_LocalCoreStartupParameter;
 	if (_CoreParameter.bCPUThread)
 	{
-		return (g_EmuThread.joinable() && (g_EmuThread.get_id() == std::this_thread::get_id()));
+		return (g_thread.gpu.joinable()
+			&& (g_thread.gpu.get_id() == std::this_thread::get_id()));
 	}
 	else
 	{
@@ -185,7 +180,7 @@ bool Init()
 	const SCoreStartupParameter& _CoreParameter =
 		SConfig::GetInstance().m_LocalCoreStartupParameter;
 
-	if (g_EmuThread.joinable())
+	if (g_thread.gpu.joinable())
 	{
 		PanicAlertT("Emu Thread already running");
 		return false;
@@ -201,7 +196,7 @@ bool Init()
 	Host_UpdateMainFrame(); // Disable any menus or buttons at boot
 
 	g_aspect_wide = _CoreParameter.bWii;
-	if (g_aspect_wide) 
+	if (g_aspect_wide)
 	{
 		IniFile gameIni;
 		gameIni.Load(_CoreParameter.m_strGameIni.c_str());
@@ -215,9 +210,8 @@ bool Init()
 	// within g_video_backend->Initialize()
 	g_pWindowHandle = Host_GetRenderHandle();
 
-	// Start the emu thread 
-	g_EmuThread = std::thread(EmuThread);
-
+	// run the GPU thread
+	g_thread.RunGPU();
 	return true;
 }
 
@@ -226,8 +220,8 @@ void Stop()  // - Hammertime!
 {
 	if (PowerPC::GetState() == PowerPC::CPU_POWERDOWN)
 	{
-		if (g_EmuThread.joinable())
-			g_EmuThread.join();
+		if (g_thread.gpu.joinable())
+			g_thread.gpu.join();
 		return;
 	}
 
@@ -238,10 +232,9 @@ void Stop()  // - Hammertime!
 
 	g_video_backend->EmuStateChange(EMUSTATE_CHANGE_STOP);
 
-	INFO_LOG(CONSOLE, "Stop [Main Thread]\t\t---- Shutting down ----");
+	Memory::AllocationMessage("Shutting down");
 
 	// Stop the CPU
-	INFO_LOG(CONSOLE, "%s", StopMessage(true, "Stop CPU").c_str());
 	PowerPC::Stop();
 
 	// Kick it if it's waiting (code stepping wait loop)
@@ -252,16 +245,33 @@ void Stop()  // - Hammertime!
 		// Video_EnterLoop() should now exit so that EmuThread()
 		// will continue concurrently with the rest of the commands
 		// in this function. We no longer rely on Postmessage.
-		INFO_LOG(CONSOLE, "%s", StopMessage(true, "Wait for Video Loop to exit ...").c_str());
-		
+
 		g_video_backend->Video_ExitLoop();
 	}
 
-	INFO_LOG(CONSOLE, "%s", StopMessage(true, "Stopping Emu thread ...").c_str());
-	
-	g_EmuThread.join();	// Wait for emuthread to close.
+	// wait for GPU thread to join
+	g_thread.gpu.join();
 
-	INFO_LOG(CONSOLE, "%s", StopMessage(true, "Main Emu thread stopped").c_str());
+	// wait for audio thread to join
+
+	if(_CoreParameter.bCPUThread)
+		g_video_backend->Video_Cleanup();
+
+	VolumeHandler::EjectVolume();
+	FileMon::Close();
+
+	// Stop audio thread - Actually this does nothing when using HLE
+	// emulation, but stops the DSP Interpreter when using LLE emulation.
+	DSP::GetDSPEmulator()->DSP_StopSoundStream();
+
+	// We must set up this flag before executing HW::Shutdown()
+	g_bHwInit = false;
+
+	HW::Shutdown();
+
+	Pad::Shutdown();
+	Wiimote::Shutdown();
+	g_video_backend->Shutdown();
 
 #ifdef _WIN32
 	EmuWindow::Close();
@@ -272,29 +282,30 @@ void Stop()  // - Hammertime!
 
 	// Close the trace file
 	Core::StopTrace();
-	
+
 	// Reload sysconf file in order to see changes committed during emulation
 	if (_CoreParameter.bWii)
 		SConfig::GetInstance().m_SYSCONF->Reload();
 
-	INFO_LOG(CONSOLE, "Stop [Main Thread]\t\t---- Shutdown complete ----");
 	Movie::Shutdown();
 	g_bStopping = false;
+
+	Memory::AllocationMessage("Shutdown complete");
 }
 
 // Create the CPU thread, which is a CPU + Video thread in Single Core mode.
-void CpuThread()
+void Thread::CPU()
 {
 	const SCoreStartupParameter& _CoreParameter =
 		SConfig::GetInstance().m_LocalCoreStartupParameter;
 
 	if (_CoreParameter.bCPUThread)
 	{
-		Common::SetCurrentThreadName("CPU thread");
+		cpu.SetName("CPU");
 	}
 	else
 	{
-		Common::SetCurrentThreadName("CPU-GPU thread");
+		cpu.SetName("CPU-GPU");
 		g_video_backend->Video_Prepare();
 	}
 
@@ -304,7 +315,13 @@ void CpuThread()
 	#endif
 
 	if (!g_stateFileName.empty())
-		State::LoadAs(g_stateFileName);
+		if (!State::LoadAs(g_stateFileName, true))
+		{
+			Host_Message(WM_USER_STOP);
+			SetStateFileName("");
+			return;
+		}
+	SetStateFileName("");
 
 	g_bStarted = true;
 
@@ -312,25 +329,25 @@ void CpuThread()
 	CCPU::Run();
 
 	g_bStarted = false;
-	
+
 	if (!_CoreParameter.bCPUThread)
 		g_video_backend->Video_Cleanup();
 
 	return;
 }
 
-void FifoPlayerThread()
+void Thread::FIFO()
 {
 	const SCoreStartupParameter& _CoreParameter = SConfig::GetInstance().m_LocalCoreStartupParameter;
 
 	if (_CoreParameter.bCPUThread)
 	{
-		Common::SetCurrentThreadName("FIFO player thread");
+		cpu.SetName("FIFO player thread");
 	}
 	else
 	{
 		g_video_backend->Video_Prepare();
-		Common::SetCurrentThreadName("FIFO-GPU thread");
+		cpu.SetName("FIFO-GPU thread");
 	}
 
 	g_bStarted = true;
@@ -343,7 +360,7 @@ void FifoPlayerThread()
 	}
 
 	g_bStarted = false;
-	
+
 	if(!_CoreParameter.bCPUThread)
 		g_video_backend->Video_Cleanup();
 
@@ -351,14 +368,14 @@ void FifoPlayerThread()
 }
 
 // Initalize and create emulation thread
-// Call browser: Init():g_EmuThread().
+// Call browser: Init():g_thread.gpu().
 // See the BootManager.cpp file description for a complete call schedule.
-void EmuThread()
+void Thread::GPU()
 {
 	const SCoreStartupParameter& _CoreParameter =
 		SConfig::GetInstance().m_LocalCoreStartupParameter;
 
-	Common::SetCurrentThreadName("Emuthread - Starting");
+	gpu.SetName("GPU - Starting");
 
 	DisplayMessage(cpu_info.brand_string, 8000);
 	DisplayMessage(cpu_info.Summarize(), 8000);
@@ -366,11 +383,11 @@ void EmuThread()
 
 	Movie::Init();
 
-	HW::Init();	
+	HW::Init();
 
 	if (!g_video_backend->Initialize(g_pWindowHandle))
 	{
-		PanicAlert("Failed to initialize video backend!");
+		PanicAlert("Failed to initialize video backend '%s'!", g_video_backend->GetName().c_str());
 		Host_Message(WM_USER_STOP);
 		return;
 	}
@@ -388,16 +405,16 @@ void EmuThread()
 	}
 
 	Pad::Initialize(g_pWindowHandle);
-	// Load and Init Wiimotes - only if we are booting in wii mode	
+	// Load and Init Wiimotes - only if we are booting in wii mode
 	if (g_CoreStartupParameter.bWii)
 	{
-		Wiimote::Initialize(g_pWindowHandle, !g_stateFileName.empty());
+		Wiimote::Initialize(g_pWindowHandle, true);
 
 		// Activate wiimotes which don't have source set to "None"
 		for (unsigned int i = 0; i != MAX_BBMOTES; ++i)
 			if (g_wiimote_sources[i])
 				GetUsbPointer()->AccessWiiMote(i | 0x100)->Activate(true);
-			
+
 	}
 
 	// The hardware is initialized.
@@ -422,30 +439,20 @@ void EmuThread()
 	Host_UpdateDisasmDialog();
 	Host_UpdateMainFrame();
 
-	// Determine the cpu thread function
-	void (*cpuThreadFunc)(void);
-	if (_CoreParameter.m_BootType == SCoreStartupParameter::BOOT_DFF)
-		cpuThreadFunc = FifoPlayerThread;
-	else
-		cpuThreadFunc = CpuThread;
-
 	// ENTER THE VIDEO THREAD LOOP
 	if (_CoreParameter.bCPUThread)
 	{
 		// This thread, after creating the EmuWindow, spawns a CPU
 		// thread, and then takes over and becomes the video thread
-		Common::SetCurrentThreadName("Video thread");
+		gpu.SetName("GPU");
 
 		g_video_backend->Video_Prepare();
 
-		// Spawn the CPU thread
-		g_cpu_thread = std::thread(cpuThreadFunc);
+		// run the CPU thread
+		RunCPU();
 
 		// become the GPU thread
 		g_video_backend->Video_EnterLoop();
-
-		// We have now exited the Video Loop
-		INFO_LOG(CONSOLE, "%s", StopMessage(false, "Video Loop Ended").c_str());
 	}
 	else // SingleCore mode
 	{
@@ -454,10 +461,10 @@ void EmuThread()
 		// waiting for the program to terminate. Without this extra
 		// thread, the video backend window hangs in single core mode
 		// because noone is pumping messages.
-		Common::SetCurrentThreadName("Emuthread - Idle");
+		gpu.SetName("GPU - Idle");
 
-		// Spawn the CPU+GPU thread
-		g_cpu_thread = std::thread(cpuThreadFunc);
+		// run the CPU+GPU thread
+		RunCPU();
 
 		while (PowerPC::GetState() != PowerPC::CPU_POWERDOWN)
 		{
@@ -466,31 +473,8 @@ void EmuThread()
 		}
 	}
 
-	// Wait for g_cpu_thread to exit
-	INFO_LOG(CONSOLE, "%s", StopMessage(true, "Stopping CPU-GPU thread ...").c_str());
-
-	g_cpu_thread.join();
-
-	INFO_LOG(CONSOLE, "%s", StopMessage(true, "CPU thread stopped.").c_str());
-	
-	if(_CoreParameter.bCPUThread)
-		g_video_backend->Video_Cleanup();
-
-	VolumeHandler::EjectVolume();
-	FileMon::Close();
-
-	// Stop audio thread - Actually this does nothing when using HLE
-	// emulation, but stops the DSP Interpreter when using LLE emulation.
-	DSP::GetDSPEmulator()->DSP_StopSoundStream();
-	
-	// We must set up this flag before executing HW::Shutdown()
-	g_bHwInit = false;
-	INFO_LOG(CONSOLE, "%s", StopMessage(false, "Shutting down HW").c_str());
-	HW::Shutdown();
-	INFO_LOG(CONSOLE, "%s", StopMessage(false, "HW shutdown").c_str());
-	Pad::Shutdown();
-	Wiimote::Shutdown();
-	g_video_backend->Shutdown();
+	// wait for CPU thread to join
+	g_thread.cpu.join();
 }
 
 // Set or get the running state
@@ -560,7 +544,7 @@ void SaveScreenShot()
 	SetState(CORE_PAUSE);
 
 	g_video_backend->Video_Screenshot(GenerateScreenshotName().c_str());
-	
+
 	if (!bPaused)
 		SetState(CORE_RUN);
 }
@@ -677,12 +661,13 @@ void UpdateTitle()
 	if (ElapseTime == 0)
 		ElapseTime = 1;
 
+	double dFPS = Common::AtomicLoad(DrawnFrame) / (ElapseTime * 0.001);
 	u32 FPS = Common::AtomicLoad(DrawnFrame) * 1000 / ElapseTime;
 	u32 VPS = DrawnVideo * 1000 / ElapseTime;
 	u32 Speed = DrawnVideo * (100 * 1000) / (VideoInterface::TargetRefreshRate * ElapseTime);
 
 	// Settings are shown the same for both extended and summary info
-	std::string SSettings = StringFromFormat("%s %s | %s | %s", cpu_core_base->GetName(),	_CoreParameter.bCPUThread ? "DC" : "SC", 
+	std::string SSettings = StringFromFormat("%s %s | %s | %s", cpu_core_base->GetName(),	_CoreParameter.bCPUThread ? "DC" : "SC",
 		g_video_backend->GetName().c_str(), _CoreParameter.bDSPHLE ? "HLE" : "LLE");
 
 	// Use extended or summary information. The summary information does not print the ticks data,
@@ -713,7 +698,11 @@ void UpdateTitle()
 	#else	// Summary information
 	std::string SFPS;
 	if (Movie::IsPlayingInput())
+	{
 		SFPS = StringFromFormat("VI: %u/%u - Frame: %u/%u - FPS: %u - VPS: %u - %u%%", (u32)Movie::g_currentFrame, (u32)Movie::g_totalFrames, (u32)Movie::g_currentInputCount, (u32)Movie::g_totalInputCount, FPS, VPS, Speed);
+		if (SConfig::GetInstance().m_LocalCoreStartupParameter.bBenchmark)
+			Movie::g_FPS.push_back(dFPS);
+	}
 	else if (Movie::IsRecordingInput())
 		SFPS = StringFromFormat("VI: %u - Frame: %u - FPS: %u - VPS: %u - %u%%", (u32)Movie::g_currentFrame, (u32)Movie::g_currentInputCount, FPS, VPS, Speed);
 	else

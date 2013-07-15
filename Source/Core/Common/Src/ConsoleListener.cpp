@@ -8,20 +8,83 @@
 #include <math.h>
 #ifdef _WIN32
 #include <windows.h>
+#include <iostream>
 #include <array>
+#include <fcntl.h>
+#include <io.h>
+#include <tlhelp32.h>
 #else
 #include <stdarg.h>
 #endif
+
+#include "../../Core/Src/Host.h"
 
 #include "Common.h"
 #include "LogManager.h" // Common
 #include "ConsoleListener.h" // Common
 
+#ifdef _WIN32
+DWORD ConsoleListener::GetParentPID()
+{
+	DWORD pid = 0;
+	HANDLE h = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	PROCESSENTRY32 pe = { 0 };
+	pe.dwSize = sizeof(PROCESSENTRY32);
+	pid = GetCurrentProcessId();
+	if (Process32First(h, &pe))
+	{
+		do {
+			if (pe.th32ProcessID == pid)
+				return pe.th32ParentProcessID;
+		} while(Process32Next(h, &pe));
+	}
+	return 0;
+}
+
+void ConsoleListener::AttachConsole()
+{
+	// attach to console host
+	::AttachConsole(GetParentPID());
+
+	// point stdout to the console
+	long lStdHandle = (long)GetStdHandle(STD_OUTPUT_HANDLE);
+	if (!lStdHandle) return;
+	int hConHandle = _open_osfhandle(lStdHandle, _O_BINARY);
+	FILE *fp = _fdopen(hConHandle, "w");
+	*stdout = *fp;
+	setvbuf( stdout, NULL, _IONBF, 0 );
+
+	// point stderr to the console
+	lStdHandle = (long)GetStdHandle(STD_ERROR_HANDLE);
+	hConHandle = _open_osfhandle(lStdHandle, _O_BINARY);
+	fp = _fdopen(hConHandle, "w");
+	*stderr = *fp;
+	setvbuf(stderr, NULL, _IONBF, 0);
+
+	// point cout, wcout, cin, wcin, wcerr, cerr, wclog, clog to console
+	std::ios::sync_with_stdio();
+}
+#endif
+
 ConsoleListener::ConsoleListener()
 {
 #ifdef _WIN32
 	hConsole = NULL;
+	isNonCmdConhost = false;
 	bUseColor = true;
+
+	if (Host_IsCLI()) AttachConsole();
+
+	// determine host capability
+	hHostConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	DWORD charsWritten;
+	bool isCmdhost = WriteConsoleA(hHostConsole, "", 0, &charsWritten, NULL);
+	if (hHostConsole && !isCmdhost)
+		isNonCmdConhost = true;
+	if (!isCmdhost)
+		hHostConsole = NULL;
+	if (Host_IsCLI() && !isCmdhost)
+		FreeConsole();
 #else
 	bUseColor = isatty(fileno(stdout));
 #endif
@@ -83,6 +146,24 @@ bool ConsoleListener::IsOpen()
 {
 #ifdef _WIN32
 	return (hConsole != NULL);
+#else
+	return true;
+#endif
+}
+
+bool ConsoleListener::IsConhost()
+{
+#ifdef _WIN32
+	return !!hHostConsole;
+#else
+	return true;
+#endif
+}
+
+bool ConsoleListener::IsNonCmdConhost()
+{
+#ifdef _WIN32
+	return isNonCmdConhost;
 #else
 	return true;
 #endif
@@ -242,6 +323,25 @@ void ConsoleListener::PixelSpace(int Left, int Top, int Width, int Height, bool 
 #endif
 }
 
+#if defined(_WIN32)
+void ConsoleListener::Write(HANDLE hConsole_, LogTypes::LOG_LEVELS Level, const char *Text, WORD Color)
+{
+	if (!hConsole_) return;
+	DWORD cCharsWritten;
+	if (strlen(Text) > 10)
+	{
+		// Print timestamp in white
+		SetConsoleTextAttribute(hConsole_, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+		WriteConsole(hConsole_, Text, 10, &cCharsWritten, NULL);
+		Text += 10;
+	}
+	SetConsoleTextAttribute(hConsole_, Color);
+	WriteConsole(hConsole_, Text, (DWORD)strlen(Text), &cCharsWritten, NULL);
+	// Restore color
+	SetConsoleTextAttribute(hConsole_, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+}
+#endif
+
 void ConsoleListener::Log(LogTypes::LOG_LEVELS Level, const char *Text)
 {
 #if defined(_WIN32)
@@ -254,62 +354,64 @@ void ConsoleListener::Log(LogTypes::LOG_LEVELS Level, const char *Text)
 	Cnt = vsnprintf(Str, MAX_BYTES, Text, ArgPtr);
 	va_end(ArgPtr);
 	*/
-	DWORD cCharsWritten;
-	WORD Color;
 
-	switch (Level)
+	if (hHostConsole || hConsole)
 	{
-	case NOTICE_LEVEL: // light green
-		Color = FOREGROUND_GREEN | FOREGROUND_INTENSITY;
-		break;
-	case ERROR_LEVEL: // light red
-		Color = FOREGROUND_RED | FOREGROUND_INTENSITY;
-		break;
-	case WARNING_LEVEL: // light yellow
-		Color = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
-		break;
-	case INFO_LEVEL: // cyan
-		Color = FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
-		break;
-	case DEBUG_LEVEL: // gray
-		Color = FOREGROUND_INTENSITY;
-		break;
-	default: // off-white
-		Color = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
-		break;
-	}
-	if (strlen(Text) > 10)
-	{
-		// First 10 chars white
-		SetConsoleTextAttribute(hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY);
-		WriteConsole(hConsole, Text, 10, &cCharsWritten, NULL);
-		Text += 10;
-	}
-	SetConsoleTextAttribute(hConsole, Color);
-	WriteConsole(hConsole, Text, (DWORD)strlen(Text), &cCharsWritten, NULL);
-#else
-	char ColorAttr[16] = "";
-	char ResetAttr[16] = "";
+		WORD Color;
 
-	if (bUseColor)
-	{
-		strcpy(ResetAttr, "\033[0m");
 		switch (Level)
 		{
 		case NOTICE_LEVEL: // light green
-			strcpy(ColorAttr, "\033[92m");
+			Color = FOREGROUND_GREEN | FOREGROUND_INTENSITY;
 			break;
 		case ERROR_LEVEL: // light red
-			strcpy(ColorAttr, "\033[91m");
+			Color = FOREGROUND_RED | FOREGROUND_INTENSITY;
 			break;
 		case WARNING_LEVEL: // light yellow
-			strcpy(ColorAttr, "\033[93m");
+			Color = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
 			break;
-		default:
+		case INFO_LEVEL: // cyan
+			Color = FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+			break;
+		case DEBUG_LEVEL: // gray
+			Color = FOREGROUND_INTENSITY;
+			break;
+		default: // off-white
+			Color = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
 			break;
 		}
+		Write(hHostConsole, Level, Text, Color);
+		Write(hConsole, Level, Text, Color);
 	}
-	fprintf(stderr, "%s%s%s", ColorAttr, Text, ResetAttr);
+
+	if (IsNonCmdConhost())
+	{
+#endif
+		char ColorAttr[16] = "";
+		char ResetAttr[16] = "";
+
+		if (bUseColor)
+		{
+			strcpy(ResetAttr, "\033[0m");
+			switch (Level)
+			{
+			case NOTICE_LEVEL: // light green
+				strcpy(ColorAttr, "\033[92m");
+				break;
+			case ERROR_LEVEL: // light red
+				strcpy(ColorAttr, "\033[91m");
+				break;
+			case WARNING_LEVEL: // light yellow
+				strcpy(ColorAttr, "\033[93m");
+				break;
+			default:
+				break;
+			}
+		}
+		fprintf(stderr, "%s%s%s", ColorAttr, Text, ResetAttr);
+		fflush(stderr);
+#if defined(_WIN32)
+	}
 #endif
 }
 // Clear console screen

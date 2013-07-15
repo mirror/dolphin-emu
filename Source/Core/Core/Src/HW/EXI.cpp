@@ -3,6 +3,7 @@
 // Refer to the license.txt file included.
 
 #include "Common.h"
+#include "MemoryUtil.h"
 #include "ChunkFile.h"
 #include "../ConfigManager.h"
 #include "../CoreTiming.h"
@@ -53,6 +54,8 @@ void Shutdown()
 		delete g_Channels[i];
 		g_Channels[i] = NULL;
 	}
+
+	Memory::AllocationMessage("ExpansionInterface Shutdown");
 }
 
 void DoState(PointerWrap &p)

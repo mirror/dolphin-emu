@@ -23,7 +23,7 @@ CUCode_AX::CUCode_AX(DSPHLE* dsp_hle, u32 crc)
 	LoadResamplingCoefficients();
 
 	if (m_run_on_thread)
-		m_axthread = std::thread(SpawnAXThread, this);
+		m_axthread.Run(SpawnAXThread, this, "AX");
 }
 
 CUCode_AX::~CUCode_AX()

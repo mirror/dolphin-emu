@@ -37,7 +37,7 @@ private:
 	static void dsp_thread(DSPLLE* lpParameter);
 	void InitMixer();
 
-	std::thread m_hDSPThread;
+	Common::Thread m_hDSPThread;
 	std::mutex m_csDSPThreadActive;
 	bool m_InitMixer;
 	void *m_hWnd;
