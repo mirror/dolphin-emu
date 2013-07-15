@@ -704,13 +704,16 @@ void Wiimote::Update()
 				if (!rpt.empty())
 				{
 					const u8 *real_data = rpt.data();
-					switch (real_data[1])
+					const hid_packet* const hidp = (hid_packet*)real_data;
+					const wm_report* const sr = (wm_report*)hidp->data;
+
+					switch (sr->wm)
 					{
 						// use data reports
 					default:
-						if (real_data[1] >= WM_REPORT_CORE)
+						if (sr->wm >= WM_REPORT_CORE)
 						{
-							const ReportFeatures& real_rptf = reporting_mode_features[real_data[1] - WM_REPORT_CORE];
+							const ReportFeatures& real_rptf = reporting_mode_features[sr->wm - WM_REPORT_CORE];
 
 							// force same report type from real-wiimote
 							if (&real_rptf != &rptf)
@@ -787,7 +790,7 @@ void Wiimote::Update()
 							else if (real_rptf.ext && rptf.ext && (0 == m_extension->switch_extension))
 								memcpy(data + rptf.ext, real_data + real_rptf.ext, sizeof(wm_extension));
 						}
-						else if (WM_ACK_DATA != real_data[1] || m_extension->active_extension > 0)
+						else if (WM_ACK_DATA != sr->wm || m_extension->active_extension > 0)
 							rptf_size = 0;
 						else
 							// use real-acks if an emu-extension isn't chosen
@@ -803,11 +806,79 @@ void Wiimote::Update()
 						rptf_size = -1;
 						break;
 
-						// use all read-data replies
 					case WM_READ_DATA_REPLY:
+					{
+						// use all read-data replies
 						rptf_size = -1;
-						break;
 
+						wm_read_data_reply rdr = *(wm_read_data_reply*)(real_data + 2);
+						u16 address = Common::swap16(rdr.address);
+						u8 size = rdr.size + 1;
+
+						switch(m_rd.space)
+						{
+						case WM_SPACE_EEPROM:
+							memcpy(m_eeprom + address, rdr.data, size);
+							break;
+
+						case WM_SPACE_REGS1:
+						case WM_SPACE_REGS2:
+						{
+							u8 reg_type = Common::swap24(m_rd.address) >> 16;
+							const u8 region_offset = (u8)address;
+							void *region_ptr = NULL;
+							int region_size = 0;
+
+							switch(reg_type)
+							{
+							case 0xa2:
+								region_ptr = &m_reg_speaker;
+								region_size = WIIMOTE_REG_SPEAKER_SIZE;
+								break;
+
+							case 0xa4:
+								region_ptr = m_motion_plus_active ? (void*)&m_reg_motion_plus : (void*)&m_reg_ext;
+								region_size = WIIMOTE_REG_EXT_SIZE;
+								break;
+
+							case 0xa6:
+								if (!m_motion_plus_active)
+								{
+									region_ptr = &m_reg_motion_plus;
+									region_size = WIIMOTE_REG_EXT_SIZE;
+								}
+								break;
+
+							case 0xb0:
+								region_ptr = &m_reg_ir;
+								region_size = WIIMOTE_REG_IR_SIZE;
+								break;
+							}
+
+							if (m_reg_ext.encryption == 0xaa && region_ptr == &m_reg_ext)
+								wiimote_decrypt(&m_ext_key, rdr.data, address, size);
+
+							// test calibration
+							bool ignore = false;
+							if (!rdr.error && region_ptr == &m_reg_ext && address == 0x20)
+							{
+								u8 *test = new u8[size];
+								memset(test, 0xff, size);
+								ignore = !memcmp(test, rdr.data, size);
+								if (ignore)
+									NOTICE_LOG(WIIMOTE, "ignoring 0xff calibration");
+							}
+
+							// save data
+							if (!ignore && !rdr.error && region_ptr == &m_reg_ext && (region_offset + size <= region_size))
+								memcpy((u8*)region_ptr + region_offset, rdr.data, rdr.size);
+
+							break;
+						}
+						}
+
+						break;
+					}
 					}
 
 					// copy over report from real-wiimote
@@ -820,6 +891,7 @@ void Wiimote::Update()
 			}
 		}
 	}
+
 	if (!Movie::IsPlayingInput())
 	{
 		Movie::CheckWiimoteStatus(m_index, data, rptf, m_reg_ir.mode);

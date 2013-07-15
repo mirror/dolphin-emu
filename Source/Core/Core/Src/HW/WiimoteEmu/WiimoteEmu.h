@@ -192,6 +192,7 @@ private:
 	bool	m_sensor_bar_on_top;
 
 	wm_status_report		m_status;
+	wm_read_data			m_rd;
 
 	ADPCMState m_adpcm_state;
 

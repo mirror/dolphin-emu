@@ -1015,6 +1015,7 @@ void Wiimote::HidOutputReport(const wm_report* const sr, const bool send_ack)
 		break;
 
 	case WM_READ_DATA : // 0x17
+		m_rd = *(wm_read_data*)sr->data;
 		if (WIIMOTE_SRC_EMU & g_wiimote_sources[m_index])
 			ReadData((wm_read_data*)sr->data);
 		return;	// sends its own ack
@@ -1284,7 +1285,7 @@ void Wiimote::ReadData(const wm_read_data* const rd)
 
 	// hybrid wiimote stuff
 	// relay the read data request to real-wiimote
-	if (WIIMOTE_SRC_REAL & g_wiimote_sources[m_index] && ((0xA4 != (address >> 16)) || (m_extension->switch_extension <= 0)))
+	if (WIIMOTE_SRC_HYBRID == g_wiimote_sources[m_index])
 	{
 		WiimoteReal::InterruptChannel(m_index, m_reporting_channel, ((u8*)rd) - 2, sizeof(wm_read_data) + 2); // hacky
 
