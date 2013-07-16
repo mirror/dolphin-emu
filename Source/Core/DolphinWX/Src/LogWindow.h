@@ -75,6 +75,7 @@ private:
 	void OnClear(wxCommandEvent& event);
 	void OnLogTimer(wxTimerEvent& WXUNUSED(event));
 	void UpdateLog();
+	void AppendText(wxString text);
 
 	// LogListener
 	const char *getName() const { return "LogWindow"; }

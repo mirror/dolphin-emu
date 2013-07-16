@@ -51,7 +51,7 @@ void CLogWindow::CreateGUIControls()
 	// Set up log listeners
 	int verbosity;
 	ini.Get("Options", "Verbosity", &verbosity, 0);
-	
+
 	// Ensure the verbosity level is valid
 	if (verbosity < 1)
 		verbosity = 1;
@@ -284,6 +284,38 @@ void CLogWindow::OnLogTimer(wxTimerEvent& WXUNUSED(event))
 	}
 }
 
+void CLogWindow::AppendText(wxString text)
+{
+#ifdef _WIN32
+	m_Log->Freeze();
+
+	int line = SendMessage(m_Log->GetHWND(), EM_GETFIRSTVISIBLELINE, 0, 0);
+	m_Log->SetInsertionPoint(m_Log->GetLastPosition());
+	m_Log->ShowPosition(m_Log->GetLastPosition());
+	int new_line = SendMessage(m_Log->GetHWND(), EM_GETFIRSTVISIBLELINE, 0, 0);
+	bool at_end = line == new_line;
+#endif
+
+	m_Log->AppendText(text);
+
+#ifdef _WIN32
+	if (!at_end)
+	{
+		new_line = SendMessage(m_Log->GetHWND(), EM_GETFIRSTVISIBLELINE, 0, 0);
+		m_Log->SetInsertionPoint(m_Log->XYToPosition(0, line));
+		m_Log->ShowPosition(m_Log->XYToPosition(0, line));
+	}
+	else
+	{
+		m_Log->ScrollLines(1);
+		m_Log->ShowPosition(m_Log->GetLastPosition());
+		m_Log->ScrollLines(1);
+	}
+
+	 m_Log->Thaw();
+#endif
+}
+
 void CLogWindow::UpdateLog()
 {
 	if (!m_LogAccess) return;
@@ -305,23 +337,23 @@ void CLogWindow::UpdateLog()
 				case ERROR_LEVEL:
 					m_Log->SetDefaultStyle(wxTextAttr(*wxRED));
 					break;
-				
+
 				case WARNING_LEVEL:
 					m_Log->SetDefaultStyle(wxTextAttr(wxColour(255, 255, 0))); // YELLOW
 					break;
-				
+
 				case NOTICE_LEVEL:
 					m_Log->SetDefaultStyle(wxTextAttr(*wxGREEN));
 					break;
-				
+
 				case INFO_LEVEL:
 					m_Log->SetDefaultStyle(wxTextAttr(*wxCYAN));
 					break;
-				
+
 				case DEBUG_LEVEL:
 					m_Log->SetDefaultStyle(wxTextAttr(*wxLIGHT_GREY));
 					break;
-				
+
 				default:
 					m_Log->SetDefaultStyle(wxTextAttr(*wxWHITE));
 					break;
@@ -329,7 +361,7 @@ void CLogWindow::UpdateLog()
 			if (msgQueue.front().second.size())
 			{
 				int j = m_Log->GetLastPosition();
-				m_Log->AppendText(msgQueue.front().second);
+				AppendText(msgQueue.front().second);
 				// White timestamp
 				m_Log->SetStyle(j, j + 9, wxTextAttr(*wxWHITE));
 			}
