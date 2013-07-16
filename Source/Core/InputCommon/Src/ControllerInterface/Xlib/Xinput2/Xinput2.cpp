@@ -6,6 +6,7 @@
 #include "Xinput2.h"
 #include <X11/XKBlib.h>
 #include <cmath>
+#include <cctype>
 
 // This is an input plugin using the XInput 2.0 extension to the X11 protocol,
 // loosely based on the old XLib plugin. (Has nothing to do with the XInput 
@@ -347,11 +348,10 @@ KeyboardMouse::Key::Key(Display* const display, KeyCode keycode, const char* key
 		i++;
 	}
 	while (keysym == NoSymbol && i < 8);
-	
-	// Convert to upper case for the keyname
-	if (keysym >= 97 && keysym <= 122)
-		keysym -= 32;
 
+	// Convert to upper case for the keyname	
+	keysym = toupper (keysym);
+	
 	// 0x0110ffff is the top of the unicode character range according
 	// to keysymdef.h although it is probably more than we need.
 	if (keysym == NoSymbol || keysym > 0x0110ffff ||
