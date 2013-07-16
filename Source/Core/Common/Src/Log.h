@@ -5,12 +5,6 @@
 #ifndef _LOG_H_
 #define _LOG_H_
 
-#define	NOTICE_LEVEL  1  // VERY important information that is NOT errors. Like startup and OSReports.
-#define	ERROR_LEVEL   2  // Critical errors 
-#define	WARNING_LEVEL 3  // Something is suspicious.
-#define	INFO_LEVEL    4  // General information.
-#define	DEBUG_LEVEL   5  // Detailed debugging - might make things slow.
-
 namespace LogTypes
 {
 
@@ -38,7 +32,7 @@ enum LOG_TYPE {
 	MEMMAP,
 	MEMCARD_MANAGER,
 	OSREPORT,
-	PAD, 
+	PAD,
 	PROCESSORINTERFACE,
 	PIXELENGINE,
 	SERIALINTERFACE,
@@ -64,12 +58,24 @@ enum LOG_TYPE {
 
 // FIXME: should this be removed?
 enum LOG_LEVELS {
-	LNOTICE = NOTICE_LEVEL,
-	LERROR = ERROR_LEVEL,
-	LWARNING = WARNING_LEVEL,
-	LINFO = INFO_LEVEL,
-	LDEBUG = DEBUG_LEVEL,
+	NOTICE // VERY important information that is NOT errors. Like startup and OSReports
+	, ERROR_ // Critical errors
+	, WARNING // Something is suspicious
+
+	, INFO // General information
+	, DEBUG // Detailed debugging - might make things slow
+
+	, COLOR_BEGIN
+	, BLUE
+	, CYAN
+	, MAGENTA
+	, GREY
+	, WHITE
 };
+
+#define LOGTYPES_WARNING 2
+#define LOGTYPES_INFO 3
+#define LOGTYPES_DEBUG 4
 
 #define LOGTYPES_LEVELS LogTypes::LOG_LEVELS
 #define LOGTYPES_TYPE LogTypes::LOG_TYPE
@@ -84,10 +90,10 @@ void GenericLog(LOGTYPES_LEVELS level, LOGTYPES_TYPE type,
 		;
 
 #if defined LOGGING || defined _DEBUG || defined DEBUGFAST
-#define MAX_LOGLEVEL DEBUG_LEVEL
+#define MAX_LOGLEVEL LOGTYPES_DEBUG
 #else
 #ifndef MAX_LOGLEVEL
-#define MAX_LOGLEVEL WARNING_LEVEL
+#define MAX_LOGLEVEL LOGTYPES_WARNING
 #endif // loglevel
 #endif // logging
 
@@ -96,31 +102,43 @@ void GenericLog(LOGTYPES_LEVELS level, LOGTYPES_TYPE type,
 #else
 // let the compiler optimization remove log levels
 #define GENERIC_LOG_(t, v, bf, bT, ...) { \
-	if (v <= MAX_LOGLEVEL) \
+	if (v <= MAX_LOGLEVEL || v > LogTypes::COLOR_BEGIN) \
 		GenericLog(v, t, bf, bT, __FILE__, __LINE__, __VA_ARGS__); \
 	}
 #endif
 #define GENERIC_LOG(t, v, ...) GENERIC_LOG_(t, v, true, true, __VA_ARGS__)
 
-#define LOG1(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LNOTICE, false, false, __VA_ARGS__) } while (0)
-#define LOG2(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LERROR, false, false, __VA_ARGS__) } while (0)
-#define LOG3(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LWARNING, false, false, __VA_ARGS__) } while (0)
-#define LOG4(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LINFO, false, false, __VA_ARGS__) } while (0)
-#define LOG5(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LDEBUG, false, false, __VA_ARGS__) } while (0)
+#define LOG1(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::NOTICE, false, false, __VA_ARGS__) } while (0)
+#define LOG2(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::ERROR_, false, false, __VA_ARGS__) } while (0)
+#define LOG3(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::WARNING, false, false, __VA_ARGS__) } while (0)
+#define LOG4(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::INFO, false, false, __VA_ARGS__) } while (0)
+#define LOG5(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::DEBUG, false, false, __VA_ARGS__) } while (0)
 
-#define LOG11(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LNOTICE, false, true, __VA_ARGS__) } while (0)
-#define LOG21(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LERROR, false, true, __VA_ARGS__) } while (0)
-#define LOG31(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LWARNING, false, true, __VA_ARGS__) } while (0)
-#define LOG41(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LINFO, false, true, __VA_ARGS__) } while (0)
-#define LOG51(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::LDEBUG, false, true, __VA_ARGS__) } while (0)
+#define LOG6(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::BLUE, false, false, __VA_ARGS__) } while (0)
+#define LOG7(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::CYAN, false, false, __VA_ARGS__) } while (0)
+#define LOG8(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::MAGENTA, false, false, __VA_ARGS__) } while (0)
+#define LOG9(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::GREY, false, false, __VA_ARGS__) } while (0)
+#define LOG10(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::WHITE, false, false, __VA_ARGS__) } while (0)
 
-#define NOTICE_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::LNOTICE, __VA_ARGS__) } while (0)
-#define ERROR_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::LERROR, __VA_ARGS__) } while (0)
-#define WARN_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::LWARNING, __VA_ARGS__) } while (0)
-#define INFO_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::LINFO, __VA_ARGS__) } while (0)
-#define DEBUG_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::LDEBUG, __VA_ARGS__) } while (0)
+#define LOG11(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::NOTICE, false, true, __VA_ARGS__) } while (0)
+#define LOG21(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::ERROR_, false, true, __VA_ARGS__) } while (0)
+#define LOG31(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::WARNING, false, true, __VA_ARGS__) } while (0)
+#define LOG41(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::INFO, false, true, __VA_ARGS__) } while (0)
+#define LOG51(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::DEBUG, false, true, __VA_ARGS__) } while (0)
 
-#if MAX_LOGLEVEL >= DEBUG_LEVEL
+#define LOG61(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::BLUE, false, true, __VA_ARGS__) } while (0)
+#define LOG71(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::CYAN, false, true, __VA_ARGS__) } while (0)
+#define LOG81(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::MAGENTA, false, true, __VA_ARGS__) } while (0)
+#define LOG91(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::GREY, false, true, __VA_ARGS__) } while (0)
+#define LOG101(t, ...) do { GENERIC_LOG_(LogTypes::t, LogTypes::WHITE, false, true, __VA_ARGS__) } while (0)
+
+#define NOTICE_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::NOTICE, __VA_ARGS__) } while (0)
+#define ERROR_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::ERROR_, __VA_ARGS__) } while (0)
+#define WARN_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::WARNING, __VA_ARGS__) } while (0)
+#define INFO_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::INFO, __VA_ARGS__) } while (0)
+#define DEBUG_LOG(t, ...) do { GENERIC_LOG(LogTypes::t, LogTypes::DEBUG, __VA_ARGS__) } while (0)
+
+#if MAX_LOGLEVEL > LOGTYPES_WARNING
 #define _dbg_assert_(_t_, _a_) \
 	if (!(_a_)) {\
 		ERROR_LOG(_t_, "Error...\n\n  Line: %d\n  File: %s\n  Time: %s\n\nIgnore and continue?", \

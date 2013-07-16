@@ -53,8 +53,8 @@ void CLogWindow::CreateGUIControls()
 	ini.Get("Options", "Verbosity", &verbosity, 0);
 
 	// Ensure the verbosity level is valid
-	if (verbosity < 1)
-		verbosity = 1;
+	if (verbosity < 0)
+		verbosity = 0;
 	if (verbosity > MAX_LOGLEVEL)
 		verbosity = MAX_LOGLEVEL;
 
@@ -334,26 +334,43 @@ void CLogWindow::UpdateLog()
 		{
 			switch (msgQueue.front().first)
 			{
-				case ERROR_LEVEL:
+				case LogTypes::ERROR_:
 					m_Log->SetDefaultStyle(wxTextAttr(*wxRED));
 					break;
 
-				case WARNING_LEVEL:
-					m_Log->SetDefaultStyle(wxTextAttr(wxColour(255, 255, 0))); // YELLOW
+				case LogTypes::WARNING:
+					m_Log->SetDefaultStyle(wxTextAttr(*wxYELLOW));
 					break;
 
-				case NOTICE_LEVEL:
+				case LogTypes::NOTICE:
 					m_Log->SetDefaultStyle(wxTextAttr(*wxGREEN));
 					break;
 
-				case INFO_LEVEL:
+				case LogTypes::INFO:
 					m_Log->SetDefaultStyle(wxTextAttr(*wxCYAN));
 					break;
 
-				case DEBUG_LEVEL:
+				case LogTypes::DEBUG:
 					m_Log->SetDefaultStyle(wxTextAttr(*wxLIGHT_GREY));
 					break;
 
+				case LogTypes::BLUE:
+					m_Log->SetDefaultStyle(wxTextAttr(wxColour(128, 128, 255)));
+					break;
+
+				case LogTypes::CYAN:
+					m_Log->SetDefaultStyle(wxTextAttr(*wxCYAN));
+					break;
+
+				case LogTypes::MAGENTA:
+					m_Log->SetDefaultStyle(wxTextAttr(wxColour(255, 0, 255)));
+					break;
+
+				case LogTypes::GREY:
+					m_Log->SetDefaultStyle(wxTextAttr(*wxLIGHT_GREY));
+					break;
+
+				case LogTypes::WHITE:
 				default:
 					m_Log->SetDefaultStyle(wxTextAttr(*wxWHITE));
 					break;

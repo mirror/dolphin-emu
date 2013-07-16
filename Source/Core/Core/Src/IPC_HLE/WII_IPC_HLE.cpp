@@ -575,8 +575,8 @@ void Update()
 		request_queue.pop_front();
 		ExecuteCommand(command);
 
-#if MAX_LOGLEVEL >= DEBUG_LEVEL
-		Dolphin_Debugger::PrintCallstack(LogTypes::WII_IPC_HLE, LogTypes::LDEBUG);
+#if MAX_LOGLEVEL >= LOGTYPES_DEBUG
+		Dolphin_Debugger::PrintCallstack(LogTypes::WII_IPC_HLE, LogTypes::DEBUG);
 #endif
 	}
 

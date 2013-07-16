@@ -51,7 +51,7 @@ bool CWII_IPC_HLE_Device_usb_kbd::Write(u32 _CommandAddress)
 {
 	INFO_LOG(WII_IPC_STM, "Ignoring write to CWII_IPC_HLE_Device_usb_kbd");
 #if defined(_DEBUG) || defined(DEBUGFAST)
-	DumpCommands(_CommandAddress, 10, LogTypes::WII_IPC_STM, LogTypes::LDEBUG);
+	DumpCommands(_CommandAddress, 10, LogTypes::WII_IPC_STM, LogTypes::DEBUG);
 #endif
 	return true;
 }
