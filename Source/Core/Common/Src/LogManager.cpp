@@ -113,7 +113,9 @@ void LogManager::Log(LogTypes::LOG_LEVELS level, LogTypes::LOG_TYPE type,
 	char msg[MAX_MSGLEN * 2];
 	LogContainer *log = m_Log[type];
 
-	if (!log->IsEnabled() || level > log->GetLevel() || ! log->HasListeners())
+	if (!log->IsEnabled()
+		|| (level > log->GetLevel() && level < LogTypes::COLOR_BEGIN)
+		|| ! log->HasListeners())
 		return;
 
 	CharArrayFromFormatV(temp, MAX_MSGLEN, format, args);
@@ -167,7 +169,7 @@ LogContainer::LogContainer(const char* shortName, const char* fullName, bool ena
 {
 	strncpy(m_fullName, fullName, 128);
 	strncpy(m_shortName, shortName, 32);
-	m_level = LogTypes::LWARNING;
+	m_level = LogTypes::WARNING;
 }
 
 // LogContainer

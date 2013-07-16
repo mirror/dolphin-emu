@@ -40,7 +40,7 @@ void Console_Submit(const char *cmd)
 
 		if (addr)
 		{
-#if MAX_LOGLEVEL >= INFO_LEVEL
+#if MAX_LOGLEVEL >= LOGTYPES_INFO
 			u32 EA =
 				Memory::TranslateAddress(addr, Memory::FLAG_NO_EXCEPTION);
 			INFO_LOG(CONSOLE, "EA 0x%08x to 0x%08x", addr, EA);
