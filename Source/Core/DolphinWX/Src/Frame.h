@@ -24,6 +24,7 @@
 #include "LogWindow.h"
 #include "LogConfigWindow.h"
 #include "TASInputDlg.h"
+#include "WiimoteConfigDiag.h"
 #include "Movie.h"
 #if defined(HAVE_X11) && HAVE_X11
 #include "X11Utils.h"
@@ -111,6 +112,8 @@ public:
 	NetPlaySetupDiag* g_NetPlaySetupDiag;
 	wxCheatsWindow* g_CheatsWindow;
 	TASInputDlg* g_TASInputDlg;
+	InputConfigDialog* m_PadConfigDiag;
+	WiimoteConfigDiag* m_WiimoteConfigDiag;
 
 	void InitBitmaps();
 	void DoPause();
@@ -162,7 +165,7 @@ public:
 		std::vector<int> Width, Height;
 	};
 	std::vector<SPerspectives> Perspectives;
-	u32 ActivePerspective;	
+	u32 ActivePerspective;
 
 private:
 	CGameListCtrl* m_GameListCtrl;
@@ -251,10 +254,10 @@ private:
 	void OnPaneClose(wxAuiManagerEvent& evt);
 	void ReloadPanes();
 	void DoLoadPerspective();
-	void OnDropDownToolbarSelect(wxCommandEvent& event);		
+	void OnDropDownToolbarSelect(wxCommandEvent& event);
 	void OnDropDownSettingsToolbar(wxAuiToolBarEvent& event);
 	void OnDropDownToolbarItem(wxAuiToolBarEvent& event);
-	void OnSelectPerspective(wxCommandEvent& event);		
+	void OnSelectPerspective(wxCommandEvent& event);
 
 #ifdef _WIN32
 	// Override window proc for tricks like screensaver disabling
@@ -285,7 +288,7 @@ private:
 	void OnChangeDisc(wxCommandEvent& event);
 	void OnScreenshot(wxCommandEvent& event);
 	void OnActive(wxActivateEvent& event);
-	void OnClose(wxCloseEvent &event);	
+	void OnClose(wxCloseEvent &event);
 	void OnLoadState(wxCommandEvent& event);
 	void OnSaveState(wxCommandEvent& event);
 	void OnLoadStateFromFile(wxCommandEvent& event);

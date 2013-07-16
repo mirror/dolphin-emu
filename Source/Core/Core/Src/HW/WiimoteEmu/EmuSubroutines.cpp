@@ -1124,7 +1124,7 @@ void Wiimote::RequestStatus(const wm_request_status* const rs)
 	*(wm_status_report*)(data + 2) = m_status;
 
 	// hybrid wiimote stuff
-	if (WIIMOTE_SRC_REAL & g_wiimote_sources[m_index] && (m_extension->switch_extension <= 0))
+	if (WIIMOTE_SRC_REAL & g_wiimote_sources[m_index])
 	{
 		using namespace WiimoteReal;
 

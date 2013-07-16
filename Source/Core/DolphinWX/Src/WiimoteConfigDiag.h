@@ -31,6 +31,7 @@ public:
 
 	void ConfigEmulatedWiimote(wxCommandEvent& event);
 	void Save(wxCommandEvent& event);
+	void UpdateGUI();
 
 	void OnSensorBarPos(wxCommandEvent& event)
 	{
@@ -67,6 +68,7 @@ public:
 private:
 	void Cancel(wxCommandEvent& event);
 
+	InputConfigDialog*	m_emu_config_diag;
 	InputPlugin&	m_plugin;
 	wxNotebook*		m_pad_notebook;
 

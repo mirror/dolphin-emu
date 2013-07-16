@@ -786,23 +786,18 @@ void Wiimote::Update()
 (wm_extension));
 							}
 
-							// use real-ext data if an emu-extention isn't chosen
-							else if (real_rptf.ext && rptf.ext && (0 == m_extension->switch_extension))
+							// use real-ext data
+							else if (real_rptf.ext && rptf.ext)
 								memcpy(data + rptf.ext, real_data + real_rptf.ext, sizeof(wm_extension));
 						}
-						else if (WM_ACK_DATA != sr->wm || m_extension->active_extension > 0)
-							rptf_size = 0;
+
 						else
-							// use real-acks if an emu-extension isn't chosen
+							// use real-acks
 							rptf_size = -1;
 						break;
 
-						// use all status reports, after modification of the extension bit
+						// use all status reports
 					case WM_STATUS_REPORT :
-						//if (m_extension->switch_extension)
-							//((wm_status_report*)(real_data + 2))->extension = (m_extension->active_extension > 0);
-						if (m_extension->active_extension)
-							((wm_status_report*)(real_data + 2))->extension = 1;
 						rptf_size = -1;
 						break;
 
@@ -872,6 +867,33 @@ void Wiimote::Update()
 							// save data
 							if (!ignore && !rdr.error && region_ptr == &m_reg_ext && (region_offset + size <= region_size))
 								memcpy((u8*)region_ptr + region_offset, rdr.data, rdr.size);
+
+							// identify extension
+							if (!rdr.error && address >= 0xf0 && address <= 0xff)
+							{
+								NOTICE_LOG(WIIMOTE, "extension ID: %s", ArrayToString(rdr.data, size).c_str());
+								u16 id = Common::swap16(*(u16*)rdr.data);
+								int i = 0;
+								bool found = false;
+								for (int i = 0; i < m_extension->attachments.size(); i++)
+								{
+									WiimoteEmu::Attachment* a = (WiimoteEmu::Attachment*)m_extension->attachments.at(i);
+									u16 id_ = Common::swap16(*(u16*)&a->id[4]);
+									if (id_ == id)
+									{
+										m_extension->switch_extension = i;
+										found = true;
+										NOTICE_LOG(WIIMOTE, "extension number: %d", i);
+										Host_UpdateMainFrame();
+										break;
+									}
+								}
+
+								if (!found)
+								{
+									m_extension->switch_extension = 0;
+								}
+							}
 
 							break;
 						}

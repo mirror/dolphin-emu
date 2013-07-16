@@ -256,7 +256,7 @@ CFrame::CFrame(wxFrame* parent,
 	, m_GameListCtrl(NULL), m_Panel(NULL)
 	, m_RenderFrame(NULL), m_RenderParent(NULL)
 	, m_LogWindow(NULL), m_LogConfigWindow(NULL)
-	, m_FifoPlayerDlg(NULL), UseDebugger(_UseDebugger)
+	, m_FifoPlayerDlg(NULL), m_PadConfigDiag(NULL), m_WiimoteConfigDiag(NULL), UseDebugger(_UseDebugger)
 	, m_bBatchMode(_BatchMode), m_bEdit(false), m_bTabSplit(false), m_bNoDocking(false)
 	, m_bGameLoading(false)
 {

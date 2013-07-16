@@ -230,6 +230,7 @@ public:
 
 	void UpdateControlReferences();
 	void UpdateBitmaps(wxTimerEvent&);
+	void UpdateGUI();
 
 private:
 

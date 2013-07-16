@@ -6,6 +6,7 @@
 
 WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin)
 	: wxDialog(parent, -1, _("Dolphin Wiimote Configuration"), wxDefaultPosition, wxDefaultSize)
+	, m_emu_config_diag(NULL)
 	, m_plugin(plugin)
 {
 	wxBoxSizer* const main_sizer = new wxBoxSizer(wxVERTICAL);
@@ -54,8 +55,8 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin
 		wiimote_sizer->Add(wiimote_configure_bt[i]);
 	}
 	wiimote_group->Add(wiimote_sizer, 1, wxEXPAND, 5 );
-	
-	
+
+
 	// "BalanceBoard" layout
 	wxStaticBoxSizer* const bb_group = new wxStaticBoxSizer(wxHORIZONTAL, this, _("Balance Board"));
 	wxFlexGridSizer* const bb_sizer = new wxFlexGridSizer(1, 5, 5);
@@ -64,27 +65,27 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin
 	const wxString src_choices[] = { _("None"), _("Real Balance Board") };
 	wxChoice* bb_source = new wxChoice(this, source_ctrl_id, wxDefaultPosition, wxDefaultSize, sizeof(src_choices)/sizeof(*src_choices), src_choices);
 	bb_source->Bind(wxEVT_COMMAND_CHOICE_SELECTED, &WiimoteConfigDiag::SelectSource, this);
-	
+
 	m_orig_wiimote_sources[WIIMOTE_BALANCE_BOARD] = g_wiimote_sources[WIIMOTE_BALANCE_BOARD];
 	bb_source->Select(m_orig_wiimote_sources[WIIMOTE_BALANCE_BOARD] ? 1 : 0);
-	
+
 	bb_sizer->Add(bb_source, 0, wxALIGN_CENTER_VERTICAL);
-	
+
 	bb_group->Add(bb_sizer, 1, wxEXPAND, 5 );
 
-	
+
 	// "Real wiimotes" controls
 	wxButton* const refresh_btn = new wxButton(this, -1, _("Refresh"), wxDefaultPosition);
 	refresh_btn->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &WiimoteConfigDiag::RefreshRealWiimotes, this);
 
 	wxStaticBoxSizer* const real_wiimotes_group = new wxStaticBoxSizer(wxVERTICAL, this, _("Real Wiimotes"));
-	
+
 	wxBoxSizer* const real_wiimotes_sizer = new wxBoxSizer(wxHORIZONTAL);
-	
+
 	if (!WiimoteReal::g_wiimote_scanner.IsReady())
 		real_wiimotes_group->Add(new wxStaticText(this, -1, _("A supported bluetooth device could not be found.\n"
 			"You must manually connect your wiimotes.")), 0, wxALIGN_CENTER | wxALL, 5);
-		
+
 	wxCheckBox* const continuous_scanning = new wxCheckBox(this, wxID_ANY, _("Continuous Scanning"));
 	continuous_scanning->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &WiimoteConfigDiag::OnContinuousScanning, this);
 	continuous_scanning->SetValue(SConfig::GetInstance().m_WiimoteContinuousScanning);
@@ -92,7 +93,7 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin
 	auto wiimote_speaker = new wxCheckBox(this, wxID_ANY, _("Enable Speaker Data"));
 	wiimote_speaker->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &WiimoteConfigDiag::OnEnableSpeaker, this);
 	wiimote_speaker->SetValue(SConfig::GetInstance().m_WiimoteEnableSpeaker);
-	
+
 	real_wiimotes_sizer->Add(continuous_scanning, 0, wxALIGN_CENTER_VERTICAL);
 	real_wiimotes_sizer->AddStretchSpacer(1);
 	real_wiimotes_sizer->Add(refresh_btn, 0, wxALL | wxALIGN_CENTER, 5);
@@ -194,9 +195,16 @@ WiimoteConfigDiag::WiimoteConfigDiag(wxWindow* const parent, InputPlugin& plugin
 
 void WiimoteConfigDiag::ConfigEmulatedWiimote(wxCommandEvent& ev)
 {
-	InputConfigDialog* const m_emu_config_diag = new InputConfigDialog(this, m_plugin, _trans("Dolphin Emulated Wiimote Configuration"), m_wiimote_index_from_conf_bt_id[ev.GetId()]);
+	m_emu_config_diag = new InputConfigDialog(this, m_plugin, _trans("Dolphin Emulated Wiimote Configuration"), m_wiimote_index_from_conf_bt_id[ev.GetId()]);
 	m_emu_config_diag->ShowModal();
 	m_emu_config_diag->Destroy();
+	m_emu_config_diag = 0;
+}
+
+void WiimoteConfigDiag::UpdateGUI()
+{
+	if (m_emu_config_diag)
+		m_emu_config_diag->UpdateGUI();
 }
 
 void WiimoteConfigDiag::RefreshRealWiimotes(wxCommandEvent&)
@@ -209,7 +217,7 @@ void WiimoteConfigDiag::SelectSource(wxCommandEvent& event)
 	// This needs to be changed now in order for refresh to work right.
 	// Revert if the dialog is canceled.
 	int index = m_wiimote_index_from_ctrl_id[event.GetId()];
-	
+
 	if(index != WIIMOTE_BALANCE_BOARD)
 	{
 		WiimoteReal::ChangeWiimoteSource(index, event.GetInt());
@@ -220,7 +228,7 @@ void WiimoteConfigDiag::SelectSource(wxCommandEvent& event)
 	}
 	else
 	{
-		WiimoteReal::ChangeWiimoteSource(index, event.GetInt() ? WIIMOTE_SRC_REAL : WIIMOTE_SRC_NONE);	
+		WiimoteReal::ChangeWiimoteSource(index, event.GetInt() ? WIIMOTE_SRC_REAL : WIIMOTE_SRC_NONE);
 	}
 }
 
@@ -245,7 +253,7 @@ void WiimoteConfigDiag::Save(wxCommandEvent& event)
 
 		sec.Set("Source", (int)g_wiimote_sources[i]);
 	}
-	
+
 	std::string secname("BalanceBoard");
 	IniFile::Section& sec = *inifile.GetOrCreateSection(secname.c_str());
 	sec.Set("Source", (int)g_wiimote_sources[WIIMOTE_BALANCE_BOARD]);

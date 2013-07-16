@@ -60,6 +60,8 @@ PadSettingExtension::PadSettingExtension(wxWindow* const parent, ControllerEmu::
 void PadSettingExtension::UpdateGUI()
 {
 	((wxChoice*)wxcontrol)->Select(extension->switch_extension);
+	if (WIIMOTE_SRC_HYBRID == g_wiimote_sources[0])
+		wxcontrol->Enable(false);
 }
 
 void PadSettingExtension::UpdateValue()
@@ -172,6 +174,14 @@ void InputConfigDialog::UpdateControlReferences()
 		e = m_padpages.end();
 	for (; i != e; ++i)
 		(*i)->controller->UpdateReferences(g_controller_interface);
+}
+
+void InputConfigDialog::UpdateGUI()
+{
+	std::vector< GamepadPage* >::iterator i = m_padpages.begin(),
+		e = m_padpages.end();
+	for (; i != e; ++i)
+		(*i)->UpdateGUI();
 }
 
 void InputConfigDialog::ClickSave(wxCommandEvent& event)
@@ -290,7 +300,7 @@ void ControlDialog::SetControl(wxCommandEvent&)
 void GamepadPage::SetDevice(wxCommandEvent&)
 {
 	controller->default_device.FromString(WxStrToStr(device_cbox->GetValue()));
-	
+
 	// show user what it was validated as
 	device_cbox->SetValue(StrToWxStr(controller->default_device.ToString()));
 
@@ -305,7 +315,7 @@ void GamepadPage::SetDevice(wxCommandEvent&)
 void ControlDialog::SetDevice(wxCommandEvent&)
 {
 	m_devq.FromString(WxStrToStr(device_cbox->GetValue()));
-	
+
 	// show user what it was validated as
 	device_cbox->SetValue(StrToWxStr(m_devq.ToString()));
 
@@ -630,7 +640,7 @@ void GamepadPage::SaveProfile(wxCommandEvent&)
 		IniFile inifile;
 		controller->SaveConfig(inifile.GetOrCreateSection("Profile"));
 		inifile.Save(fname);
-		
+
 		m_config_dialog->UpdateProfileComboBox();
 	}
 	else
@@ -714,7 +724,7 @@ ControlGroupBox::ControlGroupBox(ControllerEmu::ControlGroup* const group, wxWin
 	{
 
 		wxStaticText* const label = new wxStaticText(parent, -1, wxGetTranslation(StrToWxStr((*ci)->name)));
-		
+
 		ControlButton* const control_button = new ControlButton(parent, (*ci)->control_ref, 80);
 		control_button->SetFont(m_SmallFont);
 
@@ -810,7 +820,7 @@ ControlGroupBox::ControlGroupBox(ControllerEmu::ControlGroup* const group, wxWin
 
 			if (GROUP_TYPE_MIXED_TRIGGERS == group->type)
 				width = 64+12+1;
-			
+
 			if (GROUP_TYPE_TRIGGERS != group->type)
 				height /= 2;
 

@@ -98,7 +98,7 @@ void CFrame::CreateMenu()
 
 	wxMenu *externalDrive = new wxMenu;
 	fileMenu->Append(IDM_DRIVES, _("&Boot from DVD Drive..."), externalDrive);
-	
+
 	drives = cdio_get_devices();
 	// Windows Limitation of 24 character drives
 	for (unsigned int i = 0; i < drives.size() && i < 24; i++) {
@@ -155,7 +155,7 @@ void CFrame::CreateMenu()
 	saveMenu->AppendSeparator();
 
 	loadMenu->Append(IDM_LOADSTATEFILE,  GetMenuLabel(HK_LOAD_STATE_FILE));
-	
+
 	loadMenu->Append(IDM_UNDOLOADSTATE, GetMenuLabel(HK_UNDO_LOAD_STATE));
 	loadMenu->AppendSeparator();
 
@@ -382,7 +382,7 @@ wxString CFrame::GetMenuLabel(int Id)
 		case HK_LOAD_STATE_SLOT_6:
 		case HK_LOAD_STATE_SLOT_7:
 		case HK_LOAD_STATE_SLOT_8:
-			Label = wxString::Format(_("Slot %i"), 
+			Label = wxString::Format(_("Slot %i"),
 					Id - HK_LOAD_STATE_SLOT_1 + 1);
 			break;
 
@@ -394,7 +394,7 @@ wxString CFrame::GetMenuLabel(int Id)
 		case HK_SAVE_STATE_SLOT_6:
 		case HK_SAVE_STATE_SLOT_7:
 		case HK_SAVE_STATE_SLOT_8:
-			Label = wxString::Format(_("Slot %i"), 
+			Label = wxString::Format(_("Slot %i"),
 					Id - HK_SAVE_STATE_SLOT_1 + 1);
 			break;
 		case HK_SAVE_STATE_FILE:
@@ -431,7 +431,7 @@ wxString CFrame::GetMenuLabel(int Id)
 		hotkeymodifier |= wxMOD_CONTROL;
 #endif
 	hotkeymodifier &= wxMOD_CONTROL | wxMOD_ALT | wxMOD_SHIFT;
-	
+
 	Modifier = InputCommon::WXKeymodToString(hotkeymodifier);
 	Hotkey = InputCommon::WXKeyToString(hotkey);
 	if (Modifier.Len() + Hotkey.Len() > 0)
@@ -499,7 +499,7 @@ void CFrame::RecreateToolbar()
 	m_ToolBar = new wxAuiToolBar(this, ID_TOOLBAR, wxDefaultPosition, wxDefaultSize, TOOLBAR_STYLE);
 
 	PopulateToolbar(m_ToolBar);
-	
+
 	m_Mgr->AddPane(m_ToolBar, wxAuiPaneInfo().
 				Name(wxT("TBMain")).Caption(wxT("TBMain")).
 				ToolbarPane().Top().
@@ -509,7 +509,7 @@ void CFrame::RecreateToolbar()
 	{
 		m_ToolBarDebug = new wxAuiToolBar(this, ID_TOOLBAR_DEBUG, wxDefaultPosition, wxDefaultSize, TOOLBAR_STYLE);
 		g_pCodeWindow->PopulateToolbar(m_ToolBarDebug);
-		
+
 		m_Mgr->AddPane(m_ToolBarDebug, wxAuiPaneInfo().
 				Name(wxT("TBDebug")).Caption(wxT("TBDebug")).
 				ToolbarPane().Top().
@@ -635,7 +635,7 @@ void CFrame::OnChangeDisc(wxCommandEvent& WXUNUSED (event))
 void CFrame::OnRecord(wxCommandEvent& WXUNUSED (event))
 {
 	int controllers = 0;
-	
+
 	if (Movie::IsReadOnly())
 	{
 		//PanicAlertT("Cannot record movies in read-only mode.");
@@ -663,7 +663,7 @@ void CFrame::OnPlayRecording(wxCommandEvent& WXUNUSED (event))
 	wxString path = wxFileSelector(
 			_("Select The Recording File"),
 			wxEmptyString, wxEmptyString, wxEmptyString,
-			_("Dolphin TAS Movies (*.dtm)") + 
+			_("Dolphin TAS Movies (*.dtm)") +
 				wxString::Format(wxT("|*.dtm|%s"), wxGetTranslation(wxALL_FILES)),
 			wxFD_OPEN | wxFD_PREVIEW | wxFD_FILE_MUST_EXIST,
 			this);
@@ -888,7 +888,7 @@ void CFrame::BootGame(std::string filename)
 #else
 		m_RenderParent->SetFocus();
 #endif
-		
+
 		wxTheApp->Bind(wxEVT_KEY_DOWN, &CFrame::OnKeyDown, this);
 		wxTheApp->Bind(wxEVT_KEY_UP, &CFrame::OnKeyUp, this);
 		wxTheApp->Bind(wxEVT_RIGHT_DOWN, &CFrame::OnMouse, this);
@@ -1066,23 +1066,23 @@ void CFrame::DoStop()
 void CFrame::DoRecordingSave()
 {
 	bool paused = (Core::GetState() == Core::CORE_PAUSE);
-	
+
 	if (!paused)
 		DoPause();
-	
+
 	wxString path = wxFileSelector(
 			_("Select The Recording File"),
 			wxEmptyString, wxEmptyString, wxEmptyString,
-			_("Dolphin TAS Movies (*.dtm)") + 
+			_("Dolphin TAS Movies (*.dtm)") +
 				wxString::Format(wxT("|*.dtm|%s"), wxGetTranslation(wxALL_FILES)),
 			wxFD_SAVE | wxFD_PREVIEW | wxFD_OVERWRITE_PROMPT,
 			this);
 
 	if(path.IsEmpty())
 		return;
-	
+
 	Movie::SaveRecording(WxStrToStr(path).c_str());
-	
+
 	if (!paused)
 		DoPause();
 }
@@ -1138,9 +1138,10 @@ void CFrame::OnConfigPAD(wxCommandEvent& WXUNUSED (event))
 		Pad::Initialize(GetHandle());
 #endif
 	}
-	InputConfigDialog m_ConfigFrame(this, *pad_plugin, _trans("Dolphin GCPad Configuration"));
-	m_ConfigFrame.ShowModal();
-	m_ConfigFrame.Destroy();
+	m_PadConfigDiag = new InputConfigDialog(this, *pad_plugin, _trans("Dolphin GCPad Configuration"));
+	m_PadConfigDiag->ShowModal();
+	m_PadConfigDiag->Destroy();
+	m_PadConfigDiag = 0;
 	if (!was_init)				// if game isn't running
 	{
 		Pad::Shutdown();
@@ -1166,9 +1167,10 @@ void CFrame::OnConfigWiimote(wxCommandEvent& WXUNUSED (event))
 		Wiimote::Initialize(GetHandle());
 #endif
 	}
-	WiimoteConfigDiag m_ConfigFrame(this, *wiimote_plugin);
-	m_ConfigFrame.ShowModal();
-	m_ConfigFrame.Destroy();
+	m_WiimoteConfigDiag = new WiimoteConfigDiag(this, *wiimote_plugin);
+	m_WiimoteConfigDiag->ShowModal();
+	m_WiimoteConfigDiag->Destroy();
+	m_WiimoteConfigDiag = 0;
 	if (!was_init)				// if game isn't running
 	{
 		Wiimote::Shutdown();
@@ -1251,7 +1253,7 @@ void CFrame::OnMemcard(wxCommandEvent& WXUNUSED (event))
 	MemcardManager.ShowModal();
 }
 
-void CFrame::OnImportSave(wxCommandEvent& WXUNUSED (event)) 
+void CFrame::OnImportSave(wxCommandEvent& WXUNUSED (event))
 {
 	wxString path = wxFileSelector(_("Select the save file"),
 			wxEmptyString, wxEmptyString, wxEmptyString,
@@ -1402,7 +1404,7 @@ void CFrame::OnLoadStateFromFile(wxCommandEvent& WXUNUSED (event))
 	wxString path = wxFileSelector(
 		_("Select the state to load"),
 		wxEmptyString, wxEmptyString, wxEmptyString,
-		_("All Save States (sav, s##)") + 
+		_("All Save States (sav, s##)") +
 			wxString::Format(wxT("|*.sav;*.s??|%s"), wxGetTranslation(wxALL_FILES)),
 		wxFD_OPEN | wxFD_PREVIEW | wxFD_FILE_MUST_EXIST,
 		this);
@@ -1416,7 +1418,7 @@ void CFrame::OnSaveStateToFile(wxCommandEvent& WXUNUSED (event))
 	wxString path = wxFileSelector(
 		_("Select the state to save"),
 		wxEmptyString, wxEmptyString, wxEmptyString,
-		_("All Save States (sav, s##)") + 
+		_("All Save States (sav, s##)") +
 			wxString::Format(wxT("|*.sav;*.s??|%s"), wxGetTranslation(wxALL_FILES)),
 		wxFD_SAVE,
 		this);
@@ -1580,9 +1582,9 @@ void CFrame::UpdateGUI()
 			m_ToolBar->SetToolLabel(IDM_PLAY, _("Play"));
 		}
 	}
- 
+
 	GetMenuBar()->FindItem(IDM_RECORDREADONLY)->Enable(Running || Paused);
-	
+
 	if (!Initialized && !m_bGameLoading)
 	{
 		if (m_GameListCtrl->IsEnabled())
@@ -1653,7 +1655,13 @@ void CFrame::UpdateGUI()
 	// Commit changes to manager
 	m_Mgr->Update();
 
-	// Update non-modal windows
+	// dialogs
+	//if (m_PadConfigDiag)
+		//m_PadConfigDiag->UpdateGUI();
+
+	if (m_WiimoteConfigDiag)
+		m_WiimoteConfigDiag->UpdateGUI();
+
 	if (g_CheatsWindow)
 	{
 		if (SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableCheats)
@@ -1713,17 +1721,17 @@ void CFrame::GameListChanged(wxCommandEvent& event)
 		Directories.push_back(File::GetUserPath(D_CACHE_IDX).c_str());
 		CFileSearch::XStringVector Extensions;
 		Extensions.push_back("*.cache");
-		
+
 		CFileSearch FileSearch(Extensions, Directories);
 		const CFileSearch::XStringVector& rFilenames = FileSearch.GetFileNames();
-		
+
 		for (u32 i = 0; i < rFilenames.size(); i++)
 		{
 			File::Delete(rFilenames[i]);
 		}
 		break;
 	}
-	
+
 	// Update gamelist
 	if (m_GameListCtrl)
 	{
