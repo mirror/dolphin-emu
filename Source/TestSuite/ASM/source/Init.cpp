@@ -26,10 +26,10 @@ void initialise_fat() {
 	if (!fatInitDefault())
 		die("Unable to initialise FAT subsystem, exiting.\n");
 	fatMountSimple("sd", &__io_wiisd);
-	DIR_ITER *root = diropen("/");
+	DIR *root = opendir("/");
 	if (!root)
 		die("Cannot open root dir, exiting.\n");
-	dirclose(root);
+	closedir(root);
 	if (chdir("/"))
 		die("Could not change to root directory, exiting.\n");
 }
