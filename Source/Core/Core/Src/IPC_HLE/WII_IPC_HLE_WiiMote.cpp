@@ -708,7 +708,7 @@ int ParseAttribList(u8* pAttribIDList, u16& _startID, u16& _endID)
 	u8 seqSize		= attribList.Read8(attribOffset);		attribOffset++;
 	u8 typeID		= attribList.Read8(attribOffset);		attribOffset++;
 
-#if MAX_LOGLEVEL >= DEBUG_LEVEL
+#if MAX_LOGLEVEL >= LOGTYPES_DEBUG
 	_dbg_assert_(WII_IPC_WIIMOTE, sequence == SDP_SEQ8);
 	(void)seqSize;
 #else
