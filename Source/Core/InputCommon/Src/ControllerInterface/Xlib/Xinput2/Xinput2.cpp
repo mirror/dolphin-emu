@@ -1,19 +1,74 @@
+// Copyright 2013 Max Eliaser
+// Licensed under the GNU General Public License, version 2 or higher.
+// Refer to the license.txt file included.
+
+
 #include "Xinput2.h"
 #include <X11/XKBlib.h>
 #include <cmath>
 
-#define MOUSE_AXIS_SENSITIVITY		8
+// This is an input plugin using the XInput 2.0 extension to the X11 protocol,
+// loosely based on the old XLib plugin. (Has nothing to do with the XInput 
+// API on Windows, which is supported in a different plugin.)
+
+// A quick primer on XInput 2.0: XInput2 supports something called MPX (Multi-
+// Pointer X.) There are two types of devices, pointers (i.e. mice) and
+// keyboards. There is also a hierarchy of "master" pointer/keyboard pairs,
+// and "slave" pointers/keyboards, which are physical input devices. Events
+// from the slave devices are routed through the master devices they are
+// slaved to. If there are multiple master pointer/keyboard pairs, they can be
+// operated simultaneously and independently without interfering with each
+// other. This is relevant because it allows for local splitscreen play
+// without gamepads.
+
+// If you wish to play with MPX enabled, you should set up the master/slave
+// hierarchy first before launching Dolphin (or hit "Refresh" in GCPad/Wiimote
+// configuration if it changes.) MPX can be configured from the command line
+// using the "xinput" utility (included with X.Org) or using a GUI such as
+// xinput-ui: https://github.com/Max-E/xinput-ui By default, the X server will
+// create a single master keyboard/pointer pair called "Virtual core pointer,"
+// and will attach all devices to that.
+
+// This plugin creates one KeyboardMouse object for each master pointer/
+// keyboard pair. Each KeyboardMouse object exports four types of controls:
+// *    Mouse button controls: hardcoded at five of them, but could be made to
+//      support infinitely many mouse buttons in theory; XInput2 has no limit.
+// *    Mouse cursor controls: one for each cardinal direction. Calculated by
+//      comparing the absolute position of the mouse pointer on screen to the
+//      center of the emulator window.
+// *    Mouse axis controls: one for each cardinal direction. Calculated using
+//      a running average of relative mouse motion on each axis.
+// *    Key controls: these correspond to a limited subset of the keyboard 
+//      keys.
+
+
+// Mouse axis control tuning. Unlike absolute mouse position, relative mouse
+// motion data needs to be tweaked and smoothed out a bit to be usable.
+
+// Mouse axis control output is simply divided by this number. In practice, 
+// that just means you can use a smaller "dead zone" if you bind axis controls
+// to a joystick. No real need to make this customizable.
+#define MOUSE_AXIS_SENSITIVITY		8.0f
+
+// The mouse axis controls use a weighted running average. Each frame, the new
+// value is the average of the old value and the amount of relative mouse 
+// motion during that frame. The old value is weighted by a ratio of
+// MOUSE_AXIS_SMOOTHING:1 compared to the new value. Increasing
+// MOUSE_AXIS_SMOOTHING makes the controls smoother, decreasing it makes them
+// more responsive. This might be useful as a user-customizable option.
+#define MOUSE_AXIS_SMOOTHING		1.5f
 
 namespace ciface
 {
 namespace Xinput2
 {
 
+// This function will add zero or more KeyboardMouse objects to devices.
 void Init(std::vector<Core::Device*>& devices, void* const hwnd)
 {
-	Display *dpy;
+	Display* dpy;
 	
-	dpy = XOpenDisplay (NULL);
+	dpy = XOpenDisplay(NULL);
 	
 	// xi_opcode is important; it will be used to identify XInput events by 
 	// the polling loop in UpdateInput.
@@ -26,39 +81,53 @@ void Init(std::vector<Core::Device*>& devices, void* const hwnd)
 	// verify that the XInput extension is at at least version 2.0
 	int major = 2, minor = 0;
 	
-	if (XIQueryVersion (dpy, &major, &minor) != Success)
+	if (XIQueryVersion(dpy, &major, &minor) != Success)
 		return;
 	
 	// now we can start finding master devices and registering them with
 	// Dolphin
 	
-	XIDeviceInfo	*all_masters, *current_master;
+	XIDeviceInfo*	all_masters;
+	XIDeviceInfo*	current_master;
 	int				num_masters;
 	
-	all_masters = XIQueryDevice (dpy, XIAllMasterDevices, &num_masters);
+	all_masters = XIQueryDevice(dpy, XIAllMasterDevices, &num_masters);
 	
 	for (int i = 0; i < num_masters; i++)
 	{
 		current_master = &all_masters[i];
 		if (current_master->use == XIMasterPointer)
+			// Since we know current_master is a master pointer, its
+			// attachment must be a master keyboard.
 			devices.push_back(new KeyboardMouse((Window)hwnd, xi_opcode, current_master->deviceid, current_master->attachment));
 	}
 	
-	XCloseDisplay (dpy);
+	XCloseDisplay(dpy);
 	
-	XIFreeDeviceInfo (all_masters);
+	XIFreeDeviceInfo(all_masters);
 }
 
-// Apply the event mask to the device and all its slaves.
-void KeyboardMouse::SelectEventsForDevice (Window window, XIEventMask *mask, int deviceid)
+// Apply the event mask to the device and all its slaves. Only used in the 
+// constructor. Remember, each KeyboardMouse has its own copy of the event
+// stream, which is how multiple event masks can "coexist."
+void KeyboardMouse::SelectEventsForDevice(Window window, XIEventMask *mask, int deviceid)
 {
-	mask->deviceid = deviceid;
-	XISelectEvents (m_display, window, mask, 1);
+	// First set the event mask for the master device.
 	
-	XIDeviceInfo	*all_slaves, *current_slave;
+	mask->deviceid = deviceid;
+	XISelectEvents(m_display, window, mask, 1);
+	
+	// Then query all the master device's slaves and set the same event mask
+	// for those too. There are two reasons we want to do this. For mouse 
+	// devices, we want the raw motion events, and only slaves (i.e. physical
+	// hardware devices) emit those. For keyboard devices, selecting slaves
+	// avoids dealing with key focus.
+	
+	XIDeviceInfo*	all_slaves;
+	XIDeviceInfo*	current_slave;
 	int				num_slaves;
 	
-	all_slaves = XIQueryDevice (m_display, XIAllDevices, &num_slaves);
+	all_slaves = XIQueryDevice(m_display, XIAllDevices, &num_slaves);
 	
 	for (int i = 0; i < num_slaves; i++)
 	{
@@ -66,10 +135,10 @@ void KeyboardMouse::SelectEventsForDevice (Window window, XIEventMask *mask, int
 		if ((current_slave->use != XISlavePointer && current_slave->use != XISlaveKeyboard) || current_slave->attachment != deviceid)
 			continue;
 		mask->deviceid = current_slave->deviceid;
-		XISelectEvents (m_display, window, mask, 1);
+		XISelectEvents(m_display, window, mask, 1);
 	}
 	
-	XIFreeDeviceInfo (all_slaves);
+	XIFreeDeviceInfo(all_slaves);
 }
 
 KeyboardMouse::KeyboardMouse(Window window, int opcode, int pointer, int keyboard) 
@@ -77,36 +146,44 @@ KeyboardMouse::KeyboardMouse(Window window, int opcode, int pointer, int keyboar
 {
 	memset(&m_state, 0, sizeof(m_state));
 	
-	m_display = XOpenDisplay (NULL);
+	// The cool thing about each KeyboardMouse object having its own Display
+	// is that each one gets its own separate copy of the X11 event stream,
+	// which it can individually filter to get just the events it's interested
+	// in. So be aware that each KeyboardMouse object actually has its own X11
+	// "context."
+	m_display = XOpenDisplay(NULL);
 	
 	int min_keycode, max_keycode;
 	XDisplayKeycodes(m_display, &min_keycode, &max_keycode);
 	
 	int unused; // should always be 1
-	XIDeviceInfo *pointer_device = XIQueryDevice (m_display, pointer_deviceid, &unused);
-	name = std::string (pointer_device->name);
-	XIFreeDeviceInfo (pointer_device);
+	XIDeviceInfo* pointer_device = XIQueryDevice(m_display, pointer_deviceid, &unused);
+	name = std::string(pointer_device->name);
+	XIFreeDeviceInfo(pointer_device);
 	
 	XIEventMask		mask;
 	unsigned char	mask_buf[(XI_LASTEVENT + 7)/8];
 	
 	mask.mask_len = sizeof(mask_buf);
 	mask.mask = mask_buf;
-	memset (mask_buf, 0, sizeof(mask_buf));
+	memset(mask_buf, 0, sizeof(mask_buf));
 
-	XISetMask (mask_buf, XI_ButtonPress);
-	XISetMask (mask_buf, XI_ButtonRelease);
-	XISetMask (mask_buf, XI_RawMotion);
-	XISetMask (mask_buf, XI_KeyPress);
-	XISetMask (mask_buf, XI_KeyRelease);
+	XISetMask(mask_buf, XI_ButtonPress);
+	XISetMask(mask_buf, XI_ButtonRelease);
+	XISetMask(mask_buf, XI_RawMotion);
+	XISetMask(mask_buf, XI_KeyPress);
+	XISetMask(mask_buf, XI_KeyRelease);
 
-	SelectEventsForDevice (DefaultRootWindow(m_display), &mask, pointer_deviceid);
-	SelectEventsForDevice (DefaultRootWindow(m_display), &mask, keyboard_deviceid);
+	// Maybe DefaultRootWindow isn't the right way to go here, at least not
+	// for keyboards. It avoids dealing with key focus, but may rely on bugs
+	// in the X server.
+	SelectEventsForDevice(DefaultRootWindow(m_display), &mask, pointer_deviceid);
+	SelectEventsForDevice(DefaultRootWindow(m_display), &mask, keyboard_deviceid);
 	
 	// Keyboard Keys
 	for (int i = min_keycode; i <= max_keycode; ++i)
 	{
-		Key *temp_key = new Key(m_display, i, m_state.keyboard);
+		Key* temp_key = new Key(m_display, i, m_state.keyboard);
 		if (temp_key->m_keyname.length())
 			AddInput(temp_key);
 		else
@@ -115,14 +192,15 @@ KeyboardMouse::KeyboardMouse(Window window, int opcode, int pointer, int keyboar
 
 	// Mouse Buttons
 	for (int i = 0; i < 5; i++)
-		AddInput (new Button(i, m_state.buttons));
+		AddInput(new Button(i, m_state.buttons));
 
-	// Mouse Cursor/Axis, X-/+ and Y-/+
+	// Mouse Cursor, X-/+ and Y-/+
 	for (int i = 0; i != 4; ++i)
-	{
 		AddInput(new Cursor(!!(i & 2), !!(i & 1), (&m_state.cursor.x)[!!(i & 2)]));
+	
+	// Mouse Axis, X-/+ and Y-/+
+	for (int i = 0; i != 4; ++i)
 		AddInput(new Axis(!!(i & 2), !!(i & 1), (&m_state.axis.x)[!!(i & 2)]));
-	}
 }
 
 KeyboardMouse::~KeyboardMouse()
@@ -130,12 +208,14 @@ KeyboardMouse::~KeyboardMouse()
 	XCloseDisplay(m_display);
 }
 
+// Update the mouse cursor controls
 void KeyboardMouse::UpdateCursor()
 {
 	double root_x, root_y, win_x, win_y;
 	Window root, child;
 	
-	// stubs-- we're not interested in button presses here
+	// stubs-- we're not interested in button presses here, as those are 
+	// updated using events
 	XIButtonState button_state = 
 	{
 		0, // mask_len
@@ -157,30 +237,33 @@ void KeyboardMouse::UpdateCursor()
 
 bool KeyboardMouse::UpdateInput()
 {
-	XFlush (m_display);
+	XFlush(m_display);
 	
 	// first, get the absolute position of the mouse pointer
-	UpdateCursor ();
+	UpdateCursor();
 	
+	// for the axis controls
 	float delta_x = 0.0f, delta_y = 0.0f;
 	double delta_delta;
 	
-	// then, iterate through the events we're interested in
+	// Then, iterate through the events we're interested in - updates the axis
+	// controls, mouse button controls, and keyboard controls. Remember, each
+	// KeyboardMouse has its own copy of the event stream.
 	XEvent event;
-	while (XPending (m_display)) 
+	while (XPending(m_display)) 
 	{
-		XNextEvent (m_display, &event);
+		XNextEvent(m_display, &event);
 		
 		if (event.xcookie.type != GenericEvent)
 			continue;
 		if (event.xcookie.extension != xi_opcode)
 			continue;
-		if (!XGetEventData (m_display, &event.xcookie))
+		if (!XGetEventData(m_display, &event.xcookie))
 			continue;
 		
 		// only one of these will get used
-		XIDeviceEvent *dev_event = (XIDeviceEvent*)event.xcookie.data;
-		XIRawEvent *raw_event = (XIRawEvent*)event.xcookie.data;
+		XIDeviceEvent* dev_event = (XIDeviceEvent*)event.xcookie.data;
+		XIRawEvent* raw_event = (XIRawEvent*)event.xcookie.data;
 		
 		switch (event.xcookie.evtype)
 		{
@@ -200,33 +283,33 @@ bool KeyboardMouse::UpdateInput()
 			// always safe because there is always at least one byte in 
 			// raw_event->valuators.mask, and if a bit is set in the mask,
 			// then the value in raw_values is also available.
-			if (XIMaskIsSet (raw_event->valuators.mask, 0))
+			if (XIMaskIsSet(raw_event->valuators.mask, 0))
 			{
-			    delta_delta = raw_event->raw_values[0];
-			    // test for inf and nan
-			    if (delta_delta == delta_delta && 1+delta_delta != delta_delta)
-				    delta_x += delta_delta;
+				delta_delta = raw_event->raw_values[0];
+				// test for inf and nan
+				if (delta_delta == delta_delta && 1+delta_delta != delta_delta)
+					delta_x += delta_delta;
 			}
-			if (XIMaskIsSet (raw_event->valuators.mask, 1))
+			if (XIMaskIsSet(raw_event->valuators.mask, 1))
 			{
 				delta_delta = raw_event->raw_values[1];
 				// test for inf and nan
 				if (delta_delta == delta_delta && 1+delta_delta != delta_delta)
-				    delta_y += delta_delta;
+					delta_y += delta_delta;
 			}
 			break;
 		}
 		
-		XFreeEventData (m_display, &event.xcookie);
+		XFreeEventData(m_display, &event.xcookie);
 	}
 	
-#define SMOOTHING_AMT 1.5f
-    m_state.axis.x *= SMOOTHING_AMT;
+	// apply axis smoothing
+	m_state.axis.x *= MOUSE_AXIS_SMOOTHING;
 	m_state.axis.x += delta_x;
-	m_state.axis.x /= SMOOTHING_AMT+1.0f;
-	m_state.axis.y *= SMOOTHING_AMT;
+	m_state.axis.x /= MOUSE_AXIS_SMOOTHING+1.0f;
+	m_state.axis.y *= MOUSE_AXIS_SMOOTHING;
 	m_state.axis.y += delta_y;
-	m_state.axis.y /= SMOOTHING_AMT+1.0f;
+	m_state.axis.y /= MOUSE_AXIS_SMOOTHING+1.0f;
 	
 	return true;
 }
@@ -236,9 +319,10 @@ bool KeyboardMouse::UpdateOutput()
 	return true;
 }
 
-
 std::string KeyboardMouse::GetName() const
 {
+	// This is the name string we got from the X server for this master
+	// pointer/keyboard pair.
 	return name;
 }
 
@@ -290,7 +374,7 @@ ControlState KeyboardMouse::Button::GetState() const
 KeyboardMouse::Cursor::Cursor(u8 index, bool positive, const float& cursor)
 	: m_cursor(cursor), m_index(index), m_positive(positive)
 {
-	name = std::string ("Cursor ")+(char)('X' + m_index)+(m_positive ? '+' : '-');
+	name = std::string("Cursor ") + (char)('X' + m_index) + (m_positive ? '+' : '-');
 }
 
 ControlState KeyboardMouse::Cursor::GetState() const
@@ -301,7 +385,7 @@ ControlState KeyboardMouse::Cursor::GetState() const
 KeyboardMouse::Axis::Axis(u8 index, bool positive, const float& axis)
 	: m_axis(axis), m_index(index), m_positive(positive)
 {
-	name = std::string ("Axis ")+(char)('X' + m_index)+(m_positive ? '+' : '-');
+	name = std::string("Axis ") + (char)('X' + m_index) + (m_positive ? '+' : '-');
 }
 
 ControlState KeyboardMouse::Axis::GetState() const

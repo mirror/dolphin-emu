@@ -1,3 +1,9 @@
+// Copyright 2013 Max Eliaser
+// Licensed under the GNU General Public License, version 2 or higher.
+// Refer to the license.txt file included.
+
+// See Xinput2.cpp for extensive documentation.
+
 #ifndef _CIFACE_X11_XINPUT2_H_
 #define _CIFACE_X11_XINPUT2_H_
 
@@ -89,8 +95,8 @@ private:
 	};
 	
 private:
-	void SelectEventsForDevice (Window window, XIEventMask *mask, int deviceid);
-	void UpdateCursor ();
+	void SelectEventsForDevice(Window window, XIEventMask *mask, int deviceid);
+	void UpdateCursor();
 	
 public:
 	bool UpdateInput();
