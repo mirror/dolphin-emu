@@ -33,7 +33,7 @@ void LogConfigWindow::CreateGUIControls()
 	wxLevels.Add(_("Warning"));
 	wxLevels.Add(_("Info"));
 	wxLevels.Add(_("Debug"));
-	for (int i = 0; i < MAX_LOGLEVEL; ++i)
+	for (int i = 0; i <= MAX_LOGLEVEL; ++i)
 		wxLevelsUse.Add(wxLevels[i]);
 	m_verbosity = new wxRadioBox(this, wxID_ANY, _("Verbosity"),
 			wxDefaultPosition, wxDefaultSize, wxLevelsUse, 0,
@@ -103,13 +103,13 @@ void LogConfigWindow::LoadSettings()
 	ini.Get("Options", "Verbosity", &verbosity, 0);
 	
 	// Ensure the verbosity level is valid.
-	if (verbosity < 1)
-		verbosity = 1;
+	if (verbosity < 0)
+		verbosity = 0;
 	if (verbosity > MAX_LOGLEVEL)
 		verbosity = MAX_LOGLEVEL;
 	
 	// Actually set the logging verbosity.
-	m_verbosity->SetSelection(verbosity - 1);
+	m_verbosity->SetSelection(verbosity);
 
 	// Get the logger output settings from the config ini file.
 	ini.Get("Options", "WriteToFile", &m_writeFile, false);
@@ -150,7 +150,7 @@ void LogConfigWindow::SaveSettings()
 	ini.Load(File::GetUserPath(F_LOGGERCONFIG_IDX));
 
 	// Save the verbosity level.
-	ini.Set("Options", "Verbosity", m_verbosity->GetSelection() + 1);
+	ini.Set("Options", "Verbosity", m_verbosity->GetSelection());
 
 	// Save the enabled/disabled states of the logger outputs to the config ini.
 	ini.Set("Options", "WriteToFile", m_writeFile);

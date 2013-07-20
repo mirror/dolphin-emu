@@ -100,7 +100,7 @@ bool WiiWAD::ParseWAD(DiscIO::IBlobReader& _rReader)
 	m_DataAppSize             = ReaderBig.Read32(0x18);
 	m_FooterSize              = ReaderBig.Read32(0x1C);
 
-#if MAX_LOGLEVEL >= DEBUG_LEVEL
+#if MAX_LOGLEVEL >= LOGTYPES_DEBUG
 	_dbg_assert_msg_(BOOT, Reserved==0x00, "WiiWAD: Reserved must be 0x00");
 #else
 	(void)Reserved;

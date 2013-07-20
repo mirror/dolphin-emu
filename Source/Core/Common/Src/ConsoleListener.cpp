@@ -235,7 +235,7 @@ void ConsoleListener::PixelSpace(int Left, int Top, int Width, int Height, bool 
 	COORD Coo = GetCoordinates(OldCursor, LBufWidth);
 	SetConsoleCursorPosition(hConsole, Coo);
 
-	if (SLog.length() > 0) Log(LogTypes::LNOTICE, SLog.c_str());
+	if (SLog.length() > 0) Log(LogTypes::NOTICE, SLog.c_str());
 
 	// Resize the window too
 	if (Resize) MoveWindow(GetConsoleWindow(), Left,Top, (Width + 100),Height, true);
@@ -259,19 +259,19 @@ void ConsoleListener::Log(LogTypes::LOG_LEVELS Level, const char *Text)
 
 	switch (Level)
 	{
-	case NOTICE_LEVEL: // light green
+	case LogTypes::NOTICE: // light green
 		Color = FOREGROUND_GREEN | FOREGROUND_INTENSITY;
 		break;
-	case ERROR_LEVEL: // light red
+	case LogTypes::ERROR_: // light red
 		Color = FOREGROUND_RED | FOREGROUND_INTENSITY;
 		break;
-	case WARNING_LEVEL: // light yellow
+	case LogTypes::WARNING: // light yellow
 		Color = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
 		break;
-	case INFO_LEVEL: // cyan
+	case LogTypes::INFO: // cyan
 		Color = FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
 		break;
-	case DEBUG_LEVEL: // gray
+	case LogTypes::DEBUG: // gray
 		Color = FOREGROUND_INTENSITY;
 		break;
 	default: // off-white
@@ -296,20 +296,39 @@ void ConsoleListener::Log(LogTypes::LOG_LEVELS Level, const char *Text)
 		strcpy(ResetAttr, "\033[0m");
 		switch (Level)
 		{
-		case NOTICE_LEVEL: // light green
-			strcpy(ColorAttr, "\033[92m");
-			break;
-		case ERROR_LEVEL: // light red
-			strcpy(ColorAttr, "\033[91m");
-			break;
-		case WARNING_LEVEL: // light yellow
-			strcpy(ColorAttr, "\033[93m");
-			break;
-		default:
+			case LogTypes::NOTICE: // light green
+				strcpy(ColorAttr, "\033[92m");
+				break;
+			case LogTypes::ERROR_: // light red
+				strcpy(ColorAttr, "\033[91m");
+				break;
+			case LogTypes::WARNING: // light yellow
+				strcpy(ColorAttr, "\033[93m");
+				break;
+
+			case LogTypes::BLUE:
+				strcpy(ColorAttr, "\033[94m");
+				break;
+			case LogTypes::CYAN:
+				strcpy(ColorAttr, "\033[96m");
+				break;
+			case LogTypes::MAGENTA:
+				strcpy(ColorAttr, "\033[95m");
+				break;
+			case LogTypes::GREY:
+				strcpy(ColorAttr, "\033[93m");
+				break;
+
+			case LogTypes::WHITE:
+			default:
+				strcpy(ColorAttr, "\033[97m");
+				break;
+
 			break;
 		}
 	}
 	fprintf(stderr, "%s%s%s", ColorAttr, Text, ResetAttr);
+	fflush(stderr);
 #endif
 }
 // Clear console screen
