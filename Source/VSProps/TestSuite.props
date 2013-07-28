@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <IncludePath>$(SolutionDir)..\Core\Common\Src;$(DEVKITPRO_)\libogc\include;$(DEVKITPRO_)\devkitppc\powerpc-eabi\include;$(IncludePath)</IncludePath>
+    <NMakePreprocessorDefinitions>GEKKO;HW_RVL</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>$(ProjectDir)include;$(DEVKITPRO_)\libogc\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+  </PropertyGroup>
+  <ItemGroup />
+</Project>

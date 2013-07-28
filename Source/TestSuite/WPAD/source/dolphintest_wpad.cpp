@@ -6,68 +6,19 @@
 #include <iostream>
 #include <string.h>
 #include <malloc.h>
-#include <ogcsys.h>
-#include <gccore.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <math.h>
 #include <wiiuse/wpad.h>
 
+#include "Gekko.h"
+#include "StringUtil.h"
+
+using namespace std;
+
 static GXRModeObj *rmode = NULL;
 
-//-----------------------------------------------------------------------------------
-//doreload - a flag that tells the program to quit looping and exit the program to the HBChannel.
-//dooff - a flag that tells the program to quit looping and properly shutdown the system.
-int doreload=0, dooff=0;
-
-//Calling the function will end the while loop and properly exit the program to the HBChannel.
-void reload(void) {
-	doreload=1;
-}
-
-//Calling the function will end the while loop and properly shutdown the system.
-// QUESTION: why calling the shutdown function direcly here halts the console?
-void shutdown(void) {
-	dooff=1;
-}
-
-//Draw a square on the screen (May draw rectangles as well, I am uncertain).
-//*xfb - framebuffer
-//*rmode - !unsure!
-//w - Width of screen (Used as scale factor in converting fx to pixel coordinates)
-//h - Height of screen (Used as scale factor in converting fy to pixel coordinates)
-//fx - X coordinate to draw on the screen (0-w)
-//fy - Y coordinate to draw on the screen (!unsure!-h)
-//color - the color of the rectangle (Examples: COLOR_YELLOW, COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_BLACK, COLOR_WHITE)
-void drawdot(void *xfb, GXRModeObj *rmode, float w, float h, float fx, float fy, u32 color) {
-
-	//*fb - !unsure!
-	//px - !unsure!
-	//py - !unsure!
-	//x - !unsure!
-	//y - !unsure!
-
-	u32 *fb;
-	int px,py;
-	int x,y;
-
-
-	fb = (u32*)xfb;
-
-	y = fy * rmode->xfbHeight / h;
-	x = fx * rmode->fbWidth / w / 2;
-
-	for(py=y-4; py<=(y+4); py++) {
-		if(py < 0 || py >= rmode->xfbHeight)
-			continue;
-		for(px=x-2; px<=(x+2); px++) {
-			if(px < 0 || px >= rmode->fbWidth/2)
-				continue;
-			fb[rmode->fbWidth/VI_DISPLAY_PIX_SZ*py + px] = color;
-		}
-	}
-
-}
+visual_stick_position s_pos;
 
 int evctr = 0;
 void countevs(int chan, const WPADData *data) {
@@ -108,6 +59,14 @@ void print_wiimote_buttons(WPADData *wd) {
 }
 
 void print_and_draw_wiimote_data(void *screen_buffer) {
+	// wiimote to screen coordinates
+	fdot_t scale;
+	scale.x = rmode->fbWidth / 2.0 / 1024.0;
+	scale.y = rmode->xfbHeight / 2.0 / 768.0;
+	fdot_t pos;
+	pos.x = 0;
+	pos.y = 0;
+
 	//Makes the var wd point to the data on the wiimote
 	WPADData *wd = WPAD_Data(0);
 	std::cout<<"  Data->Err: "<<wd->err<<"\n";
@@ -116,7 +75,10 @@ void print_and_draw_wiimote_data(void *screen_buffer) {
 	for(i=0; i<4; i++) {
 		if(wd->ir.dot[i].visible) {
 			std::cout<<"   "<<wd->ir.dot[i].rx<<", "<<wd->ir.dot[i].ry<<"\n";
-			drawdot(screen_buffer, rmode, 1024, 768, wd->ir.dot[i].rx, wd->ir.dot[i].ry, COLOR_YELLOW);
+			draw_rectangle(screen_buffer, rmode, 8, 8
+				, s32(double(wd->ir.dot[i].rx) * scale.x)
+				, s32(double(wd->ir.dot[i].ry) * scale.y)
+				, COLOR_YELLOW);
 		} else {
 			std::cout<<"   None\n";
 		}
@@ -127,11 +89,22 @@ void print_and_draw_wiimote_data(void *screen_buffer) {
 
 		//ir.x/ir.y - The x/y coordinates that the wiimote is pointing to, relative to the screen.
 		//ir.angle - how far (in degrees) the wiimote is twisted (based on ir)
-		std::cout<<"  Cursor: "<<wd->ir.x<<","<<wd->ir.y<<"\n";
+		std::cout << StringFromFormat(
+				"  Cursor: %.0f, %.0f\n"
+				, wd->ir.x
+				, wd->ir.y
+				);
+
 		std::cout<<"    @ "<<wd->ir.angle<<" deg\n";
 
-		drawdot(screen_buffer, rmode, rmode->fbWidth, rmode->xfbHeight, wd->ir.x, wd->ir.y, COLOR_RED);
-		drawdot(screen_buffer, rmode, rmode->fbWidth, rmode->xfbHeight, wd->ir.x + 10*sinf(theta), wd->ir.y - 10*cosf(theta), COLOR_BLUE);        
+		draw_rectangle(screen_buffer, rmode, 8, 8
+			, s32(double(wd->ir.x) * scale.x)
+			, s32(double(wd->ir.y) * scale.y)
+			, COLOR_RED);
+		draw_rectangle(screen_buffer, rmode, 8, 8
+			, s32(double(wd->ir.x + 10*sinf(theta)) * scale.x)
+			, s32(double(wd->ir.y - 10*cosf(theta)) * scale.y)
+			, COLOR_BLUE);
 	} else {
 		std::cout<<"  No Cursor\n\n";
 	}
@@ -143,6 +116,32 @@ void print_and_draw_wiimote_data(void *screen_buffer) {
 	} else {
 		std::cout<<"\n\n";
 	}
+
+	// sensor bar
+	scale.x = (rmode->fbWidth / 2.0) / 4.0;
+	scale.y = (rmode->xfbHeight / 2.0) / 4.0;
+	pos.x = rmode->fbWidth / 2.0 / 16.0;
+	pos.y = rmode->xfbHeight / 2.0 / 32.0;
+
+	if(wd->ir.raw_valid) {
+		cout << "Sensor bar dots\n";
+
+		for(i=0; i<2; i++) {
+
+			cout << StringFromFormat(
+				"  %.2f, %.2f\n"
+				, ((wd->ir.sensorbar.rot_dots[i].x + 2) * scale.x) + pos.x
+				, ((wd->ir.sensorbar.rot_dots[i].y + 2) * scale.y) + pos.y
+
+				);
+
+			draw_rectangle(screen_buffer, rmode, 8, 8
+				, s32(((wd->ir.sensorbar.rot_dots[i].x + 2) * scale.x) + pos.x)
+				, s32(((wd->ir.sensorbar.rot_dots[i].y + 2) * scale.y) + pos.y)
+				, COLOR_GREEN);
+		}
+	}
+
 	std::cout<<"  Accel:\n";
 	//accel.x/accel.y/accel.z - analog values for the accelleration of the wiimote
 	//(Note: Gravity pulls downwards, so even if the wiimote is not moving,
@@ -155,13 +154,54 @@ void print_and_draw_wiimote_data(void *screen_buffer) {
 
 	print_wiimote_buttons(wd);
 
-	if(wd->ir.raw_valid) {
-		for(i=0; i<2; i++) {
-			drawdot(screen_buffer, rmode, 4, 4, wd->ir.sensorbar.rot_dots[i].x+2, wd->ir.sensorbar.rot_dots[i].y+2, COLOR_GREEN);
-		}
-	}
-
 	if(wd->btns_h & WPAD_BUTTON_1) doreload=1;
+
+	if (wd->exp.type == EXP_NUNCHUK)
+	{
+		joystick_t js = wd->exp.nunchuk.js;
+
+		for (int i = 0; i < 2; i++) {
+			double p = (double)*(&js.pos.x + i);
+			ubyte max = *(&js.max.x + i);
+			ubyte min = *(&js.min.x + i);
+			ubyte center = *(&js.center.x + i);
+
+			if (p < center)
+				p = center - double(abs(p - center)) * (double(abs(0 - center)) / double(abs(min - center)));
+			else if (p > center)
+				p = double(abs(p - center)) * (double(abs(UCHAR_MAX - center)) / double(abs(max - center))) + center;
+			else
+				p = center;
+
+			*(&js.pos.x + i) = u8(Common::trim8(p));
+		}
+
+		cout << StringFromFormat(
+			"Nunchuk\n"
+			"  Stick: %3u %3u [%u , %u , %u], %3u %3u [%u , %u , %u]\n"
+				, wd->exp.nunchuk.js.pos.x
+				, js.pos.x
+				, wd->exp.nunchuk.js.min.x
+				, wd->exp.nunchuk.js.center.x
+				, wd->exp.nunchuk.js.max.x
+
+				, wd->exp.nunchuk.js.pos.y
+				, js.pos.y
+				, wd->exp.nunchuk.js.min.y
+				, wd->exp.nunchuk.js.center.x
+				, wd->exp.nunchuk.js.max.y
+				);
+
+		visual_stick_box(rmode, screen_buffer, s_pos, s_pos.x_of);
+		visual_stick(rmode, screen_buffer
+			, s32(wd->exp.nunchuk.js.pos.x - 128)
+			, s32(wd->exp.nunchuk.js.pos.y - 128)
+			, s_pos, s_pos.x_of, COLOR_GRAY);
+		visual_stick(rmode, screen_buffer
+			, s32(js.pos.x - 128)
+			, s32(js.pos.y - 128)
+			, s_pos, s_pos.x_of, COLOR_RED);
+	}
 }
 
 int main(int argc, char **argv) {
@@ -174,6 +214,8 @@ int main(int argc, char **argv) {
 	WPAD_Init();
 
 	rmode = VIDEO_GetPreferredMode(NULL);
+
+	visual_stick_init(rmode, s_pos);
 
 	// double buffering, prevents flickering (is it needed for LCD TV? i don't have one to test)
 	xfb[0] = MEM_K0_TO_K1(SYS_AllocateFramebuffer(rmode));
