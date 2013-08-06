@@ -150,7 +150,7 @@ static void GenerateLightingShader(T& object, LightingUidData& uid_data, int com
 				else if (components & VB_HAS_COL0 )
 					object.Write("lacc = %s0;\n", inColorName);
 				else
-					object.Write("lacc = float4(0.0f, 0.0f, 0.0f, 0.0f);\n");
+					object.Write("lacc = float4(1.0f, 1.0f, 1.0f, 1.0f);\n");
 			}
 			else // from color
 			{
@@ -191,7 +191,7 @@ static void GenerateLightingShader(T& object, LightingUidData& uid_data, int com
 				else if (components & VB_HAS_COL0 )
 					object.Write("lacc.w = %s0.w;\n", inColorName);
 				else
-					object.Write("lacc.w = 0.0f;\n");
+					object.Write("lacc.w = 1.0f;\n");
 			}
 			else // from color
 			{
