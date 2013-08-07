@@ -259,7 +259,7 @@ static void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_TYPE Api
 	unsigned int numTexgen = bpmem.genMode.numtexgens;
 
 	const bool forced_early_z = g_ActiveConfig.backend_info.bSupportsEarlyZ && bpmem.zcontrol.early_ztest && (g_ActiveConfig.bFastDepthCalc || bpmem.alpha_test.TestResult() == AlphaTest::UNDETERMINED);
-	const bool per_pixel_depth = (bpmem.ztex2.op != ZTEXTURE_DISABLE && !bpmem.zcontrol.early_ztest && bpmem.zmode.testenable) || (!g_ActiveConfig.bFastDepthCalc && !forced_early_z);
+	const bool per_pixel_depth = (bpmem.ztex2.op != ZTEXTURE_DISABLE && !bpmem.zcontrol.early_ztest && bpmem.zmode.testenable) || (!g_ActiveConfig.bFastDepthCalc && !forced_early_z) || bpmem.genMode.zfreeze;
 
 	out.Write("//Pixel Shader for TEV stages\n");
 	out.Write("//%i TEV stages, %i texgens, %i IND stages\n",
@@ -317,7 +317,7 @@ static void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_TYPE Api
 	DeclareUniform(out, ApiType, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_PLIGHTS, "float4", I_PLIGHTS"[40]");
 	DeclareUniform(out, ApiType, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_PMATERIALS, "float4", I_PMATERIALS"[4]");
 
-//	DeclareUniform(out, ApiType, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_ZSLOPE, "float4", I_ZSLOPE);
+	DeclareUniform(out, ApiType, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_ZSLOPE, "float4", I_ZSLOPE);
 
 	if (g_ActiveConfig.backend_info.bSupportsGLSLUBO)
 		out.Write("};\n");
@@ -634,10 +634,19 @@ static void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_TYPE Api
 	uid_data.fast_depth_calc = g_ActiveConfig.bFastDepthCalc;
 	uid_data.early_ztest = bpmem.zcontrol.early_ztest;
 	uid_data.fog_fsel = bpmem.fog.c_proj_fsel.fsel;
+	uid_data.zfreeze = bpmem.genMode.zfreeze;
 
 	// Note: z-textures are not written to depth buffer if early depth test is used
-	if (per_pixel_depth && bpmem.zcontrol.early_ztest)
-		out.Write("depth = zCoord;\n");
+	if (per_pixel_depth && bpmem.zcontrol.early_ztest) {
+		if (bpmem.genMode.zfreeze)
+		{
+			out.Write("depth = " I_ZSLOPE".z + " I_ZSLOPE".x * (clipPos.x / clipPos.w) + " I_ZSLOPE".y * (clipPos.y / clipPos.w);\n");
+		}
+		else
+		{
+			out.Write("depth = zCoord;\n");
+		}
+	}
 
 	// Note: depth texture output is only written to depth buffer if late depth test is used
 	// theoretical final depth value is used for fog calculation, though, so we have to emulate ztextures anyway
@@ -655,12 +664,13 @@ static void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_TYPE Api
 	}
 
 	if (per_pixel_depth && !bpmem.zcontrol.early_ztest) {
-		out.Write("depth = zCoord;\n");
-
-//		uid_data.zfreeze = bpmem.genMode.zfreeze;
 		if (bpmem.genMode.zfreeze)
 		{
-//			out.Write("depth = " I_ZSLOPE".z + " I_ZSLOPE".x * rawpos.x + " I_ZSLOPE".y * rawpos.y;\n");
+			out.Write("depth = " I_ZSLOPE".z + " I_ZSLOPE".x * (clipPos.x / clipPos.w) + " I_ZSLOPE".y * (clipPos.y / clipPos.w);\n");
+		}
+		else
+		{
+			out.Write("depth = zCoord;\n");
 		}
 	}
 
