@@ -104,30 +104,23 @@ void LOADERDECL UpdateBoundingBoxPrepare()
 	VertexManager::s_pCurBufferPointer = (u8*)s_bbox_vertex_buffer;
 }
 
-void VertexLoader::TransformVertex(const float* data, float *out, float* w)
+void VertexLoader::TransformToClipSpace(const float* data, float *out)
 {
 	const float *world_matrix  = (float*)xfmem + MatrixIndexA.PosNormalMtxIdx * 4;
 	const float *proj_matrix = &g_fProjectionMatrix[0];
-
-	// TODO: Could be optimized via matrix multiplication and stuff...
 
 	float t[3];
 	t[0] = data[0] * world_matrix[0] + data[1] * world_matrix[1] + data[2] * world_matrix[2] + world_matrix[3];
 	t[1] = data[0] * world_matrix[4] + data[1] * world_matrix[5] + data[2] * world_matrix[6] + world_matrix[7];
 	t[2] = data[0] * world_matrix[8] + data[1] * world_matrix[9] + data[2] * world_matrix[10] + world_matrix[11];
 
-	// TODO: ortho <-> perspective(?)
+	// TODO: this requires g_fProjectionMatrix to be up to date, which is not really a good design decision.
 
-	out[0] = t[0] * proj_matrix[ 0] + t[1] * proj_matrix[ 1] + t[2] * proj_matrix[ 2] + proj_matrix[3];
-	out[1] = t[0] * proj_matrix[ 4] + t[1] * proj_matrix[ 5] + t[2] * proj_matrix[ 6] + proj_matrix[7];
-	out[2] = t[0] * proj_matrix[ 8] + t[1] * proj_matrix[ 9] + t[2] * proj_matrix[10] + proj_matrix[11];
-	*w      = t[0] * proj_matrix[12] + t[1] * proj_matrix[13] + t[2] * proj_matrix[14] + proj_matrix[15];
-
-//	out[0] /= out[2];
-//	out[1] /= out[2];
+	out[0] = t[0] * proj_matrix[0]  + t[1] * proj_matrix[1]  + t[2] * proj_matrix[2]  + proj_matrix[3];
+	out[1] = t[0] * proj_matrix[4]  + t[1] * proj_matrix[5]  + t[2] * proj_matrix[6]  + proj_matrix[7];
+	out[2] = t[0] * proj_matrix[8]  + t[1] * proj_matrix[9]  + t[2] * proj_matrix[10] + proj_matrix[11];
+	out[3] = t[0] * proj_matrix[12] + t[1] * proj_matrix[13] + t[2] * proj_matrix[14] + proj_matrix[15];
 }
-
-using namespace Gen;
 
 void LOADERDECL UpdateBoundingBox() 
 {
@@ -143,18 +136,20 @@ void LOADERDECL UpdateBoundingBox()
 
 	// We must transform the just loaded point by the current world and projection matrix - in software.
 	// Then convert to screen space and update the bounding box.
-//	float o[3];
-//	VertexLoader::TransformVertex(s_bbox_vertex_buffer, o);
+	float o[4];
+	VertexLoader::TransformToClipSpace(s_bbox_vertex_buffer, o);
+	o[0] /= o[3];
+	o[1] /= o[3];
 
 	// Max width seems to be 608, while max height is 480
 	// Here height is set to 484 as BBox bottom always seems to be off by a few pixels
-//	o[0] = (o[0] + 1.0f) * 304.0f;
-//	o[1] = (1.0f - o[1]) * 242.0f;
+	o[0] = (o[0] + 1.0f) * 304.0f;
+	o[1] = (1.0f - o[1]) * 242.0f;
 
-//	if (o[0] < PixelEngine::bbox[0]) PixelEngine::bbox[0] = (u16) std::max(0.0f, o[0]);
-//	if (o[0] > PixelEngine::bbox[1]) PixelEngine::bbox[1] = (u16) o[0]; 
-//	if (o[1] < PixelEngine::bbox[2]) PixelEngine::bbox[2] = (u16) std::max(0.0f, o[1]);
-//	if (o[1] > PixelEngine::bbox[3]) PixelEngine::bbox[3] = (u16) o[1];
+	if (o[0] < PixelEngine::bbox[0]) PixelEngine::bbox[0] = (u16) std::max(0.0f, o[0]);
+	if (o[0] > PixelEngine::bbox[1]) PixelEngine::bbox[1] = (u16) o[0]; 
+	if (o[1] < PixelEngine::bbox[2]) PixelEngine::bbox[2] = (u16) std::max(0.0f, o[1]);
+	if (o[1] > PixelEngine::bbox[3]) PixelEngine::bbox[3] = (u16) o[1];
 }
 
 void LOADERDECL TexMtx_ReadDirect_UByte()

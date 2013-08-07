@@ -93,10 +93,8 @@ public:
 	VertexLoader(const TVtxDesc &vtx_desc, const VAT &vtx_attr);
 	~VertexLoader();
 
-	static void TransformVertex(const float* data, float *out, float* w);
-
 	int GetVertexSize() const {return m_VertexSize;}
-	
+
 	int SetupRunVertices(int vtx_attr_group, int primitive, int const count);
 	void RunVertices(int vtx_attr_group, int primitive, int count);
 	void RunCompiledVertices(int vtx_attr_group, int primitive, int count, u8* Data);
@@ -104,6 +102,12 @@ public:
 	// For debugging / profiling
 	void AppendToString(std::string *dest) const;
 	int GetNumLoadedVerts() const { return m_numLoadedVertices; }
+
+	// data: 3 floats representing the X, Y and Z vertex model coordinates
+	// out: 4 floats which will be initialized with the corresponding clip space coordinates
+	// NOTE: g_fProjectionMatrix must be up to date when this is called
+	//		(i.e. VertexShaderManager::SetConstants needs to be called before using this!)
+	static void TransformToClipSpace(const float* data, float *out);
 
 private:
 	enum

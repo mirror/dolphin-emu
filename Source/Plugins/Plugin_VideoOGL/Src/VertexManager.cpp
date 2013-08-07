@@ -262,7 +262,7 @@ void VertexManager::vFlush()
 	if (!bpmem.genMode.zfreeze && IndexGenerator::GetTriangleindexLen())
 	{
 		float vtx[9];
-		float out[9];
+		float out[12];
 
 		// Lookup vertices of the last rendered triangle and software-transform them
 		// This allows us to determine the depth slope, which will be used if zfreeze
@@ -275,22 +275,20 @@ void VertexManager::vFlush()
 			vtx[1 + i * 3] = ((float*)vtx_ptr)[1];
 			vtx[2 + i * 3] = ((float*)vtx_ptr)[2];
 
-			float w;
-			VertexLoader::TransformVertex(&vtx[i*3], &out[i*3], &w);
-			float wInverse = 1.f / w;
+			VertexLoader::TransformToClipSpace(&vtx[i*3], &out[i*4]);
 
 			 // viewport offset ignored because we only look at coordinate differences.
-			out[0+i*3] = out[0+i*3] * wInverse * xfregs.viewport.wd;
-			out[1+i*3] = out[1+i*3] * wInverse * xfregs.viewport.ht;
-			out[2+i*3] = out[2+i*3] * wInverse * xfregs.viewport.zRange + xfregs.viewport.farZ;
+			out[0+i*4] = out[0+i*4] / out[3+i*4] * xfregs.viewport.wd;
+			out[1+i*4] = out[1+i*4] / out[3+i*4] * xfregs.viewport.ht;
+			out[2+i*4] = out[2+i*4] / out[3+i*4] * xfregs.viewport.zRange + xfregs.viewport.farZ;
 		}
-		float fltdx31 = out[6] - out[0];
-		float fltdx12 = out[0] - out[3];
-		float fltdy12 = out[1] - out[4];
-		float fltdy31 = out[7] - out[1];
+		float fltdx31 = out[8] - out[0];
+		float fltdx12 = out[0] - out[4];
+		float fltdy12 = out[1] - out[5];
+		float fltdy31 = out[9] - out[1];
 
-		float DF31 = out[8] - out[2];
-		float DF21 = out[5] - out[2];
+		float DF31 = out[10] - out[2];
+		float DF21 = out[6] - out[2];
 		float a = DF31 * -fltdy12 - DF21 * fltdy31;
 		float b = fltdx31 * DF21 + fltdx12 * DF31;
 		float c = -fltdx12 * fltdy31 - fltdx31 * -fltdy12;
