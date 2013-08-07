@@ -438,7 +438,7 @@ Renderer::Renderer()
 		return;	// TODO: fail
 	
 	g_Config.backend_info.bSupportsDualSourceBlend = GLEW_ARB_blend_func_extended;
-	g_Config.backend_info.bSupportsGLSLUBO = false;
+	g_Config.backend_info.bSupportsGLSLUBO = GLEW_ARB_uniform_buffer_object;
 	g_Config.backend_info.bSupportsPrimitiveRestart = GLEW_VERSION_3_1 || GLEW_NV_primitive_restart;
 	g_Config.backend_info.bSupportsEarlyZ = GLEW_ARB_shader_image_load_store;
 	
