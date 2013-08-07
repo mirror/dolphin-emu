@@ -258,59 +258,46 @@ void VertexManager::vFlush()
 
 	// set global constants
 	VertexShaderManager::SetConstants();
-	// TODO: Only do this if triangles are being used.
-	// TODO: Is it nice that we're assuming that first 4 bytes == position? o_o
-	static float vtx[9];
-	static float out[9];
-
-    static float fltx1 = out[0];
-    static float flty1 = out[1];
-    static float fltdx31 = out[6] - fltx1;
-    static float fltdx12 = fltx1 - out[3];
-    static float fltdy12 = flty1 - out[4];
-    static float fltdy31 = out[7] - flty1;
-
-    static float DF31 = out[8] - out[2];
-    static float DF21 = out[5] - out[2];
-    static float a = DF31 * -fltdy12 - DF21 * fltdy31;
-    static float b = fltdx31 * DF21 + fltdx12 * DF31;
-    static float c = -fltdx12 * fltdy31 - fltdx31 * -fltdy12;
-
-    static float slope_dfdx = -a / c;
-    static float slope_dfdy = -b / c;
-    static float slope_f0 = vtx[2];
 
 	if (!bpmem.genMode.zfreeze && IndexGenerator::GetTriangleindexLen())
 	{
+		float vtx[9];
+		float out[9];
+
+		// Lookup vertices of the last rendered triangle and software-transform them
+		// This allows us to determine the depth slope, which will be used if zfreeze
+		// is enabled in the following flush.
 		for (unsigned int i = 0; i < 3; ++i)
 		{
-			u8* vtx_ptr = (u8*)&GetVertexBuffer()[GetTriangleIndexBuffer()[IndexGenerator::GetTriangleindexLen() - 3 + i] * g_nativeVertexFmt->GetVertexStride()];
+			const int base_index = GetTriangleIndexBuffer()[IndexGenerator::GetTriangleindexLen() - 3 + i];
+			u8* vtx_ptr = &((u8*)GetVertexBuffer())[base_index * g_nativeVertexFmt->GetVertexStride()];
 			vtx[0 + i * 3] = ((float*)vtx_ptr)[0];
 			vtx[1 + i * 3] = ((float*)vtx_ptr)[1];
 			vtx[2 + i * 3] = ((float*)vtx_ptr)[2];
 
 			float w;
 			VertexLoader::TransformVertex(&vtx[i*3], &out[i*3], &w);
-
 			float wInverse = 1.f / w;
-			out[0 + i * 3] = out[0+i*3]*wInverse * xfregs.viewport.wd + (xfregs.viewport.xOrig - 342);
-			out[1 + i * 3] = out[1+i*3]*wInverse * xfregs.viewport.ht + (xfregs.viewport.yOrig - 342);
-			out[2 + i * 3] = out[2+i*3]*wInverse * xfregs.viewport.zRange + xfregs.viewport.farZ;
+
+			 // viewport offset ignored because we only look at coordinate differences.
+			out[0+i*3] = out[0+i*3] * wInverse * xfregs.viewport.wd;
+			out[1+i*3] = out[1+i*3] * wInverse * xfregs.viewport.ht;
+			out[2+i*3] = out[2+i*3] * wInverse * xfregs.viewport.zRange + xfregs.viewport.farZ;
 		}
-		fltdx31 = out[6] - out[0];
-		fltdx12 = out[0] - out[3];
-		fltdy12 = out[1] - out[4];
-		fltdy31 = out[7] - out[1];
+		float fltdx31 = out[6] - out[0];
+		float fltdx12 = out[0] - out[3];
+		float fltdy12 = out[1] - out[4];
+		float fltdy31 = out[7] - out[1];
 
-		DF31 = out[8] - out[2];
-		DF21 = out[5] - out[2];
-		a = DF31 * -fltdy12 - DF21 * fltdy31;
-		b = fltdx31 * DF21 + fltdx12 * DF31;
-		c = -fltdx12 * fltdy31 - fltdx31 * -fltdy12;
+		float DF31 = out[8] - out[2];
+		float DF21 = out[5] - out[2];
+		float a = DF31 * -fltdy12 - DF21 * fltdy31;
+		float b = fltdx31 * DF21 + fltdx12 * DF31;
+		float c = -fltdx12 * fltdy31 - fltdx31 * -fltdy12;
 
-		slope_dfdx = -a / c;
-		slope_dfdy = -b / c;
-		slope_f0 = out[2];
+		float slope_dfdx = -a / c;
+		float slope_dfdy = -b / c;
+		float slope_f0 = out[2];
 
 		PixelShaderManager::SetZSlope(slope_dfdx, slope_dfdy, slope_f0);
 	}
