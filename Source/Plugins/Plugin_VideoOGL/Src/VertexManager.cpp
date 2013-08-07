@@ -230,43 +230,91 @@ void VertexManager::vFlush()
 				ERROR_LOG(VIDEO, "Error loading texture");
 		}
 	}
+#if 0
+	VertexShaderManager::SetConstants(); // for up-to-date projection matrix
 
 	// TODO: Only do this if triangles are being used.
 	// TODO: Is it nice that we're assuming that first 4 bytes == position? o_o
-	float vtx[9], out[9];
-	u8* vtx_ptr = (u8*)&GetVertexBuffer()[GetTriangleIndexBuffer()[IndexGenerator::GetNumTriangles()*3 - 1] * g_nativeVertexFmt->GetVertexStride()];
-	for (unsigned int i = 0; i < 3; ++i)
-	{
-		vtx[0 + i * 3] = ((float*)vtx_ptr)[0];
-		vtx[1 + i * 3] = ((float*)vtx_ptr)[1];
-		vtx[2 + i * 3] = ((float*)vtx_ptr)[2];
-		VertexLoader::TransformVertex(&vtx[i*3], &out[i*3]);
+	static float vtx[9];
+	static float out[9];
 
-		vtx_ptr += g_nativeVertexFmt->GetVertexStride();
+    static float fltx1 = out[0];
+    static float flty1 = out[1];
+    static float fltdx31 = out[6] - fltx1;
+    static float fltdx12 = fltx1 - out[3];
+    static float fltdy12 = flty1 - out[4];
+    static float fltdy31 = out[7] - flty1;
+
+//    static float DF31 = vtx[8] - vtx[2];
+  //  static float DF21 = vtx[5] - vtx[2];
+    static float DF31 = out[8] - out[2];
+    static float DF21 = out[5] - out[2];
+    static float a = DF31 * -fltdy12 - DF21 * fltdy31;
+    static float b = fltdx31 * DF21 + fltdx12 * DF31;
+    static float c = -fltdx12 * fltdy31 - fltdx31 * -fltdy12;
+
+    static float slope_dfdx = -a / c;
+    static float slope_dfdy = -b / c;
+    static float slope_f0 = vtx[2];
+
+	if (IndexGenerator::GetTriangleindexLen()) {
+	if (!bpmem.genMode.zfreeze) {
+		// for each triangle vertex
+		for (unsigned int i = 0; i < 3; ++i)
+		{
+			u8* vtx_ptr = (u8*)&GetVertexBuffer()[GetTriangleIndexBuffer()[IndexGenerator::GetTriangleindexLen() - 3 + i] * g_nativeVertexFmt->GetVertexStride()];
+			vtx[0 + i * 3] = ((float*)vtx_ptr)[0];
+			vtx[1 + i * 3] = ((float*)vtx_ptr)[1];
+			vtx[2 + i * 3] = ((float*)vtx_ptr)[2];
+
+			float w;
+			VertexLoader::TransformVertex(&vtx[i*3], &out[i*3], &w);
+
+			float wInverse = 1.f / w;
+			out[0 + i * 3] = out[0+i*3]*wInverse * xfregs.viewport.wd + (xfregs.viewport.xOrig - 342);
+			out[1 + i * 3] = out[1+i*3]*wInverse * xfregs.viewport.ht + (xfregs.viewport.yOrig - 342);
+			out[2 + i * 3] = out[2+i*3]*wInverse * xfregs.viewport.zRange + xfregs.viewport.farZ;
+		}
+    	fltx1 = out[0];
+    	flty1 = out[1];
+    	fltdx31 = out[6] - out[0];
+    	fltdx12 = out[0] - out[3];
+    	fltdy12 = out[1] - out[4];
+    	fltdy31 = out[7] - out[1];
+
+    	DF31 = out[8] - out[2];
+	    DF21 = out[5] - out[2];
+    	a = DF31 * -fltdy12 - DF21 * fltdy31;
+    	b = fltdx31 * DF21 + fltdx12 * DF31;
+	    c = -fltdx12 * fltdy31 - fltdx31 * -fltdy12;
+
+	    slope_dfdx = -a / c;
+    	slope_dfdy = -b / c;
+    	slope_f0 = out[2];
+
+		PixelShaderManager::SetZSlope(slope_dfdx, slope_dfdy, slope_f0);
+	}
 	}
 
-    float fltx1 = out[0];
-    float flty1 = out[1];
-    float fltdx31 = out[6] - fltx1;
-    float fltdx12 = fltx1 - out[3];
-    float fltdy12 = flty1 - out[4];
-    float fltdy31 = out[7] - flty1;
+	if (IndexGenerator::GetTriangleindexLen()) {
+	if (bpmem.genMode.zfreeze) {
+		static float last_dfdx = 0.0f;
+		static float last_dfdy = 0.0f;
+		static float last_f0 = 0.0f;
+		if (last_dfdx != slope_dfdx ||
+			last_dfdy != slope_dfdy ||
+			last_f0 != slope_f0) {
+			printf("vtx: %.2f %.2f %.2f, %.2f %.2f %.2f, %.2f %.2f %.2f\n", vtx[0], vtx[1], vtx[2], vtx[3],vtx[4],vtx[5],vtx[6],vtx[8],vtx[7]);
+			printf("out: %.2f %.2f %.2f, %.2f %.2f %.2f, %.2f %.2f %.2f\n", out[0],out[1],out[2],out[3],out[4],out[5],out[6],out[7],out[8]);
+			printf("New frozen ZSlope: df/dx %f, df/dy %f, f0 %f\n", slope_dfdx, slope_dfdy, slope_f0);
+		}
 
-    float DF31 = vtx[8] - vtx[2];
-    float DF21 = vtx[5] - vtx[2];
-    float a = DF31 * -fltdy12 - DF21 * fltdy31;
-    float b = fltdx31 * DF21 + fltdx12 * DF31;
-    float c = -fltdx12 * fltdy31 - fltdx31 * -fltdy12;
-
-    float slope_dfdx = -a / c;
-    float slope_dfdy = -b / c;
-    float slope_f0 = vtx[2];
-
-	if (!bpmem.genMode.zfreeze)
-		PixelShaderManager::SetZSlope(slope_dfdx, slope_dfdy, slope_f0);
-
-	// TODO: Set constant :)
-
+		last_dfdx = slope_dfdx;
+		last_dfdy = slope_dfdy;
+		last_f0 = slope_f0;
+	}
+	}
+#endif
 
 	bool useDstAlpha = !g_ActiveConfig.bDstAlphaPass && bpmem.dstalpha.enable && bpmem.blendmode.alphaupdate
 		&& bpmem.zcontrol.pixel_format == PIXELFMT_RGBA6_Z24;
@@ -294,7 +342,6 @@ void VertexManager::vFlush()
 	}
 
 	// set global constants
-	VertexShaderManager::SetConstants();
 	PixelShaderManager::SetConstants(g_nativeVertexFmt->m_components);
 	ProgramShaderCache::UploadConstants();
 	

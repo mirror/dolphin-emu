@@ -466,7 +466,7 @@ void PixelShaderManager::SetColorMatrix(const float* pmatrix)
 
 void PixelShaderManager::SetZSlope(float dfdx, float dfdy, float f0)
 {
-	SetPSConstant4f(C_ZSLOPE, dfdx, dfdy, f0, 0);
+//	SetPSConstant4f(C_ZSLOPE, dfdx, dfdy, f0, 0);
 }
 
 void PixelShaderManager::InvalidateXFRange(int start, int end)

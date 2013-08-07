@@ -380,6 +380,16 @@ void DrawTriangleFrontFace(OutputVertexData *v0, OutputVertexData *v1, OutputVer
 	float fltdy12 = flty1 - v1->screenPosition.y;
 	float fltdy31 = v2->screenPosition.y - flty1;
 
+	static float _fltx1;
+	static float _flty1;
+	static float _fltdx31;
+	static float _fltdx12;
+	static float _fltdy12;
+	static float _fltdy31;
+	static OutputVertexData _v0;
+	static OutputVertexData _v1;
+	static OutputVertexData _v2;
+
 	InitTriangle(fltx1, flty1, (X1 + 0xF) >> 4, (Y1 + 0xF) >> 4);
 
 	float w[3] = { 1.0f / v0->projectedPosition.w, 1.0f / v1->projectedPosition.w, 1.0f / v2->projectedPosition.w };
@@ -389,6 +399,24 @@ void DrawTriangleFrontFace(OutputVertexData *v0, OutputVertexData *v1, OutputVer
 		// TODO: Only do that if depth test passed?
 		// NOTE: Should be fairly easy to implement this, without an option, in hw accelerated backends. just needs to apply it on the last triangle..
 		InitSlope(&ZSlope, v0->screenPosition[2], v1->screenPosition[2], v2->screenPosition[2], fltdx31, fltdx12, fltdy12, fltdy31);
+		fltx1 = fltx1;
+		flty1 = flty1;
+		_fltdx31 = fltdx31;
+		_fltdx12 = fltdx12;
+		_fltdy12 = fltdy12;
+		_fltdy31 = fltdy31;
+		_v0 = *v0;
+		_v1 = *v1;
+		_v2 = *v2;
+	}
+	else
+	{
+		static Slope old_slope;
+		if (memcmp(&old_slope, &ZSlope, sizeof(ZSlope)) != 0)
+		{
+			printf("New frozen ZSlope: df/dx %f, df/dy %f, f0 %f\n", ZSlope.dfdx, ZSlope.dfdy, ZSlope.f0);
+			memcpy(&old_slope, &ZSlope, sizeof(ZSlope));
+		}
 	}
 
 	for(unsigned int i = 0; i < bpmem.genMode.numcolchans; i++)
@@ -401,15 +429,6 @@ void DrawTriangleFrontFace(OutputVertexData *v0, OutputVertexData *v1, OutputVer
 	{
 		for(int comp = 0; comp < 3; comp++)
 			InitSlope(&TexSlopes[i][comp], v0->texCoords[i][comp] * w[0], v1->texCoords[i][comp] * w[1], v2->texCoords[i][comp] * w[2], fltdx31, fltdx12, fltdy12, fltdy31);
-	}
-	else
-	{
-/*		static Slope old_slope;  
-		if (memcmp(&old_slope, &ZSlope, sizeof(ZSlope)) != 0)
-		{
-			printf("New frozen ZSlope: df/dx %f, df/dy %f, f0 %f\n", ZSlope.dfdx, ZSlope.dfdy, ZSlope.f0);
-			memcpy(&old_slope, &ZSlope, sizeof(ZSlope));
-		}*/
 	}
 
 	// Start in corner of 8x8 block

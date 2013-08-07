@@ -93,7 +93,7 @@ public:
 	VertexLoader(const TVtxDesc &vtx_desc, const VAT &vtx_attr);
 	~VertexLoader();
 
-	static void TransformVertex(const float* data, float *out);
+	static void TransformVertex(const float* data, float *out, float* w);
 
 	int GetVertexSize() const {return m_VertexSize;}
 	

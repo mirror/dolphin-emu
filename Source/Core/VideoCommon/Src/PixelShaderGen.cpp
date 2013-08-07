@@ -317,7 +317,7 @@ static void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_TYPE Api
 	DeclareUniform(out, ApiType, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_PLIGHTS, "float4", I_PLIGHTS"[40]");
 	DeclareUniform(out, ApiType, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_PMATERIALS, "float4", I_PMATERIALS"[4]");
 
-	DeclareUniform(out, ApiType, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_ZSLOPE, "float4", I_ZSLOPE);
+//	DeclareUniform(out, ApiType, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_ZSLOPE, "float4", I_ZSLOPE);
 
 	if (g_ActiveConfig.backend_info.bSupportsGLSLUBO)
 		out.Write("};\n");
@@ -657,10 +657,10 @@ static void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_TYPE Api
 	if (per_pixel_depth && !bpmem.zcontrol.early_ztest) {
 		out.Write("depth = zCoord;\n");
 
-		uid_data.zfreeze = bpmem.genMode.zfreeze;
+//		uid_data.zfreeze = bpmem.genMode.zfreeze;
 		if (bpmem.genMode.zfreeze)
 		{
-			out.Write("depth = " I_ZSLOPE".z + " I_ZSLOPE".x * rawpos.x + " I_ZSLOPE".y * rawpos.y;\n");
+//			out.Write("depth = " I_ZSLOPE".z + " I_ZSLOPE".x * rawpos.x + " I_ZSLOPE".y * rawpos.y;\n");
 		}
 	}
 
