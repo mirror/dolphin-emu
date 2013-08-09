@@ -22,7 +22,7 @@
 
 #include "GCPadStatus.h"
 #include "GCPad.h"
-#include "..\ConfigManager.h"
+#include "../ConfigManager.h"
 
 // where to put baseboard debug
 #define AMBASEBOARDDEBUG OSREPORT
