@@ -384,7 +384,7 @@ static void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_TYPE Api
 	}
 	else
 	{
-		if (forced_early_z)
+		if (forced_early_z && ApiType == API_D3D11)
 		{
 			out.Write("[earlydepthstencil]\n");
 		}
