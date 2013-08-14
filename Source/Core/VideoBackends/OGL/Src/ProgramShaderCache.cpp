@@ -585,6 +585,12 @@ void ProgramShaderCache::CreateHeader ( void )
 		"#define float2 vec2\n"
 		"#define float3 vec3\n"
 		"#define float4 vec4\n"
+		"#define uint2 uvec2\n"
+		"#define uint3 uvec3\n"
+		"#define uint4 uvec4\n"
+		"#define int2 ivec2\n"
+		"#define int3 ivec3\n"
+		"#define int4 ivec4\n"
 
 		// hlsl to glsl function translation
 		"#define frac fract\n"
