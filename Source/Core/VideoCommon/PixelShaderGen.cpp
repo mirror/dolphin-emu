@@ -528,9 +528,7 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 			RegisterStates[0].AlphaNeedOverflowControl = RegisterStates[bpmem.combiners[numStages - 1].alphaC.dest].AlphaNeedOverflowControl;
 		}
 	}
-	// emulation of unsigned 8 overflow when casting if needed
-	if(RegisterStates[0].AlphaNeedOverflowControl || RegisterStates[0].ColorNeedOverflowControl)
-		out.Write("\tprev = frac(prev * (255.0/256.0)) * (256.0/255.0);\n");
+	out.Write("\tint4 iprev = int4(prev * 255.0) & 0xFF;\n");
 
 	AlphaTest::TEST_RESULT Pretest = bpmem.alpha_test.TestResult();
 	uid_data.Pretest = Pretest;
@@ -589,12 +587,12 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 	if (dstAlphaMode == DSTALPHA_ALPHA_PASS)
 	{
 		out.SetConstantsUsed(C_ALPHA, C_ALPHA);
-		out.Write("\tocol0 = float4(prev.rgb, " I_ALPHA"[0].a);\n");
+		out.Write("\tocol0 = float4(float3(iprev.rgb) / 255.0f, " I_ALPHA"[0].a);\n");
 	}
 	else
 	{
 		WriteFog<T>(out, uid_data);
-		out.Write("\tocol0 = prev;\n");
+		out.Write("\tocol0 = float4(iprev) / 255.0f;\n");
 	}
 
 	// Use dual-source color blending to perform dst alpha in a single pass
@@ -604,7 +602,7 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 
 		// Colors will be blended against the alpha from ocol1 and
 		// the alpha from ocol0 will be written to the framebuffer.
-		out.Write("\tocol1 = prev;\n");
+		out.Write("\tocol1 = float4(iprev) / 255.0f;\n");
 		out.Write("\tocol0.a = " I_ALPHA"[0].a;\n");
 	}
 
@@ -1046,14 +1044,14 @@ static inline void SampleTexture(T& out, const char *texcoords, const char *texs
 
 static const char *tevAlphaFuncsTable[] =
 {
-	"(false)",									// NEVER
-	"(prev.a <= %s - (0.25/255.0))",			// LESS
-	"(abs( prev.a - %s ) < (0.5/255.0))",		// EQUAL
-	"(prev.a < %s + (0.25/255.0))",			// LEQUAL
-	"(prev.a >= %s + (0.25/255.0))",			// GREATER
-	"(abs( prev.a - %s ) >= (0.5/255.0))",	// NEQUAL
-	"(prev.a > %s - (0.25/255.0))",			// GEQUAL
-	"(true)"									// ALWAYS
+	"(false)",					// NEVER
+	"(iprev.a <  %s)",			// LESS
+	"(iprev.a == %s)",			// EQUAL
+	"(iprev.a <= %s)",			// LEQUAL
+	"(iprev.a >  %s)",			// GREATER
+	"(iprev.a != %s)",			// NEQUAL
+	"(iprev.a >= %s)",			// GEQUAL
+	"(true)"					// ALWAYS
 };
 
 static const char *tevAlphaFunclogicTable[] =
@@ -1069,8 +1067,8 @@ static inline void WriteAlphaTest(T& out, pixel_shader_uid_data& uid_data, API_T
 {
 	static const char *alphaRef[2] =
 	{
-		I_ALPHA"[0].r",
-		I_ALPHA"[0].g"
+		"int(" I_ALPHA"[0].r * 255.0f)",
+		"int(" I_ALPHA"[0].g * 255.0f)"
 	};
 
 	out.SetConstantsUsed(C_ALPHA, C_ALPHA);
@@ -1181,7 +1179,7 @@ static inline void WriteFog(T& out, pixel_shader_uid_data& uid_data)
 			WARN_LOG(VIDEO, "Unknown Fog Type! %08x", bpmem.fog.c_proj_fsel.fsel);
 	}
 
-	out.Write("\tprev.rgb = lerp(prev.rgb, " I_FOG"[0].rgb, fog);\n");
+	out.Write("\tiprev.rgb = int3(lerp(float3(iprev.rgb), " I_FOG"[0].rgb*255.0, fog));\n");
 }
 
 void GetPixelShaderUid(PixelShaderUid& object, DSTALPHA_MODE dstAlphaMode, API_TYPE ApiType, u32 components)
