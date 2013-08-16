@@ -573,6 +573,8 @@ bool NetPlayServer::StartGame(const std::string &path)
 // called from ---GUI--- thread
 bool NetPlayServer::StopGame()
 {
+	if (!m_is_running)
+		return false;
 	// tell clients to stop game
 	sf::Packet spac;
 	spac << (MessageId)NP_MSG_STOP_GAME;
