@@ -2,14 +2,15 @@
 // Licensed under GPLv2
 // Refer to the license.txt file included.
 
-
 #include "Hash.h"
+#include "Crypto/xxhash.h"
+
 #if _M_SSE >= 0x402
 #include "CPUDetect.h"
 #include <nmmintrin.h>
 #endif
 
-static u64 (*ptrHashFunction)(const u8 *src, int len, u32 samples) = &GetMurmurHash3;
+static u64 (*ptrHashFunction)(const u8 *src, int len, u32 samples) = &GetXXHash;
 
 // uint32_t
 // WARNING - may read one more byte!
@@ -96,6 +97,14 @@ u32 HashEctor(const u8* ptr, int length)
 	}
 
 	return(crc);
+}
+
+// XXHash algorithm
+u64 GetXXHash(const u8 *src, int len, u32 samples)
+{
+	const int Seed = 0;
+
+	return XXH32(src, len, Seed);
 }
 
 
@@ -504,15 +513,9 @@ void SetHash64Function(bool useHiresTextures)
 	{
 		ptrHashFunction = &GetHashHiresTexture;
 	}
-#if _M_SSE >= 0x402
-	else if (cpu_info.bSSE4_2 && !useHiresTextures) // sse crc32 version
-	{
-		ptrHashFunction = &GetCRC32;
-	}
-#endif
 	else
 	{
-		ptrHashFunction = &GetMurmurHash3;
+		ptrHashFunction = &GetXXHash;
 	}
 }
 

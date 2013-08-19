@@ -53,6 +53,9 @@
     <ClCompile Include="Src\x64CPUDetect.cpp" />
     <ClCompile Include="Src\x64FPURoundMode.cpp" />
     <ClCompile Include="Src\x64Thunk.cpp" />
+    <ClCompile Include="Src\Crypto\xxhash.cpp">
+      <Filter>Crypto</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Src\Atomic.h" />
@@ -120,6 +123,9 @@
     <ClInclude Include="Src\StdMutex.h" />
     <ClInclude Include="Src\StdConditionVariable.h" />
     <ClInclude Include="Src\x64ABI.h" />
+    <ClInclude Include="Src\Crypto\xxhash.h">
+      <Filter>Crypto</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="CMakeLists.txt" />

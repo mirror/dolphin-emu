@@ -28,7 +28,8 @@ set(SRCS	Src/BreakPoints.cpp
 			Src/Crypto/bn.cpp
 			Src/Crypto/ec.cpp
 			Src/Crypto/md5.cpp
-			Src/Crypto/sha1.cpp)
+			Src/Crypto/sha1.cpp
+			Src/Crypto/xxhash.cpp)
 
 if(_M_ARM) #ARM
 	set(SRCS	${SRCS}
