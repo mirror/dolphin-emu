@@ -485,16 +485,26 @@ static void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_TYPE Api
 
 	// helper macros for emulating tev register bitness
 	out.Write("#define FIX_PRECISION_U8(x) (round((x) * 255.0f) / 255.0f)\n");
-	out.Write("#define CHECK_OVERFLOW_U8(x) (frac((x) * (255.0f/256.0f)) * (256.0f/255.0f))\n");
+	out.Write("#define CHECK_OVERFLOW_U8(x) (frac(((x) + 0.5f/255.0f) * (255.0f/256.0f)) * (256.0f/255.0f) - 0.5f/255.0f)\n");
 	out.Write("#define AS_UNORM8(x) FIX_PRECISION_U8(CHECK_OVERFLOW_U8(x))\n");
 	out.Write("#define MASK_U8(x, mask) FIX_PRECISION_U8(x*mask/255.0f)\n");
+	out.Write("#define GT_U8(x, y) ((x) > (y) + 0.5f/255.0f)\n");
+	out.Write("#define LT_U8(x, y) ((x) < (y) - 0.5f/255.0f)\n");
+	out.Write("#define GE_U8(x, y) ((x) > (y) - 0.5f/255.0f)\n");
+	out.Write("#define LE_U8(x, y) ((x) < (y) + 0.5f/255.0f)\n");
+	out.Write("#define EQ_U8(x, y) (abs((x) - (y)) < 0.5f/255.0f)\n");
 	out.Write("#define FIX_PRECISION_U16(x) (round((x) * 65535.0f) / 65535.0f)\n");
-	out.Write("#define CHECK_OVERFLOW_U16(x) (frac((x) * (65535.0f/65536.0f)) * (65536.0f/65535.0f))\n");
+	out.Write("#define CHECK_OVERFLOW_U16(x) (frac(((x) + 0.5f/65535.0f) * (65535.0f/65536.0f)) * (65536.0f/65535.0f) - 0.5f/65535.0f)\n");
 	out.Write("#define AS_UNORM16(x) FIX_PRECISION_U16(CHECK_OVERFLOW_U16(x))\n");
 	out.Write("#define FIX_PRECISION_U24(x) (round((x) * 16777215.0f) / 16777215.0f)\n");
-	out.Write("#define CHECK_OVERFLOW_U24(x) (frac((x) * (16777215.0f/16777216.0f)) * (16777216.0f/16777215.0f))\n");
+	out.Write("#define CHECK_OVERFLOW_U24(x) (frac(((x) + 0.5f/16777215.0f) * (16777215.0f/16777216.0f)) * (16777216.0f/16777215.0f) - 0.5f/16777215.0f)\n");
 	out.Write("#define AS_UNORM24(x) FIX_PRECISION_U24(CHECK_OVERFLOW_U24(x))\n");
 
+	out.Write("#define COMP16_GT_U8(x, y) (GT_U8((x).g,(y).g) ? true : GT_U8((x).r,(y).r))\n");
+	out.Write("#define COMP16_EQ_U8(x, y) (EQ_U8((x).r,(y).r) && EQ_U8((x).g,(y).g))\n");
+	out.Write("#define COMP24_GT_U8(x, y) (GT_U8((x).b,(y).b) ? true : COMP16_GT_U8((x),(y)))\n");
+	out.Write("#define COMP24_EQ_U8(x, y) (EQ_U8((x).b,(y).b) && COMP16_EQ_U8((x),(y)))\n");
+	
 	// indirect texture map lookup
 	int nIndirectStagesUsed = 0;
 	if (bpmem.genMode.numindstages > 0)
@@ -654,16 +664,14 @@ static void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_TYPE Api
 
 
 //table with the color compare operations
-#define COMP16 "float3(1.0f, 256.0f, 0.0f)"
-#define COMP24 "float3(1.0f, 256.0f, 256.0f*256.0f)"
 static const char *TEVCMPColorOPTable[8] =
 {
-	"   %s + ((%s.r > %s.r) ? %s : float3(0.0f, 0.0f, 0.0f))",//#define TEVCMP_R8_GT 8
-	"   %s + ((%s.r == %s.r) ? %s : float3(0.0f, 0.0f, 0.0f))",//#define TEVCMP_R8_EQ 9
-	"   %s + ((dot(%s.rgb - %s.rgb, " COMP16") > 0) ? %s : float3(0.0f, 0.0f, 0.0f))",//#define TEVCMP_GR16_GT 10
-	"   %s + ((dot(%s.rgb - %s.rgb, " COMP16") == 0) ? %s : float3(0.0f, 0.0f, 0.0f))",//#define TEVCMP_GR16_EQ 11
-	"   %s + ((dot(%s.rgb - %s.rgb, " COMP24") > 0) ? %s : float3(0.0f, 0.0f, 0.0f))",//#define TEVCMP_BGR24_GT 12
-	"   %s + ((dot(%s.rgb - %s.rgb, " COMP24") == 0) ? %s : float3(0.0f, 0.0f, 0.0f))",//#define TEVCMP_BGR24_EQ 13
+	"   %s + (GT_U8(%s.r, %s.r) ? %s : float3(0.0f, 0.0f, 0.0f))",//#define TEVCMP_R8_GT 8
+	"   %s + (EQ_U8(%s.r, %s.r) ? %s : float3(0.0f, 0.0f, 0.0f))",//#define TEVCMP_R8_EQ 9
+	"   %s + (COMP16_GT_U8(%s.rg, %s.rg) ? %s : float3(0.0f, 0.0f, 0.0f))",//#define TEVCMP_GR16_GT 10
+	"   %s + (COMP16_EQ_U8(%s.rg, %s.rg) ? %s : float3(0.0f, 0.0f, 0.0f))",//#define TEVCMP_GR16_EQ 11
+	"   %s + (COMP24_GT_U8(%s.rgb, %s.rgb) ? %s : float3(0.0f, 0.0f, 0.0f))",//#define TEVCMP_BGR24_GT 12
+	"   %s + (COMP24_EQ_U8(%s.rgb, %s.rgb) ? %s : float3(0.0f, 0.0f, 0.0f))",//#define TEVCMP_BGR24_EQ 13
 	"   %s + (max(sign(%s.rgb - %s.rgb), float3(0.0f, 0.0f, 0.0f)) * %s)",//#define TEVCMP_RGB8_GT  14
 	"   %s + ((float3(1.0f, 1.0f, 1.0f) - max(sign(abs(%s.rgb - %s.rgb)), float3(0.0f, 0.0f, 0.0f))) * %s)"//#define TEVCMP_RGB8_EQ  15
 };
@@ -671,14 +679,14 @@ static const char *TEVCMPColorOPTable[8] =
 //table with the alpha compare operations
 static const char *TEVCMPAlphaOPTable[8] =
 {
-	"   %s.a + ((%s.r > %s.r) ? %s.a : 0.0f)",//#define TEVCMP_R8_GT 8
-	"   %s.a + ((%s.r == %s.r) ? %s.a : 0.0f)",//#define TEVCMP_R8_EQ 9
-	"   %s.a + ((dot(%s.rgb - %s.rgb, " COMP16") > 0) ? %s.a : 0.0f)",//#define TEVCMP_GR16_GT 10
-	"   %s.a + ((dot(%s.rgb - %s.rgb, " COMP16") == 0) ? %s.a : 0.0f)",//#define TEVCMP_GR16_EQ 11
-	"   %s.a + ((dot(%s.rgb - %s.rgb, " COMP24") > 0) ? %s.a : 0.0f)",//#define TEVCMP_BGR24_GT 12
-	"   %s.a + ((dot(%s.rgb - %s.rgb, " COMP24") == 0) ? %s.a : 0.0f)",//#define TEVCMP_BGR24_EQ 13
-	"   %s.a + ((%s.a > %s.a) ? %s.a : 0.0f)",//#define TEVCMP_A8_GT 14
-	"   %s.a + ((%s.a == %s.a) ? %s.a : 0.0f)"//#define TEVCMP_A8_EQ 15
+	"   %s.a + (GT_U8(%s.r, %s.r) ? %s.a : 0.0f)",//#define TEVCMP_R8_GT 8
+	"   %s.a + (EQ_U8(%s.r, %s.r) ? %s.a : 0.0f)",//#define TEVCMP_R8_EQ 9
+	"   %s.a + (COMP16_GT_U8(%s.rg, %s.rg) ? %s.a : 0.0f)",//#define TEVCMP_GR16_GT 10
+	"   %s.a + (COMP16_EQ_U8(%s.rg, %s.rg) ? %s.a : 0.0f)",//#define TEVCMP_GR16_EQ 11
+	"   %s.a + (COMP24_GT_U8(%s.rgb, %s.rgb) ? %s.a : 0.0f)",//#define TEVCMP_BGR24_GT 12
+	"   %s.a + (COMP24_EQ_U8(%s.rgb, %s.rgb) ? %s.a : 0.0f)",//#define TEVCMP_BGR24_EQ 13
+	"   %s.a + (GT_U8(%s.a, %s.a) ? %s.a : 0.0f)",//#define TEVCMP_A8_GT 14
+	"   %s.a + (EQ_U8(%s.a, %s.a) ? %s.a : 0.0f)"//#define TEVCMP_A8_EQ 15
 };
 
 // Emulates U8 integer overflow when source value might be bigger than that.
@@ -958,12 +966,12 @@ void SampleTexture(T& out, const char *texcoords, const char *texswap, int texma
 static const char *tevAlphaFuncsTable[] =
 {
 	"(false)",			// NEVER
-	"(prev.a < %s)",	// LESS
-	"(prev.a == %s)",	// EQUAL
-	"(prev.a <= %s)",	// LEQUAL
-	"(prev.a > %s)",	// GREATER
-	"(prev.a != %s)",	// NEQUAL
-	"(prev.a >= %s)",	// GEQUAL
+	"(LT_U8(prev.a, %s))",	// LESS
+	"(EQ_U8(prev.a, %s))",	// EQUAL
+	"(LE_U8(prev.a, %s))",	// LEQUAL
+	"(GT_U8(prev.a, %s))",	// GREATER
+	"(!EQ_U8(prev.a, %s))",	// NEQUAL
+	"(GE_U8(prev.a, %s))",	// GEQUAL
 	"(true)"			// ALWAYS
 };
 
