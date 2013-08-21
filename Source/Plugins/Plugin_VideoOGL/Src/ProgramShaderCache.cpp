@@ -549,7 +549,7 @@ void ProgramShaderCache::CreateHeader ( void )
 		, v==GLSL_120 ? "" : "out vec4 name;"
 		
 		, v==GLSL_120 ? "#extension GL_ARB_texture_rectangle : enable" : ""
-		, v==GLSL_120 ? "" : "#define texture2DRect(samp, uv)  texelFetch(samp, ivec2(floor(uv)), 0)"
+		, v==GLSL_120 ? "" : "#define texture2DRect(samp, uv)  textureLod(samp, (uv) / textureSize(samp, 0), 0)"
 		, v==GLSL_120 ? "" : "#define sampler2DRect sampler2D"
 	);
 }
