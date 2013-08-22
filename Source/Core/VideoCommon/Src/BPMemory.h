@@ -789,7 +789,7 @@ union FieldMask
 #define ZC_NEAR 1
 #define ZC_MID 2
 #define ZC_FAR 3
-// It seems these Z formats aren't supported/were removed ?
+// It seems these Z formats aren't supported/were removed after the patents were filed
 #define ZC_INV_LINEAR 4
 #define ZC_INV_NEAR 5
 #define ZC_INV_MID 6

@@ -17,12 +17,12 @@ namespace EfbInterface
 {
 	inline u32 GetColorOffset(u16 x, u16 y)
 	{
-		return (x + y * EFB_WIDTH) * 3;
+		return (x + y * EFB_WIDTH) * STRIDE;
 	}
 
 	inline u32 GetDepthOffset(u16 x, u16 y)
 	{
-		return (x + y * EFB_WIDTH) * 3 + DEPTH_BUFFER_START;
+		return (x + y * EFB_WIDTH) * STRIDE + DEPTH_BUFFER_START;
 	}
 
 	void DoState(PointerWrap &p)
@@ -80,11 +80,11 @@ namespace EfbInterface
 			break;
 		case PIXELFMT_RGB565_Z16:
 			{
-				INFO_LOG(VIDEO, "PIXELFMT_RGB565_Z16 is not supported correctly yet");
-				u32 src = *(u32*)rgb;
 				u32 *dst = (u32*)&efb[offset];
-				u32 val = *dst & 0xff000000;
-				val |= src >> 8;
+				u32 val = *dst & 0xffff0000;
+				val |= (rgb[BLU_C] >> 3);
+				val |= (rgb[GRN_C] >> 2) << 5;
+				val |= (rgb[RED_C] >> 3) << 11;
 				*dst = val;
 			}
 			break;
@@ -121,11 +121,11 @@ namespace EfbInterface
 			break;
 		case PIXELFMT_RGB565_Z16:
 			{
-				INFO_LOG(VIDEO, "PIXELFMT_RGB565_Z16 is not supported correctly yet");
-				u32 src = *(u32*)color;
 				u32 *dst = (u32*)&efb[offset];
-				u32 val = *dst & 0xff000000;
-				val |= src >> 8;
+				u32 val = *dst & 0xffff0000;
+				val |= (color[BLU_C] >> 3);
+				val |= (color[GRN_C] >> 2) << 5;
+				val |= (color[RED_C] >> 3) << 11;
 				*dst = val;
 			}
 			break;
@@ -158,11 +158,11 @@ namespace EfbInterface
 			break;
 		case PIXELFMT_RGB565_Z16:
 			{
-				INFO_LOG(VIDEO, "PIXELFMT_RGB565_Z16 is not supported correctly yet");
 				u32 src = *(u32*)&efb[offset];
-				u32 *dst = (u32*)color;
-				u32 val = 0xff | ((src & 0x00ffffff) << 8);
-				*dst = val;
+				color[ALP_C] = 0xff;
+				color[BLU_C] = ( src        & 0x1f) << 3;
+				color[GRN_C] = ((src >> 5)  & 0xfc) << 2;
+				color[RED_C] = ((src >> 11) & 0x1f) << 3;
 			}
 			break;
 		default:
@@ -181,16 +181,30 @@ namespace EfbInterface
 				u32 *dst = (u32*)&efb[offset];
 				u32 val = *dst & 0xff000000;
 				val |= depth & 0x00ffffff;
-				*dst = val;				
+				*dst = val;
 			}
 			break;
 		case PIXELFMT_RGB565_Z16:
+			switch (bpmem.zcontrol.zformat)
 			{
-				INFO_LOG(VIDEO, "PIXELFMT_RGB565_Z16 is not supported correctly yet");
-				u32 *dst = (u32*)&efb[offset];
-				u32 val = *dst & 0xff000000;
-				val |= depth & 0x00ffffff;
-				*dst = val;		
+			case ZC_LINEAR:
+				{
+					u32 *dst = (u32*)&efb[offset];
+					u32 val = *dst & 0xffff0000;
+					val |= (depth >> 8) & 0x0000ffff;
+					*dst = val;
+				}
+				break;
+			default:
+				{
+					static const char *ZC_mode[] = {"LINEAR", "NEAR", "MID", "FAR", "INV_LINEAR", "INV_NEAR", "INV_MID", "INV_FAR"};
+					WARN_LOG(VIDEO, "Z Compression ZC_%s is not supported yet", ZC_mode[bpmem.zcontrol.zformat]);
+					// For now we just use the 24 bit format
+					u32 *dst = (u32*)&efb[offset];
+					u32 val = *dst & 0xff000000;
+					val |= depth & 0x00ffffff;
+					*dst = val;
+				}
 			}
 			break;
 		default:
@@ -214,7 +228,20 @@ namespace EfbInterface
 		case PIXELFMT_RGB565_Z16:
 			{
 				INFO_LOG(VIDEO, "PIXELFMT_RGB565_Z16 is not supported correctly yet");
-				depth = (*(u32*)&efb[offset]) & 0x00ffffff;
+				depth = ((*(u32*)&efb[offset]) & 0x0000ffff) << 8;
+			}
+			switch (bpmem.zcontrol.zformat)
+			{
+			case ZC_LINEAR:
+				depth = ((*(u32*)&efb[offset]) & 0x0000ffff) << 8;
+				break;
+			default:
+				{
+					static const char *ZC_mode[] = {"LINEAR", "NEAR", "MID", "FAR", "INV_LINEAR", "INV_NEAR", "INV_MID", "INV_FAR"};
+					WARN_LOG(VIDEO, "Z Compression ZC_%s is not supported yet", ZC_mode[bpmem.zcontrol.zformat]);
+					// For now we just use the 24 bit format
+					depth = (*(u32*)&efb[offset]) & 0x00ffffff;
+				}
 			}
 			break;
 		default:

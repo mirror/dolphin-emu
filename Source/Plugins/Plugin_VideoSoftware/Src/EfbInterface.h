@@ -7,6 +7,8 @@
 
 #include "VideoCommon.h"
 
+#define STRIDE (bpmem.zcontrol.pixel_format == PIXELFMT_RGB565_Z16 ? 6 : 3)
+
 namespace EfbInterface
 {
 	const int DEPTH_BUFFER_START = EFB_WIDTH * EFB_HEIGHT * 3;
