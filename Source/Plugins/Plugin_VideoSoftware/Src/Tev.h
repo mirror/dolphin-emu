@@ -33,8 +33,8 @@ class Tev
 	s32 Zero16[4];
 
 	s32 FixedConstants[9];
-	u8 AlphaBump;
-	u8 IndirectTex[4][4];
+	u8  AlphaBump;
+	u8  IndirectTex[4][4];
 	TextureCoordinateType TexCoord;
 
 	s32 *m_ColorInputLUT[16][3];
@@ -62,10 +62,10 @@ class Tev
 
 	void SetRasColor(int colorChan, int swaptable);
 
-	void DrawColorRegular(TevStageCombiner::ColorCombiner &cc);
-	void DrawColorCompare(TevStageCombiner::ColorCombiner &cc);
-	void DrawAlphaRegular(TevStageCombiner::AlphaCombiner &ac);
-	void DrawAlphaCompare(TevStageCombiner::AlphaCombiner &ac);
+	void DrawColorRegular(const TevStageCombiner::ColorCombiner cc);
+	void DrawColorCompare(const TevStageCombiner::ColorCombiner cc);
+	void DrawAlphaRegular(const TevStageCombiner::AlphaCombiner ac);
+	void DrawAlphaCompare(const TevStageCombiner::AlphaCombiner ac);
 
 	void Indirect(unsigned int stageNum, s32 s, s32 t);
 

@@ -170,7 +170,7 @@ void Tev::SetRasColor(int colorChan, int swaptable)
 	}
 }
 
-void Tev::DrawColorRegular(TevStageCombiner::ColorCombiner &cc)
+void Tev::DrawColorRegular(const TevStageCombiner::ColorCombiner cc)
 {
 	InputRegType InputReg;
 
@@ -195,7 +195,7 @@ void Tev::DrawColorRegular(TevStageCombiner::ColorCombiner &cc)
 	}
 }
 
-void Tev::DrawColorCompare(TevStageCombiner::ColorCombiner &cc)
+void Tev::DrawColorCompare(const TevStageCombiner::ColorCombiner cc)
 {
 	int cmp = (cc.shift<<1)|cc.op|8; // comparemode stored here
 
@@ -301,7 +301,7 @@ void Tev::DrawColorCompare(TevStageCombiner::ColorCombiner &cc)
 	}
 }
 
-void Tev::DrawAlphaRegular(TevStageCombiner::AlphaCombiner &ac)
+void Tev::DrawAlphaRegular(const TevStageCombiner::AlphaCombiner ac)
 {
 	InputRegType InputReg;
 
@@ -322,7 +322,7 @@ void Tev::DrawAlphaRegular(TevStageCombiner::AlphaCombiner &ac)
 	Reg[ac.dest][ALP_C] = result;
 }
 
-void Tev::DrawAlphaCompare(TevStageCombiner::AlphaCombiner &ac)
+void Tev::DrawAlphaCompare(const TevStageCombiner::AlphaCombiner ac)
 {
 	int cmp = (ac.shift<<1)|ac.op|8; // comparemode stored here
 
