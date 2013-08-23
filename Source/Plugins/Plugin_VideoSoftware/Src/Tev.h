@@ -25,23 +25,23 @@ class Tev
 	};
 
 	// color order: ABGR
-	s32 Reg[4][4];
-	s32 KonstantColors[4][4];
-	s32 TexColor[4];
-	s32 RasColor[4];
-	s32 StageKonst[4];
-	s32 Zero16[4];
+	s32 GC_ALIGNED16(Reg[4][4]);
+	s32 GC_ALIGNED16(KonstantColors[4][4]);
+	s32 GC_ALIGNED16(TexColor[4]);
+	s32 GC_ALIGNED16(RasColor[4]);
+	s32 GC_ALIGNED16(StageKonst[4]);
+	s32 GC_ALIGNED16(Zero16[4]);
 
-	s32 FixedConstants[9];
+	s32 GC_ALIGNED16(FixedConstants[9]);
 	u8  AlphaBump;
-	u8  IndirectTex[4][4];
+	u8  GC_ALIGNED16(IndirectTex[4][4]);
 	TextureCoordinateType TexCoord;
 
-	s32 *m_ColorInputLUT[16][3];
-	s32 *m_AlphaInputLUT[8];        // values must point to ABGR color
-	s32 *m_KonstLUT[32][4];
-	u8 *m_RasColorLUT[8];
-	s32 m_BiasLUT[4];
+	const s32 *m_ColorInputLUT[16][3];
+	const s32 *m_AlphaInputLUT[8];        // values must point to ABGR color
+	const s32 *m_KonstLUT[32][4];
+	const u8 *m_RasColorLUT[8];
+	s32 GC_ALIGNED16(m_BiasLUT[4]);
 	u8 m_ScaleLShiftLUT[4];
 	u8 m_ScaleRShiftLUT[4];
 
@@ -70,13 +70,13 @@ class Tev
 	void Indirect(unsigned int stageNum, s32 s, s32 t);
 
 public:
-	s32 Position[3];
+	s32 GC_ALIGNED16(Position[3]);
 	u8 Color[2][4]; // must be RGBA for correct swap table ordering
 	TextureCoordinateType Uv[8];
-	s32 IndirectLod[4];
-	bool IndirectLinear[4];
-	s32 TextureLod[16];
-	bool TextureLinear[16];
+	s32  GC_ALIGNED16(IndirectLod[4]);
+	bool GC_ALIGNED16(IndirectLinear[4]);
+	s32  GC_ALIGNED16(TextureLod[16]);
+	bool GC_ALIGNED16(TextureLinear[16]);
 
 	void Init();
 
