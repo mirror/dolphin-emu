@@ -112,14 +112,16 @@ void Tev::Init()
 	m_ScaleRShiftLUT[3] = 1;
 }
 
-inline s16 Clamp255(s16 in)
+// Clamp between 0 and 255
+inline int Clamp255(int x)
 {
-	return in>255?255:(in<0?0:in);
+	return x>255?255:(x<0?0:x);
 }
 
-inline s16 Clamp1024(s16 in)
+// Clamp between -1024 and 1023
+inline int Clamp1024(int x)
 {
-		return in>1023?1023:(in<-1024?-1024:in);
+	return x>1023?1023:(x<-1024?-1024:x);
 }
 
 void Tev::SetRasColor(int colorChan, int swaptable)
@@ -179,7 +181,7 @@ void Tev::DrawColorRegular(TevStageCombiner::ColorCombiner &cc)
 		InputReg.c = *m_ColorInputLUT[cc.c][i];
 		InputReg.d = *m_ColorInputLUT[cc.d][i];
 
-		u16 c = InputReg.c + (InputReg.c >> 7); 
+		u32 c = InputReg.c + (InputReg.c >> 7);
 
 		s32 temp = InputReg.a * (256 - c) + (InputReg.b * c);
 		temp = cc.op?(-temp >> 8):(temp >> 8);
@@ -307,7 +309,7 @@ void Tev::DrawAlphaRegular(TevStageCombiner::AlphaCombiner &ac)
 	InputReg.c = m_AlphaInputLUT[ac.c][ALP_C];
 	InputReg.d = m_AlphaInputLUT[ac.d][ALP_C];
 
-	u16 c = InputReg.c + (InputReg.c >> 7); 
+	u32 c = InputReg.c + (InputReg.c >> 7);
 
 	s32 temp = InputReg.a * (256 - c) + (InputReg.b * c);
 	temp = ac.op?(-temp >> 8):(temp >> 8);
@@ -482,8 +484,8 @@ void Tev::Indirect(unsigned int stageNum, s32 s, s32 t)
 	}
 
 	// bias select
-	s16 biasValue = indirect.fmt==ITF_8?-128:1;
-	s16 bias[3];
+	s32 biasValue = indirect.fmt==ITF_8?-128:1;
+	s32 bias[3];
 	bias[0] = indirect.bias&1?biasValue:0;
 	bias[1] = indirect.bias&2?biasValue:0;
 	bias[2] = indirect.bias&4?biasValue:0;
@@ -667,6 +669,8 @@ void Tev::Draw()
 		}
 		else
 		{
+			// FIXME: I'm not sure about this clamping, apparently TEV has 10 bits when clamping is disabled, so -512 to 511
+			//        Or maybe it should be wrapping (that would save heaps of cycles)
 			Reg[cc.dest][RED_C] = Clamp1024(Reg[cc.dest][RED_C]);
 			Reg[cc.dest][GRN_C] = Clamp1024(Reg[cc.dest][GRN_C]);
 			Reg[cc.dest][BLU_C] = Clamp1024(Reg[cc.dest][BLU_C]);
@@ -833,7 +837,7 @@ void Tev::Draw()
 	EfbInterface::BlendTev(Position[0], Position[1], output);
 }
 
-void Tev::SetRegColor(int reg, int comp, bool konst, s16 color)
+void Tev::SetRegColor(int reg, int comp, bool konst, s32 color)
 {
 	if (konst)
 	{

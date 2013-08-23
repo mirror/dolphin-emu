@@ -25,23 +25,23 @@ class Tev
 	};
 
 	// color order: ABGR
-	s16 Reg[4][4];
-	s16 KonstantColors[4][4];
-	s16 TexColor[4];
-	s16 RasColor[4];
-	s16 StageKonst[4];
-	s16 Zero16[4];
+	s32 Reg[4][4];
+	s32 KonstantColors[4][4];
+	s32 TexColor[4];
+	s32 RasColor[4];
+	s32 StageKonst[4];
+	s32 Zero16[4];
 
-	s16 FixedConstants[9];
+	s32 FixedConstants[9];
 	u8 AlphaBump;
 	u8 IndirectTex[4][4];
 	TextureCoordinateType TexCoord;
 
-	s16 *m_ColorInputLUT[16][3];
-	s16 *m_AlphaInputLUT[8];        // values must point to ABGR color
-	s16 *m_KonstLUT[32][4];
+	s32 *m_ColorInputLUT[16][3];
+	s32 *m_AlphaInputLUT[8];        // values must point to ABGR color
+	s32 *m_KonstLUT[32][4];
 	u8 *m_RasColorLUT[8];
-	s16 m_BiasLUT[4];
+	s32 m_BiasLUT[4];
 	u8 m_ScaleLShiftLUT[4];
 	u8 m_ScaleRShiftLUT[4];
 
@@ -82,7 +82,7 @@ public:
 
 	void Draw();
 
-	void SetRegColor(int reg, int comp, bool konst, s16 color);
+	void SetRegColor(int reg, int comp, bool konst, s32 color);
 
 	enum { ALP_C, BLU_C, GRN_C, RED_C };
 
