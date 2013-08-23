@@ -183,6 +183,7 @@ void Tev::DrawColorRegular(TevStageCombiner::ColorCombiner &cc)
 
 		u32 c = InputReg.c + (InputReg.c >> 7);
 
+		// Fixme: Check if temp and result are ment to wrap at 16 bits (or something)
 		s32 temp = InputReg.a * (256 - c) + (InputReg.b * c);
 		temp = cc.op?(-temp >> 8):(temp >> 8);
 
@@ -669,8 +670,8 @@ void Tev::Draw()
 		}
 		else
 		{
-			// FIXME: I'm not sure about this clamping, apparently TEV has 10 bits when clamping is disabled, so -512 to 511
-			//        Or maybe it should be wrapping (that would save heaps of cycles)
+			// Tev always clamps, the clamp option just changes the clamp range.
+			// FIXME: We should verfiy this on real hardware
 			Reg[cc.dest][RED_C] = Clamp1024(Reg[cc.dest][RED_C]);
 			Reg[cc.dest][GRN_C] = Clamp1024(Reg[cc.dest][GRN_C]);
 			Reg[cc.dest][BLU_C] = Clamp1024(Reg[cc.dest][BLU_C]);
