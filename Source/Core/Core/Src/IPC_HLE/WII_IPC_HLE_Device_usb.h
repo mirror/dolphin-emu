@@ -50,15 +50,12 @@ struct is_pod<SQueuedEvent> : std::true_type {};
 // /dev/usb/oh1 -> internal usb bus
 // 57e/305 -> VendorID/ProductID of device on usb bus
 // This device is ONLY the internal bluetooth module (based on BCM2045 chip)
-class CWII_IPC_HLE_Device_usb_oh1_57e_305 : public IWII_IPC_HLE_Device
+class CWII_IPC_HLE_Device_usb_oh1_57e_305 : public IWII_IPC_HLE_Device, public CWII_IPC_HLE_Device_Singleton<CWII_IPC_HLE_Device_usb_oh1_57e_305>
 {
 public:
-	CWII_IPC_HLE_Device_usb_oh1_57e_305(u32 _DeviceID, const std::string& _rDeviceName);
+	CWII_IPC_HLE_Device_usb_oh1_57e_305(const std::string& _rDeviceName);
 
 	virtual ~CWII_IPC_HLE_Device_usb_oh1_57e_305();
-
-	virtual bool Open(u32 _CommandAddress, u32 _Mode);
-	virtual bool Close(u32 _CommandAddress, bool _bForce);
 
 	virtual bool IOCtlV(u32 _CommandAddress);
 	virtual bool IOCtl(u32 _CommandAddress);
@@ -70,6 +67,7 @@ public:
 
 	bool RemoteDisconnect(u16 _connectionHandle);
 
+	static const char* GetBaseName() { return "/dev/usb/oh1/57e/305"; }
 // hack for wiimote plugin
 public:
 	std::vector<CWII_IPC_HLE_WiiMote> m_WiiMotes;

@@ -25,12 +25,19 @@ using namespace DVDInterface;
 #define DI_COVER_REG_INITIALIZED	0 // Should be 4, but doesn't work correctly...
 #define DI_COVER_REG_NO_DISC		1
 
-CWII_IPC_HLE_Device_di::CWII_IPC_HLE_Device_di(u32 _DeviceID, const std::string& _rDeviceName )
-	: IWII_IPC_HLE_Device(_DeviceID, _rDeviceName)
+CWII_IPC_HLE_Device_di::CWII_IPC_HLE_Device_di(const std::string& _rDeviceName )
+	: IWII_IPC_HLE_Device(_rDeviceName)
 	, m_pFileSystem(NULL)
 	, m_ErrorStatus(0)
 	, m_CoverStatus(DI_COVER_REG_NO_DISC)
-{}
+{
+	if (VolumeHandler::IsValid())
+	{
+		m_pFileSystem = DiscIO::CreateFileSystem(VolumeHandler::GetVolume());
+		m_CoverStatus |= DI_COVER_REG_INITIALIZED;
+		m_CoverStatus &= ~DI_COVER_REG_NO_DISC;
+	}
+}
 
 CWII_IPC_HLE_Device_di::~CWII_IPC_HLE_Device_di()
 {
@@ -39,33 +46,6 @@ CWII_IPC_HLE_Device_di::~CWII_IPC_HLE_Device_di()
 		delete m_pFileSystem;
 		m_pFileSystem = NULL;
 	}
-}
-
-bool CWII_IPC_HLE_Device_di::Open(u32 _CommandAddress, u32 _Mode)
-{
-	if (VolumeHandler::IsValid())
-	{
-		m_pFileSystem = DiscIO::CreateFileSystem(VolumeHandler::GetVolume());
-		m_CoverStatus |= DI_COVER_REG_INITIALIZED;
-		m_CoverStatus &= ~DI_COVER_REG_NO_DISC;
-	}
-	Memory::Write_U32(GetDeviceID(), _CommandAddress + 4);
-	m_Active = true;
-	return true;
-}
-
-bool CWII_IPC_HLE_Device_di::Close(u32 _CommandAddress, bool _bForce)
-{
-	if (m_pFileSystem)
-	{
-		delete m_pFileSystem;
-		m_pFileSystem = NULL;
-	}
-	m_ErrorStatus = 0;
-	if (!_bForce)
-		Memory::Write_U32(0, _CommandAddress + 4);
-	m_Active = false;
-	return true;
 }
 
 bool CWII_IPC_HLE_Device_di::IOCtl(u32 _CommandAddress) 

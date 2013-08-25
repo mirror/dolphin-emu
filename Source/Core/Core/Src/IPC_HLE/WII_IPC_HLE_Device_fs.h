@@ -29,23 +29,20 @@ enum {
 	FS_NO_HANDLE			= -106,
 };
 
-class CWII_IPC_HLE_Device_fs : public IWII_IPC_HLE_Device
+class CWII_IPC_HLE_Device_fs : public IWII_IPC_HLE_Device, public CWII_IPC_HLE_Device_Singleton<CWII_IPC_HLE_Device_fs>
 {
 public:
-
-	CWII_IPC_HLE_Device_fs(u32 _DeviceID, const std::string& _rDeviceName);
+	CWII_IPC_HLE_Device_fs(const std::string& _rDeviceName);
 	virtual ~CWII_IPC_HLE_Device_fs();
 
 	virtual void DoState(PointerWrap& p);
-
-	virtual bool Open(u32 _CommandAddress, u32 _Mode);
-	virtual bool Close(u32 _CommandAddress, bool _bForce);
 
 	virtual bool IOCtl(u32 _CommandAddress);
 	virtual bool IOCtlV(u32 _CommandAddress);
 	
 	virtual int GetCmdDelay(u32);
 
+	static const char* GetBaseName() { return "/dev/fs"; }
 private:
 
 	enum

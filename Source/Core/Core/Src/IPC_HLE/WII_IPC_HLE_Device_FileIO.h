@@ -13,12 +13,11 @@ std::string HLE_IPC_BuildFilename(std::string _pFilename, int _size);
 class CWII_IPC_HLE_Device_FileIO : public IWII_IPC_HLE_Device
 {
 public:
-	CWII_IPC_HLE_Device_FileIO(u32 _DeviceID, const std::string& _rDeviceName);
+	CWII_IPC_HLE_Device_FileIO(const std::string& _rDeviceName);
 
 	virtual ~CWII_IPC_HLE_Device_FileIO();
 
-	bool Close(u32 _CommandAddress, bool _bForce);
-	bool Open(u32 _CommandAddress, u32 _Mode);
+	u32 Open(u32 _CommandAddress, u32 _Mode);
 	bool Seek(u32 _CommandAddress);
 	bool Read(u32 _CommandAddress);
 	bool Write(u32 _CommandAddress);
@@ -27,6 +26,7 @@ public:
 
 	File::IOFile OpenFile();
 
+	static IWII_IPC_HLE_Device* Create(const std::string& Name);
 private:
 	enum
 	{

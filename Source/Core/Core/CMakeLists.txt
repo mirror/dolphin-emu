@@ -144,7 +144,6 @@ set(SRCS	Src/ActionReplay.cpp
 			Src/IPC_HLE/WII_IPC_HLE_Device_net_ssl.cpp
 			Src/IPC_HLE/WII_IPC_HLE_Device_sdio_slot0.cpp
 			Src/IPC_HLE/WII_IPC_HLE_Device_usb.cpp
-			Src/IPC_HLE/WII_IPC_HLE_Device_usb_kbd.cpp
 			Src/IPC_HLE/WII_IPC_HLE_WiiMote.cpp
 			Src/IPC_HLE/WiiMote_HID_Attr.cpp
 			Src/PowerPC/LUT_frsqrtex.cpp
@@ -228,7 +227,7 @@ endif()
 if(LIBUSB_FOUND)
 	# Using shared LibUSB
 	set(LIBS	${LIBS}	${LIBUSB_LIBRARIES})
-	set(SRCS	${SRCS}	Src/IPC_HLE/WII_IPC_HLE_Device_hid.cpp)
+	#set(SRCS	${SRCS}	Src/IPC_HLE/WII_IPC_HLE_Device_hid.cpp)
 endif(LIBUSB_FOUND)
 
 set(LIBS	${LIBS}	polarssl)

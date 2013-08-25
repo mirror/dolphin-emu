@@ -56,12 +56,36 @@
 
 std::string CWII_IPC_HLE_Device_es::m_ContentFile;
 
-CWII_IPC_HLE_Device_es::CWII_IPC_HLE_Device_es(u32 _DeviceID, const std::string& _rDeviceName) 
-	: IWII_IPC_HLE_Device(_DeviceID, _rDeviceName)
-	, m_pContentLoader(NULL)
-	, m_TitleID(-1)
+CWII_IPC_HLE_Device_es::CWII_IPC_HLE_Device_es(const std::string& _rDeviceName) 
+	: IWII_IPC_HLE_Device(_rDeviceName)
 	, AccessIdentID(0x6000000)
 {
+	m_pContentLoader = &DiscIO::CNANDContentManager::Access().GetNANDLoader(m_ContentFile);
+
+	// check for cd ...
+	if (m_pContentLoader->IsValid())
+	{
+		m_TitleID = m_pContentLoader->GetTitleID();
+
+		m_TitleIDs.clear();
+		DiscIO::cUIDsys::AccessInstance().GetTitleIDs(m_TitleIDs);
+		// uncomment if  ES_GetOwnedTitlesCount / ES_GetOwnedTitles is implemented
+		// m_TitleIDsOwned.clear();
+		// DiscIO::cUIDsys::AccessInstance().GetTitleIDs(m_TitleIDsOwned, true);
+	}
+	else if (VolumeHandler::IsValid())
+	{
+		// blindly grab the titleID from the disc - it's unencrypted at:
+		// offset 0x0F8001DC and 0x0F80044C
+		VolumeHandler::GetVolume()->GetTitleID((u8*)&m_TitleID);
+		m_TitleID = Common::swap64(m_TitleID);
+	}
+	else
+	{
+		m_TitleID = ((u64)0x00010000 << 32) | 0xF00DBEEF;
+	}
+
+	INFO_LOG(WII_IPC_ES, "Set default title to %08x/%08x", (u32)(m_TitleID>>32), (u32)m_TitleID);
 }
 
 static u8 key_sd   [0x10]	= {0xab, 0x01, 0xb9, 0xd8, 0xe1, 0x62, 0x2b, 0x08, 0xaf, 0xba, 0xd8, 0x4d, 0xbf, 0xc2, 0xa5, 0x5d};
@@ -92,57 +116,23 @@ void CWII_IPC_HLE_Device_es::LoadWAD(const std::string& _rContentFile)
 	m_ContentFile = _rContentFile;
 }
 
-bool CWII_IPC_HLE_Device_es::Open(u32 _CommandAddress, u32 _Mode)
+#define ES_MAX_COUNT 2
+
+u32 CWII_IPC_HLE_Device_es::Open(u32 _CommandAddress, u32 _Mode)
 {
-	m_pContentLoader = &DiscIO::CNANDContentManager::Access().GetNANDLoader(m_ContentFile);
-
-	// check for cd ...
-	if (m_pContentLoader->IsValid())
+	if (s_NumInstances >= ES_MAX_COUNT)
 	{
-		m_TitleID = m_pContentLoader->GetTitleID();
-
-		m_TitleIDs.clear();
-		DiscIO::cUIDsys::AccessInstance().GetTitleIDs(m_TitleIDs);
-		// uncomment if  ES_GetOwnedTitlesCount / ES_GetOwnedTitles is implemented
-		// m_TitleIDsOwned.clear();
-		// DiscIO::cUIDsys::AccessInstance().GetTitleIDs(m_TitleIDsOwned, true);
+		return FS_EESEXHAUSTED;
 	}
-	else if (VolumeHandler::IsValid())
-	{
-		// blindly grab the titleID from the disc - it's unencrypted at:
-		// offset 0x0F8001DC and 0x0F80044C
-		VolumeHandler::GetVolume()->GetTitleID((u8*)&m_TitleID);
-		m_TitleID = Common::swap64(m_TitleID);
-	}
-	else
-	{
-		m_TitleID = ((u64)0x00010000 << 32) | 0xF00DBEEF;
-	}
-
-	INFO_LOG(WII_IPC_ES, "Set default title to %08x/%08x", (u32)(m_TitleID>>32), (u32)m_TitleID);
-
-	Memory::Write_U32(GetDeviceID(), _CommandAddress+4);
-	if (m_Active)
-		INFO_LOG(WII_IPC_ES, "Device was re-opened.");
-	m_Active = true;
-	return true;
+	s_NumInstances++;
+	return IWII_IPC_HLE_Device::Open(_CommandAddress, _Mode);
 }
 
 bool CWII_IPC_HLE_Device_es::Close(u32 _CommandAddress, bool _bForce)
 {
 	// Leave deletion of the INANDContentLoader objects to CNANDContentManager, don't do it here!
-	m_NANDContent.clear();
-	m_ContentAccessMap.clear();
-	m_pContentLoader = NULL;
-	m_TitleIDs.clear();
-	m_TitleID = -1;
-	AccessIdentID = 0x6000000;
-
-	INFO_LOG(WII_IPC_ES, "ES: Close");
-	if (!_bForce)
-		Memory::Write_U32(0, _CommandAddress + 4);
-	m_Active = false;
-	return true;
+	s_NumInstances--;
+	return IWII_IPC_HLE_Device::Close(_CommandAddress, _bForce);
 }
 
 bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress) 
@@ -242,14 +232,21 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 
 			u64 TitleID = Memory::Read_U64(Buffer.InBuffer[0].m_Address);
 			u32 Index = Memory::Read_U32(Buffer.InBuffer[2].m_Address);
+			const DiscIO::SNANDContent* pContent = AccessContentDevice(TitleID).GetContentByIndex(Index);
+			u32 CFD;
 
-			u32 CFD = AccessIdentID++;
-			m_ContentAccessMap[CFD].m_Position = 0;
-			m_ContentAccessMap[CFD].m_pContent = AccessContentDevice(TitleID).GetContentByIndex(Index);
-			_dbg_assert_msg_(WII_IPC_ES, m_ContentAccessMap[CFD].m_pContent != NULL, "No Content for TitleID: %08x/%08x at Index %x", (u32)(TitleID>>32), (u32)TitleID, Index);
-			// Fix for DLC by itsnotmailmail
-			if (m_ContentAccessMap[CFD].m_pContent == NULL)
+			if (pContent == NULL || !pContent->m_pData)
+			{
 				CFD = 0xffffffff; //TODO: what is the correct error value here?
+			}
+			else
+			{
+				CFD = AccessIdentID++;
+
+				m_ContentAccessMap[CFD].m_Position = 0;
+				m_ContentAccessMap[CFD].m_pContent = pContent;
+			}
+
 			Memory::Write_U32(CFD, _CommandAddress + 0x4);
 
 			INFO_LOG(WII_IPC_ES, "IOCTL_ES_OPENTITLECONTENT: TitleID: %08x/%08x  Index %i -> got CFD %x", (u32)(TitleID>>32), (u32)TitleID, Index, CFD);
@@ -261,15 +258,21 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 		{
 			_dbg_assert_(WII_IPC_ES, Buffer.NumberInBuffer == 1);
 			_dbg_assert_(WII_IPC_ES, Buffer.NumberPayloadBuffer == 0);
-
-			u32 CFD = AccessIdentID++;
 			u32 Index = Memory::Read_U32(Buffer.InBuffer[0].m_Address);
+			const DiscIO::SNANDContent* pContent = AccessContentDevice(m_TitleID).GetContentByIndex(Index);
+			u32 CFD;
 
-			m_ContentAccessMap[CFD].m_Position = 0;
-			m_ContentAccessMap[CFD].m_pContent = AccessContentDevice(m_TitleID).GetContentByIndex(Index);
-			
-			if (m_ContentAccessMap[CFD].m_pContent == NULL)
+			if (pContent == NULL || !pContent->m_pData)
+			{
 				CFD = 0xffffffff; //TODO: what is the correct error value here?
+			}
+			else
+			{
+				CFD = AccessIdentID++;
+
+				m_ContentAccessMap[CFD].m_Position = 0;
+				m_ContentAccessMap[CFD].m_pContent = pContent;
+			}
 
 			Memory::Write_U32(CFD, _CommandAddress + 0x4);
 
@@ -292,7 +295,6 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 
 			_dbg_assert_(WII_IPC_ES, rContent.m_pContent->m_pData != NULL);
 
-			u8* pSrc = &rContent.m_pContent->m_pData[rContent.m_Position];
 			u8* pDest = Memory::GetPointer(Addr);
 
 			if (rContent.m_Position + Size > rContent.m_pContent->m_Size) 
@@ -303,7 +305,11 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 			if (Size > 0)
 			{
 				if (pDest) {
-					memcpy(pDest, pSrc, Size);
+					if (rContent.m_pContent->m_pData)
+					{
+						u8* pSrc = &rContent.m_pContent->m_pData[rContent.m_Position];
+						memcpy(pDest, pSrc, Size);
+					}
 					rContent.m_Position += Size;
 				} else {
 					PanicAlertT("IOCTL_ES_READCONTENT - bad destination");
@@ -784,27 +790,27 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 			}
 			else
 			{
-				CWII_IPC_HLE_Device_usb_oh1_57e_305* s_Usb = GetUsbPointer();
-				size_t size = s_Usb->m_WiiMotes.size();
+				CWII_IPC_HLE_Device_usb_oh1_57e_305* Usb = CWII_IPC_HLE_Device_usb_oh1_57e_305::MakeInstance();
+				size_t size = Usb->m_WiiMotes.size();
 				bool* wiiMoteConnected = new bool[size];
 				for (unsigned int i = 0; i < size; i++)
-					wiiMoteConnected[i] = s_Usb->m_WiiMotes[i].IsConnected();
+					wiiMoteConnected[i] = Usb->m_WiiMotes[i].IsConnected();
 				
 				std::string tContentFile(m_ContentFile.c_str());
 				
 				WII_IPC_HLE_Interface::Reset(true);
 				WII_IPC_HLE_Interface::Init();
-				s_Usb = GetUsbPointer();
-				for (unsigned int i = 0; i < s_Usb->m_WiiMotes.size(); i++)
+				Usb = CWII_IPC_HLE_Device_usb_oh1_57e_305::MakeInstance();
+				for (unsigned int i = 0; i < Usb->m_WiiMotes.size(); i++)
 				{
 					if (wiiMoteConnected[i])
 					{
-						s_Usb->m_WiiMotes[i].Activate(false);
-						s_Usb->m_WiiMotes[i].Activate(true);
+						Usb->m_WiiMotes[i].Activate(false);
+						Usb->m_WiiMotes[i].Activate(true);
 					}
 					else
 					{
-						s_Usb->m_WiiMotes[i].Activate(false);
+						Usb->m_WiiMotes[i].Activate(false);
 					}
 				}
 				
@@ -998,3 +1004,14 @@ u32 CWII_IPC_HLE_Device_es::ES_DIVerify(u8* _pTMD, u32 _sz)
 	DiscIO::cUIDsys::AccessInstance().AddTitle(tmdTitleID);
 	return 0;
 }
+
+IWII_IPC_HLE_Device* CWII_IPC_HLE_Device_es::Create(const std::string& Name)
+{
+	if (Name == GetBaseName())
+	{
+		return new CWII_IPC_HLE_Device_es(Name);
+	}
+	return NULL;
+}
+
+int CWII_IPC_HLE_Device_es::s_NumInstances;

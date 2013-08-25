@@ -74,30 +74,14 @@ const u8 default_address[] = { 0x00, 0x17, 0xAB, 0x99, 0x99, 0x99 };
 
 // **********************************************************************************
 // Handle /dev/net/kd/request requests
-CWII_IPC_HLE_Device_net_kd_request::CWII_IPC_HLE_Device_net_kd_request(u32 _DeviceID, const std::string& _rDeviceName)
-	: IWII_IPC_HLE_Device(_DeviceID, _rDeviceName)
+CWII_IPC_HLE_Device_net_kd_request::CWII_IPC_HLE_Device_net_kd_request(const std::string& _rDeviceName) 
+	: IWII_IPC_HLE_Device(_rDeviceName)
+	// TODO: Dump the true ID from real Wii
 {
 }
 
 CWII_IPC_HLE_Device_net_kd_request::~CWII_IPC_HLE_Device_net_kd_request()
 {
-}
-
-bool CWII_IPC_HLE_Device_net_kd_request::Open(u32 _CommandAddress, u32 _Mode)
-{
-	INFO_LOG(WII_IPC_WC24, "NET_KD_REQ: Open");
-	Memory::Write_U32(GetDeviceID(), _CommandAddress + 4);
-	m_Active = true;
-	return true;
-}
-
-bool CWII_IPC_HLE_Device_net_kd_request::Close(u32 _CommandAddress, bool _bForce)
-{
-	INFO_LOG(WII_IPC_WC24, "NET_KD_REQ: Close");
-	if (!_bForce)
-		Memory::Write_U32(0, _CommandAddress + 4);
-	m_Active = false;
-	return true;
 }
 
 bool CWII_IPC_HLE_Device_net_kd_request::IOCtl(u32 _CommandAddress)
@@ -334,30 +318,13 @@ s32 CWII_IPC_HLE_Device_net_kd_request::NWC24MakeUserID(u64* nwc24_id, u32 holly
 
 // **********************************************************************************
 // Handle /dev/net/ncd/manage requests
-CWII_IPC_HLE_Device_net_ncd_manage::CWII_IPC_HLE_Device_net_ncd_manage(u32 _DeviceID, const std::string& _rDeviceName)
-	: IWII_IPC_HLE_Device(_DeviceID, _rDeviceName)
+CWII_IPC_HLE_Device_net_ncd_manage::CWII_IPC_HLE_Device_net_ncd_manage(const std::string& _rDeviceName)
+	: IWII_IPC_HLE_Device(_rDeviceName)
 {
 }
 
 CWII_IPC_HLE_Device_net_ncd_manage::~CWII_IPC_HLE_Device_net_ncd_manage()
 {
-}
-
-bool CWII_IPC_HLE_Device_net_ncd_manage::Open(u32 _CommandAddress, u32 _Mode)
-{
-	INFO_LOG(WII_IPC_NET, "NET_NCD_MANAGE: Open");
-	Memory::Write_U32(GetDeviceID(), _CommandAddress+4);
-	m_Active = true;
-	return true;
-}
-
-bool CWII_IPC_HLE_Device_net_ncd_manage::Close(u32 _CommandAddress, bool _bForce)
-{
-	INFO_LOG(WII_IPC_NET, "NET_NCD_MANAGE: Close");
-	if (!_bForce)
-		Memory::Write_U32(0, _CommandAddress + 4);
-	m_Active = false;
-	return true;
 }
 
 bool CWII_IPC_HLE_Device_net_ncd_manage::IOCtlV(u32 _CommandAddress)
@@ -458,30 +425,13 @@ bool CWII_IPC_HLE_Device_net_ncd_manage::IOCtlV(u32 _CommandAddress)
 
 // **********************************************************************************
 // Handle /dev/net/wd/command requests
-CWII_IPC_HLE_Device_net_wd_command::CWII_IPC_HLE_Device_net_wd_command(u32 DeviceID, const std::string& DeviceName)
-	: IWII_IPC_HLE_Device(DeviceID, DeviceName)
+CWII_IPC_HLE_Device_net_wd_command::CWII_IPC_HLE_Device_net_wd_command(const std::string& DeviceName)
+	: IWII_IPC_HLE_Device(DeviceName)
 {
 }
 
 CWII_IPC_HLE_Device_net_wd_command::~CWII_IPC_HLE_Device_net_wd_command()
 {
-}
-
-bool CWII_IPC_HLE_Device_net_wd_command::Open(u32 CommandAddress, u32 Mode)
-{
-	INFO_LOG(WII_IPC_NET, "NET_WD_COMMAND: Open");
-	Memory::Write_U32(GetDeviceID(), CommandAddress + 4);
-	m_Active = true;
-	return true;
-}
-
-bool CWII_IPC_HLE_Device_net_wd_command::Close(u32 CommandAddress, bool Force)
-{
-	INFO_LOG(WII_IPC_NET, "NET_WD_COMMAND: Close");
-	if (!Force)
-		Memory::Write_U32(0, CommandAddress + 4);
-	m_Active = false;
-	return true;
 }
 
 // This is just for debugging / playing around.
@@ -576,8 +526,8 @@ bool CWII_IPC_HLE_Device_net_wd_command::IOCtlV(u32 CommandAddress)
 
 // **********************************************************************************
 // Handle /dev/net/ip/top requests
-CWII_IPC_HLE_Device_net_ip_top::CWII_IPC_HLE_Device_net_ip_top(u32 _DeviceID, const std::string& _rDeviceName)
-	: IWII_IPC_HLE_Device(_DeviceID, _rDeviceName)
+CWII_IPC_HLE_Device_net_ip_top::CWII_IPC_HLE_Device_net_ip_top(const std::string& _rDeviceName)
+	: IWII_IPC_HLE_Device(_rDeviceName)
 {
 #ifdef _WIN32
 	int ret = WSAStartup(MAKEWORD(2,2), &InitData);
@@ -590,23 +540,6 @@ CWII_IPC_HLE_Device_net_ip_top::~CWII_IPC_HLE_Device_net_ip_top()
 #ifdef _WIN32
 	WSACleanup();
 #endif
-}
-
-bool CWII_IPC_HLE_Device_net_ip_top::Open(u32 _CommandAddress, u32 _Mode)
-{
-	INFO_LOG(WII_IPC_NET, "NET_IP_TOP: Open");
-	Memory::Write_U32(GetDeviceID(), _CommandAddress+4);
-	m_Active = true;
-	return true;
-}
-
-bool CWII_IPC_HLE_Device_net_ip_top::Close(u32 _CommandAddress, bool _bForce)
-{
-	INFO_LOG(WII_IPC_NET, "NET_IP_TOP: Close");
-	if (!_bForce)
-		Memory::Write_U32(0, _CommandAddress + 4);
-	m_Active = false;
-	return true;
 }
 
 static int inet_pton(const char *src, unsigned char *dst)

@@ -9,19 +9,18 @@
 
 #include "WII_IPC_HLE_Device.h"
 
-class CWII_IPC_HLE_Device_sdio_slot0 : public IWII_IPC_HLE_Device
+class CWII_IPC_HLE_Device_sdio_slot0 : public IWII_IPC_HLE_Device, public CWII_IPC_HLE_Device_Singleton<CWII_IPC_HLE_Device_sdio_slot0>
 {
 public:
 
-	CWII_IPC_HLE_Device_sdio_slot0(u32 _DeviceID, const std::string& _rDeviceName);
+	CWII_IPC_HLE_Device_sdio_slot0(const std::string& _rDeviceName);
 
-	bool Open(u32 _CommandAddress, u32 _Mode);
-	bool Close(u32 _CommandAddress, bool _bForce);
 	bool IOCtl(u32 _CommandAddress); 
 	bool IOCtlV(u32 _CommandAddress);
 
 	void EventNotify();
 
+	static const char* GetBaseName() { return "/dev/sdio/slot0"; }
 private:
 
 	enum

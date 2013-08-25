@@ -14,27 +14,12 @@
 #include "../HW/Memmap.h"
 #include "../Core.h"
 
-CWII_IPC_HLE_Device_sdio_slot0::CWII_IPC_HLE_Device_sdio_slot0(u32 _DeviceID, const std::string& _rDeviceName)
-	: IWII_IPC_HLE_Device(_DeviceID, _rDeviceName)
+CWII_IPC_HLE_Device_sdio_slot0::CWII_IPC_HLE_Device_sdio_slot0(const std::string& _rDeviceName)
+	: IWII_IPC_HLE_Device(_rDeviceName)
 	, m_Status(CARD_NOT_EXIST)
 	, m_BlockLength(0)
 	, m_BusWidth(0)
 	, m_Card(NULL)
-{}
-
-void CWII_IPC_HLE_Device_sdio_slot0::EventNotify()
-{
-	if ((SConfig::GetInstance().m_WiiSDCard && m_event.type == EVENT_INSERT) ||
-		(!SConfig::GetInstance().m_WiiSDCard && m_event.type == EVENT_REMOVE))
-	{
-		Memory::Write_U32(m_event.type, m_event.addr + 4);
-		WII_IPC_HLE_Interface::EnqReply(m_event.addr);
-		m_event.addr = 0;
-		m_event.type = EVENT_NONE;
-	}
-}
-
-bool CWII_IPC_HLE_Device_sdio_slot0::Open(u32 _CommandAddress, u32 _Mode)
 {
 	INFO_LOG(WII_IPC_SD, "Open");
 
@@ -53,24 +38,18 @@ bool CWII_IPC_HLE_Device_sdio_slot0::Open(u32 _CommandAddress, u32 _Mode)
 			ERROR_LOG(WII_IPC_SD, "Could not open SD Card image or create a new one, are you running from a read-only directory?");
 		}
 	}
-
-	Memory::Write_U32(GetDeviceID(), _CommandAddress + 0x4);
-	m_Active = true;
-	return true;
 }
 
-bool CWII_IPC_HLE_Device_sdio_slot0::Close(u32 _CommandAddress, bool _bForce)
+void CWII_IPC_HLE_Device_sdio_slot0::EventNotify()
 {
-	INFO_LOG(WII_IPC_SD, "Close");
-
-	m_Card.Close();
-	m_BlockLength = 0;
-	m_BusWidth = 0;
-
-	if (!_bForce)
-		Memory::Write_U32(0, _CommandAddress + 0x4);
-	m_Active = false;
-	return true;
+	if ((SConfig::GetInstance().m_WiiSDCard && m_event.type == EVENT_INSERT) ||
+		(!SConfig::GetInstance().m_WiiSDCard && m_event.type == EVENT_REMOVE))
+	{
+		Memory::Write_U32(m_event.type, m_event.addr + 4);
+		WII_IPC_HLE_Interface::EnqReply(m_event.addr);
+		m_event.addr = 0;
+		m_event.type = EVENT_NONE;
+	}
 }
 
 // The front SD slot
