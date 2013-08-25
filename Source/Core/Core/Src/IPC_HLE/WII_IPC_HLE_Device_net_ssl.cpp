@@ -22,8 +22,8 @@
 
 WII_SSL CWII_IPC_HLE_Device_net_ssl::_SSL[NET_SSL_MAXINSTANCES];
 
-CWII_IPC_HLE_Device_net_ssl::CWII_IPC_HLE_Device_net_ssl(u32 _DeviceID, const std::string& _rDeviceName)
-	: IWII_IPC_HLE_Device(_DeviceID, _rDeviceName)
+CWII_IPC_HLE_Device_net_ssl::CWII_IPC_HLE_Device_net_ssl(const std::string& _rDeviceName)
+	: IWII_IPC_HLE_Device(_rDeviceName)
 {
 	for (int i = 0; i < NET_SSL_MAXINSTANCES; ++i)
 	{
@@ -65,23 +65,6 @@ int CWII_IPC_HLE_Device_net_ssl::getSSLFreeID()
 		}
 	}
 	return 0;
-}
-
-bool CWII_IPC_HLE_Device_net_ssl::Open(u32 _CommandAddress, u32 _Mode)
-{
-	Memory::Write_U32(GetDeviceID(), _CommandAddress+4);
-	m_Active = true;
-	return true;
-}
-
-bool CWII_IPC_HLE_Device_net_ssl::Close(u32 _CommandAddress, bool _bForce)
-{
-	if (!_bForce)
-	{
-		Memory::Write_U32(0, _CommandAddress + 4);
-	}
-	m_Active = false;
-	return true;
 }
 
 bool CWII_IPC_HLE_Device_net_ssl::IOCtl(u32 _CommandAddress)

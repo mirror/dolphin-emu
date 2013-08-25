@@ -26,33 +26,16 @@ enum
 };
 
 // The /dev/stm/immediate
-class CWII_IPC_HLE_Device_stm_immediate : public IWII_IPC_HLE_Device
+class CWII_IPC_HLE_Device_stm_immediate : public IWII_IPC_HLE_Device, public CWII_IPC_HLE_Device_Singleton<CWII_IPC_HLE_Device_stm_immediate>
 {
 public:
 
-	CWII_IPC_HLE_Device_stm_immediate(u32 _DeviceID, const std::string& _rDeviceName) :
-		IWII_IPC_HLE_Device(_DeviceID, _rDeviceName)
+	CWII_IPC_HLE_Device_stm_immediate(const std::string& _rDeviceName) :
+		IWII_IPC_HLE_Device(_rDeviceName)
 	{}
 
 	virtual ~CWII_IPC_HLE_Device_stm_immediate()
 	{}
-
-	virtual bool Open(u32 _CommandAddress, u32 _Mode)
-	{
-		INFO_LOG(WII_IPC_STM, "STM immediate: Open");
-		Memory::Write_U32(GetDeviceID(), _CommandAddress+4);
-		m_Active = true;
-		return true;
-	}
-
-	virtual bool Close(u32 _CommandAddress, bool _bForce)
-	{
-		INFO_LOG(WII_IPC_STM, "STM immediate: Close");
-		if (!_bForce)
-			Memory::Write_U32(0, _CommandAddress+4);
-		m_Active = false;
-		return true;
-	}
 
 	virtual bool IOCtl(u32 _CommandAddress) 
 	{
@@ -110,38 +93,22 @@ public:
 		Memory::Write_U32(ReturnValue, _CommandAddress + 0x4);
 		return true;
 	}
+
+	static const char* GetBaseName() { return "/dev/stm/immediate"; }
 };
 
 // The /dev/stm/eventhook
-class CWII_IPC_HLE_Device_stm_eventhook : public IWII_IPC_HLE_Device
+class CWII_IPC_HLE_Device_stm_eventhook : public IWII_IPC_HLE_Device, public CWII_IPC_HLE_Device_Singleton<CWII_IPC_HLE_Device_stm_eventhook>
 {
 public:
 
-	CWII_IPC_HLE_Device_stm_eventhook(u32 _DeviceID, const std::string& _rDeviceName) 
-		: IWII_IPC_HLE_Device(_DeviceID, _rDeviceName)
+	CWII_IPC_HLE_Device_stm_eventhook(const std::string& _rDeviceName) 
+		: IWII_IPC_HLE_Device(_rDeviceName)
 		, m_EventHookAddress(0)
 	{}
 
 	virtual ~CWII_IPC_HLE_Device_stm_eventhook()
 	{
-	}
-
-	virtual bool Open(u32 _CommandAddress, u32 _Mode)
-	{
-		Memory::Write_U32(GetDeviceID(), _CommandAddress + 4);
-		m_Active = true;
-		return true;
-	}
-
-	virtual bool Close(u32 _CommandAddress, bool _bForce)
-	{
-		m_EventHookAddress = 0;
-
-		INFO_LOG(WII_IPC_STM, "STM eventhook: Close");
-		if (!_bForce)
-			Memory::Write_U32(0, _CommandAddress+4);
-		m_Active = false;
-		return true;
 	}
 
 	virtual bool IOCtl(u32 _CommandAddress) 
@@ -188,6 +155,8 @@ public:
 
 	// STATE_TO_SAVE
 	u32 m_EventHookAddress;
+
+	static const char* GetBaseName() { return "/dev/stm/eventhook"; }
 };
 
 #endif

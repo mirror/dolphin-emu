@@ -32,8 +32,8 @@ std::string HLE_IPC_BuildFilename(std::string path_wii, int _size)
 	return path_full;
 }
 
-CWII_IPC_HLE_Device_FileIO::CWII_IPC_HLE_Device_FileIO(u32 _DeviceID, const std::string& _rDeviceName)
-	: IWII_IPC_HLE_Device(_DeviceID, _rDeviceName, false)	// not a real hardware
+CWII_IPC_HLE_Device_FileIO::CWII_IPC_HLE_Device_FileIO(const std::string& _rDeviceName)
+	: IWII_IPC_HLE_Device(_rDeviceName, false)	// not a real hardware
 	, m_Mode(0)
 	, m_SeekPos(0)
 {
@@ -44,19 +44,7 @@ CWII_IPC_HLE_Device_FileIO::~CWII_IPC_HLE_Device_FileIO()
 {
 }
 
-bool CWII_IPC_HLE_Device_FileIO::Close(u32 _CommandAddress, bool _bForce)
-{
-	INFO_LOG(WII_IPC_FILEIO, "FileIO: Close %s (DeviceID=%08x)", m_Name.c_str(), m_DeviceID);	
-	m_Mode = 0;
-
-	// Close always return 0 for success
-	if (_CommandAddress && !_bForce)
-		Memory::Write_U32(0, _CommandAddress + 4);
-	m_Active = false;
-	return true;
-}
-
-bool CWII_IPC_HLE_Device_FileIO::Open(u32 _CommandAddress, u32 _Mode)  
+u32 CWII_IPC_HLE_Device_FileIO::Open(u32 _CommandAddress, u32 _Mode)  
 {
 	m_Mode = _Mode;
 	u32 ReturnValue = 0;
@@ -76,7 +64,7 @@ bool CWII_IPC_HLE_Device_FileIO::Open(u32 _CommandAddress, u32 _Mode)
 	if (File::Exists(m_filepath))
 	{
 		INFO_LOG(WII_IPC_FILEIO, "FileIO: Open %s (%s == %08X)", m_Name.c_str(), Modes[_Mode], _Mode);
-		ReturnValue = m_DeviceID;
+		ReturnValue = FS_SUCCESS;
 	}
 	else
 	{
@@ -84,10 +72,7 @@ bool CWII_IPC_HLE_Device_FileIO::Open(u32 _CommandAddress, u32 _Mode)
 		ReturnValue = FS_FILE_NOT_EXIST;
 	}
 
-	if (_CommandAddress)
-		Memory::Write_U32(ReturnValue, _CommandAddress+4);
-	m_Active = true;
-	return true;
+	return ReturnValue;
 }
 
 File::IOFile CWII_IPC_HLE_Device_FileIO::OpenFile()
@@ -292,10 +277,17 @@ bool CWII_IPC_HLE_Device_FileIO::IOCtl(u32 _CommandAddress)
 
 void CWII_IPC_HLE_Device_FileIO::DoState(PointerWrap &p)
 {
-	DoStateShared(p);
-
 	p.Do(m_Mode);
 	p.Do(m_SeekPos);
-	
+
 	m_filepath = HLE_IPC_BuildFilename(m_Name, 64);
+}
+
+IWII_IPC_HLE_Device* CWII_IPC_HLE_Device_FileIO::Create(const std::string& Name)
+{
+	if (Name.find("/dev") != 0)
+	{
+		return new CWII_IPC_HLE_Device_FileIO(Name);
+	}
+	return NULL;
 }

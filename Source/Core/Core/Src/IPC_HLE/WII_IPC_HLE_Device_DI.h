@@ -13,24 +13,20 @@ namespace DiscIO
 	class IFileSystem;
 }
 
-class CWII_IPC_HLE_Device_di : public IWII_IPC_HLE_Device
+class CWII_IPC_HLE_Device_di : public IWII_IPC_HLE_Device, public CWII_IPC_HLE_Device_Singleton<CWII_IPC_HLE_Device_di>
 {
 public:
-
-	CWII_IPC_HLE_Device_di(u32 _DeviceID, const std::string& _rDeviceName);
+	CWII_IPC_HLE_Device_di(const std::string& _rDeviceName);
 
 	virtual ~CWII_IPC_HLE_Device_di();
-
-	bool Open(u32 _CommandAddress, u32 _Mode);
-	bool Close(u32 _CommandAddress, bool _bForce);
 
 	bool IOCtl(u32 _CommandAddress); 
 	bool IOCtlV(u32 _CommandAddress);
 	
 	int GetCmdDelay(u32);
 
+	static const char* GetBaseName() { return "/dev/di"; }
 private:
-
 	u32 ExecuteCommand(u32 BufferIn, u32 BufferInSize, u32 _BufferOut, u32 BufferOutSize);
 
 	DiscIO::IFileSystem* m_pFileSystem;

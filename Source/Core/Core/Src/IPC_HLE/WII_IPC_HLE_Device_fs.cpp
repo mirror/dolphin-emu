@@ -22,37 +22,20 @@
 static Common::replace_v replacements;
 
 
-CWII_IPC_HLE_Device_fs::CWII_IPC_HLE_Device_fs(u32 _DeviceID, const std::string& _rDeviceName) 
-	: IWII_IPC_HLE_Device(_DeviceID, _rDeviceName)
+CWII_IPC_HLE_Device_fs::CWII_IPC_HLE_Device_fs(const std::string& _rDeviceName) 
+	: IWII_IPC_HLE_Device(_rDeviceName)
 {
 	Common::ReadReplacements(replacements);
-}
-
-CWII_IPC_HLE_Device_fs::~CWII_IPC_HLE_Device_fs()
-{}
-
-bool CWII_IPC_HLE_Device_fs::Open(u32 _CommandAddress, u32 _Mode)
-{
 	// clear tmp folder
 	{
 		std::string Path = File::GetUserPath(D_WIIUSER_IDX) + "tmp";
 		File::DeleteDirRecursively(Path);
 		File::CreateDir(Path.c_str());
 	}
-
-	Memory::Write_U32(GetDeviceID(), _CommandAddress+4);
-	m_Active = true;
-	return true;
 }
 
-bool CWII_IPC_HLE_Device_fs::Close(u32 _CommandAddress, bool _bForce)
-{
-	INFO_LOG(WII_IPC_FILEIO, "Close");
-	if (!_bForce)
-		Memory::Write_U32(0, _CommandAddress + 4);
-	m_Active = false;
-	return true;
-}
+CWII_IPC_HLE_Device_fs::~CWII_IPC_HLE_Device_fs()
+{}
 
 // Get total filesize of contents of a directory (recursive)
 // Only used for ES_GetUsage atm, could be useful elsewhere?
@@ -501,8 +484,6 @@ int CWII_IPC_HLE_Device_fs::GetCmdDelay(u32)
 
 void CWII_IPC_HLE_Device_fs::DoState(PointerWrap& p)
 {
-	DoStateShared(p);
-
 	// handle /tmp
 
 	std::string Path = File::GetUserPath(D_WIIUSER_IDX) + "tmp";

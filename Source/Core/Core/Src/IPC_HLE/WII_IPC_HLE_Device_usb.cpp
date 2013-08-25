@@ -15,8 +15,8 @@
 #include "CoreTiming.h"
 
 // The device class
-CWII_IPC_HLE_Device_usb_oh1_57e_305::CWII_IPC_HLE_Device_usb_oh1_57e_305(u32 _DeviceID, const std::string& _rDeviceName)
-	: IWII_IPC_HLE_Device(_DeviceID, _rDeviceName)
+CWII_IPC_HLE_Device_usb_oh1_57e_305::CWII_IPC_HLE_Device_usb_oh1_57e_305(const std::string& _rDeviceName)
+	: IWII_IPC_HLE_Device(_rDeviceName)
 	, m_ScanEnable(0)
 	, m_HCIEndpoint(0)
 	, m_ACLEndpoint(0)
@@ -25,7 +25,6 @@ CWII_IPC_HLE_Device_usb_oh1_57e_305::CWII_IPC_HLE_Device_usb_oh1_57e_305(u32 _De
 	// Activate only first Wiimote by default
 
 	_conf_pads BT_DINF;
-	SetUsbPointer(this);
 	if (!SConfig::GetInstance().m_SYSCONF->GetArrayData("BT.DINF", (u8*)&BT_DINF, sizeof(_conf_pads)))
 	{
 		PanicAlertT("Trying to read from invalid SYSCONF\nWiimote bt ids are not available");
@@ -90,12 +89,10 @@ CWII_IPC_HLE_Device_usb_oh1_57e_305::CWII_IPC_HLE_Device_usb_oh1_57e_305(u32 _De
 CWII_IPC_HLE_Device_usb_oh1_57e_305::~CWII_IPC_HLE_Device_usb_oh1_57e_305()
 {
 	m_WiiMotes.clear();
-	SetUsbPointer(NULL);
 }
 
 void CWII_IPC_HLE_Device_usb_oh1_57e_305::DoState(PointerWrap &p)
 {
-	p.Do(m_Active);
 	p.Do(m_ControllerBD);
 	p.Do(m_CtrlSetup);
 	p.Do(m_ACLSetup);
@@ -114,37 +111,6 @@ void CWII_IPC_HLE_Device_usb_oh1_57e_305::DoState(PointerWrap &p)
 bool CWII_IPC_HLE_Device_usb_oh1_57e_305::RemoteDisconnect(u16 _connectionHandle)
 {
 	return SendEventDisconnect(_connectionHandle, 0x13);
-}
-
-bool CWII_IPC_HLE_Device_usb_oh1_57e_305::Open(u32 _CommandAddress, u32 _Mode)
-{
-	m_ScanEnable = 0;
-
-	m_last_ticks = 0;
-	memset(m_PacketCount, 0, sizeof(m_PacketCount));
-
-	m_HCIEndpoint.m_address = 0;
-	m_ACLEndpoint.m_address = 0;
-
-	Memory::Write_U32(GetDeviceID(), _CommandAddress + 4);
-	m_Active = true;
-	return true;
-}
-
-bool CWII_IPC_HLE_Device_usb_oh1_57e_305::Close(u32 _CommandAddress, bool _bForce)
-{
-	m_ScanEnable = 0;
-
-	m_last_ticks = 0;
-	memset(m_PacketCount, 0, sizeof(m_PacketCount));
-
-	m_HCIEndpoint.m_address = 0;
-	m_ACLEndpoint.m_address = 0;
-
-	if (!_bForce)
-		Memory::Write_U32(0, _CommandAddress + 4);
-	m_Active = false;
-	return true;
 }
 
 bool CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtl(u32 _CommandAddress)

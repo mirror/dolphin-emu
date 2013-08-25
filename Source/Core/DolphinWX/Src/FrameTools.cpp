@@ -1424,7 +1424,7 @@ void CFrame::ConnectWiimote(int wm_idx, bool connect)
 {
 	if (Core::IsRunning() && SConfig::GetInstance().m_LocalCoreStartupParameter.bWii)
 	{
-		GetUsbPointer()->AccessWiiMote(wm_idx | 0x100)->Activate(connect);
+		CWII_IPC_HLE_Device_usb_oh1_57e_305::MakeInstance()->AccessWiiMote(wm_idx | 0x100)->Activate(connect);
 		wxString msg(wxString::Format(wxT("Wiimote %i %s"), wm_idx + 1,
 					connect ? wxT("Connected") : wxT("Disconnected")));
 		Core::DisplayMessage(WxStrToStr(msg), 3000);
@@ -1434,7 +1434,7 @@ void CFrame::ConnectWiimote(int wm_idx, bool connect)
 
 void CFrame::OnConnectWiimote(wxCommandEvent& event)
 {
-	ConnectWiimote(event.GetId() - IDM_CONNECT_WIIMOTE1, !GetUsbPointer()->AccessWiiMote((event.GetId() - IDM_CONNECT_WIIMOTE1) | 0x100)->IsConnected());
+	ConnectWiimote(event.GetId() - IDM_CONNECT_WIIMOTE1, !CWII_IPC_HLE_Device_usb_oh1_57e_305::MakeInstance()->AccessWiiMote((event.GetId() - IDM_CONNECT_WIIMOTE1) | 0x100)->IsConnected());
 }
 
 // Toogle fullscreen. In Windows the fullscreen mode is accomplished by expanding the m_Panel to cover
@@ -1612,15 +1612,15 @@ void CFrame::UpdateGUI()
 	GetMenuBar()->FindItem(IDM_CONFIG_WIIMOTE_PLUGIN)->Enable(!RunningGamecube);
 	if (RunningWii)
 	{
-		GetMenuBar()->FindItem(IDM_CONNECT_WIIMOTE1)->Check(GetUsbPointer()->
+		GetMenuBar()->FindItem(IDM_CONNECT_WIIMOTE1)->Check(CWII_IPC_HLE_Device_usb_oh1_57e_305::MakeInstance()->
 				AccessWiiMote(0x0100)->IsConnected());
-		GetMenuBar()->FindItem(IDM_CONNECT_WIIMOTE2)->Check(GetUsbPointer()->
+		GetMenuBar()->FindItem(IDM_CONNECT_WIIMOTE2)->Check(CWII_IPC_HLE_Device_usb_oh1_57e_305::MakeInstance()->
 				AccessWiiMote(0x0101)->IsConnected());
-		GetMenuBar()->FindItem(IDM_CONNECT_WIIMOTE3)->Check(GetUsbPointer()->
+		GetMenuBar()->FindItem(IDM_CONNECT_WIIMOTE3)->Check(CWII_IPC_HLE_Device_usb_oh1_57e_305::MakeInstance()->
 				AccessWiiMote(0x0102)->IsConnected());
-		GetMenuBar()->FindItem(IDM_CONNECT_WIIMOTE4)->Check(GetUsbPointer()->
+		GetMenuBar()->FindItem(IDM_CONNECT_WIIMOTE4)->Check(CWII_IPC_HLE_Device_usb_oh1_57e_305::MakeInstance()->
 				AccessWiiMote(0x0103)->IsConnected());
-		GetMenuBar()->FindItem(IDM_CONNECT_BALANCEBOARD)->Check(GetUsbPointer()->
+		GetMenuBar()->FindItem(IDM_CONNECT_BALANCEBOARD)->Check(CWII_IPC_HLE_Device_usb_oh1_57e_305::MakeInstance()->
 				AccessWiiMote(0x0104)->IsConnected());
 	}
 
