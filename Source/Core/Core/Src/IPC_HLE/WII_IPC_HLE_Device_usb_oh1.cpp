@@ -9,7 +9,7 @@
 #include "../HW/Wiimote.h"
 #include "../HW/WII_IPC.h"
 #include "WII_IPC_HLE.h"
-#include "WII_IPC_HLE_Device_usb.h"
+#include "WII_IPC_HLE_Device_usb_oh1.h"
 #include "../ConfigManager.h"
 #include "../Movie.h"
 #include "CoreTiming.h"

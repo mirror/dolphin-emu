@@ -37,7 +37,7 @@
 #include "HW/EXI.h"
 #include "HW/SystemTimers.h"
 
-#include "IPC_HLE/WII_IPC_HLE_Device_usb.h"
+#include "IPC_HLE/WII_IPC_HLE_Device_usb_oh1.h"
 
 #include "PowerPC/PowerPC.h"
 #ifdef USE_GDBSTUB

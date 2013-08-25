@@ -5,7 +5,7 @@
 #include "NetPlayClient.h"
 
 // for wiimote
-#include "IPC_HLE/WII_IPC_HLE_Device_usb.h"
+#include "IPC_HLE/WII_IPC_HLE_Device_usb_oh1.h"
 #include "IPC_HLE/WII_IPC_HLE_WiiMote.h"
 // for gcpad
 #include "HW/SI_DeviceGCController.h"

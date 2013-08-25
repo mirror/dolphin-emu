@@ -6,7 +6,7 @@
 #include "StringUtil.h"
 
 #include "WII_IPC_HLE_WiiMote.h" // Core
-#include "WII_IPC_HLE_Device_usb.h"
+#include "WII_IPC_HLE_Device_usb_oh1.h"
 #include "../ConfigManager.h"
 #include "../Host.h"
 #include "../Core.h"
