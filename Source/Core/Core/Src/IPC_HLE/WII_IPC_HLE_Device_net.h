@@ -387,17 +387,16 @@ public:
 // KD is the IOS module responsible for implementing WiiConnect24 functionality.
 // It can perform HTTPS downloads, send and receive mail via SMTP, and execute a
 // JavaScript-like language while the Wii is in standby mode.
-class CWII_IPC_HLE_Device_net_kd_request : public IWII_IPC_HLE_Device
+class CWII_IPC_HLE_Device_net_kd_request : public IWII_IPC_HLE_Device, public CWII_IPC_HLE_Device_Singleton<CWII_IPC_HLE_Device_net_kd_request>
 {
 public:
-	CWII_IPC_HLE_Device_net_kd_request(u32 _DeviceID, const std::string& _rDeviceName);
+	CWII_IPC_HLE_Device_net_kd_request(const std::string& _rDeviceName);
 
 	virtual ~CWII_IPC_HLE_Device_net_kd_request();
 
-	virtual bool Open(u32 _CommandAddress, u32 _Mode);
-	virtual bool Close(u32 _CommandAddress, bool _bForce);
 	virtual bool IOCtl(u32 _CommandAddress);
 
+	static const char* GetBaseName() { return "/dev/net/kd/request"; }
 private:
 	enum
 	{
@@ -443,11 +442,11 @@ private:
 
 
 //////////////////////////////////////////////////////////////////////////
-class CWII_IPC_HLE_Device_net_kd_time : public IWII_IPC_HLE_Device
+class CWII_IPC_HLE_Device_net_kd_time : public IWII_IPC_HLE_Device, public CWII_IPC_HLE_Device_Singleton<CWII_IPC_HLE_Device_net_kd_time>
 {
 public:
-	CWII_IPC_HLE_Device_net_kd_time(u32 _DeviceID, const std::string& _rDeviceName)
-		: IWII_IPC_HLE_Device(_DeviceID, _rDeviceName)
+	CWII_IPC_HLE_Device_net_kd_time(const std::string& _rDeviceName)
+		: IWII_IPC_HLE_Device(_rDeviceName)
 		, rtc()
 		, utcdiff()
 	{
@@ -455,21 +454,6 @@ public:
 
 	virtual ~CWII_IPC_HLE_Device_net_kd_time()
 	{}
-
-	virtual bool Open(u32 _CommandAddress, u32 _Mode)
-	{
-		INFO_LOG(WII_IPC_NET, "NET_KD_TIME: Open");
-		Memory::Write_U32(GetDeviceID(), _CommandAddress+4);
-		return true;
-	}
-
-	virtual bool Close(u32 _CommandAddress, bool _bForce)
-	{
-		INFO_LOG(WII_IPC_NET, "NET_KD_TIME: Close");
-		if (!_bForce)
-			Memory::Write_U32(0, _CommandAddress + 4);
-		return true;
-	}
 
 	virtual bool IOCtl(u32 _CommandAddress)
 	{
@@ -518,6 +502,7 @@ public:
 		return true;
 	}
 
+	static const char* GetBaseName() { return "/dev/net/kd/time"; }
 private:
 	enum
 	{
@@ -589,17 +574,17 @@ enum NET_IOCTL
 };
 
 //////////////////////////////////////////////////////////////////////////
-class CWII_IPC_HLE_Device_net_ip_top : public IWII_IPC_HLE_Device
+class CWII_IPC_HLE_Device_net_ip_top : public IWII_IPC_HLE_Device, public CWII_IPC_HLE_Device_Singleton<CWII_IPC_HLE_Device_net_ip_top>
 {
 public:
-	CWII_IPC_HLE_Device_net_ip_top(u32 _DeviceID, const std::string& _rDeviceName);
+	CWII_IPC_HLE_Device_net_ip_top(const std::string& _rDeviceName);
 
 	virtual ~CWII_IPC_HLE_Device_net_ip_top();
 
-	virtual bool Open(u32 _CommandAddress, u32 _Mode);
-	virtual bool Close(u32 _CommandAddress, bool _bForce);
 	virtual bool IOCtl(u32 _CommandAddress);
 	virtual bool IOCtlV(u32 _CommandAddress);
+
+	static const char* GetBaseName() { return "/dev/net/ip/top"; }
 
 	virtual u32 Update();
 
@@ -613,17 +598,16 @@ private:
 
 // **********************************************************************************
 // Interface for reading and changing network configuration (probably some other stuff as well)
-class CWII_IPC_HLE_Device_net_ncd_manage : public IWII_IPC_HLE_Device
+class CWII_IPC_HLE_Device_net_ncd_manage : public IWII_IPC_HLE_Device, public CWII_IPC_HLE_Device_Singleton<CWII_IPC_HLE_Device_net_ncd_manage>
 {
 public:
-	CWII_IPC_HLE_Device_net_ncd_manage(u32 _DeviceID, const std::string& _rDeviceName);
+	CWII_IPC_HLE_Device_net_ncd_manage(const std::string& _rDeviceName);
 
 	virtual ~CWII_IPC_HLE_Device_net_ncd_manage();
 
-	virtual bool Open(u32 _CommandAddress, u32 _Mode);
-	virtual bool Close(u32 _CommandAddress, bool _bForce);
 	virtual bool IOCtlV(u32 _CommandAddress);
 
+	static const char* GetBaseName() { return "/dev/net/ncd/manage"; }
 private:
 	enum
 	{
@@ -641,17 +625,16 @@ private:
 };
 
 //////////////////////////////////////////////////////////////////////////
-class CWII_IPC_HLE_Device_net_wd_command : public IWII_IPC_HLE_Device
+class CWII_IPC_HLE_Device_net_wd_command : public IWII_IPC_HLE_Device, public CWII_IPC_HLE_Device_Singleton<CWII_IPC_HLE_Device_net_wd_command>
 {
 public:
-	CWII_IPC_HLE_Device_net_wd_command(u32 DeviceID, const std::string& DeviceName);
+	CWII_IPC_HLE_Device_net_wd_command(const std::string& DeviceName);
 
 	virtual ~CWII_IPC_HLE_Device_net_wd_command();
 
-	virtual bool Open(u32 CommandAddress, u32 Mode);
-	virtual bool Close(u32 CommandAddress, bool Force);
 	virtual bool IOCtlV(u32 CommandAddress);
 
+	static const char* GetBaseName() { return "/dev/net/wd/command"; }
 private:
 	enum
 	{

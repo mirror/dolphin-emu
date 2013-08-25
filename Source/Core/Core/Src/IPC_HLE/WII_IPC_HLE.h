@@ -36,8 +36,6 @@ void ES_DIVerify(u8 *_pTMD, u32 _sz);
 void SDIO_EventNotify();
 
 
-IWII_IPC_HLE_Device* CreateFileIO(u32 _DeviceID, const std::string& _rDeviceName);
-
 IWII_IPC_HLE_Device* GetDeviceByName(const std::string& _rDeviceName);
 IWII_IPC_HLE_Device* AccessDeviceByID(u32 _ID);
 int getFreeDeviceId();

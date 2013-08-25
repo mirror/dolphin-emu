@@ -10,23 +10,20 @@
 #include "NANDContentLoader.h"
 #include <memory>
 
-class CWII_IPC_HLE_Device_es : public IWII_IPC_HLE_Device
+class CWII_IPC_HLE_Device_es : public IWII_IPC_HLE_Device,
+public CWII_IPC_HLE_Device_Singleton<CWII_IPC_HLE_Device_es>
 {
 public:
 
-	CWII_IPC_HLE_Device_es(u32 _DeviceID, const std::string& _rDeviceName);
+	CWII_IPC_HLE_Device_es(const std::string& _rDeviceName);
 
 	virtual ~CWII_IPC_HLE_Device_es();
 
 	void LoadWAD(const std::string& _rContentFile);
 
-	void OpenInternal();
-
 	virtual void DoState(PointerWrap& p);
-
-	virtual bool Open(u32 _CommandAddress, u32 _Mode);
-
-	virtual bool Close(u32 _CommandAddress, bool _bForce);
+	virtual u32 Open(u32 _CommandAddress, u32 _Mode);
+	virtual bool Close(u32 _CommandAddress, bool _bForce = false);
 
 	virtual bool IOCtlV(u32 _CommandAddress);
 	static u32 ES_DIVerify(u8 *_pTMD, u32 _sz);
@@ -34,7 +31,9 @@ public:
 	// This should only be cleared on power reset
 	static std::string m_ContentFile;
 
+	static const char* GetBaseName() { return "/dev/es"; }
 private:
+	static int s_NumInstances;
 	enum
 	{
         IOCTL_ES_ADDTICKET             = 0x01,
@@ -135,6 +134,8 @@ private:
 	u32 m_AccessIdentID;
 
 	static u8 *keyTable[11];
+
+	void OpenInternal();
 
 	u64 GetCurrentTitleID() const;
 

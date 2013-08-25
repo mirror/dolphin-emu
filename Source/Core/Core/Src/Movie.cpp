@@ -396,7 +396,7 @@ void ChangeWiiPads(bool instantly)
 	for (int i = 0; i < MAX_BBMOTES; i++)
 	{
 		g_wiimote_sources[i] = IsUsingWiimote(i) ? WIIMOTE_SRC_EMU : WIIMOTE_SRC_NONE;
-		GetUsbPointer()->AccessWiiMote(i | 0x100)->Activate(IsUsingWiimote(i));
+		CWII_IPC_HLE_Device_usb_oh1_57e_305::MakeInstance()->AccessWiiMote(i | 0x100)->Activate(IsUsingWiimote(i));
 	}
 }
 

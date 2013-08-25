@@ -466,9 +466,6 @@
     <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE_Device_fs.cpp">
       <Filter>IPC HLE %28IOS/Starlet%29\FS</Filter>
     </ClCompile>
-    <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE_Device_usb_kbd.cpp">
-      <Filter>IPC HLE %28IOS/Starlet%29\Keyboard</Filter>
-    </ClCompile>
     <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE_Device_net.cpp">
       <Filter>IPC HLE %28IOS/Starlet%29\Net</Filter>
     </ClCompile>
@@ -562,9 +559,6 @@
     <ClCompile Include="Src\NetPlayServer.cpp" />
     <ClCompile Include="Src\IPC_HLE\ICMPWin.cpp">
       <Filter>IPC HLE %28IOS/Starlet%29\Net</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE_Device_hid.cpp">
-      <Filter>IPC HLE %28IOS/Starlet%29\USB</Filter>
     </ClCompile>
     <ClCompile Include="Src\ec_wii.cpp" />
     <ClCompile Include="Src\IPC_HLE\WII_Socket.cpp">
@@ -944,9 +938,6 @@
     </ClInclude>
     <ClInclude Include="Src\IPC_HLE\WII_IPC_HLE_Device_fs.h">
       <Filter>IPC HLE %28IOS/Starlet%29\FS</Filter>
-    </ClInclude>
-    <ClInclude Include="Src\IPC_HLE\WII_IPC_HLE_Device_usb_kbd.h">
-      <Filter>IPC HLE %28IOS/Starlet%29\Keyboard</Filter>
     </ClInclude>
     <ClInclude Include="Src\IPC_HLE\WII_IPC_HLE_Device_net.h">
       <Filter>IPC HLE %28IOS/Starlet%29\Net</Filter>

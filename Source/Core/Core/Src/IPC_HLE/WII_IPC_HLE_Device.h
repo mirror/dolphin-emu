@@ -95,11 +95,9 @@ class IWII_IPC_HLE_Device
 {
 public:
 
-	IWII_IPC_HLE_Device(u32 _DeviceID, const std::string& _rName, bool _Hardware = true) :
+	IWII_IPC_HLE_Device(const std::string& _rName, bool _Hardware = true) :
 		m_Name(_rName),
-		m_DeviceID(_DeviceID),
-		m_Hardware(_Hardware),
-		m_Active(false)
+		m_Hardware(_Hardware)
 	{
 	}
 
@@ -107,32 +105,29 @@ public:
 	{
 	}
 
-	virtual void DoState(PointerWrap& p) 
-	{
-		DoStateShared(p);
-		p.Do(m_Active);
-	}
-	
-	void DoStateShared(PointerWrap& p);
+	virtual void DoState(PointerWrap& p)
+	{}
+
+	// Create also semantically references the device.
+	void Ref()
+	{}
+	virtual void Unref()
+	{}
 
 	const std::string& GetDeviceName() const { return m_Name; }
-	u32 GetDeviceID() const { return m_DeviceID; }
 
-	virtual bool Open(u32 _CommandAddress, u32 _Mode)
+	virtual u32 Open(u32 _CommandAddress, u32 _Mode)
 	{
-		(void)_Mode;
-		WARN_LOG(WII_IPC_HLE, "%s does not support Open()", m_Name.c_str());
-		Memory::Write_U32(FS_ENOENT, _CommandAddress + 4);
-		m_Active = true;
-		return true;
+		return FS_SUCCESS;
 	}
 
 	virtual bool Close(u32 _CommandAddress, bool _bForce = false)
 	{
-		WARN_LOG(WII_IPC_HLE, "%s does not support Close()", m_Name.c_str());
 		if (!_bForce)
-			Memory::Write_U32(FS_EINVAL, _CommandAddress + 4);
-		m_Active = false;
+		{
+			Memory::Write_U32(FS_SUCCESS, _CommandAddress + 4);
+		}
+
 		return true;
 	}
 
@@ -149,15 +144,13 @@ public:
 	virtual u32 Update() { return 0; }
 
 	virtual bool IsHardware() { return m_Hardware; }
-	virtual bool IsOpened() { return m_Active; }
-public:
-	std::string m_Name;
+	//virtual bool IsOpened() { return m_Active; }
 protected:
 
 	// STATE_TO_SAVE
-	u32 m_DeviceID;
+	std::string m_Name;
 	bool m_Hardware;
-	bool m_Active;
+	int m_RefCount;
 
 	// Write out the IPC struct from _CommandAddress to _NumberOfCommands numbers
 	// of 4 byte commands.
@@ -217,30 +210,51 @@ protected:
 	}
 };
 
+extern std::vector<std::pair<void (*)(void*), void*>> g_SingletonDestructors;
+
+template <typename T>
+class CWII_IPC_HLE_Device_Singleton
+{
+public:
+	static IWII_IPC_HLE_Device* Create(const std::string& Name)
+	{
+		if (Name == T::GetBaseName())
+		{
+			return MakeInstance();
+		}
+		return NULL;
+	}
+
+	static T* MakeInstance()
+	{
+		if (s_Instance == NULL)
+		{
+			s_Instance = new T(T::GetBaseName());
+			std::pair<void (*)(void*), void*> Pair(DeleteMe, s_Instance);
+			g_SingletonDestructors.push_back(Pair);
+		}
+		return s_Instance;
+	}
+
+	static void DeleteMe(void* self)
+	{
+		delete (T*) self;
+		s_Instance = NULL;
+	}
+
+private:
+	static T* s_Instance;
+};
+
+template <typename T>
+T* CWII_IPC_HLE_Device_Singleton<T>::s_Instance;
+
 class CWII_IPC_HLE_Device_stub : public IWII_IPC_HLE_Device
 {
 public:
-	CWII_IPC_HLE_Device_stub(u32 DeviceID, const std::string& Name)
-		: IWII_IPC_HLE_Device(DeviceID, Name)
-	{
-	}
-
-	bool Open(u32 CommandAddress, u32 Mode)
-	{
-		(void)Mode;
-		WARN_LOG(WII_IPC_HLE, "%s faking Open()", m_Name.c_str());
-		Memory::Write_U32(GetDeviceID(), CommandAddress + 4);
-		m_Active = true;
-		return true;
-	}
-	bool Close(u32 CommandAddress, bool bForce = false)
-	{
-		WARN_LOG(WII_IPC_HLE, "%s faking Close()", m_Name.c_str());
-		if (!bForce)
-			Memory::Write_U32(FS_SUCCESS, CommandAddress + 4);
-		m_Active = false;
-		return true;
-	}
+	CWII_IPC_HLE_Device_stub(const std::string& Name)
+		: IWII_IPC_HLE_Device(Name)
+	{}
 
 	bool IOCtl(u32 CommandAddress)
 	{
@@ -254,6 +268,21 @@ public:
 		Memory::Write_U32(FS_SUCCESS, CommandAddress + 4);
 		return true;
 	}
+
 };
+
+// Stubs
+#define DECLARE_STUB(Class, BaseName) \
+	class Class : public CWII_IPC_HLE_Device_stub, public CWII_IPC_HLE_Device_Singleton<Class> \
+	{ \
+	public: \
+		Class(const std::string& Name) \
+			: CWII_IPC_HLE_Device_stub(Name) \
+		{} \
+		static const char* GetBaseName() { return BaseName; } \
+	};
+
+DECLARE_STUB(CWII_IPC_HLE_Device_sdio_slot1, "/dev/sdio_slot1");
+DECLARE_STUB(CWII_IPC_HLE_Device_usb_oh1, "/dev/usb/oh1");
 
 #endif
