@@ -44,7 +44,7 @@
 #include "../Boot/Boot_DOL.h"
 #include "NandPaths.h"
 #include "CommonPaths.h"
-#include "IPC_HLE/WII_IPC_HLE_Device_usb.h"
+#include "IPC_HLE/WII_IPC_HLE_Device_usb_oh1.h"
 #include "../Movie.h"
 #include "StringUtil.h"
 

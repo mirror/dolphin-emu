@@ -143,7 +143,7 @@ set(SRCS	Src/ActionReplay.cpp
 			Src/IPC_HLE/WII_IPC_HLE_Device_net.cpp
 			Src/IPC_HLE/WII_IPC_HLE_Device_net_ssl.cpp
 			Src/IPC_HLE/WII_IPC_HLE_Device_sdio_slot0.cpp
-			Src/IPC_HLE/WII_IPC_HLE_Device_usb.cpp
+			Src/IPC_HLE/WII_IPC_HLE_Device_usb_oh1.cpp
 			Src/IPC_HLE/WII_IPC_HLE_WiiMote.cpp
 			Src/IPC_HLE/WiiMote_HID_Attr.cpp
 			Src/PowerPC/LUT_frsqrtex.cpp

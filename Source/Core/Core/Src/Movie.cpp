@@ -13,7 +13,7 @@
 #include "HW/Wiimote.h"
 #include "HW/WiimoteEmu/WiimoteEmu.h"
 #include "HW/WiimoteEmu/WiimoteHid.h"
-#include "IPC_HLE/WII_IPC_HLE_Device_usb.h"
+#include "IPC_HLE/WII_IPC_HLE_Device_usb_oh1.h"
 #include "State.h"
 #include "Timer.h"
 #include "VideoConfig.h"

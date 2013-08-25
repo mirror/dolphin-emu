@@ -14,7 +14,7 @@
 #include "VolumeCreator.h"
 #include "Filesystem.h"
 #include "../Boot/Boot_DOL.h"
-#include "IPC_HLE/WII_IPC_HLE_Device_usb.h"
+#include "IPC_HLE/WII_IPC_HLE_Device_usb_oh1.h"
 #include "HLE.h"
 #include "PowerPC/PPCAnalyst.h"
 #include "PowerPC/SignatureDB.h"
