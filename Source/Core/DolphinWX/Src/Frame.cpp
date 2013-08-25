@@ -26,7 +26,7 @@
 #include "Core.h"
 #include "HW/DVDInterface.h"
 #include "HW/GCPad.h"
-#include "IPC_HLE/WII_IPC_HLE_Device_usb.h"
+#include "IPC_HLE/WII_IPC_HLE_Device_usb_oh1.h"
 #include "State.h"
 #include "VolumeHandler.h"
 #include "Movie.h"
