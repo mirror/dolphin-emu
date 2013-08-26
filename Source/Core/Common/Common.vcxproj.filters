@@ -70,6 +70,7 @@
     <ClInclude Include="Src\FixedSizeQueue.h" />
     <ClInclude Include="Src\Hash.h" />
     <ClInclude Include="Src\IniFile.h" />
+    <ClInclude Include="Src\IntrusiveList.h" />
     <ClInclude Include="Src\LinearDiskCache.h" />
     <ClInclude Include="Src\MathUtil.h" />
     <ClInclude Include="Src\MemArena.h" />

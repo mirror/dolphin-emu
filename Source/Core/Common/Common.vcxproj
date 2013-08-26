@@ -244,6 +244,7 @@
     <ClInclude Include="Src\FixedSizeQueue.h" />
     <ClInclude Include="Src\Hash.h" />
     <ClInclude Include="Src\IniFile.h" />
+    <ClInclude Include="Src\IntrusiveList.h" />
     <ClInclude Include="Src\LinearDiskCache.h" />
     <ClInclude Include="Src\Log.h" />
     <ClInclude Include="Src\LogManager.h" />
