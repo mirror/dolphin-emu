@@ -63,7 +63,6 @@ LogManager::LogManager()
 	m_Log[LogTypes::WIIMOTE]			= new LogContainer("Wiimote",		"Wiimote");
 	m_Log[LogTypes::WII_IOB]			= new LogContainer("WII_IOB",		"WII IO Bridge");
 	m_Log[LogTypes::WII_IPC]			= new LogContainer("WII_IPC",		"WII IPC");
-	m_Log[LogTypes::WII_IPC_HID]		= new LogContainer("WII_IPC_HID",	"WII IPC HID");
 	m_Log[LogTypes::WII_IPC_HLE]		= new LogContainer("WII_IPC_HLE",	"WII IPC HLE");
 	m_Log[LogTypes::WII_IPC_DVD]		= new LogContainer("WII_IPC_DVD",	"WII IPC DVD");
 	m_Log[LogTypes::WII_IPC_ES]			= new LogContainer("WII_IPC_ES",	"WII IPC ES");
@@ -71,6 +70,7 @@ LogManager::LogManager()
 	m_Log[LogTypes::WII_IPC_SD]			= new LogContainer("WII_IPC_SD",	"WII IPC SD");
 	m_Log[LogTypes::WII_IPC_STM]		= new LogContainer("WII_IPC_STM",	"WII IPC STM");
 	m_Log[LogTypes::WII_IPC_NET]		= new LogContainer("WII_IPC_NET",	"WII IPC NET");
+	m_Log[LogTypes::WII_IPC_USB]		= new LogContainer("WII_IPC_USB",	"WII IPC USB");
 	m_Log[LogTypes::WII_IPC_WC24]		= new LogContainer("WII_IPC_WC24",	"WII IPC WC24");
 	m_Log[LogTypes::WII_IPC_SSL]		= new LogContainer("WII_IPC_SSL",	"WII IPC SSL");
 	m_Log[LogTypes::WII_IPC_WIIMOTE]	= new LogContainer("WII_IPC_WIIMOTE","WII IPC WIIMOTE");

@@ -36,6 +36,7 @@ They will also generate a true or false return for UpdateInterrupts() in WII_IPC
 #include "WII_IPC_HLE_Device_net.h"
 #include "WII_IPC_HLE_Device_net_ssl.h"
 #include "WII_IPC_HLE_Device_es.h"
+#include "WII_IPC_HLE_Device_usb_oh0.h"
 #include "WII_IPC_HLE_Device_usb_oh1.h"
 #include "WII_IPC_HLE_Device_sdio_slot0.h"
 
@@ -69,6 +70,8 @@ static const TCreateFunc g_DeviceCreateFuncs[] = {
 	CWII_IPC_HLE_Device_sdio_slot1::Create,
 	CWII_IPC_HLE_Device_stm_eventhook::Create,
 	CWII_IPC_HLE_Device_stm_immediate::Create,
+	CWII_IPC_HLE_Device_usb_oh0::Create,
+	CWII_IPC_HLE_Device_usb_oh0_dev::Create,
 	CWII_IPC_HLE_Device_usb_oh1::Create,
 	CWII_IPC_HLE_Device_usb_oh1_57e_305::Create,
 	0
