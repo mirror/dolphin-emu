@@ -40,7 +40,7 @@ protected:
 	friend class CUSBRequestReal;
 
 private:
-	static LIBUSB_CALL void TransferCallback(libusb_transfer* Transfer);
+	static void LIBUSB_CALL TransferCallback(libusb_transfer* Transfer);
 	libusb_device* m_Device;
 	libusb_device_handle* m_DeviceHandle;
 	int m_NumInterfaces;
