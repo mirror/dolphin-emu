@@ -327,8 +327,11 @@ void CUSBControllerReal::PollDevices(bool IsInitial)
 
 			USBConfigDescriptorEtc& WiiConfig = EmplaceBack(WiiDevice.Configs);
 			memcpy(&WiiConfig, Config, sizeof(USBConfigDescriptor));
-			WiiConfig.Rest.resize(Config->extra_length);
-			memcpy(&WiiConfig.Rest[0], Config->extra, Config->extra_length);
+			if (Config->extra_length)
+			{
+				WiiConfig.Rest.resize(Config->extra_length);
+				memcpy(&WiiConfig.Rest[0], Config->extra, Config->extra_length);
+			}
 
 			for (u8 ic = 0; ic < Config->bNumInterfaces; ic++)
 			{
