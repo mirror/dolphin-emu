@@ -204,6 +204,12 @@ inline u16 swap16(const u8* _pData) {return swap16(*(const u16*)_pData);}
 inline u32 swap32(const u8* _pData) {return swap32(*(const u32*)_pData);}
 inline u64 swap64(const u8* _pData) {return swap64(*(const u64*)_pData);}
 
+// These definitions are in case Dolphin gets run on a certain big-endian
+// system and "swap" needs to become a no-op.
+inline u16 le16(u16 _data) { return _data; }
+inline u32 le32(u32 _data) { return _data; }
+inline u64 le64(u64 _data) { return _data; }
+
 template <int count>
 void swap(u8*);
 
