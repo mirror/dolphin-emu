@@ -319,6 +319,12 @@ void CUSBControllerReal::PollDevices(bool IsInitial)
 			struct libusb_config_descriptor *Config = NULL;
 			Err = libusb_get_config_descriptor(Device, c, &Config);
 
+			if (Err)
+			{
+				WARN_LOG(USBINTERFACE, "libusb_get_config_descriptor(%d) failed with error: %d", c, Err);
+				break;
+			}
+
 			USBConfigDescriptorEtc& WiiConfig = EmplaceBack(WiiDevice.Configs);
 			memcpy(&WiiConfig, Config, sizeof(USBConfigDescriptor));
 			WiiConfig.Rest.resize(Config->extra_length);
@@ -353,6 +359,13 @@ void CUSBControllerReal::PollDevices(bool IsInitial)
 				}
 			}
 			libusb_free_config_descriptor(Config);
+		}
+
+		// Apparently it is possible for libusb_get_config_descriptor to fail.
+		WiiDevice.bNumConfigurations = WiiDevice.Configs.size();
+		if (WiiDevice.bNumConfigurations == 0)
+		{
+			Results.erase(Results.end() - 1);
 		}
 
 		BadDevice:;
