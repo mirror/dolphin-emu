@@ -16,6 +16,7 @@
 // - Serialization code for anything complex has to be manually written.
 
 #include <map>
+#include <set>
 #include <vector>
 #include <list>
 #include <deque>
@@ -119,6 +120,17 @@ private:
 	size_t m_Capacity;
 };
 
+// ewww
+#if _LIBCPP_VERSION
+#define IsTriviallyCopyable(T) std::is_trivially_copyable<T>::value
+#elif __GNUC__
+#define IsTriviallyCopyable(T) std::has_trivial_copy_constructor<T>::value
+#elif defined(_WIN32)
+#define IsTriviallyCopyable(T) std::has_trivial_copy<T>::value
+#else
+#error No version of is_trivially_copyable
+#endif
+
 // Wrapper class
 class PointerWrap
 {
@@ -177,6 +189,33 @@ public:
 		}
 	}
 
+	template <typename V>
+	void Do(std::set<V>& x)
+	{
+		u32 count = (u32)x.size();
+		Do(count);
+
+		switch (mode)
+		{
+		case MODE_READ:
+			for (x.clear(); count != 0; --count)
+			{
+				V value;
+				Do(value);
+				x.insert(value);
+			}
+			break;
+
+		case MODE_WRITE:
+		case MODE_VERIFY:
+			for (auto itr = x.begin(); itr != x.end(); ++itr)
+			{
+				Do(*itr);
+			}
+			break;
+		}
+	}
+
 	template <typename T>
 	void DoContainer(T& x)
 	{
@@ -224,6 +263,13 @@ public:
 		DoContainer(x);
 	}
 
+	template <typename T, typename U>
+	void Do(std::pair<T, U>& x)
+	{
+		Do(x.first);
+		Do(x.second);
+	}
+
 	template <typename T>
 	void DoArray(T* x, u32 count)
 	{
@@ -241,12 +287,11 @@ public:
 	template <typename T>
 	void Do(T& x)
 	{
-		// Ideally this would be std::is_trivially_copyable, but not enough support yet
-		static_assert(std::is_pod<T>::value, "Only sane for POD types");
-		
+		static_assert(IsTriviallyCopyable(T), "Only sane for trivially copyable types");
+
 		DoVoid((void*)&x, sizeof(x));
 	}
-	
+
 	template <typename T>
 	void DoPOD(T& x)
 	{
