@@ -172,9 +172,9 @@ bool CWII_IPC_HLE_Device_usb_hid::IOCtl(u32 _CommandAddress)
 
 		u32 DevNum  = Memory::Read_U32(BufferIn+0x10);
 		USBInterface::USBSetup Setup = *(USBInterface::USBSetup*) Memory::GetPointer(BufferIn + 0x14);
-		Setup.wValue = Common::le16(Setup.wValue);
-		Setup.wIndex = Common::le16(Setup.wIndex);
-		Setup.wLength = Common::le16(Setup.wLength);
+		Setup.wValue = Common::swap16(Setup.wValue);
+		Setup.wIndex = Common::swap16(Setup.wIndex);
+		Setup.wLength = Common::swap16(Setup.wLength);
 		u32 Data = Memory::Read_U32(BufferIn+0x1C);
 
 		USBInterface::IUSBDevice* Device = GetDevice(DevNum);
