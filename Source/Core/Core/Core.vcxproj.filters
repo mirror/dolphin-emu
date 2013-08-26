@@ -292,6 +292,9 @@
     <ClCompile Include="Src\HW\SI_DeviceDanceMat.cpp">
       <Filter>HW %28Flipper/Hollywood%29\SI - Serial Interface</Filter>
     </ClCompile>
+    <ClCompile Include="Src\HW\USBInterface.cpp">
+      <Filter>HW %28Flipper/Hollywood%29\USB Interface</Filter>
+    </ClCompile>
     <ClCompile Include="Src\HW\VideoInterface.cpp">
       <Filter>HW %28Flipper/Hollywood%29\VI - Video Interface</Filter>
     </ClCompile>
@@ -827,6 +830,9 @@
     </ClInclude>
     <ClInclude Include="Src\HW\SI_DeviceGBA.h">
       <Filter>HW %28Flipper/Hollywood%29\SI - Serial Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\HW\USBInterface.h">
+      <Filter>HW %28Flipper/Hollywood%29\USB Interface</Filter>
     </ClInclude>
     <ClInclude Include="Src\HW\VideoInterface.h">
       <Filter>HW %28Flipper/Hollywood%29\VI - Video Interface</Filter>
