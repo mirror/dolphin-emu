@@ -305,6 +305,7 @@
     <ClCompile Include="Src\HW\Sram.cpp" />
     <ClCompile Include="Src\HW\StreamADPCM.cpp" />
     <ClCompile Include="Src\HW\SystemTimers.cpp" />
+    <ClCompile Include="Src\HW\USBInterface.cpp" />
     <ClCompile Include="Src\HW\VideoInterface.cpp" />
     <ClCompile Include="Src\HW\Wiimote.cpp" />
     <ClCompile Include="Src\HW\WiimoteEmu\Attachment\Attachment.cpp" />
@@ -508,6 +509,7 @@
     <ClInclude Include="Src\HW\Sram.h" />
     <ClInclude Include="Src\HW\StreamADPCM.h" />
     <ClInclude Include="Src\HW\SystemTimers.h" />
+    <ClInclude Include="Src\HW\USBInterface.h" />
     <ClInclude Include="Src\HW\VideoInterface.h" />
     <ClInclude Include="Src\HW\Wiimote.h" />
     <ClInclude Include="Src\HW\WiimoteEmu\Attachment\Attachment.h" />

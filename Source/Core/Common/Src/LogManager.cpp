@@ -37,6 +37,7 @@ LogManager::LogManager()
 	m_Log[LogTypes::PAD]				= new LogContainer("PAD",			"Pad");
 	m_Log[LogTypes::PIXELENGINE]		= new LogContainer("PE",			"PixelEngine");
 	m_Log[LogTypes::COMMANDPROCESSOR]	= new LogContainer("CP",			"CommandProc");
+	m_Log[LogTypes::USBINTERFACE]		= new LogContainer("USB",			"USBInt");
 	m_Log[LogTypes::VIDEOINTERFACE]		= new LogContainer("VI",			"VideoInt");
 	m_Log[LogTypes::SERIALINTERFACE]	= new LogContainer("SI",			"SerialInt");
 	m_Log[LogTypes::PROCESSORINTERFACE]	= new LogContainer("PI",			"ProcessorInt");
