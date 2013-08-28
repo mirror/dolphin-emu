@@ -27,6 +27,7 @@ public:
 	CUSBDeviceReal(libusb_device* Device, TUSBDeviceOpenInfo OpenInfo, libusb_device_handle* Handle, CUSBControllerReal* Controller, IUSBDeviceClient* Client);
 
 	virtual u32 SetConfig(int Config);
+	virtual u32 SetDefaultConfig();
 	virtual u32 SetInterfaceAltSetting(int Interface, int Setting);
 	virtual void BulkRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData);
 	virtual void InterruptRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData);

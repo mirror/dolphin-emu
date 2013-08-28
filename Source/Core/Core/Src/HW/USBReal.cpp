@@ -163,10 +163,10 @@ u32 CUSBDeviceReal::SetConfig(int Config)
 		return -1000;
 	}
 	struct libusb_config_descriptor *ConfigDesc = NULL;
-	Ret = libusb_get_config_descriptor(m_Device, Config, &ConfigDesc);
+	Ret = libusb_get_config_descriptor_by_value(m_Device, Config, &ConfigDesc);
 	if (Ret)
 	{
-		WARN_LOG(USBINTERFACE, "libusb_get_config_descriptor failed with error: %d", Ret);
+		WARN_LOG(USBINTERFACE, "libusb_get_config_descriptor_by_value failed with error: %d", Ret);
 		return -1000;
 	}
 	m_NumInterfaces = ConfigDesc->bNumInterfaces;
@@ -195,6 +195,34 @@ u32 CUSBDeviceReal::SetConfig(int Config)
 		}
 	}
 	return 0;
+}
+
+u32 CUSBDeviceReal::SetDefaultConfig()
+{
+	// Try the first config - if that doesn't work (Windows), at least get the
+	// current one (SetConfig claims all the interfaces)
+	struct libusb_config_descriptor *ConfigDesc = NULL;
+	int UsbRet = libusb_get_config_descriptor(m_Device, 0, &ConfigDesc);
+	if (UsbRet)
+	{
+		WARN_LOG(USBINTERFACE, "libusb_get_config_descriptor failed with error: %d", UsbRet);
+		return -1000;
+	}
+	u32 Ret = SetConfig(ConfigDesc->bConfigurationValue);
+	libusb_free_config_descriptor(ConfigDesc);
+	if (!Ret)
+	{
+		return 0;
+	}
+
+	int CurrentConfig;
+	UsbRet = libusb_get_configuration(m_DeviceHandle, &CurrentConfig);
+	if (UsbRet)
+	{
+		WARN_LOG(USBINTERFACE, "libusb_get_config_descriptor failed with error: %d", UsbRet);
+		return -1000;
+	}
+	return SetConfig(CurrentConfig);
 }
 
 u32 CUSBDeviceReal::SetInterfaceAltSetting(int Interface, int Setting)
@@ -567,7 +595,7 @@ IUSBDevice* CUSBControllerReal::OpenDevice(TUSBDeviceOpenInfo OpenInfo, IUSBDevi
 	}
 
 	CUSBDeviceReal* USBDevice = new CUSBDeviceReal(Device, OpenInfo, Handle, this, Client);
-	if (USBDevice->SetConfig(0))
+	if (USBDevice->SetDefaultConfig())
 	{
 		USBDevice->Close();
 		return NULL;

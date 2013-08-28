@@ -253,6 +253,7 @@ public:
 	// Non-virtual methods are implemented in terms of virtual ones.
 	void CancelRequests(u8 Endpoint);
 	virtual u32 SetConfig(int Config) = 0;
+	virtual u32 SetDefaultConfig() = 0;
 	virtual u32 SetInterfaceAltSetting(int Interface, int Setting) = 0;
 	void ControlRequest(const USBSetup* Setup, void* Payload, void* UserData);
 	virtual void BulkRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData) = 0;
