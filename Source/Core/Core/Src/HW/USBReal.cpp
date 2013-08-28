@@ -576,7 +576,7 @@ void CUSBControllerReal::UpdateShouldScan()
 	}
 }
 
-void CUSBControllerReal::DestroyDeviceList(std::vector<USBDeviceDescriptorEtc>*Old)
+void CUSBControllerReal::DestroyDeviceList(std::vector<USBDeviceDescriptorEtc>* Old)
 {
 	for (auto itr = Old->begin(); itr != Old->end(); ++itr)
 	{

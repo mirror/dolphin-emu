@@ -25,6 +25,7 @@
 CWII_IPC_HLE_Device_usb_hid::CWII_IPC_HLE_Device_usb_hid(const std::string& _rDeviceName)
 	: IWII_IPC_HLE_Device(_rDeviceName)
 {
+	m_NextUid = 0;
 	m_DeviceCommandAddress = 0;
 	m_DidInitialList = false;
 	USBInterface::RefInterface();
@@ -49,8 +50,8 @@ USBInterface::IUSBDevice* CWII_IPC_HLE_Device_usb_hid::GetDevice(u32 DevNum)
 	}
 
 	DEBUG_LOG(WII_IPC_USB, "HID opening device %x", DevNum);
-	auto uitr = m_Uids.find(DevNum);
-	if (uitr == m_Uids.end())
+	auto uitr = m_UidMap.find(DevNum);
+	if (uitr == m_UidMap.end())
 	{
 		WARN_LOG(WII_IPC_USB, "No such UID %x", DevNum);
 		return NULL;
@@ -243,49 +244,108 @@ bool CWII_IPC_HLE_Device_usb_hid::IOCtl(u32 _CommandAddress)
 	return true;
 }
 
+void CWII_IPC_HLE_Device_usb_hid::UpdateDevices(std::vector<USBInterface::USBDeviceDescriptorEtc*>& Devices)
+{
+	using namespace USBInterface;
+	DEBUG_LOG(WII_IPC_USB, "CWII_IPC_HLE_Device_usb_hid::UpdateDevices:");
+	TUidMap NewUidMap;
+	TUidMapRev NewUidMapRev;
+	for (auto DItr = Devices.begin(); DItr != Devices.end(); ++DItr)
+	{
+		if (0) { BadDevice: continue; }
+		USBDeviceDescriptorEtc* Device = *DItr;
+		if (Device->Configs.size() == 0)
+		{
+			DEBUG_LOG(WII_IPC_USB, "   (skipping '%s': no configs)", Device->Name.c_str());
+			goto BadDevice;
+		}
+
+		USBConfigDescriptorEtc* Config = &Device->Configs.front();
+		bool IsHid = true;
+		for (auto IItr = Config->Interfaces.begin(); IItr != Config->Interfaces.end(); ++IItr)
+		{
+			USBInterfaceDescriptorEtc* Interface = &*IItr;
+			if (Interface->bInterfaceClass == 3)
+			{
+				IsHid = true;
+			}
+
+			if (Interface->bNumEndpoints != 1 && Interface->bNumEndpoints != 2)
+			{
+				DEBUG_LOG(WII_IPC_USB, "     (skipping '%s': bad endpoint count for interface %u: %d)",
+				          Device->Name.c_str(),
+				          (unsigned int) (IItr - Config->Interfaces.begin()), Interface->bNumEndpoints);
+				goto BadDevice;
+			}
+		}
+
+		if (!IsHid)
+		{
+			DEBUG_LOG(WII_IPC_USB, "     (skipping '%s': not HID)", Device->Name.c_str());
+			goto BadDevice;
+		}
+
+		u32 Uid;
+		auto OItr = m_UidMapRev.find(Device->OpenInfo);
+		if (OItr != m_UidMapRev.end())
+		{
+			Uid = OItr->second;
+		}
+		else
+		{
+			// gotta get a small unused uid
+			u32 NextUid = m_NextUid;
+			do
+			{
+				Uid = NextUid;
+				NextUid = (NextUid + 1) % NumUids;
+				if (NewUidMap.find(Uid) == NewUidMap.end() &&
+					m_UidMap.find(Uid) == m_UidMap.end())
+				{
+					break;
+				}
+			}
+			while (NextUid != m_NextUid);
+			if (NextUid == m_NextUid)
+			{
+				// too many devices, game will crash if we try to have more
+				WARN_LOG(WII_IPC_USB, "Too many HID devices!");
+				break;
+			}
+			m_NextUid = NextUid;
+		}
+		DEBUG_LOG(WII_IPC_USB, "   %u: '%s'", Uid, Device->Name.c_str());
+		NewUidMap[Uid] = Device->OpenInfo;
+		NewUidMapRev[Device->OpenInfo] = Uid;
+	}
+	m_UidMap = std::move(NewUidMap);
+	m_UidMapRev = std::move(NewUidMapRev);
+}
+
 
 bool CWII_IPC_HLE_Device_usb_hid::FillAttachedReply(std::vector<USBInterface::USBDeviceDescriptorEtc*>& Devices, void* Buffer, size_t Size)
 {
 #define APPEND(Data, DataSize) do { OldPtr = Ptr; if (!AppendRaw(&Ptr, &Size, Data, DataSize)) return false; } while (0)
 	using namespace USBInterface;
 	DEBUG_LOG(WII_IPC_USB, "FillAttachedReply:");
-	u32 Uid = 0;
 	u8* Ptr = (u8*) Buffer;
 	u8* OldPtr;
 	u32 Dummy = 0;
 	for (auto DItr = Devices.begin(); DItr != Devices.end(); ++DItr)
 	{
 		USBDeviceDescriptorEtc* Device = *DItr;
-		if (USBInterface::IsOpen(Device->OpenInfo))
-		{
-			DEBUG_LOG(WII_IPC_USB, "   (skipping '%s': already open)", Device->Name.c_str());
-			Uid++;
-			continue;
-		}
-		if (Device->Configs.size() == 0)
-		{
-			DEBUG_LOG(WII_IPC_USB, "   (skipping '%s': no configs)", Device->Name.c_str());
-			continue;
-		}
 
-		while (m_OpenDevices.find(Uid) != m_OpenDevices.end())
+		auto UItr = m_UidMapRev.find(Device->OpenInfo);
+		if (UItr == m_UidMapRev.end())
 		{
-			DEBUG_LOG(WII_IPC_USB, "   (uid %u already open)", Uid);
-			Uid++;
+			continue;
 		}
-		if (Uid >= 100)
-		{
-			// too many devices, game will crash
-			break;
-		}
-		DEBUG_LOG(WII_IPC_USB, "   %u: '%s'", Uid, Device->Name.c_str());
+		u32 Uid = UItr->second;
 
 		u8* DeviceStart = Ptr;
 		APPEND(&Dummy, 4); // size
 		u32 UidSwapped = Common::swap32(Uid);
 		APPEND(&UidSwapped, 4);
-		m_Uids[Uid] = Device->OpenInfo;
-		Uid++;
 
 		APPEND(Device, sizeof(USBDeviceDescriptor));
 		SwapDeviceDescriptor((USBDeviceDescriptor*) OldPtr);
@@ -294,25 +354,11 @@ bool CWII_IPC_HLE_Device_usb_hid::FillAttachedReply(std::vector<USBInterface::US
 		APPEND(Config, sizeof(USBConfigDescriptor));
 		SwapConfigDescriptor((USBConfigDescriptor*) OldPtr);
 
-		bool IsHid = false;
-
 		for (auto IItr = Config->Interfaces.begin(); IItr != Config->Interfaces.end(); ++IItr)
 		{
 			USBInterfaceDescriptorEtc* Interface = &*IItr;
-			if (Interface->bInterfaceClass == 3)
-			{
-				IsHid = true;
-			}
 			APPEND(Interface, sizeof(USBInterfaceDescriptor));
 			SwapInterfaceDescriptor((USBInterfaceDescriptor*) OldPtr);
-
-			if (Interface->bNumEndpoints != 1 && Interface->bNumEndpoints != 2)
-			{
-				DEBUG_LOG(WII_IPC_USB, "     (just kidding - bad endpoint count for interface %u: %d)",
-				          (unsigned int) (IItr - Config->Interfaces.begin()), Interface->bNumEndpoints);
-				Ptr = DeviceStart;
-				goto BadDevice;
-			}
 
 			for (auto EItr = Interface->Endpoints.begin(); EItr != Interface->Endpoints.end(); ++EItr)
 			{
@@ -323,15 +369,7 @@ bool CWII_IPC_HLE_Device_usb_hid::FillAttachedReply(std::vector<USBInterface::US
 			}
 		}
 
-		if (!IsHid)
-		{
-			DEBUG_LOG(WII_IPC_USB, "     (just kidding - no HID interfaces)");
-			Ptr = DeviceStart;
-			goto BadDevice;
-		}
-
 		*(u32*) DeviceStart = Common::swap32(Ptr - DeviceStart);
-		BadDevice:;
 	}
 	u32 End = 0xffffffff;
 	APPEND(&End, sizeof(End));
@@ -341,7 +379,8 @@ bool CWII_IPC_HLE_Device_usb_hid::FillAttachedReply(std::vector<USBInterface::US
 
 void CWII_IPC_HLE_Device_usb_hid::USBDevicesChanged(std::vector<USBInterface::USBDeviceDescriptorEtc*>& Devices)
 {
-	m_Uids.clear();
+	UpdateDevices(Devices);
+
 	if (!m_DeviceCommandAddress) return;
 
 	Memory::Write_U32(8, m_DeviceCommandAddress);

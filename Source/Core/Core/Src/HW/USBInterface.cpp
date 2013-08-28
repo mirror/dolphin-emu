@@ -19,16 +19,6 @@ enum {
 	USBEventDevicesChanged
 };
 
-template <typename P, template<typename> class BaseHash = std::hash>
-struct PairHash
-{
-	size_t operator()(const P& Pair) const
-	{
-		return BaseHash<typename P::first_type>()(Pair.first) ^
-			   BaseHash<typename P::second_type>()(Pair.second);
-	}
-};
-
 std::mutex g_QueueMutex;
 IntrusiveList<IUSBDevice> g_PendingDevices;
 IUSBController* g_Controllers[NumControllerIds];
@@ -68,15 +58,28 @@ void CUSBRequest::Complete(u32 Status)
 	}
 }
 
-void IUSBController::UpdateDeviceList()
+bool IUSBController::UpdateDeviceList()
 {
 	if (!m_NewDeviceList)
 	{
-		return;
+		return false;
 	}
+	m_OldDeviceList = std::move(m_DeviceList);
 	m_DeviceList = std::move(m_NewDeviceList);
 	m_NewDeviceList.reset();
-	// update g_DeviceList
+	return true;
+}
+
+void IUSBController::DestroyOldDeviceList()
+{
+	if (m_OldDeviceList)
+	{
+		DestroyDeviceList(m_OldDeviceList.release());
+	}
+}
+
+void IUSBController::UpdateGlobalDeviceList()
+{
 	g_DeviceList.clear();
 	for (int i = 0; i < NumControllerIds; i++)
 	{
@@ -98,7 +101,10 @@ void IUSBController::SetDeviceList(std::vector<USBDeviceDescriptorEtc>* List, bo
 	m_NewDeviceList.reset(List);
 	if (IsInitial)
 	{
-		UpdateDeviceList();
+		if (UpdateDeviceList())
+		{
+			IUSBController::UpdateGlobalDeviceList();
+		}
 	}
 	else
 	{
@@ -198,12 +204,17 @@ static void USBInterfaceCallback(u64 UserData, int CyclesLate)
 	{
 		if (g_ShouldScan)
 		{
+			bool Changed = false;
 			for (int i = 0; i < NumControllerIds; i++)
 			{
 				if (g_Controllers[i])
 				{
-					g_Controllers[i]->UpdateDeviceList();
+					Changed = g_Controllers[i]->UpdateDeviceList() || Changed;
 				}
+			}
+			if (Changed)
+			{
+				IUSBController::UpdateGlobalDeviceList();
 			}
 			for (auto itr = g_DeviceChangeClients.begin(); itr != g_DeviceChangeClients.end(); )
 			{
@@ -211,6 +222,17 @@ static void USBInterfaceCallback(u64 UserData, int CyclesLate)
 				++itr;
 				// This might cause the previous iterator to be invalidated.
 				Client->USBDevicesChanged(g_DeviceList);
+			}
+			// Need to keep the old list valid until here.
+			if (Changed)
+			{
+				for (int i = 0; i < NumControllerIds; i++)
+				{
+					if (g_Controllers[i])
+					{
+						g_Controllers[i]->DestroyOldDeviceList();
+					}
+				}
 			}
 		}
 		break;

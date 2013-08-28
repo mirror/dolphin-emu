@@ -20,6 +20,7 @@
 #include "WII_IPC_HLE.h"
 #include "WII_IPC_HLE_Device.h"
 #include "HW/USBInterface.h"
+#include <unordered_map>
 
 #define HID_ID_MASK 0x0000FFFFFFFFFFFF
 #define MAX_HID_INTERFACES 1
@@ -68,10 +69,17 @@ private:
 
 	void Shutdown();
 	USBInterface::IUSBDevice* GetDevice(u32 DevNum);
+	void UpdateDevices(std::vector<USBInterface::USBDeviceDescriptorEtc*>& Devices);
 	bool FillAttachedReply(std::vector<USBInterface::USBDeviceDescriptorEtc*>& Devices, void* Buffer, size_t Size);
 
-	std::map<u32, USBInterface::IUSBDevice*> m_OpenDevices;
-	std::map<u32, USBInterface::TUSBDeviceOpenInfo> m_Uids;
+	enum { NumUids = 20 };
+	int m_NextUid;
+	std::unordered_map<u32, USBInterface::IUSBDevice*> m_OpenDevices;
+	typedef std::unordered_map<u32, USBInterface::TUSBDeviceOpenInfo> TUidMap;
+	typedef std::unordered_map<USBInterface::TUSBDeviceOpenInfo, u32, PairHash<USBInterface::TUSBDeviceOpenInfo>> TUidMapRev;
+	TUidMap m_UidMap;
+	TUidMapRev m_UidMapRev;
+
 	u32 m_DeviceCommandAddress;
 	bool m_DidInitialList;
 };

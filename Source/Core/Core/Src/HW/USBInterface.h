@@ -1,4 +1,3 @@
-#define USB_DEBUG
 // Copyright 2013 Dolphin Emulator Project
 // Licensed under GPLv2
 // Refer to the license.txt file included.
@@ -20,6 +19,17 @@
 #undef DEBUG_LOG
 #define DEBUG_LOG WARN_LOG
 #endif
+
+// need somewhere better to put this
+template <typename P, template<typename> class BaseHash = std::hash>
+struct PairHash
+{
+	size_t operator()(const P& Pair) const
+	{
+		return BaseHash<typename P::first_type>()(Pair.first) ^
+			   BaseHash<typename P::second_type>()(Pair.second);
+	}
+};
 
 class PointerWrap;
 
@@ -225,11 +235,13 @@ public:
 	virtual void UpdateShouldScan() = 0;
 	virtual void DestroyDeviceList(std::vector<USBDeviceDescriptorEtc>* Old) = 0;
 
-	void UpdateDeviceList();
+	bool UpdateDeviceList();
+	void DestroyOldDeviceList();
+	static void UpdateGlobalDeviceList();
 protected:
 	void SetDeviceList(std::vector<USBDeviceDescriptorEtc>* List, bool IsInitial);
 private:
-	std::unique_ptr<std::vector<USBDeviceDescriptorEtc>> m_NewDeviceList, m_DeviceList;
+	std::unique_ptr<std::vector<USBDeviceDescriptorEtc>> m_NewDeviceList, m_DeviceList, m_OldDeviceList;
 };
 
 // public
