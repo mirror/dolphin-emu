@@ -308,8 +308,8 @@ bool CWII_IPC_HLE_Device_usb_hid::FillAttachedReply(std::vector<USBInterface::US
 
 			if (Interface->bNumEndpoints != 1 && Interface->bNumEndpoints != 2)
 			{
-				DEBUG_LOG(WII_IPC_USB, "     (just kidding - bad endpoint count for interface %zu: %d)",
-				          IItr - Config->Interfaces.begin(), Interface->bNumEndpoints);
+				DEBUG_LOG(WII_IPC_USB, "     (just kidding - bad endpoint count for interface %u: %d)",
+				          (unsigned int) (IItr - Config->Interfaces.begin()), Interface->bNumEndpoints);
 				Ptr = DeviceStart;
 				goto BadDevice;
 			}

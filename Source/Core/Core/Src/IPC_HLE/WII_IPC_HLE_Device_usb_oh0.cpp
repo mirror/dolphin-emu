@@ -87,7 +87,7 @@ void CWII_IPC_HLE_Device_usb_oh0::USBDevicesChanged(std::vector<USBInterface::US
 		if (sitr == m_SeenDevices.end())
 		{
 			// New device inserted
-			DEBUG_LOG(WII_IPC_USB, "oh0 new device, %zu hooks", m_DeviceInsertionHooks.size());
+			DEBUG_LOG(WII_IPC_USB, "oh0 new device, %u hooks", (unsigned int) m_DeviceInsertionHooks.size());
 			for (auto iitr = m_DeviceInsertionHooks.begin();
 				 iitr != m_DeviceInsertionHooks.end(); ++iitr)
 			{

@@ -320,7 +320,7 @@ void RegisterDeviceChangeClient(IUSBDeviceChangeClient* Client)
 void DeregisterDeviceChangeClient(IUSBDeviceChangeClient* Client)
 {
 	g_DeviceChangeClients.erase(Client);
-	DEBUG_LOG(USBINTERFACE, "DeregisterDeviceChangeClient(%p), now %zu", Client, g_DeviceChangeClients.size());
+	DEBUG_LOG(USBINTERFACE, "DeregisterDeviceChangeClient(%p), now %u", Client, (unsigned int) g_DeviceChangeClients.size());
 	if (g_ShouldScan && g_DeviceChangeClients.empty())
 	{
 		SetShouldScan(false);
