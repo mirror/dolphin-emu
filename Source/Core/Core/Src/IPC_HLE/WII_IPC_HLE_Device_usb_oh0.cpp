@@ -318,7 +318,6 @@ bool CWII_IPC_HLE_Device_usb_oh0_dev::IOCtl(u32 _CommandAddress)
 			break;
 		}
 		m_RemovalCommandAddress = _CommandAddress;
-		Memory::Write_U32(0, _CommandAddress + 0x4);
 		return false;
 	}
 	case USBV0_DEV_IOCTL_RESETDEV:
@@ -440,6 +439,8 @@ void CWII_IPC_HLE_Device_usb_oh0_dev::USBDevicesChanged(std::vector<USBInterface
 			return;
 		}
 	}
+	DEBUG_LOG(WII_IPC_USB, "USBV0: removal command");
+	Memory::Write_U32(0, m_RemovalCommandAddress + 0x4);
 	WII_IPC_HLE_Interface::EnqReply(m_RemovalCommandAddress);
 	m_RemovalCommandAddress = 0;
 }

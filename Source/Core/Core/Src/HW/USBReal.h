@@ -21,7 +21,7 @@ namespace USBInterface
 
 class CUSBControllerReal;
 
-class CUSBDeviceReal : public IUSBDevice
+class CUSBDeviceReal final : public IUSBDevice
 {
 public:
 	CUSBDeviceReal(libusb_device* Device, TUSBDeviceOpenInfo OpenInfo, libusb_device_handle* Handle, CUSBControllerReal* Controller, IUSBDeviceClient* Client);
@@ -39,6 +39,8 @@ protected:
 	friend class CUSBRequestReal;
 
 private:
+	~CUSBDeviceReal();
+
 	libusb_device* m_Device;
 	libusb_device_handle* m_DeviceHandle;
 	int m_NumInterfaces;

@@ -60,7 +60,7 @@ void CUSBRequest::Complete(u32 Status)
 		m_Device->ListInsert(&g_PendingDevices);
 		m_Device->m_Pending = true;
 		g_QueueMutex.unlock();
-		CoreTiming::ScheduleEvent_Threadsafe_Immediate(g_USBInterfaceEvent, USBEventRequestsCompleted);
+		CoreTiming::ScheduleEvent_Threadsafe(0, g_USBInterfaceEvent, USBEventRequestsCompleted);
 	}
 	else
 	{

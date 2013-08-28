@@ -43,6 +43,7 @@ public:
 	: CUSBRequest(Device, UserData, Endpoint), m_Transfer(Transfer), m_UserPayload(UserPayload) {
 		m_WasCancelled = false;
 	}
+	virtual ~CUSBRequestReal();
 	virtual void Complete(u32 Status);
 	virtual void Cancel();
 
@@ -53,11 +54,21 @@ protected:
 	bool m_WasCancelled;
 };
 
+CUSBRequestReal::~CUSBRequestReal()
+{
+	// This was also in Complete, but the result was a crash and I think this
+	// really is a bug.
+	libusb_free_transfer(m_Transfer);
+	// Note: Originally this was in Complete.  However, due to a
+	// supposedly-not-a-bug in libusb, libusb_close cannot be called from a
+	// transfer completion callback (deadlock).
+	((CUSBDeviceReal*) m_Device)->CheckClose();
+}
+
 void CUSBRequestReal::Complete(u32 Status)
 {
-	libusb_free_transfer(m_Transfer);
+	DEBUG_LOG(USBINTERFACE, "USBReal: complete %p status=%u", m_Transfer, Status);
 	CUSBRequest::Complete(Status);
-	((CUSBDeviceReal*) m_Device)->CheckClose();
 }
 
 void CUSBRequestReal::Cancel()
@@ -70,7 +81,7 @@ void CUSBRequestReal::Cancel()
 void CUSBRequestReal::TransferCallback(libusb_transfer* Transfer)
 {
 	CUSBRequestReal* Self = (CUSBRequestReal*) Transfer->user_data;
-	DEBUG_LOG(USBINTERFACE, "USBReal: transfer callback Request=%p status=%d", Self, Transfer->status);
+	DEBUG_LOG(USBINTERFACE, "USBReal: transfer callback transfer=%p request=%p status=%d cancelled=%u", Transfer, Self, Transfer->status, Self->m_WasCancelled);
 	if (Transfer->type == LIBUSB_TRANSFER_TYPE_CONTROL)
 	{
 		memcpy(Self->m_UserPayload, Transfer->buffer + sizeof(USBSetup), Transfer->length - LIBUSB_CONTROL_SETUP_SIZE);
@@ -108,24 +119,32 @@ m_Device(Device), m_DeviceHandle(Handle)
 	m_NumInterfaces = 0;
 }
 
+CUSBDeviceReal::~CUSBDeviceReal()
+{
+	DEBUG_LOG(USBINTERFACE, "USBReal: closing device handle %p", m_DeviceHandle);
+	for (int i = 0; i < m_NumInterfaces; i++)
+	{
+		libusb_release_interface(m_DeviceHandle, i);
+		libusb_attach_kernel_driver(m_DeviceHandle, i);
+	}
+	libusb_close(m_DeviceHandle);
+}
+
 void CUSBDeviceReal::_Close()
 {
 	DEBUG_LOG(USBINTERFACE, "USBReal: closing");
 	// We might have to wait for outstanding requests.
 	m_WasClosed = true;
+	std::lock_guard<std::mutex> Guard(g_QueueMutex);
 	CheckClose();
 }
 
+// Called with g_QueueMutex held.
 void CUSBDeviceReal::CheckClose()
 {
 	if (m_WasClosed && m_IncompleteRequests.empty())
 	{
-		for (int i = 0; i < m_NumInterfaces; i++)
-		{
-			libusb_release_interface(m_DeviceHandle, i);
-			libusb_attach_kernel_driver(m_DeviceHandle, i);
-		}
-		libusb_close(m_DeviceHandle);
+		delete this;
 	}
 }
 

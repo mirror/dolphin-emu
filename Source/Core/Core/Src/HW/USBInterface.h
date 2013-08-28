@@ -1,3 +1,4 @@
+#define USB_DEBUG
 // Copyright 2013 Dolphin Emulator Project
 // Licensed under GPLv2
 // Refer to the license.txt file included.
@@ -6,9 +7,14 @@
 
 #include "Common.h"
 #include "IntrusiveList.h"
+#include "Thread.h"
 #include <vector>
 #include <memory>
 #include <stddef.h>
+
+#if !defined(final) && __cplusplus < 201103
+#define final
+#endif
 
 #ifdef USB_DEBUG
 #undef DEBUG_LOG
@@ -278,6 +284,7 @@ private:
 
 	void ReadDeviceState(PointerWrap& p, IUSBDeviceClient* Client);
 	extern volatile bool g_ShouldScan;
+	extern std::mutex g_QueueMutex;
 
 // public
 	std::vector<USBDeviceDescriptorEtc*>& GetDeviceList();
