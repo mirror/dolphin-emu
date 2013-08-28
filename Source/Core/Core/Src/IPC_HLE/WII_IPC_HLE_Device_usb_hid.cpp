@@ -261,7 +261,7 @@ void CWII_IPC_HLE_Device_usb_hid::UpdateDevices(std::vector<USBInterface::USBDev
 		}
 
 		USBConfigDescriptorEtc* Config = &Device->Configs.front();
-		bool IsHid = true;
+		bool IsHid = false;
 		for (auto IItr = Config->Interfaces.begin(); IItr != Config->Interfaces.end(); ++IItr)
 		{
 			USBInterfaceDescriptorEtc* Interface = &*IItr;
