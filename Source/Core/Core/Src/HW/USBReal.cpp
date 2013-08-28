@@ -118,7 +118,7 @@ m_Device(Device), m_DeviceHandle(Handle)
 
 CUSBDeviceReal::~CUSBDeviceReal()
 {
-	DEBUG_LOG(USBINTERFACE, "USBReal: closing device handle %p", m_DeviceHandle);
+	DEBUG_LOG(USBINTERFACE, "USBReal: actually closing device handle %p", m_DeviceHandle);
 	for (int i = 0; i < m_NumInterfaces; i++)
 	{
 		libusb_release_interface(m_DeviceHandle, i);
@@ -129,7 +129,7 @@ CUSBDeviceReal::~CUSBDeviceReal()
 
 void CUSBDeviceReal::_Close()
 {
-	DEBUG_LOG(USBINTERFACE, "USBReal: closing");
+	DEBUG_LOG(USBINTERFACE, "USBReal: requested close");
 	// We might have to wait for outstanding requests.
 	m_WasClosed = true;
 	std::lock_guard<std::mutex> Guard(g_QueueMutex);
@@ -587,7 +587,6 @@ void CUSBControllerReal::DestroyDeviceList(std::vector<USBDeviceDescriptorEtc>* 
 IUSBDevice* CUSBControllerReal::OpenDevice(TUSBDeviceOpenInfo OpenInfo, IUSBDeviceClient* Client)
 {
 	libusb_device* Device = (libusb_device*) OpenInfo.second;
-	DEBUG_LOG(USBINTERFACE, "USBReal: open device %p", Device);
 	libusb_device_handle* Handle;
 	int Ret = libusb_open(Device, &Handle);
 	if (Ret)
@@ -595,6 +594,7 @@ IUSBDevice* CUSBControllerReal::OpenDevice(TUSBDeviceOpenInfo OpenInfo, IUSBDevi
 		WARN_LOG(USBINTERFACE, "USBReal: libusb open %p failed", Device);
 		return NULL;
 	}
+	DEBUG_LOG(USBINTERFACE, "USBReal: open device %p -> handle %p", Device, Handle);
 
 	CUSBDeviceReal* USBDevice = new CUSBDeviceReal(Device, OpenInfo, Handle, this, Client);
 	if (USBDevice->SetDefaultConfig())

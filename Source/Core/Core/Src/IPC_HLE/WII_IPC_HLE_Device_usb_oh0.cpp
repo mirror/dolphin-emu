@@ -289,6 +289,7 @@ u32 CWII_IPC_HLE_Device_usb_oh0_dev::Open(u32 _CommandAddress, u32 _Mode)
 
 void CWII_IPC_HLE_Device_usb_oh0_dev::Unref()
 {
+	DEBUG_LOG(WII_IPC_USB, "oh0dev unref %p", this);
 	delete this;
 }
 
@@ -321,7 +322,7 @@ bool CWII_IPC_HLE_Device_usb_oh0_dev::IOCtl(u32 _CommandAddress)
 		return false;
 	}
 	case USBV0_DEV_IOCTL_RESETDEV:
-		WARN_LOG(WII_IPC_USB, "USBV0: received reset request, ignoring");
+		WARN_LOG(WII_IPC_USB, "oh0dev: received reset request, ignoring");
 		break;
 	}
 
@@ -364,7 +365,7 @@ bool CWII_IPC_HLE_Device_usb_oh0_dev::IOCtlV(u32 _CommandAddress)
 		Setup.wLength = Values[2];
 		u8 Unk = Memory::Read_U8(CommandBuffer.InBuffer[5].m_Address);
 		void* Payload = Memory::GetPointer(CommandBuffer.PayloadBuffer[0].m_Address);
-		DEBUG_LOG(WII_IPC_USB, "USBV0: bRequest=%x wValue=%x wIndex=%x wLength=%x unk=%x",
+		DEBUG_LOG(WII_IPC_USB, "oh0dev: control request - bRequest=%x wValue=%x wIndex=%x wLength=%x unk=%x",
 				 Setup.bRequest, Setup.wValue, Setup.wIndex, Setup.wLength, Unk);
 		m_Device->ControlRequest(&Setup, Payload, UserData);
 		return false;
@@ -402,7 +403,7 @@ bool CWII_IPC_HLE_Device_usb_oh0_dev::IOCtlV(u32 _CommandAddress)
 		return false;
 	}
 	case USBV0_DEV_IOCTLV_LONGITRMSG:
-		WARN_LOG(WII_IPC_USB, "USBV0: long message unimplemented");
+		WARN_LOG(WII_IPC_USB, "oh0dev: long message unimplemented");
 		ReturnValue = -4;
 		break;
 	}
@@ -439,7 +440,7 @@ void CWII_IPC_HLE_Device_usb_oh0_dev::USBDevicesChanged(std::vector<USBInterface
 			return;
 		}
 	}
-	DEBUG_LOG(WII_IPC_USB, "USBV0: removal command");
+	DEBUG_LOG(WII_IPC_USB, "oh0dev: triggering removal callback");
 	Memory::Write_U32(0, m_RemovalCommandAddress + 0x4);
 	WII_IPC_HLE_Interface::EnqReply(m_RemovalCommandAddress);
 	m_RemovalCommandAddress = 0;

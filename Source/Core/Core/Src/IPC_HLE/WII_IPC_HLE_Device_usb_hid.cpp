@@ -327,7 +327,7 @@ bool CWII_IPC_HLE_Device_usb_hid::FillAttachedReply(std::vector<USBInterface::US
 {
 #define APPEND(Data, DataSize) do { OldPtr = Ptr; if (!AppendRaw(&Ptr, &Size, Data, DataSize)) return false; } while (0)
 	using namespace USBInterface;
-	DEBUG_LOG(WII_IPC_USB, "FillAttachedReply:");
+	DEBUG_LOG(WII_IPC_USB, "FillAttachedReply");
 	u8* Ptr = (u8*) Buffer;
 	u8* OldPtr;
 	u32 Dummy = 0;
