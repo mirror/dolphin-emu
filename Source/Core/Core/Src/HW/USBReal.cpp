@@ -281,7 +281,8 @@ CUSBControllerReal::CUSBControllerReal()
 	}
 	libusb_set_debug(m_UsbContext, 2);
 #ifdef CUSBDEVICE_SUPPORTS_HOTPLUG
-	m_HotplugHandle = NULL;
+	m_HotplugActive = false;
+	m_HotplugTriggered = false;
 	m_UseHotplug = libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG);
 #endif
 	m_ShouldDestroy = false;
@@ -294,7 +295,7 @@ CUSBControllerReal::~CUSBControllerReal()
 	auto NullResults = new std::vector<USBDeviceDescriptorEtc>;
 	SetDeviceList(NullResults, false);
 #ifdef CUSBDEVICE_SUPPORTS_HOTPLUG
-	if (m_HotplugHandle != NULL)
+	if (m_HotplugActive)
 	{
 		libusb_hotplug_deregister_callback(m_UsbContext, m_HotplugHandle);
 	}
@@ -465,19 +466,25 @@ void CUSBControllerReal::USBThread()
 			delete this;
 			return;
 		}
-		if (Timer.GetTimeDifference() < 300)
-		{
-			continue;
-		}
-		Timer.Update();
 #ifdef CUSBDEVICE_SUPPORTS_HOTPLUG
-		if (!m_UseHotplug)
+		if (m_UseHotplug)
 		{
+			if (m_HotplugTriggered)
+			{
+				PollDevices(false);
+				m_HotplugTriggered = false;
+			}
+		}
+		else
+#endif
+		{
+			if (Timer.GetTimeDifference() < 300)
+			{
+				continue;
+			}
+			Timer.Update();
 			PollDevices(false);
 		}
-#else
-		PollDevices(false);
-#endif
 	}
 }
 
@@ -490,7 +497,7 @@ void CUSBControllerReal::Destroy()
 int CUSBControllerReal::HotplugCallback(libusb_context* Ctx, libusb_device* Device, libusb_hotplug_event Event, void* Data)
 {
 	CUSBControllerReal* Self = (CUSBControllerReal*) Data;
-	Self->PollDevices(false);
+	Self->m_HotplugTriggered = true;
 	return 0;
 }
 #endif
@@ -504,7 +511,7 @@ void CUSBControllerReal::UpdateShouldScan()
 		{
 			int Err = libusb_hotplug_register_callback(
 				m_UsbContext,
-				LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,
+				(libusb_hotplug_event) (LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT),
 				LIBUSB_HOTPLUG_ENUMERATE,
 				LIBUSB_HOTPLUG_MATCH_ANY,
 				LIBUSB_HOTPLUG_MATCH_ANY,
@@ -518,14 +525,15 @@ void CUSBControllerReal::UpdateShouldScan()
 				PanicAlert("Couldn't ask libusb for hotplug events");
 				return;
 			}
+			m_HotplugActive = true;
 		}
 		else
 		{
-			if (m_HotplugHandle != NULL)
+			if (m_HotplugActive)
 
 			{
 				libusb_hotplug_deregister_callback(m_UsbContext, m_HotplugHandle);
-				m_HotplugHandle = NULL;
+				m_HotplugActive = false;
 			}
 		}
 	}

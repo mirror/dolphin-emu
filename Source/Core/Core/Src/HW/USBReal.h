@@ -12,8 +12,8 @@
 #include <set>
 #include <map>
 
-#ifdef libusb_hotplug_match_any
-#define cusbdevice_supports_hotplug
+#ifdef LIBUSB_HOTPLUG_MATCH_ANY
+#define CUSBDEVICE_SUPPORTS_HOTPLUG
 #endif
 
 namespace USBInterface
@@ -61,13 +61,15 @@ private:
 	void USBThread();
 	static void USBThreadFunc(CUSBControllerReal* Self) { Self->USBThread(); }
 #ifdef CUSBDEVICE_SUPPORTS_HOTPLUG
-	static int HotplugCallback(libusb_context* Ctx, libusb_device* Device, libusb_hotplug_event Event, void* Data);
+	static int LIBUSB_CALL HotplugCallback(libusb_context* Ctx, libusb_device* Device, libusb_hotplug_event Event, void* Data);
 #endif
 
 	libusb_context* m_UsbContext;
 #ifdef CUSBDEVICE_SUPPORTS_HOTPLUG
-	libusb_hotplug_callback_handle* m_HotplugHandle;
+	libusb_hotplug_callback_handle m_HotplugHandle;
+	bool m_HotplugActive;
 	bool m_UseHotplug;
+	bool m_HotplugTriggered;
 #endif
 	std::thread* m_Thread;
 
