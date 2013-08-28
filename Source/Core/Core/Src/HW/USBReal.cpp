@@ -5,6 +5,7 @@
 #include "../Core.h"
 #include "USBReal.h"
 #include "CoreTiming.h"
+#include "Timer.h"
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
 #  include <time.h>
@@ -449,6 +450,8 @@ void CUSBControllerReal::USBThread()
 	timeval Tv;
 	Tv.tv_sec = 0;
 	Tv.tv_usec = 300000;
+	Common::Timer Timer;
+	Timer.Start();
 	while (1)
 	{
 		int Err = libusb_handle_events_timeout(m_UsbContext, &Tv);
@@ -462,6 +465,11 @@ void CUSBControllerReal::USBThread()
 			delete this;
 			return;
 		}
+		if (Timer.GetTimeDifference() < 300)
+		{
+			continue;
+		}
+		Timer.Update();
 #ifdef CUSBDEVICE_SUPPORTS_HOTPLUG
 		if (!m_UseHotplug)
 		{
