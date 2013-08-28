@@ -60,15 +60,11 @@ CUSBRequestReal::~CUSBRequestReal()
 	// This was also in Complete, but the result was a crash and I think this
 	// really is a bug.
 	libusb_free_transfer(m_Transfer);
-	// Note: Originally this was in Complete.  However, due to a
-	// supposedly-not-a-bug in libusb, libusb_close cannot be called from a
-	// transfer completion callback (deadlock).
-	((CUSBDeviceReal*) m_Device)->CheckClose();
 }
 
 void CUSBRequestReal::Complete(u32 Status)
 {
-	DEBUG_LOG(USBINTERFACE, "USBReal: complete %p status=%u", m_Transfer, Status);
+	DEBUG_LOG(USBINTERFACE, "USBReal: complete %p status:%x", m_Transfer, Status);
 	CUSBRequest::Complete(Status);
 }
 
@@ -143,10 +139,16 @@ void CUSBDeviceReal::_Close()
 // Called with g_QueueMutex held.
 void CUSBDeviceReal::CheckClose()
 {
-	if (m_WasClosed && m_IncompleteRequests.empty())
+	if (m_WasClosed && m_IncompleteRequests.empty() && m_PendingRequests.empty())
 	{
 		delete this;
 	}
+}
+
+void CUSBDeviceReal::ProcessPending()
+{
+	IUSBDevice::ProcessPending();
+	CheckClose();
 }
 
 u32 CUSBDeviceReal::SetConfig(int Config)

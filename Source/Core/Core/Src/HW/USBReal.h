@@ -32,6 +32,7 @@ public:
 	virtual void BulkRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData);
 	virtual void InterruptRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData);
 	virtual void IsochronousRequest(u8 Endpoint, size_t Length, size_t NumPackets, u16* PacketLengths, void* Payload, void* UserData);
+	virtual void ProcessPending();
 
 protected:
 	virtual void _ControlRequest(const USBSetup* Request, void* Payload, void* UserData);

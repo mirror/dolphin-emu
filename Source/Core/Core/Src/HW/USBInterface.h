@@ -248,9 +248,6 @@ public:
 class IUSBDevice : public IntrusiveMember<IUSBDevice>
 {
 public:
-	inline void ProcessPending();
-
-	// Non-virtual methods are implemented in terms of virtual ones.
 	void CancelRequests(u8 Endpoint);
 	virtual u32 SetConfig(int Config) = 0;
 	virtual u32 SetDefaultConfig() = 0;
@@ -260,6 +257,7 @@ public:
 	virtual void InterruptRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData) = 0;
 	virtual void IsochronousRequest(u8 Endpoint, size_t Length, size_t NumPackets, u16* PacketLengths, void* Payload, void* UserData) = 0;
 	void Close();
+	virtual void ProcessPending();
 
 	void WriteDeviceState(PointerWrap& p);
 

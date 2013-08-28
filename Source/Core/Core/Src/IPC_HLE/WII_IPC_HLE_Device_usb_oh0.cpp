@@ -102,7 +102,7 @@ void CWII_IPC_HLE_Device_usb_oh0::USBDevicesChanged(std::vector<USBInterface::US
 }
 
 bool CWII_IPC_HLE_Device_usb_oh0::IOCtl(u32 _CommandAddress) 
-{ 
+{
 	u32 BufferIn		= Memory::Read_U32(_CommandAddress + 0x10);
 	u32 BufferOut		= Memory::Read_U32(_CommandAddress + 0x18);
 	u32 Command			= Memory::Read_U32(_CommandAddress + 0x0C);

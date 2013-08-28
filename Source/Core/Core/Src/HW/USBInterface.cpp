@@ -185,9 +185,11 @@ static void USBInterfaceCallback(u64 UserData, int CyclesLate)
 	case USBEventRequestsCompleted:
 	{
 		std::lock_guard<std::mutex> Guard(g_QueueMutex);
-		for (auto itr = g_PendingDevices.begin(); itr != g_PendingDevices.end(); ++itr)
+		for (auto itr = g_PendingDevices.begin(); itr != g_PendingDevices.end();)
 		{
-			itr->ProcessPending();
+			IUSBDevice* Device = &*itr;
+			++itr;
+			Device->ProcessPending();
 		}
 		g_PendingDevices.Clear();
 		break;
