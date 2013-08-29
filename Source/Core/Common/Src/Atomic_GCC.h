@@ -40,27 +40,39 @@ inline void AtomicIncrement(volatile u32& target) {
 	__sync_add_and_fetch(&target, 1);
 }
 
-inline u32 AtomicLoad(volatile u32& src) {
-	return src; // 32-bit reads are always atomic.
-}
-inline u32 AtomicLoadAcquire(volatile u32& src) {
-	//keep the compiler from caching any memory references
-	u32 result = src; // 32-bit reads are always atomic.
-	//__sync_synchronize(); // TODO: May not be necessary.
-	// Compiler instruction only. x86 loads always have acquire semantics.
-	__asm__ __volatile__ ( "":::"memory" );
-	return result;
-}
-
 inline void AtomicOr(volatile u32& target, u32 value) {
 	__sync_or_and_fetch(&target, value);
 }
 
-inline void AtomicStore(volatile u32& dest, u32 value) {
+template <typename T>
+inline T AtomicLoad(volatile T& src) {
+	return src; // 32-bit reads are always atomic.
+}
+
+template <typename T>
+inline T AtomicLoadAcquire(volatile T& src) {
+#if __clang__ && __clang_major__ < 5
+#ifdef _M_ARM
+#error Get a newer version of clang!
+#endif
+    return src;
+#else
+    return __atomic_load_n(&src, __ATOMIC_ACQUIRE);
+#endif
+}
+
+template <typename T, typename U>
+inline void AtomicStore(volatile T& dest, U value) {
 	dest = value; // 32-bit writes are always atomic.
 }
-inline void AtomicStoreRelease(volatile u32& dest, u32 value) {
-	__sync_lock_test_and_set(&dest, value); // TODO: Wrong! This function is has acquire semantics.
+
+template <typename T, typename U>
+inline void AtomicStoreRelease(volatile T& dest, U value) {
+#if __clang__ && __clang_major__ < 5
+    dest = value;
+#else
+    __atomic_store_n(&dest, value, __ATOMIC_RELEASE);
+#endif
 }
 
 }
