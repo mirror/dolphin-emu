@@ -5,7 +5,7 @@
 #include "USBInterface.h"
 #include "Thread.h"
 #include "CoreTiming.h"
-#if 0//defined(__LIBUSB__) || defined (_WIN32)
+#if defined(__LIBUSB__) || defined (_WIN32)
 #include "USBReal.h"
 #endif
 #include <unordered_set>
@@ -271,7 +271,7 @@ void RefInterface()
 	if (g_InterfaceRefCount++ == 0)
 	{
 		DEBUG_LOG(USBINTERFACE, "USB coming up");
-#if 0//defined(__LIBUSB__) || defined (_WIN32)
+#if defined(__LIBUSB__) || defined (_WIN32)
 		g_Controllers[UsbRealControllerId] = new CUSBControllerReal();
 #endif
 	}

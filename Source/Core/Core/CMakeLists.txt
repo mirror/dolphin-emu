@@ -230,7 +230,7 @@ endif()
 if(LIBUSB_FOUND)
 	# Using shared LibUSB
 	set(LIBS	${LIBS}	${LIBUSB_LIBRARIES})
-	#set(SRCS	${SRCS}	Src/IPC_HLE/WII_IPC_HLE_Device_hid.cpp)
+	set(SRCS	${SRCS}	Src/HW/USBReal.cpp)
 endif(LIBUSB_FOUND)
 
 set(LIBS	${LIBS}	polarssl)
