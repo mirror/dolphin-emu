@@ -105,7 +105,7 @@ void CUSBRequestReal::TransferCallback(libusb_transfer* Transfer)
 	}
 	else
 	{
-		Self->Complete(-7022);
+		Self->Complete(UsbErrDefault);
 	}
 }
 
@@ -162,14 +162,14 @@ u32 CUSBDeviceReal::SetConfig(int Config)
 	if (Ret)
 	{
 		WARN_LOG(USBINTERFACE, "libusb_set_configuration failed with error: %d", Ret);
-		return -1000;
+		return UsbErrDefault;
 	}
 	struct libusb_config_descriptor *ConfigDesc = NULL;
 	Ret = libusb_get_config_descriptor_by_value(m_Device, Config, &ConfigDesc);
 	if (Ret)
 	{
 		WARN_LOG(USBINTERFACE, "libusb_get_config_descriptor_by_value failed with error: %d", Ret);
-		return -1000;
+		return UsbErrDefault;
 	}
 	m_NumInterfaces = ConfigDesc->bNumInterfaces;
 	libusb_free_config_descriptor(ConfigDesc);
@@ -208,7 +208,7 @@ u32 CUSBDeviceReal::SetDefaultConfig()
 	if (UsbRet)
 	{
 		WARN_LOG(USBINTERFACE, "libusb_get_config_descriptor failed with error: %d", UsbRet);
-		return -1000;
+		return UsbErrDefault;
 	}
 	u32 Ret = SetConfig(ConfigDesc->bConfigurationValue);
 	libusb_free_config_descriptor(ConfigDesc);
@@ -222,7 +222,7 @@ u32 CUSBDeviceReal::SetDefaultConfig()
 	if (UsbRet)
 	{
 		WARN_LOG(USBINTERFACE, "libusb_get_config_descriptor failed with error: %d", UsbRet);
-		return -1000;
+		return UsbErrDefault;
 	}
 	return SetConfig(CurrentConfig);
 }
@@ -234,7 +234,7 @@ u32 CUSBDeviceReal::SetInterfaceAltSetting(int Interface, int Setting)
 	if (Ret)
 	{
 		WARN_LOG(USBINTERFACE, "libusb_set_interface_alt_setting failed with error: %d", Ret);
-		return -1000;
+		return UsbErrDefault;
 	}
 	return 0;
 }
@@ -254,7 +254,7 @@ void CUSBDeviceReal::_ControlRequest(const USBSetup* Request, void* Payload, voi
 	int Err = libusb_submit_transfer(Transfer);
 	if (Err)
 	{
-		URequest->Complete(-7022);
+		URequest->Complete(UsbErrDefault);
 	}
 }
 
@@ -267,7 +267,7 @@ void CUSBDeviceReal::BulkRequest(u8 Endpoint, size_t Length, void* Payload, void
 	int Err = libusb_submit_transfer(Transfer);
 	if (Err)
 	{
-		URequest->Complete(-7022);
+		URequest->Complete(UsbErrDefault);
 	}
 }
 
@@ -280,7 +280,7 @@ void CUSBDeviceReal::InterruptRequest(u8 Endpoint, size_t Length, void* Payload,
 	int Err = libusb_submit_transfer(Transfer);
 	if (Err)
 	{
-		Request->Complete(-7022);
+		Request->Complete(UsbErrDefault);
 	}
 }
 
@@ -297,7 +297,7 @@ void CUSBDeviceReal::IsochronousRequest(u8 Endpoint, size_t Length, size_t NumPa
 	int Err = libusb_submit_transfer(Transfer);
 	if (Err)
 	{
-		Request->Complete(-1002);
+		Request->Complete(UsbErrDefault);
 	}
 
 }

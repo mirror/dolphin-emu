@@ -248,7 +248,7 @@ static void ReadDeviceStateInList(PointerWrap& p, IUSBDeviceClient* Client)
 	{
 		char UserData[UsbUserDataSize];
 		p.DoArray(UserData, UsbUserDataSize);
-		Client->USBRequestComplete(UserData, -1);
+		Client->USBRequestComplete(UserData, UsbErrDisconnected);
 	}
 }
 

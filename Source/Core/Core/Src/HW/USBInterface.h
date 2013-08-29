@@ -69,6 +69,24 @@ enum
 	UsbUserDataSize = 16
 };
 
+enum
+{
+	/*
+		-7022: returned from insertion callback when cancelled
+			   returned from transfers when device removed
+			   RB3 intr_in callback checks for this error
+		-(7000+OHCI condition code): printf'ed from IOS, not actually
+									 returned
+		   -6: returned from insertion callback when fd closed 
+		   -1, -4: returned from various ioctls on error
+			0: actually returned on USB error?
+			   returned from cancelled HID request
+	*/
+
+	UsbErrDisconnected = -7022,
+	UsbErrDefault = -7000
+};
+
 // size: 0x14
 struct USBDeviceDescriptor
 {
