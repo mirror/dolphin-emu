@@ -809,7 +809,7 @@ bool TASInputHasFocus()
 {
 	for (int i = 0; i < 4; i++)
 	{
-		if (main_frame->g_TASInputDlg[i]->HasFocus())
+		if (main_frame->g_TASInputDlg[i]->TASHasFocus())
 			return true;
 	}
 	return false;
