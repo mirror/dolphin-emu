@@ -42,7 +42,7 @@ public:
 	virtual bool IOCtl(u32 _CommandAddress);
 
 	virtual void USBDevicesChanged(std::vector<USBInterface::USBDeviceDescriptorEtc*>& Devices);
-	virtual void USBRequestComplete(void* UserData, u32 Status);
+	virtual void USBRequestComplete(void* UserData, u32 Status, bool WasThawed);
 
 	static const char* GetBaseName() { return "/dev/usb/hid"; }
 private:

@@ -31,6 +31,23 @@ bool g_DidOneTimeSetup;
 int g_USBInterfaceEvent;
 volatile bool g_ShouldScan;
 
+static bool UpdateDeviceLists()
+{
+	bool Changed = false;
+	for (int i = 0; i < NumControllerIds; i++)
+	{
+		if (g_Controllers[i])
+		{
+			Changed = g_Controllers[i]->UpdateDeviceList() || Changed;
+		}
+	}
+	if (Changed)
+	{
+		IUSBController::UpdateGlobalDeviceList();
+	}
+	return Changed;
+}
+
 CUSBRequest::CUSBRequest(IUSBDevice* Device, void* UserData, s16 Endpoint, bool IsFake)
 : m_Endpoint(Endpoint), m_IsFake(IsFake), m_Device(Device)
 {
@@ -99,14 +116,7 @@ void IUSBController::UpdateGlobalDeviceList()
 void IUSBController::SetDeviceList(std::vector<USBDeviceDescriptorEtc>* List, bool IsInitial)
 {
 	m_NewDeviceList.reset(List);
-	if (IsInitial)
-	{
-		if (UpdateDeviceList())
-		{
-			IUSBController::UpdateGlobalDeviceList();
-		}
-	}
-	else
+	if (!IsInitial)
 	{
 		CoreTiming::ScheduleEvent_Threadsafe_Immediate(g_USBInterfaceEvent, USBEventDevicesChanged);
 	}
@@ -146,7 +156,7 @@ void IUSBDevice::ProcessPending()
 	{
 		CUSBRequest* Request = &*itr;
 		DEBUG_LOG(USBINTERFACE, "Request complete: %x status:%x", *(u32*) Request->m_UserData, Request->m_Status);
-		m_Client->USBRequestComplete(Request->m_UserData, Request->m_Status);
+		m_Client->USBRequestComplete(Request->m_UserData, Request->m_Status, false);
 		++itr;
 		delete Request;
 	}
@@ -202,20 +212,13 @@ static void USBInterfaceCallback(u64 UserData, int CyclesLate)
 	}
 	case USBEventDevicesChanged:
 	{
-		if (g_ShouldScan)
+		if (!g_ShouldScan)
 		{
-			bool Changed = false;
-			for (int i = 0; i < NumControllerIds; i++)
-			{
-				if (g_Controllers[i])
-				{
-					Changed = g_Controllers[i]->UpdateDeviceList() || Changed;
-				}
-			}
-			if (Changed)
-			{
-				IUSBController::UpdateGlobalDeviceList();
-			}
+			break;
+		}
+		if (UpdateDeviceLists())
+		{
+			// Notify everyone
 			for (auto itr = g_DeviceChangeClients.begin(); itr != g_DeviceChangeClients.end(); )
 			{
 				IUSBDeviceChangeClient* Client = *itr;
@@ -223,15 +226,12 @@ static void USBInterfaceCallback(u64 UserData, int CyclesLate)
 				// This might cause the previous iterator to be invalidated.
 				Client->USBDevicesChanged(g_DeviceList);
 			}
-			// Need to keep the old list valid until here.
-			if (Changed)
+			// Need to keep the old lists valid until here.
+			for (int i = 0; i < NumControllerIds; i++)
 			{
-				for (int i = 0; i < NumControllerIds; i++)
+				if (g_Controllers[i])
 				{
-					if (g_Controllers[i])
-					{
-						g_Controllers[i]->DestroyOldDeviceList();
-					}
+					g_Controllers[i]->DestroyOldDeviceList();
 				}
 			}
 		}
@@ -248,7 +248,7 @@ static void ReadDeviceStateInList(PointerWrap& p, IUSBDeviceClient* Client)
 	{
 		char UserData[UsbUserDataSize];
 		p.DoArray(UserData, UsbUserDataSize);
-		Client->USBRequestComplete(UserData, UsbErrDisconnected);
+		Client->USBRequestComplete(UserData, UsbErrDisconnected, true);
 	}
 }
 
@@ -298,6 +298,8 @@ void RefInterface()
 #if defined(__LIBUSB__) || defined (_WIN32)
 		g_Controllers[UsbRealControllerId] = new CUSBControllerReal();
 #endif
+		// get initial device list
+		UpdateDeviceLists();
 	}
 }
 
@@ -327,8 +329,8 @@ static void SetShouldScan(bool ShouldScan)
 			Controller->UpdateShouldScan();
 		}
 	}
-	// We don't need to do an initial USBEventDevicesChanged because all the
-	// clients have special initial behavior anyway.
+	// Note that it wouldn't help any clients to fire a USBEventDevicesChanged
+	// here.
 }
 
 void RegisterDeviceChangeClient(IUSBDeviceChangeClient* Client)

@@ -86,6 +86,7 @@ void CWII_IPC_HLE_Device_usb_hid::DoState(PointerWrap& p)
 		{
 			USBInterface::ReadDeviceState(p, this);
 		}
+		USBDevicesChanged(USBInterface::GetDeviceList());
 	}
 	else
 	{
@@ -397,11 +398,11 @@ void CWII_IPC_HLE_Device_usb_hid::USBDevicesChanged(std::vector<USBInterface::US
 	m_DeviceCommandAddress = 0;
 }
 
-void CWII_IPC_HLE_Device_usb_hid::USBRequestComplete(void* UserData, u32 Status)
+void CWII_IPC_HLE_Device_usb_hid::USBRequestComplete(void* UserData, u32 Status, bool IsThawed)
 {
 	SHidUserData* Data = (SHidUserData*) UserData;
 	u32 CommandAddress = Data->CommandAddress;
-	if (Data->DescriptorBuf) // GET_US_STRING
+	if (Data->DescriptorBuf && !IsThawed) // GET_US_STRING
 	{
 		if (Status == 0) {
 			u32 BufferOut = Memory::Read_U32(CommandAddress + 0x18);

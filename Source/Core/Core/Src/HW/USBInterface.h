@@ -266,7 +266,7 @@ private:
 class IUSBDeviceClient
 {
 public:
-	virtual void USBRequestComplete(void* UserData, u32 Status) = 0;
+	virtual void USBRequestComplete(void* UserData, u32 Status, bool WasThawed) = 0;
 };
 
 class IUSBDeviceChangeClient

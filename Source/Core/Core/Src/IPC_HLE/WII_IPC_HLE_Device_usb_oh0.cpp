@@ -259,6 +259,10 @@ void CWII_IPC_HLE_Device_usb_oh0::DoState(PointerWrap& p)
 {
 	p.Do(m_DeviceInsertionHooks);
 	p.Do(m_InsertionHookId);
+	if (p.GetMode() == PointerWrap::MODE_READ)
+	{
+		USBDevicesChanged(USBInterface::GetDeviceList());
+	}
 }
 
 CWII_IPC_HLE_Device_usb_oh0_dev::CWII_IPC_HLE_Device_usb_oh0_dev(const std::string& _rDeviceName, u16 Vid, u16 Pid)
@@ -416,14 +420,30 @@ void CWII_IPC_HLE_Device_usb_oh0_dev::DoState(PointerWrap& p)
 {
 	p.Do(m_OpenInfo);
 	p.Do(m_RemovalCommandAddress);
+	bool IsNull = m_Device == NULL;
+	p.Do(IsNull);
 	if (p.GetMode() == PointerWrap::MODE_READ)
 	{
-		USBInterface::ReadDeviceState(p, this);
 		m_Device = NULL;
+		if (!IsNull)
+		{
+			// This just calls USBRequestComplete a bunch
+			USBInterface::ReadDeviceState(p, this);
+		}
+		if (m_RemovalCommandAddress)
+		{
+			DEBUG_LOG(WII_IPC_USB, "oh0dev: triggering removal callback due to state load");
+			Memory::Write_U32(0, m_RemovalCommandAddress + 0x4);
+			WII_IPC_HLE_Interface::EnqReply(m_RemovalCommandAddress);
+			m_RemovalCommandAddress = 0;
+		}
 	}
 	else
 	{
-		m_Device->WriteDeviceState(p);
+		if (!IsNull)
+		{
+			m_Device->WriteDeviceState(p);
+		}
 	}
 }
 
@@ -446,7 +466,7 @@ void CWII_IPC_HLE_Device_usb_oh0_dev::USBDevicesChanged(std::vector<USBInterface
 	m_RemovalCommandAddress = 0;
 }
 
-void CWII_IPC_HLE_Device_usb_oh0_dev::USBRequestComplete(void* UserData, u32 Status)
+void CWII_IPC_HLE_Device_usb_oh0_dev::USBRequestComplete(void* UserData, u32 Status, bool IsThawed)
 {
 	u32* Data = (u32*) UserData;
 	u32 _CommandAddress = Data[0];

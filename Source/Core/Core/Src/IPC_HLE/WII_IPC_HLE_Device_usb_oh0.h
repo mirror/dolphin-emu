@@ -88,7 +88,7 @@ public:
 	virtual void DoState(PointerWrap& p);
 
 	virtual void USBDevicesChanged(std::vector<USBInterface::USBDeviceDescriptorEtc*>& Devices);
-	virtual void USBRequestComplete(void* UserData, u32 Status);
+	virtual void USBRequestComplete(void* UserData, u32 Status, bool WasThawed);
 
 	static IWII_IPC_HLE_Device* Create(const std::string& Name);
 
