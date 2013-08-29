@@ -4,7 +4,7 @@
 
 #include "x64Analyzer.h"
 
-bool DisassembleMov(const unsigned char *codePtr, InstructionInfo &info, int accessType)
+bool DisassembleMov(const unsigned char *codePtr, InstructionInfo &info, bool isWrite)
 {
 	unsigned const char *startCodePtr = codePtr;
 	u8 rex = 0;
@@ -118,7 +118,7 @@ bool DisassembleMov(const unsigned char *codePtr, InstructionInfo &info, int acc
 	codePtr += displacementSize;
 
 
-	if (accessType == 1)
+	if (isWrite)
 	{
 		info.isMemoryWrite = true;
 		//Write access

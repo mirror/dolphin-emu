@@ -160,7 +160,7 @@ const u8 *TrampolineCache::GetWriteTrampoline(const InstructionInfo &info)
 // 1) It's really necessary. We don't know anything about the context.
 // 2) It doesn't really hurt. Only instructions that access I/O will get these, and there won't be 
 //    that many of them in a typical program/game.
-const u8 *Jitx86Base::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void *ctx_void)
+const u8 *Jitx86Base::BackPatch(u8 *codePtr, bool isWrite, u32 emAddress, void *ctx_void)
 {
 #ifdef _M_X64
 	CONTEXT *ctx = (CONTEXT *)ctx_void;
@@ -169,7 +169,7 @@ const u8 *Jitx86Base::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void
 		return 0;  // this will become a regular crash real soon after this
 	
 	InstructionInfo info;
-	if (!DisassembleMov(codePtr, info, accessType)) {
+	if (!DisassembleMov(codePtr, info, isWrite)) {
 		BackPatchError("BackPatch - failed to disassemble MOV instruction", codePtr, emAddress);
 	}
 
@@ -187,11 +187,11 @@ const u8 *Jitx86Base::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void
 		PanicAlert("BackPatch : Base reg not RBX."
 		           "\n\nAttempted to access %08x.", emAddress);
 	
-	if (accessType == OP_ACCESS_WRITE)
+	if (isWrite)
 		PanicAlert("BackPatch : Currently only supporting reads."
 		           "\n\nAttempted to write to %08x.", emAddress);
 
-	if (accessType == 0)
+	if (!isWrite)
 	{
 		XEmitter emitter(codePtr);
 		int bswapNopCount;
@@ -205,7 +205,7 @@ const u8 *Jitx86Base::BackPatch(u8 *codePtr, int accessType, u32 emAddress, void
 		emitter.NOP((int)info.instructionSize + bswapNopCount - 5);
 		return codePtr;
 	}
-	else if (accessType == 1)
+	else
 	{
 		// TODO: special case FIFO writes. Also, support 32-bit mode.
 		// Also, debug this so that it actually works correctly :P
