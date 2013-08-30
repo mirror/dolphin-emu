@@ -14,10 +14,10 @@
 // barriers called "Acquire semantics" and "Release semantics", defined below.
 //
 // Acquire semantics: Future memory accesses cannot be relocated to before the
-//                    operation.
+//					operation.
 //
 // Release semantics: Past memory accesses cannot be relocated to after the
-//                    operation.
+//					operation.
 //
 // These barriers affect not only the compiler, but also the CPU.
 
@@ -46,6 +46,7 @@ inline void AtomicOr(volatile u32& target, u32 value) {
 
 template <typename T>
 inline T AtomicLoad(volatile T& src) {
+	asm("" ::: "memory");
 	return src; // 32-bit reads are always atomic.
 }
 
@@ -55,23 +56,26 @@ inline T AtomicLoadAcquire(volatile T& src) {
 #ifdef _M_ARM
 #error Get a newer version of clang!
 #endif
-    return src;
+	asm("" ::: "memory");
+	return src;
 #else
-    return __atomic_load_n(&src, __ATOMIC_ACQUIRE);
+	return __atomic_load_n(&src, __ATOMIC_ACQUIRE);
 #endif
 }
 
 template <typename T, typename U>
 inline void AtomicStore(volatile T& dest, U value) {
 	dest = value; // 32-bit writes are always atomic.
+	asm("" ::: "memory");
 }
 
 template <typename T, typename U>
 inline void AtomicStoreRelease(volatile T& dest, U value) {
 #if __clang__ && __clang_major__ < 5
-    dest = value;
+	dest = value;
+	asm("" ::: "memory");
 #else
-    __atomic_store_n(&dest, value, __ATOMIC_RELEASE);
+	__atomic_store_n(&dest, value, __ATOMIC_RELEASE);
 #endif
 }
 
@@ -86,9 +90,9 @@ LONG SyncInterlockedIncrement(LONG *Dest)
 #else
   register int result;
   __asm__ __volatile__("lock; xadd %0,%1"
-                       : "=r" (result), "=m" (*Dest)
-                       : "0" (1), "m" (*Dest)
-                       : "memory");
+					   : "=r" (result), "=m" (*Dest)
+					   : "0" (1), "m" (*Dest)
+					   : "memory");
   return result;
 #endif
 }
@@ -100,9 +104,9 @@ LONG SyncInterlockedExchangeAdd(LONG *Dest, LONG Val)
 #else
   register int result;
   __asm__ __volatile__("lock; xadd %0,%1"
-                       : "=r" (result), "=m" (*Dest)
-                       : "0" (Val), "m" (*Dest)
-                       : "memory");
+					   : "=r" (result), "=m" (*Dest)
+					   : "0" (Val), "m" (*Dest)
+					   : "memory");
   return result;
 #endif
 }
@@ -114,9 +118,9 @@ LONG SyncInterlockedExchange(LONG *Dest, LONG Val)
 #else
   register int result;
   __asm__ __volatile__("lock; xchg %0,%1"
-                       : "=r" (result), "=m" (*Dest)
-                       : "0" (Val), "m" (*Dest)
-                       : "memory");
+					   : "=r" (result), "=m" (*Dest)
+					   : "0" (Val), "m" (*Dest)
+					   : "memory");
   return result;
 #endif
 }
