@@ -216,18 +216,22 @@ else()
 			MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in
 			)
 
-		# Fix up the bundle after it is finished.
-		# There does not seem to be an easy way to run CMake commands post-build,
-		# so we invoke CMake again on a generated script.
-		file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/postprocess_bundle.cmake "
-			include(BundleUtilities)
-			message(\"Fixing up application bundle: ${BUNDLE_PATH}\")
-			set(BU_CHMOD_BUNDLE_ITEMS ON)
-			fixup_bundle(\"${BUNDLE_PATH}\" \"\" \"\")
-			")
-		add_custom_command(TARGET ${DOLPHIN_EXE} POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -P postprocess_bundle.cmake
-			)
+		if(NOT SKIP_POSTPROCESS_BUNDLE)
+			# Fix up the bundle after it is finished.
+			# There does not seem to be an easy way to run CMake commands post-build,
+			# so we invoke CMake again on a generated script.
+			file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/postprocess_bundle.cmake "
+				include(BundleUtilities)
+				message(\"Fixing up application bundle: ${BUNDLE_PATH}\")
+				message(\"(Note: This is only necessary to produce a redistributable binary.\")
+				message(\"To skip, pass -DSKIP_POSTPROCESS_BUNDLE=1 to cmake.)\")
+				set(BU_CHMOD_BUNDLE_ITEMS ON)
+				fixup_bundle(\"${BUNDLE_PATH}\" \"\" \"\")
+				")
+			add_custom_command(TARGET ${DOLPHIN_EXE} POST_BUILD
+				COMMAND ${CMAKE_COMMAND} -P postprocess_bundle.cmake
+				)
+		endif()
 
 		# Copy data files into application bundle.
 		file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/copy_data_into_bundle.cmake "
@@ -237,6 +241,9 @@ else()
 			file(GLOB TRANSLATION_FILES RELATIVE ${CMAKE_BINARY_DIR}
 				${CMAKE_BINARY_DIR}/*.gmo
 				)
+			file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/did_copy_data_into_bundle \"\")
+			")
+		file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/copy_translations_into_bundle.cmake "
 			foreach(TRANSLATION_FILE \${TRANSLATION_FILES})
 				string(REPLACE \".gmo\" \".lproj\" TRANSLATION_DIR
 					\${TRANSLATION_FILE}
@@ -253,8 +260,17 @@ else()
 					)
 			endforeach(TRANSLATION_FILE)
 			")
-		add_custom_target(CopyDataIntoBundle ALL
+		add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/did_copy_data_into_bundle
 			COMMAND ${CMAKE_COMMAND} -P copy_data_into_bundle.cmake
+			DEPENDS ${CMAKE_SOURCE_DIR}/Data/Sys ${CMAKE_SOURCE_DIR}/Data/User
+			VERBATIM
+			)
+		add_custom_target(CopyDataIntoBundle ALL
+			DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/did_copy_data_into_bundle
+			)
+		add_custom_command(TARGET translations
+			POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -P copy_translations_into_bundle.cmake
 			VERBATIM
 			)
 
