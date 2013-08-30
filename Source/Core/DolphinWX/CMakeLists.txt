@@ -169,6 +169,13 @@ if(USE_UPNP)
   set(LIBS  ${LIBS} miniupnpc)
 endif()
 
+include(FindGettext)
+if(GETTEXT_FOUND AND wxWidgets_FOUND)
+	file(GLOB LINGUAS ${CMAKE_SOURCE_DIR}/Languages/po/*.po)
+	add_custom_target(translations ALL)
+	GETTEXT_CREATE_TRANSLATIONS(${CMAKE_SOURCE_DIR}/Languages/po/dolphin-emu.pot ${LINGUAS})
+endif()
+
 if(ANDROID)
 	set(DOLPHIN_EXE main)
 	add_library(${DOLPHIN_EXE} SHARED ${SRCS})
@@ -238,27 +245,7 @@ else()
 			file(INSTALL ${CMAKE_SOURCE_DIR}/Data/Sys ${CMAKE_SOURCE_DIR}/Data/User
 				DESTINATION ${BUNDLE_PATH}/Contents/Resources
 				)
-			file(GLOB TRANSLATION_FILES RELATIVE ${CMAKE_BINARY_DIR}
-				${CMAKE_BINARY_DIR}/*.gmo
-				)
 			file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/did_copy_data_into_bundle \"\")
-			")
-		file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/copy_translations_into_bundle.cmake "
-			foreach(TRANSLATION_FILE \${TRANSLATION_FILES})
-				string(REPLACE \".gmo\" \".lproj\" TRANSLATION_DIR
-					\${TRANSLATION_FILE}
-					)
-				# It would be better to copy to the new name as a single action,
-				# but I can't figure out a way to let CMake do that.
-				file(COPY ${CMAKE_BINARY_DIR}/\${TRANSLATION_FILE}
-					DESTINATION ${BUNDLE_PATH}/Contents/Resources/\${TRANSLATION_DIR}
-					NO_SOURCE_PERMISSIONS
-					)
-				file(RENAME
-					${BUNDLE_PATH}/Contents/Resources/\${TRANSLATION_DIR}/\${TRANSLATION_FILE}
-					${BUNDLE_PATH}/Contents/Resources/\${TRANSLATION_DIR}/dolphin-emu.mo
-					)
-			endforeach(TRANSLATION_FILE)
 			")
 		add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/did_copy_data_into_bundle
 			COMMAND ${CMAKE_COMMAND} -P copy_data_into_bundle.cmake
@@ -268,11 +255,44 @@ else()
 		add_custom_target(CopyDataIntoBundle ALL
 			DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/did_copy_data_into_bundle
 			)
-		add_custom_command(TARGET translations
-			POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -P copy_translations_into_bundle.cmake
-			VERBATIM
-			)
+
+		if(GETTEXT_FOUND AND wxWidgets_FOUND)
+			file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/copy_translations_into_bundle.cmake "
+				file(GLOB TRANSLATION_FILES RELATIVE ${CMAKE_BINARY_DIR}
+					${CMAKE_BINARY_DIR}/*.gmo
+					)
+				foreach(TRANSLATION_FILE \${TRANSLATION_FILES})
+					string(REPLACE \".gmo\" \".lproj\" TRANSLATION_DIR
+						\${TRANSLATION_FILE}
+						)
+					# It would be better to copy to the new name as a single action,
+					# but I can't figure out a way to let CMake do that.
+					file(COPY ${CMAKE_BINARY_DIR}/\${TRANSLATION_FILE}
+						DESTINATION ${BUNDLE_PATH}/Contents/Resources/\${TRANSLATION_DIR}
+						NO_SOURCE_PERMISSIONS
+						)
+					file(RENAME
+						${BUNDLE_PATH}/Contents/Resources/\${TRANSLATION_DIR}/\${TRANSLATION_FILE}
+						${BUNDLE_PATH}/Contents/Resources/\${TRANSLATION_DIR}/dolphin-emu.mo
+						)
+				endforeach(TRANSLATION_FILE)
+				")
+
+			file(GLOB PO_FILES RELATIVE ${CMAKE_SOURCE_DIR}/Languages/po
+				${CMAKE_SOURCE_DIR}/Languages/po/*.po
+				)
+			string(REPLACE .po .gmo GMO_FILES "${PO_FILES}")
+
+			add_custom_command(OUTPUT ${BUNDLE_PATH}/Contents/Resources/en.lproj
+				COMMAND ${CMAKE_COMMAND} -P copy_translations_into_bundle.cmake
+				DEPENDS ${GMO_FILES}
+				${CMAKE_SOURCE_DIR}/Data/Sys ${CMAKE_SOURCE_DIR}/Data/User
+				VERBATIM
+				)
+			add_custom_target(CopyTranslationsIntoBundle ALL
+				DEPENDS ${BUNDLE_PATH}/Contents/Resources/en.lproj
+				)
+		endif()
 
 		# Install bundle into systemwide /Applications directory.
 		install(DIRECTORY ${BUNDLE_PATH} DESTINATION /Applications
