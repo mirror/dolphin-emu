@@ -8,10 +8,10 @@
 #include "SoundStream.h"
 #include "Thread.h"
 
-#define BUF_SIZE (48000 * 4 / 32)
-
 class NullSound : public SoundStream
 {
+	enum { BUF_SIZE = 48000 * 4 / 32 };
+
 	// playback position
 	short realtimeBuffer[BUF_SIZE / sizeof(short)];
 

@@ -7,6 +7,16 @@
 
 #include "WII_IPC_HLE_Device.h"
 
+// PCH hack for OS X
+#ifdef __APPLE__
+#include <Security/Security.h>
+#endif
+#ifdef OID_ISO_IDENTIFIED_ORG
+#undef OID_ISO_IDENTIFIED_ORG
+#undef OID_PKIX
+#undef OID_KP
+#endif
+
 #include <polarssl/net.h>
 #include <polarssl/ssl.h>
 #include <polarssl/havege.h>

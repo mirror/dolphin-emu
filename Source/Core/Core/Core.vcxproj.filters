@@ -517,6 +517,9 @@
     <ClCompile Include="Src\HW\WiimoteEmu\Speaker.cpp">
       <Filter>HW %28Flipper/Hollywood%29\Wiimote\Emu</Filter>
     </ClCompile>
+    <ClCompile Include="Src\HW\WiimoteEmu\UDPTLayer.cpp">
+      <Filter>HW %28Flipper/Hollywood%29\Wiimote\Emu</Filter>
+    </ClCompile>
     <ClCompile Include="Src\HW\WiimoteEmu\WiimoteEmu.cpp">
       <Filter>HW %28Flipper/Hollywood%29\Wiimote\Emu</Filter>
     </ClCompile>

@@ -36,7 +36,7 @@
     <ClInclude Include="Src\InputConfig.h" />
     <ClInclude Include="Src\UDPWiimote.h" />
     <ClInclude Include="Src\UDPWrapper.h" />
-    <ClInclude Include="Src\ControllerInterface\SDL\SDL.h">
+    <ClInclude Include="Src\ControllerInterface\SDL\SDL_.h">
       <Filter>ControllerInterface\SDL</Filter>
     </ClInclude>
     <ClInclude Include="Src\ControllerInterface\XInput\XInput.h">

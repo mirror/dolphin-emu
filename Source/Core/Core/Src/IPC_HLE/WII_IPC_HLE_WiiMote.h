@@ -38,7 +38,7 @@ private:
 class CWII_IPC_HLE_WiiMote
 {
 public:
-	CWII_IPC_HLE_WiiMote(CWII_IPC_HLE_Device_usb_oh1_57e_305* _pHost, int _Number, bdaddr_t _BD, bool ready = false);
+	CWII_IPC_HLE_WiiMote(CWII_IPC_HLE_Device_usb_oh1_57e_305* _pHost, int _Number, SBDAddr _BD, bool ready = false);
 
 	virtual ~CWII_IPC_HLE_WiiMote() {}
 
@@ -62,7 +62,7 @@ public:
 	void EventDisconnect();
 	bool EventPagingChanged(u8 _pageMode);
 
-	const bdaddr_t& GetBD() const { return m_BD; }
+	const SBDAddr& GetBD() const { return m_BD; }
 	const uint8_t* GetClass() const { return uclass; }
 	u16 GetConnectionHandle() const { return m_ConnectionHandle; }
 	const u8* GetFeatures() const { return features; }
@@ -92,7 +92,7 @@ private:
 	bool m_HIDInterruptChannel_ConfigWait;
 
 	// STATE_TO_SAVE
-	bdaddr_t m_BD;
+	SBDAddr m_BD;
 	u16 m_ConnectionHandle;
 	uint8_t uclass[HCI_CLASS_SIZE];
 	u8 features[HCI_FEATURES_SIZE];

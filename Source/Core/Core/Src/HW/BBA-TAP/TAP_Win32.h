@@ -31,6 +31,7 @@
 // the TAP-Win32 driver and contains definitions
 // common to both.
 //===============================================
+#pragma once
 #include <windows.h>
 #include <stdlib.h>
 #include <winioctl.h>

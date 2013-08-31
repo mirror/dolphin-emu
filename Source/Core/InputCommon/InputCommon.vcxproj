@@ -186,7 +186,7 @@
     <ClInclude Include="Src\ControllerInterface\DInput\DInputJoystick.h" />
     <ClInclude Include="Src\ControllerInterface\DInput\DInputKeyboardMouse.h" />
     <ClInclude Include="Src\ControllerInterface\DInput\NamedKeys.h" />
-    <ClInclude Include="Src\ControllerInterface\SDL\SDL.h" />
+    <ClInclude Include="Src\ControllerInterface\SDL\SDL_.h" />
     <ClInclude Include="Src\ControllerInterface\XInput\XInput.h" />
     <ClInclude Include="Src\GCPadStatus.h" />
     <ClInclude Include="Src\InputConfig.h" />

@@ -316,6 +316,7 @@
     <ClCompile Include="Src\HW\WiimoteEmu\EmuSubroutines.cpp" />
     <ClCompile Include="Src\HW\WiimoteEmu\Encryption.cpp" />
     <ClCompile Include="Src\HW\WiimoteEmu\Speaker.cpp" />
+    <ClCompile Include="Src\HW\WiimoteEmu\UDPTLayer.cpp" />
     <ClCompile Include="Src\HW\WiimoteEmu\WiimoteEmu.cpp" />
     <ClCompile Include="Src\HW\WiimoteReal\IOWin.cpp" />
     <ClCompile Include="Src\HW\WiimoteReal\WiimoteReal.cpp" />

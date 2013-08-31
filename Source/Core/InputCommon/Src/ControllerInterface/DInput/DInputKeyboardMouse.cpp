@@ -22,7 +22,8 @@ static const struct
 	const char* const	name;
 } named_keys[] =
 {
-#include "NamedKeys.h"
+	// PCH: tab in to avoid pch'ing
+	#include "NamedKeys.h"
 };
 
 static const struct

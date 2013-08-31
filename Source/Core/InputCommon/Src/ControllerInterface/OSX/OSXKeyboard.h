@@ -1,3 +1,4 @@
+#pragma once
 #include <IOKit/hid/IOHIDLib.h>
 
 #include "../Device.h"

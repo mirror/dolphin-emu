@@ -32,7 +32,7 @@ CWII_IPC_HLE_Device_usb_oh1_57e_305::CWII_IPC_HLE_Device_usb_oh1_57e_305(u32 _De
 	}
 	else
 	{
-		bdaddr_t tmpBD = BDADDR_ANY;
+		SBDAddr tmpBD = BDAddrAny;
 		u8 i = 0;
 		while (i < MAX_BBMOTES)
 		{
@@ -582,7 +582,7 @@ bool CWII_IPC_HLE_Device_usb_oh1_57e_305::SendEventInquiryResponse()
 	return true;
 }
 
-bool CWII_IPC_HLE_Device_usb_oh1_57e_305::SendEventConnectionComplete(const bdaddr_t& _bd)
+bool CWII_IPC_HLE_Device_usb_oh1_57e_305::SendEventConnectionComplete(const SBDAddr& _bd)
 {
 	CWII_IPC_HLE_WiiMote* pWiiMote = AccessWiiMote(_bd);
 	if (pWiiMote == NULL)
@@ -706,7 +706,7 @@ bool CWII_IPC_HLE_Device_usb_oh1_57e_305::SendEventAuthenticationCompleted(u16 _
 	return true;
 }
 
-bool CWII_IPC_HLE_Device_usb_oh1_57e_305::SendEventRemoteNameReq(const bdaddr_t& _bd)
+bool CWII_IPC_HLE_Device_usb_oh1_57e_305::SendEventRemoteNameReq(const SBDAddr& _bd)
 {
 	CWII_IPC_HLE_WiiMote* pWiiMote = AccessWiiMote(_bd);
 	if (pWiiMote == NULL)
@@ -838,7 +838,7 @@ bool CWII_IPC_HLE_Device_usb_oh1_57e_305::SendEventCommandStatus(u16 _Opcode)
 	return true;
 }
 
-bool CWII_IPC_HLE_Device_usb_oh1_57e_305::SendEventRoleChange(bdaddr_t _bd, bool _master)
+bool CWII_IPC_HLE_Device_usb_oh1_57e_305::SendEventRoleChange(SBDAddr _bd, bool _master)
 {
 	CWII_IPC_HLE_WiiMote* pWiiMote = AccessWiiMote(_bd);
 	if (pWiiMote == NULL)
@@ -966,7 +966,7 @@ bool CWII_IPC_HLE_Device_usb_oh1_57e_305::SendEventLinkKeyNotification(const u8 
 	return true;
 };
 
-bool CWII_IPC_HLE_Device_usb_oh1_57e_305::SendEventRequestLinkKey(const bdaddr_t& _bd)
+bool CWII_IPC_HLE_Device_usb_oh1_57e_305::SendEventRequestLinkKey(const SBDAddr& _bd)
 {
 	SQueuedEvent Event(sizeof(SHCIEventRequestLinkKey), 0);
 
@@ -1817,11 +1817,11 @@ void CWII_IPC_HLE_Device_usb_oh1_57e_305::CommandVendorSpecific_FC4C(u8* _Input,
 // --- helper
 //
 //
-CWII_IPC_HLE_WiiMote* CWII_IPC_HLE_Device_usb_oh1_57e_305::AccessWiiMote(const bdaddr_t& _rAddr)
+CWII_IPC_HLE_WiiMote* CWII_IPC_HLE_Device_usb_oh1_57e_305::AccessWiiMote(const SBDAddr& _rAddr)
 {
 	for (size_t i=0; i<m_WiiMotes.size(); i++)
 	{
-		const bdaddr_t& BD = m_WiiMotes[i].GetBD();
+		const SBDAddr& BD = m_WiiMotes[i].GetBD();
 		if ((_rAddr.b[0] == BD.b[0]) &&
 			(_rAddr.b[1] == BD.b[1]) &&
 			(_rAddr.b[2] == BD.b[2]) &&

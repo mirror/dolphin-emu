@@ -16,6 +16,7 @@
 #include "../../Core/Src/ConfigManager.h"
 #include "FileSystemGCWii.h"
 #include "VolumeCreator.h"
+#include "FileMonitor.h"
 
 namespace FileMon
 {

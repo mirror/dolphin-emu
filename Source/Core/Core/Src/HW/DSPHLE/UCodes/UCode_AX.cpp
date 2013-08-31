@@ -8,7 +8,8 @@
 #include "ConfigManager.h"
 
 #define AX_GC
-#include "UCode_AX_Voice.h"
+	// tab for PCH
+	#include "UCode_AX_Voice.h"
 
 CUCode_AX::CUCode_AX(DSPHLE* dsp_hle, u32 crc)
 	: IUCode(dsp_hle, crc)

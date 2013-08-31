@@ -15,6 +15,14 @@
 #include <stdio.h>
 #endif
 
+// PCH: On OS X, an incompatible version of this comes in from mach/mach_init.h
+#ifdef PAGE_MASK
+#undef PAGE_MASK
+#endif
+#ifdef round_page
+#undef round_page
+#endif
+
 #if !defined(_WIN32) && defined(__x86_64__) && !defined(MAP_32BIT)
 #include <unistd.h>
 #define PAGE_MASK     (getpagesize() - 1)

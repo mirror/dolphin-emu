@@ -16,7 +16,7 @@
 	#include "OSX/OSX.h"
 #endif
 #ifdef CIFACE_USE_SDL
-	#include "SDL/SDL.h"
+	#include "SDL/SDL_.h"
 #endif
 #ifdef CIFACE_USE_ANDROID
 	#include "Android/Android.h"

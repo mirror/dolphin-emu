@@ -132,6 +132,7 @@ set(SRCS	Src/ActionReplay.cpp
 			Src/HW/WiimoteEmu/EmuSubroutines.cpp
 			Src/HW/WiimoteEmu/Encryption.cpp
 			Src/HW/WiimoteEmu/Speaker.cpp
+			Src/HW/WiimoteEmu/UDPTLayer.cpp
 			Src/HW/WiimoteReal/WiimoteReal.cpp
 			Src/IPC_HLE/ICMPLin.cpp
 			Src/IPC_HLE/WII_IPC_HLE.cpp
@@ -260,5 +261,4 @@ if(GDBSTUB)
 	set(SRCS ${SRCS} Src/PowerPC/GDBStub.cpp)
 endif(GDBSTUB)
 
-add_library(core STATIC ${SRCS})
-target_link_libraries(core ${LIBS})
+add_dolphin_library(core "${SRCS}" "${LIBS}")

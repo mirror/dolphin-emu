@@ -11,6 +11,10 @@
 #include "BreakPoints.h"
 #include "../Debugger/PPCDebugInterface.h"
 #include "PPCCache.h"
+#ifdef __APPLE__
+// PCH hack: need to include this before the below defines.
+#include <CoreServices/CoreServices.h>
+#endif
 
 class PointerWrap;
 

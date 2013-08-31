@@ -6,7 +6,7 @@
 #define _ALSA_SOUND_STREAM_H
 
 #if defined(HAVE_ALSA) && HAVE_ALSA
-#include <alsa/asoundlib.h>
+	#include <alsa/asoundlib.h>
 #endif
 
 #include "Common.h"

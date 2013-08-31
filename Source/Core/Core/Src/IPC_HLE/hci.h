@@ -100,9 +100,9 @@
  */
 typedef struct {
 	uint8_t	b[BLUETOOTH_BDADDR_SIZE];
-} bdaddr_t;
+} SBDAddr;
 
-#define	BDADDR_ANY	{ { 0, 0, 0, 0, 0, 0 } }
+static const SBDAddr BDAddrAny = { { 0, 0, 0, 0, 0, 0 } };
 
 /**************************************************************************
  **************************************************************************
@@ -518,7 +518,7 @@ typedef hci_status_rp	hci_exit_periodic_inquiry_rp;
 #define HCI_OCF_CREATE_CON				0x0005
 #define HCI_CMD_CREATE_CON				0x0405
 typedef struct {
-	bdaddr_t	bdaddr;             /* destination address */
+	SBDAddr	bdaddr;             /* destination address */
 	uint16_t	pkt_type;           /* packet type */
 	uint8_t		page_scan_rep_mode; /* page scan repetition mode */
 	uint8_t		page_scan_mode;     /* reserved - set to 0x00 */
@@ -547,18 +547,18 @@ typedef struct {
 #define HCI_OCF_CREATE_CON_CANCEL			0x0008
 #define HCI_CMD_CREATE_CON_CANCEL			0x0408
 typedef struct {
-	bdaddr_t	bdaddr;		/* destination address */
+	SBDAddr	bdaddr;		/* destination address */
 } hci_create_con_cancel_cp;
 
 typedef struct {
 	uint8_t		status;		/* 0x00 - success */
-	bdaddr_t	bdaddr;		/* destination address */
+	SBDAddr	bdaddr;		/* destination address */
 } hci_create_con_cancel_rp;
 
 #define HCI_OCF_ACCEPT_CON				0x0009
 #define HCI_CMD_ACCEPT_CON				0x0409
 typedef struct {
-	bdaddr_t	bdaddr; /* address of unit to be connected */
+	SBDAddr	bdaddr; /* address of unit to be connected */
 	uint8_t		role;   /* connection role */
 } hci_accept_con_cp;
 /* No return parameter(s) */
@@ -566,7 +566,7 @@ typedef struct {
 #define HCI_OCF_REJECT_CON				0x000a
 #define HCI_CMD_REJECT_CON				0x040A
 typedef struct {
-	bdaddr_t	bdaddr; /* remote address */
+	SBDAddr	bdaddr; /* remote address */
 	uint8_t		reason; /* reason to reject */
 } hci_reject_con_cp;
 /* No return parameter(s) */
@@ -574,48 +574,48 @@ typedef struct {
 #define HCI_OCF_LINK_KEY_REP				0x000b
 #define HCI_CMD_LINK_KEY_REP				0x040B
 typedef struct {
-	bdaddr_t	bdaddr;            /* remote address */
+	SBDAddr	bdaddr;            /* remote address */
 	uint8_t		key[HCI_KEY_SIZE]; /* key */
 } hci_link_key_rep_cp;
 
 typedef struct {
 	uint8_t		status; /* 0x00 - success */
-	bdaddr_t	bdaddr; /* unit address */
+	SBDAddr	bdaddr; /* unit address */
 } hci_link_key_rep_rp;
 
 #define HCI_OCF_LINK_KEY_NEG_REP			0x000c
 #define HCI_CMD_LINK_KEY_NEG_REP			0x040C
 typedef struct {
-	bdaddr_t	bdaddr; /* remote address */
+	SBDAddr	bdaddr; /* remote address */
 } hci_link_key_neg_rep_cp;
 
 typedef struct {
 	uint8_t		status; /* 0x00 - success */
-	bdaddr_t	bdaddr; /* unit address */
+	SBDAddr	bdaddr; /* unit address */
 } hci_link_key_neg_rep_rp;
 
 #define HCI_OCF_PIN_CODE_REP				0x000d
 #define HCI_CMD_PIN_CODE_REP				0x040D
 typedef struct {
-	bdaddr_t	bdaddr;               /* remote address */
+	SBDAddr	bdaddr;               /* remote address */
 	uint8_t		pin_size;             /* pin code length (in bytes) */
 	uint8_t		pin[HCI_PIN_SIZE];    /* pin code */
 } hci_pin_code_rep_cp;
 
 typedef struct {
 	uint8_t		status; /* 0x00 - success */
-	bdaddr_t	bdaddr; /* unit address */
+	SBDAddr	bdaddr; /* unit address */
 } hci_pin_code_rep_rp;
 
 #define HCI_OCF_PIN_CODE_NEG_REP			0x000e
 #define HCI_CMD_PIN_CODE_NEG_REP			0x040E
 typedef struct {
-	bdaddr_t	bdaddr; /* remote address */
+	SBDAddr	bdaddr; /* remote address */
 } hci_pin_code_neg_rep_cp;
 
 typedef struct {
 	uint8_t		status; /* 0x00 - success */
-	bdaddr_t	bdaddr; /* unit address */
+	SBDAddr	bdaddr; /* unit address */
 } hci_pin_code_neg_rep_rp;
 
 #define HCI_OCF_CHANGE_CON_PACKET_TYPE			0x000f
@@ -658,7 +658,7 @@ typedef struct {
 #define HCI_OCF_REMOTE_NAME_REQ				0x0019
 #define HCI_CMD_REMOTE_NAME_REQ				0x0419
 typedef struct {
-	bdaddr_t	bdaddr;             /* remote address */
+	SBDAddr	bdaddr;             /* remote address */
 	uint8_t		page_scan_rep_mode; /* page scan repetition mode */
 	uint8_t		page_scan_mode;     /* page scan mode */
 	uint16_t	clock_offset;       /* clock offset */
@@ -668,12 +668,12 @@ typedef struct {
 #define HCI_OCF_REMOTE_NAME_REQ_CANCEL			0x001a
 #define HCI_CMD_REMOTE_NAME_REQ_CANCEL			0x041A
 typedef struct {
-	bdaddr_t	bdaddr;             /* remote address */
+	SBDAddr	bdaddr;             /* remote address */
 } hci_remote_name_req_cancel_cp;
 
 typedef struct {
 	uint8_t		status;		/* 0x00 - success */
-	bdaddr_t	bdaddr;         /* remote address */
+	SBDAddr	bdaddr;         /* remote address */
 } hci_remote_name_req_cancel_rp;
 
 #define HCI_OCF_READ_REMOTE_FEATURES			0x001b
@@ -734,7 +734,7 @@ typedef struct {
 #define HCI_OCF_ACCEPT_SCO_CON_REQ			0x0029
 #define HCI_CMD_ACCEPT_SCO_CON_REQ			0x0429
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 	uint32_t	tx_bandwidth;	/* transmit bandwidth */
 	uint32_t	rx_bandwidth;	/* receive bandwidth */
 	uint16_t	latency;	/* maximum latency */
@@ -747,7 +747,7 @@ typedef struct {
 #define HCI_OCF_REJECT_SCO_CON_REQ			0x002a
 #define HCI_CMD_REJECT_SCO_CON_REQ			0x042a
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 	uint8_t		reason;		/* reject error code */
 } hci_reject_sco_con_req_cp;
 /* No return parameter(s) */
@@ -755,7 +755,7 @@ typedef struct {
 #define HCI_OCF_IO_CAPABILITY_REP			0x002b
 #define HCI_CMD_IO_CAPABILITY_REP			0x042a
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 	uint8_t		io_cap;		/* IO capability */
 	uint8_t		oob_data;	/* OOB data present */
 	uint8_t		auth_req;	/* auth requirements */
@@ -763,88 +763,88 @@ typedef struct {
 
 typedef struct {
 	uint8_t		status;		/* 0x00 - success */
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 } hci_io_capability_rep_rp;
 
 #define HCI_OCF_USER_CONFIRM_REP			0x002c
 #define HCI_CMD_USER_CONFIRM_REP			0x042c
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 } hci_user_confirm_rep_cp;
 
 typedef struct {
 	uint8_t		status;		/* 0x00 - success */
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 } hci_user_confirm_rep_rp;
 
 #define HCI_OCF_USER_CONFIRM_NEG_REP			0x002d
 #define HCI_CMD_USER_CONFIRM_NEG_REP			0x042d
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 } hci_user_confirm_neg_rep_cp;
 
 typedef struct {
 	uint8_t		status;		/* 0x00 - success */
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 } hci_user_confirm_neg_rep_rp;
 
 #define HCI_OCF_USER_PASSKEY_REP			0x002e
 #define HCI_CMD_USER_PASSKEY_REP			0x042e
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 	uint32_t	value;		/* 000000 - 999999 */
 } hci_user_passkey_rep_cp;
 
 typedef struct {
 	uint8_t		status;		/* 0x00 - success */
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 } hci_user_passkey_rep_rp;
 
 #define HCI_OCF_USER_PASSKEY_NEG_REP			0x002f
 #define HCI_CMD_USER_PASSKEY_NEG_REP			0x042f
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 } hci_user_passkey_neg_rep_cp;
 
 typedef struct {
 	uint8_t		status;		/* 0x00 - success */
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 } hci_user_passkey_neg_rep_rp;
 
 #define HCI_OCF_OOB_DATA_REP				0x0030
 #define HCI_CMD_OOB_DATA_REP				0x0430
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 	uint8_t		c[16];		/* pairing hash */
 	uint8_t		r[16];		/* pairing randomizer */
 } hci_user_oob_data_rep_cp;
 
 typedef struct {
 	uint8_t		status;		/* 0x00 - success */
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 } hci_user_oob_data_rep_rp;
 
 #define HCI_OCF_OOB_DATA_NEG_REP			0x0033
 #define HCI_CMD_OOB_DATA_NEG_REP			0x0433
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 } hci_user_oob_data_neg_rep_cp;
 
 typedef struct {
 	uint8_t		status;		/* 0x00 - success */
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 } hci_user_oob_data_neg_rep_rp;
 
 #define HCI_OCF_IO_CAPABILITY_NEG_REP			0x0034
 #define HCI_CMD_IO_CAPABILITY_NEG_REP			0x0434
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 	uint8_t		reason;		/* error code */
 } hci_io_capability_neg_rep_cp;
 
 typedef struct {
 	uint8_t		status;		/* 0x00 - success */
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 } hci_io_capability_neg_rep_rp;
 
 /**************************************************************************
@@ -926,7 +926,7 @@ typedef struct {
 #define HCI_OCF_SWITCH_ROLE				0x000b
 #define HCI_CMD_SWITCH_ROLE				0x080B
 typedef struct {
-	bdaddr_t	bdaddr; /* remote address */
+	SBDAddr	bdaddr; /* remote address */
 	uint8_t		role;   /* new local role */
 } hci_switch_role_cp;
 /* No return parameter(s) */
@@ -1066,7 +1066,7 @@ typedef hci_status_rp	hci_create_new_unit_key_rp;
 #define HCI_OCF_READ_STORED_LINK_KEY			0x000d
 #define HCI_CMD_READ_STORED_LINK_KEY			0x0C0D
 typedef struct {
-	bdaddr_t	bdaddr;   /* address */
+	SBDAddr	bdaddr;   /* address */
 	uint8_t		read_all; /* read all keys? 0x01 - yes */
 } hci_read_stored_link_key_cp;
 
@@ -1081,7 +1081,7 @@ typedef struct {
 typedef struct {
 	uint8_t		num_keys_write; /* # of keys to write */
 /* these are repeated "num_keys_write" times
-	bdaddr_t	bdaddr;             --- remote address(es)
+	SBDAddr	bdaddr;             --- remote address(es)
 	uint8_t		key[HCI_KEY_SIZE];  --- key(s) */
 } hci_write_stored_link_key_cp;
 
@@ -1093,7 +1093,7 @@ typedef struct {
 #define HCI_OCF_DELETE_STORED_LINK_KEY			0x0012
 #define HCI_CMD_DELETE_STORED_LINK_KEY			0x0C12
 typedef struct {
-	bdaddr_t	bdaddr;     /* address */
+	SBDAddr	bdaddr;     /* address */
 	uint8_t		delete_all; /* delete all keys? 0x01 - yes */
 } hci_delete_stored_link_key_cp;
 
@@ -1646,13 +1646,13 @@ typedef struct {
 #define HCI_OCF_SEND_KEYPRESS_NOTIFICATION		0x0060
 #define HCI_CMD_SEND_KEYPRESS_NOTIFICATION		0x0C60
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 	uint8_t		type;		/* notification type */
 } hci_send_keypress_notification_cp;
 
 typedef struct {
 	uint8_t		status;		/* 0x00 - success */
-	bdaddr_t	bdaddr;		/* remote address */
+	SBDAddr	bdaddr;		/* remote address */
 } hci_send_keypress_notification_rp;
 
 /**************************************************************************
@@ -1729,7 +1729,7 @@ typedef struct {
 /* No command parameter(s) */
 typedef struct {
 	uint8_t		status; /* 0x00 - success */
-	bdaddr_t	bdaddr; /* unit address */
+	SBDAddr	bdaddr; /* unit address */
 } hci_read_bdaddr_rp;
 
 /**************************************************************************
@@ -1889,7 +1889,7 @@ typedef struct {
 } hci_inquiry_result_ep;
 
 typedef struct {
-	bdaddr_t	bdaddr;                   /* unit address */
+	SBDAddr	bdaddr;                   /* unit address */
 	uint8_t		page_scan_rep_mode;       /* page scan rep. mode */
 	uint8_t		page_scan_period_mode;    /* page scan period mode */
 	uint8_t		page_scan_mode;           /* page scan mode */
@@ -1901,14 +1901,14 @@ typedef struct {
 typedef struct {
 	uint8_t		status;          /* 0x00 - success */
 	uint16_t	con_handle;      /* Connection handle */
-	bdaddr_t	bdaddr;          /* remote unit address */
+	SBDAddr	bdaddr;          /* remote unit address */
 	uint8_t		link_type;       /* Link type */
 	uint8_t		encryption_mode; /* Encryption mode */
 } hci_con_compl_ep;
 
 #define HCI_EVENT_CON_REQ			0x04
 typedef struct {
-	bdaddr_t	bdaddr;                 /* remote unit address */
+	SBDAddr	bdaddr;                 /* remote unit address */
 	uint8_t		uclass[HCI_CLASS_SIZE]; /* remote unit class */
 	uint8_t		link_type;              /* link type */
 } hci_con_req_ep;
@@ -1929,7 +1929,7 @@ typedef struct {
 #define HCI_EVENT_REMOTE_NAME_REQ_COMPL		0x07
 typedef struct {
 	uint8_t		status;                   /* 0x00 - success */
-	bdaddr_t	bdaddr;                   /* remote unit address */
+	SBDAddr	bdaddr;                   /* remote unit address */
 	char		name[HCI_UNIT_NAME_SIZE]; /* remote unit name */
 } hci_remote_name_req_compl_ep;
 
@@ -2008,7 +2008,7 @@ typedef struct {
 #define HCI_EVENT_ROLE_CHANGE			0x12
 typedef struct {
 	uint8_t		status; /* 0x00 - success */
-	bdaddr_t	bdaddr; /* address of remote unit */
+	SBDAddr	bdaddr; /* address of remote unit */
 	uint8_t		role;   /* new connection role */
 } hci_role_change_ep;
 
@@ -2037,23 +2037,23 @@ typedef struct {
 typedef struct {
 	uint8_t		num_keys; /* # of keys */
 /* these are repeated "num_keys" times
-	bdaddr_t	bdaddr;               --- remote address(es)
+	SBDAddr	bdaddr;               --- remote address(es)
 	uint8_t		key[HCI_KEY_SIZE]; --- key(s) */
 } hci_return_link_keys_ep;
 
 #define HCI_EVENT_PIN_CODE_REQ			0x16
 typedef struct {
-	bdaddr_t	bdaddr; /* remote unit address */
+	SBDAddr	bdaddr; /* remote unit address */
 } hci_pin_code_req_ep;
 
 #define HCI_EVENT_LINK_KEY_REQ			0x17
 typedef struct {
-	bdaddr_t	bdaddr; /* remote unit address */
+	SBDAddr	bdaddr; /* remote unit address */
 } hci_link_key_req_ep;
 
 #define HCI_EVENT_LINK_KEY_NOTIFICATION		0x18
 typedef struct {
-	bdaddr_t	bdaddr;            /* remote unit address */
+	SBDAddr	bdaddr;            /* remote unit address */
 	uint8_t		key[HCI_KEY_SIZE]; /* link key */
 	uint8_t		key_type;          /* type of the key */
 } hci_link_key_notification_ep;
@@ -2094,13 +2094,13 @@ typedef struct {
 /* Page Scan Mode Change Event is deprecated */
 #define HCI_EVENT_PAGE_SCAN_MODE_CHANGE		0x1f
 typedef struct {
-	bdaddr_t	bdaddr;         /* destination address */
+	SBDAddr	bdaddr;         /* destination address */
 	uint8_t		page_scan_mode; /* page scan mode */
 } hci_page_scan_mode_change_ep;
 
 #define HCI_EVENT_PAGE_SCAN_REP_MODE_CHANGE	0x20
 typedef struct {
-	bdaddr_t	bdaddr;             /* destination address */
+	SBDAddr	bdaddr;             /* destination address */
 	uint8_t		page_scan_rep_mode; /* page scan repetition mode */
 } hci_page_scan_rep_mode_change_ep;
 
@@ -2124,7 +2124,7 @@ typedef struct {
 } hci_rssi_result_ep;
 
 typedef struct {
-	bdaddr_t	bdaddr;			/* unit address */
+	SBDAddr	bdaddr;			/* unit address */
 	uint8_t		page_scan_rep_mode;	/* page scan rep. mode */
 	uint8_t		blank;			/* reserved */
 	uint8_t		uclass[HCI_CLASS_SIZE];	/* unit class */
@@ -2145,7 +2145,7 @@ typedef struct {
 typedef struct {
 	uint8_t		status;		/* 0x00 - success */
 	uint16_t	con_handle;	/* connection handle */
-	bdaddr_t	bdaddr;		/* unit address */
+	SBDAddr	bdaddr;		/* unit address */
 	uint8_t		link_type;	/* link type */
 	uint8_t		interval;	/* transmission interval */
 	uint8_t		window;		/* retransmission window */
@@ -2177,7 +2177,7 @@ typedef struct {
 #define HCI_EVENT_EXTENDED_RESULT		0x2f
 typedef struct {
 	uint8_t		num_responses;	/* must be 0x01 */
-	bdaddr_t	bdaddr;		/* remote device address */
+	SBDAddr	bdaddr;		/* remote device address */
 	uint8_t		page_scan_rep_mode;
 	uint8_t		reserved;
 	uint8_t		uclass[HCI_CLASS_SIZE];
@@ -2194,12 +2194,12 @@ typedef struct {
 
 #define HCI_EVENT_IO_CAPABILITY_REQ		0x31
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote device address */
+	SBDAddr	bdaddr;		/* remote device address */
 } hci_io_capability_req_ep;
 
 #define HCI_EVENT_IO_CAPABILITY_RSP		0x32
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote device address */
+	SBDAddr	bdaddr;		/* remote device address */
 	uint8_t		io_capability;
 	uint8_t		oob_data_present;
 	uint8_t		auth_requirement;
@@ -2207,24 +2207,24 @@ typedef struct {
 
 #define HCI_EVENT_USER_CONFIRM_REQ		0x33
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote device address */
+	SBDAddr	bdaddr;		/* remote device address */
 	uint32_t	value;		/* 000000 - 999999 */
 } hci_user_confirm_req_ep;
 
 #define HCI_EVENT_USER_PASSKEY_REQ		0x34
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote device address */
+	SBDAddr	bdaddr;		/* remote device address */
 } hci_user_passkey_req_ep;
 
 #define HCI_EVENT_REMOTE_OOB_DATA_REQ		0x35
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote device address */
+	SBDAddr	bdaddr;		/* remote device address */
 } hci_remote_oob_data_req_ep;
 
 #define HCI_EVENT_SIMPLE_PAIRING_COMPL		0x36
 typedef struct {
 	uint8_t		status;		/* 0x00 - success */
-	bdaddr_t	bdaddr;		/* remote device address */
+	SBDAddr	bdaddr;		/* remote device address */
 } hci_simple_pairing_compl_ep;
 
 #define HCI_EVENT_LINK_SUPERVISION_TO_CHANGED	0x38
@@ -2240,19 +2240,19 @@ typedef struct {
 
 #define HCI_EVENT_USER_PASSKEY_NOTIFICATION	0x3b
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote device address */
+	SBDAddr	bdaddr;		/* remote device address */
 	uint32_t	value;		/* 000000 - 999999 */
 } hci_user_passkey_notification_ep;
 
 #define HCI_EVENT_KEYPRESS_NOTIFICATION		0x3c
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote device address */
+	SBDAddr	bdaddr;		/* remote device address */
 	uint8_t		notification_type;
 } hci_keypress_notification_ep;
 
 #define HCI_EVENT_REMOTE_FEATURES_NOTIFICATION	0x3d
 typedef struct {
-	bdaddr_t	bdaddr;		/* remote device address */
+	SBDAddr	bdaddr;		/* remote device address */
 	uint8_t		features[HCI_FEATURES_SIZE]; /* LMP features bitmsk*/
 } hci_remote_features_notification_ep;
 
@@ -2274,6 +2274,7 @@ typedef struct {
 /* Control Messages */
 #define SCM_HCI_DIRECTION		SO_HCI_DIRECTION
 
+#if 0 // PCH
 /*
  * HCI socket filter and get/set routines
  *
@@ -2309,6 +2310,7 @@ hci_filter_test(uint8_t bit, const struct hci_filter *filter)
 	off >>= 5;
 	return (filter->mask[off] & (1 << ((bit - 1) & 0x1f)));
 }
+#endif
 
 /*
  * HCI socket ioctl's
@@ -2348,7 +2350,7 @@ struct btreq {
 
 	union {
 	    struct {
-		bdaddr_t btri_bdaddr;		/* device bdaddr */
+		SBDAddr btri_bdaddr;		/* device bdaddr */
 		uint16_t btri_flags;		/* flags */
 		uint16_t btri_num_cmd;		/* # of free cmd buffers */
 		uint16_t btri_num_acl;		/* # of free ACL buffers */
@@ -2475,7 +2477,7 @@ struct SHCIEventRemoteNameReq
 	u8 EventType;
 	u8 PayloadLength;
 	u8 EventStatus;
-	bdaddr_t bdaddr;
+	SBDAddr bdaddr;
 	u8 RemoteName[HCI_UNIT_NAME_SIZE];
 };
 
@@ -2483,7 +2485,7 @@ struct SHCIEventRequestConnection
 {
 	u8 EventType;
 	u8 PayloadLength;
-	bdaddr_t bdaddr;
+	SBDAddr bdaddr;
 	uint8_t		uclass[HCI_CLASS_SIZE]; /* unit class */
 	u8 LinkType;
 };
@@ -2494,7 +2496,7 @@ struct SHCIEventConnectionComplete
 	u8 PayloadLength;
 	u8 EventStatus;
 	u16 Connection_Handle;
-	bdaddr_t bdaddr;
+	SBDAddr bdaddr;
 	u8 LinkType;
 	u8 EncryptionEnabled;
 };
@@ -2504,7 +2506,7 @@ struct SHCIEventRoleChange
 	u8 EventType;
 	u8 PayloadLength;
 	u8 EventStatus;
-	bdaddr_t bdaddr;
+	SBDAddr bdaddr;
 	u8 NewRole;
 };
 
@@ -2540,7 +2542,7 @@ struct SHCIEventRequestLinkKey
 {
 	u8 EventType;
 	u8 PayloadLength;
-	bdaddr_t bdaddr;
+	SBDAddr bdaddr;
 };
 
 struct SHCIEventLinkKeyNotification
@@ -2548,7 +2550,7 @@ struct SHCIEventLinkKeyNotification
 	u8 EventType;
 	u8 PayloadLength;
 	u8 numKeys;
-	bdaddr_t bdaddr;
+	SBDAddr bdaddr;
 	u8 LinkKey[HCI_KEY_SIZE];
 };
 //////////////////////////////////////////////////////////////////////////

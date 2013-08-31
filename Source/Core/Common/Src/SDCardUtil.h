@@ -14,6 +14,7 @@
 
 // Official Git repository and contact information can be found at
 // http://code.google.com/p/dolphin-emu/
+#pragma once
 
 #include "Common.h"
 

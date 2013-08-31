@@ -73,7 +73,7 @@ public:
 // hack for wiimote plugin
 public:
 	std::vector<CWII_IPC_HLE_WiiMote> m_WiiMotes;
-	CWII_IPC_HLE_WiiMote* AccessWiiMote(const bdaddr_t& _rAddr);
+	CWII_IPC_HLE_WiiMote* AccessWiiMote(const SBDAddr& _rAddr);
 	CWII_IPC_HLE_WiiMote* AccessWiiMote(u16 _ConnectionHandle);
 
 	void DoState(PointerWrap &p);
@@ -147,7 +147,7 @@ private:
 		}
 	};
 
-	bdaddr_t m_ControllerBD;
+	SBDAddr m_ControllerBD;
 
 	// this is used to trigger connecting via ACL
 	u8 m_ScanEnable;
@@ -207,19 +207,19 @@ private:
 	void SendEventCommandComplete(u16 _OpCode, void* _pData, u32 _DataSize);
 	bool SendEventInquiryResponse();
 	bool SendEventInquiryComplete();
-	bool SendEventRemoteNameReq(const bdaddr_t& _bd);
+	bool SendEventRemoteNameReq(const SBDAddr& _bd);
 	bool SendEventRequestConnection(CWII_IPC_HLE_WiiMote& _rWiiMote);
-	bool SendEventConnectionComplete(const bdaddr_t& _bd);
+	bool SendEventConnectionComplete(const SBDAddr& _bd);
 	bool SendEventReadClockOffsetComplete(u16 _connectionHandle);
 	bool SendEventConPacketTypeChange(u16 _connectionHandle, u16 _packetType);
 	bool SendEventReadRemoteVerInfo(u16 _connectionHandle);
 	bool SendEventReadRemoteFeatures(u16 _connectionHandle);
-	bool SendEventRoleChange(bdaddr_t _bd, bool _master);
+	bool SendEventRoleChange(SBDAddr _bd, bool _master);
 	bool SendEventNumberOfCompletedPackets();
 	bool SendEventAuthenticationCompleted(u16 _connectionHandle);	
 	bool SendEventModeChange(u16 _connectionHandle, u8 _mode, u16 _value);
 	bool SendEventDisconnect(u16 _connectionHandle, u8 _Reason);
-	bool SendEventRequestLinkKey(const bdaddr_t& _bd);
+	bool SendEventRequestLinkKey(const SBDAddr& _bd);
 	bool SendEventLinkKeyNotification(const u8 num_to_send);
 
 	// Execute HCI Message

@@ -27,7 +27,7 @@ void SetUsbPointer(CWII_IPC_HLE_Device_usb_oh1_57e_305* ptr)
 }
 
 
-CWII_IPC_HLE_WiiMote::CWII_IPC_HLE_WiiMote(CWII_IPC_HLE_Device_usb_oh1_57e_305* _pHost, int _Number, bdaddr_t _BD, bool ready)
+CWII_IPC_HLE_WiiMote::CWII_IPC_HLE_WiiMote(CWII_IPC_HLE_Device_usb_oh1_57e_305* _pHost, int _Number, SBDAddr _BD, bool ready)
 	: m_HIDControlChannel_Connected(false)
 	, m_HIDControlChannel_ConnectedWait(false)
 	, m_HIDControlChannel_Config(false)
@@ -46,8 +46,7 @@ CWII_IPC_HLE_WiiMote::CWII_IPC_HLE_WiiMote(CWII_IPC_HLE_Device_usb_oh1_57e_305* 
 	m_ConnectionHandle = 0x100 + _Number;
 	memset(m_LinkKey, 0xA0 + _Number, HCI_KEY_SIZE);
 
-	bdaddr_t _nullBD = BDADDR_ANY;
-	if (memcmp(&m_BD, &_nullBD, sizeof(bdaddr_t))==0)
+	if (memcmp(&m_BD, &BDAddrAny, sizeof(SBDAddr))==0)
 	{
 		m_BD.b[0] = 0x11;
 		m_BD.b[1] = 0x02;

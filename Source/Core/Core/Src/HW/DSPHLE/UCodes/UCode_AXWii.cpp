@@ -12,7 +12,8 @@
 #include "UCode_AXWii.h"
 
 #define AX_WII
-#include "UCode_AX_Voice.h"
+	// tab for PCH
+	#include "UCode_AX_Voice.h"
 
 
 CUCode_AXWii::CUCode_AXWii(DSPHLE *dsp_hle, u32 l_CRC)
