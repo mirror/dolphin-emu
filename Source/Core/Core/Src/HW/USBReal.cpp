@@ -478,6 +478,7 @@ void CUSBControllerReal::PollDevices(bool IsInitial)
 
 void CUSBControllerReal::USBThread()
 {
+	Common::SetCurrentThreadName("libusb thread");
 	timeval Tv;
 	Tv.tv_sec = 0;
 	Tv.tv_usec = 300000;
