@@ -5,6 +5,7 @@
 #include "USBInterface.h"
 #include "Thread.h"
 #include "CoreTiming.h"
+#include "USBEmulated.h"
 #if defined(__LIBUSB__) || defined (_WIN32)
 #include "USBReal.h"
 #endif
