@@ -25,6 +25,10 @@ extern const char *netplay_dolphin_ver;
 
 #define STACKALIGN
 
+#if defined(_MSC_VER)
+#define final sealed
+#endif
+
 #if __cplusplus >= 201103 || defined(_MSC_VER) || defined(__GXX_EXPERIMENTAL_CXX0X__)
 #define HAVE_CXX11_SYNTAX 1
 #endif

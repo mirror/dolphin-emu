@@ -1480,9 +1480,9 @@ PC_TexFormat TexDecoder_Decode_RGBA(u32 * dst, const u8 * src, int width, int he
 									const __m128i bV = _mm_or_si128( _mm_slli_epi16(tmpbV, 3), _mm_srli_epi16(tmpbV, 2) );
 
 									//newdst[0] = r0 | (g0 << 8) | (b0 << 16) | (a0 << 24);
-									const __m128i final = _mm_or_si128(	_mm_or_si128(rV,_mm_slli_epi32(gV, 8)),
+									const __m128i finalV = _mm_or_si128(_mm_or_si128(rV,_mm_slli_epi32(gV, 8)),
 														_mm_or_si128(_mm_slli_epi32(bV, 16), aVxff00));
-									_mm_storeu_si128( (__m128i*)newdst, final );
+									_mm_storeu_si128( (__m128i*)newdst, finalV );
 								}
 								else if (!(cmp&0x2222)) // SSSE3 case #2: all 4 pixels are in RGBA4443.
 								{
@@ -1510,9 +1510,9 @@ PC_TexFormat TexDecoder_Decode_RGBA(u32 * dst, const u8 * src, int width, int he
 									);
 
 									//newdst[0] = r0 | (g0 << 8) | (b0 << 16) | (a0 << 24);
-									const __m128i final = _mm_or_si128(	_mm_or_si128(rV,_mm_slli_epi32(gV, 8)),
+									const __m128i finalV = _mm_or_si128(_mm_or_si128(rV,_mm_slli_epi32(gV, 8)),
 																_mm_or_si128(_mm_slli_epi32(bV, 16), _mm_slli_epi32(aV, 24)));
-									_mm_storeu_si128( (__m128i*)newdst, final );
+									_mm_storeu_si128( (__m128i*)newdst, finalV);
 								}
 								else
 								{
@@ -1582,11 +1582,11 @@ PC_TexFormat TexDecoder_Decode_RGBA(u32 * dst, const u8 * src, int width, int he
 								const __m128i bV = _mm_or_si128( _mm_slli_epi16(tmpbV, 3), _mm_srli_epi16(tmpbV, 2) );
 
 								//newdst[0] = r0 | (g0 << 8) | (b0 << 16) | (a0 << 24);
-								const __m128i final = _mm_or_si128(	_mm_or_si128(rV,_mm_slli_epi32(gV, 8)),
+								const __m128i finalV = _mm_or_si128(	_mm_or_si128(rV,_mm_slli_epi32(gV, 8)),
 													_mm_or_si128(_mm_slli_epi32(bV, 16), aVxff00));
 
 								// write the final result:
-								_mm_storeu_si128( (__m128i*)newdst, final );
+								_mm_storeu_si128( (__m128i*)newdst, finalV );
 							}
 							else if (((val0 & 0x8000) | (val1 & 0x8000) | (val2 & 0x8000) | (val3 & 0x8000)) == 0x0000)
 							{
@@ -1617,11 +1617,11 @@ PC_TexFormat TexDecoder_Decode_RGBA(u32 * dst, const u8 * src, int width, int he
 								);
 
 								//newdst[0] = r0 | (g0 << 8) | (b0 << 16) | (a0 << 24);
-								const __m128i final = _mm_or_si128(	_mm_or_si128(rV,_mm_slli_epi32(gV, 8)),
+								const __m128i finalV = _mm_or_si128(	_mm_or_si128(rV,_mm_slli_epi32(gV, 8)),
 													_mm_or_si128(_mm_slli_epi32(bV, 16), _mm_slli_epi32(aV, 24)));
 
 								// write the final result:
-								_mm_storeu_si128( (__m128i*)newdst, final );
+								_mm_storeu_si128( (__m128i*)newdst, finalV );
 							}
 							else
 							{

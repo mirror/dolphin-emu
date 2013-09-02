@@ -11,10 +11,6 @@
 #include <memory>
 #include <stddef.h>
 
-#if !defined(final) && __cplusplus < 201103
-#define final
-#endif
-
 #ifdef USB_DEBUG
 #undef DEBUG_LOG
 #define DEBUG_LOG WARN_LOG
