@@ -73,7 +73,7 @@ private:
 	bool FillAttachedReply(std::vector<USBInterface::USBDeviceDescriptorEtc*>& Devices, void* Buffer, size_t Size);
 
 	enum { NumUids = 20 };
-	int m_NextUid;
+	u32 m_NextUid;
 	std::unordered_map<u32, USBInterface::IUSBDevice*> m_OpenDevices;
 	typedef std::unordered_map<u32, USBInterface::TUSBDeviceOpenInfo> TUidMap;
 	typedef std::unordered_map<USBInterface::TUSBDeviceOpenInfo, u32, PairHash<USBInterface::TUSBDeviceOpenInfo>> TUidMapRev;
