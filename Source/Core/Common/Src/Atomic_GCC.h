@@ -44,39 +44,41 @@ inline void AtomicOr(volatile u32& target, u32 value) {
 	__sync_or_and_fetch(&target, value);
 }
 
+#ifdef __clang__
+template <typename T>
+_Atomic(T)* ToC11Atomic(volatile T* loc)
+{
+	return (_Atomic(T)*) loc;
+}
+
+#define __atomic_load_n(p, m) __c11_atomic_load(ToC11Atomic(p), m)
+#define __atomic_store_n(p, v, m) __c11_atomic_store(ToC11Atomic(p), v, m)
+#define __atomic_exchange_n(p, v, m) __c11_atomic_exchange(ToC11Atomic(p), v, m)
+#endif
+
 template <typename T>
 inline T AtomicLoad(volatile T& src) {
-	asm("" ::: "memory");
-	return src; // 32-bit reads are always atomic.
+	return __atomic_load_n(&src, __ATOMIC_RELAXED);
 }
 
 template <typename T>
 inline T AtomicLoadAcquire(volatile T& src) {
-#if __clang__ && __clang_major__ < 5
-#ifdef _M_ARM
-#error Get a newer version of clang!
-#endif
-	asm("" ::: "memory");
-	return src;
-#else
 	return __atomic_load_n(&src, __ATOMIC_ACQUIRE);
-#endif
 }
 
 template <typename T, typename U>
 inline void AtomicStore(volatile T& dest, U value) {
-	dest = value; // 32-bit writes are always atomic.
-	asm("" ::: "memory");
+	__atomic_store_n(&dest, value, __ATOMIC_RELAXED);
 }
 
 template <typename T, typename U>
 inline void AtomicStoreRelease(volatile T& dest, U value) {
-#if __clang__ && __clang_major__ < 5
-	dest = value;
-	asm("" ::: "memory");
-#else
 	__atomic_store_n(&dest, value, __ATOMIC_RELEASE);
-#endif
+}
+
+template <typename T>
+inline T* AtomicExchangeAcquire(volatile T*& loc, T* newval) {
+	return __atomic_exchange_n(&loc, newval, __ATOMIC_ACQ_REL);
 }
 
 }

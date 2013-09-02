@@ -31,7 +31,7 @@ namespace Common
 {
 
 inline void AtomicAdd(volatile u32& target, u32 value) {
-	InterlockedExchangeAdd((volatile LONG*)&target, (LONG)value);
+	_InterlockedExchangeAdd((volatile LONG*)&target, (LONG)value);
 }
 
 inline void AtomicAnd(volatile u32& target, u32 value) {
@@ -39,11 +39,11 @@ inline void AtomicAnd(volatile u32& target, u32 value) {
 }
 
 inline void AtomicIncrement(volatile u32& target) {
-	InterlockedIncrement((volatile LONG*)&target);
+	_InterlockedIncrement((volatile LONG*)&target);
 }
 
 inline void AtomicDecrement(volatile u32& target) {
-	InterlockedDecrement((volatile LONG*)&target);
+	_InterlockedDecrement((volatile LONG*)&target);
 }
 
 inline void AtomicOr(volatile u32& target, u32 value) {
@@ -71,6 +71,11 @@ template <typename T, typename U>
 inline void AtomicStoreRelease(volatile T& dest, U value) {
 	_WriteBarrier(); // Compiler instruction only. x86 stores always have release semantics.
 	dest = value; // 32-bit writes are always atomic.
+}
+
+template <typename T>
+inline T* AtomicExchangeAcquire(volatile T*& loc, T* newval) {
+	return (T*) _InterlockedExchangePointer_acq((void* volatile*) &loc, newval);
 }
 
 }
