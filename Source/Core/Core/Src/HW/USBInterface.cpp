@@ -10,6 +10,7 @@
 #endif
 #include <unordered_set>
 #include <unordered_map>
+#include "Atomic.h"
 
 namespace USBInterface
 {
@@ -75,23 +76,30 @@ void CUSBRequest::Complete(u32 Status)
 	}
 }
 
+IUSBController::~IUSBController()
+{
+	delete m_NewDeviceList;
+}
+
 bool IUSBController::UpdateDeviceList()
 {
-	if (!m_NewDeviceList)
+	auto List = Common::AtomicExchangeAcquire(m_NewDeviceList, nullptr);
+	if (!List)
 	{
 		return false;
 	}
 	m_OldDeviceList = std::move(m_DeviceList);
-	m_DeviceList = std::move(m_NewDeviceList);
-	m_NewDeviceList.reset();
+	m_DeviceList = std::move(*List);
+	delete List;
 	return true;
 }
 
 void IUSBController::DestroyOldDeviceList()
 {
-	if (m_OldDeviceList)
+	if (!m_OldDeviceList.empty())
 	{
-		DestroyDeviceList(m_OldDeviceList.release());
+		DestroyDeviceList(m_OldDeviceList);
+		m_OldDeviceList.clear();
 	}
 }
 
@@ -106,23 +114,25 @@ void IUSBController::UpdateGlobalDeviceList()
 			continue;
 		}
 		auto& ItsList = Controller->m_DeviceList;
-		for (auto itr = ItsList->begin(); itr != ItsList->end(); ++itr)
+		for (auto itr = ItsList.begin(); itr != ItsList.end(); ++itr)
 		{
 			g_DeviceList.push_back(&*itr);
 		}
 	}
 }
 
-void IUSBController::SetDeviceList(std::vector<USBDeviceDescriptorEtc>* List, bool IsInitial)
+void IUSBController::SetDeviceList(std::vector<USBDeviceDescriptorEtc>&& List, bool IsInitial)
 {
-	m_NewDeviceList.reset(List);
+	auto pList = new std::vector<USBDeviceDescriptorEtc>(std::move(List));
+	auto Old = Common::AtomicExchangeAcquire(m_NewDeviceList, pList);
+	delete Old;
 	if (!IsInitial)
 	{
 		CoreTiming::ScheduleEvent_Threadsafe_Immediate(g_USBInterfaceEvent, USBEventDevicesChanged);
 	}
 }
 
-IUSBDevice::IUSBDevice(IUSBDeviceClient* Client, TUSBDeviceOpenInfo OpenInfo)
+IUSBDevice::IUSBDevice(TUSBDeviceOpenInfo OpenInfo, IUSBDeviceClient* Client)
 : m_Pending(false), m_Client(Client), m_OpenInfo(OpenInfo) {
 	g_OpenDevices.insert(OpenInfo);
 }
@@ -190,7 +200,7 @@ void IUSBDevice::ControlRequest(const USBSetup* Setup, void* Payload, void* User
 
 void IUSBDevice::Close()
 {
-	_Close();
+	DEBUG_LOG(USBINTERFACE, "USBDevice: requested close");
 	g_OpenDevices.erase(m_OpenInfo);
 }
 

@@ -110,8 +110,7 @@ void CUSBRequestReal::TransferCallback(libusb_transfer* Transfer)
 }
 
 CUSBDeviceReal::CUSBDeviceReal(libusb_device* Device, TUSBDeviceOpenInfo OpenInfo, libusb_device_handle* Handle, CUSBControllerReal* Controller, IUSBDeviceClient* Client)
-: IUSBDevice(Client, OpenInfo),
-m_Device(Device), m_DeviceHandle(Handle)
+: IUSBDevice(OpenInfo, Client), m_Device(Device), m_DeviceHandle(Handle)
 {
 	m_NumInterfaces = 0;
 }
@@ -127,9 +126,9 @@ CUSBDeviceReal::~CUSBDeviceReal()
 	libusb_close(m_DeviceHandle);
 }
 
-void CUSBDeviceReal::_Close()
+void CUSBDeviceReal::Close()
 {
-	DEBUG_LOG(USBINTERFACE, "USBReal: requested close");
+	IUSBDevice::Close();
 	// We might have to wait for outstanding requests.
 	m_WasClosed = true;
 	std::lock_guard<std::mutex> Guard(g_QueueMutex);
@@ -322,8 +321,7 @@ CUSBControllerReal::CUSBControllerReal()
 
 CUSBControllerReal::~CUSBControllerReal()
 {
-	auto NullResults = new std::vector<USBDeviceDescriptorEtc>;
-	SetDeviceList(NullResults, false);
+	SetDeviceList(std::vector<USBDeviceDescriptorEtc>(), false);
 #ifdef CUSBDEVICE_SUPPORTS_HOTPLUG
 	if (m_HotplugActive)
 	{
@@ -383,7 +381,7 @@ void CUSBControllerReal::PollDevices(bool IsInitial)
 		return;
 	}
 
-	auto Results = new std::vector<USBDeviceDescriptorEtc>;
+	std::vector<USBDeviceDescriptorEtc> Results;
 	libusb_device** List;
 	ssize_t Count = libusb_get_device_list(m_UsbContext, &List);
 	if (Count < 0)
@@ -406,7 +404,7 @@ void CUSBControllerReal::PollDevices(bool IsInitial)
 			continue;
 		}
 
-		USBDeviceDescriptorEtc& WiiDevice = EmplaceBack(*Results);
+		USBDeviceDescriptorEtc& WiiDevice = EmplaceBack(Results);
 		memcpy(&WiiDevice, &Desc, sizeof(USBDeviceDescriptor));
 		WiiDevice.OpenInfo.first = this;
 		WiiDevice.OpenInfo.second = Device;
@@ -441,7 +439,7 @@ void CUSBControllerReal::PollDevices(bool IsInitial)
 						(Interface->bInterfaceProtocol == 1 || Interface->bInterfaceProtocol == 2))
 					{
 						// Mouse or keyboard.  Don't even try using this device, as it could mess up the host.
-						Results->erase(Results->end() - 1);
+						Results.erase(Results.end() - 1);
 						libusb_free_config_descriptor(Config);
 						goto BadDevice;
 					}
@@ -466,14 +464,14 @@ void CUSBControllerReal::PollDevices(bool IsInitial)
 		WiiDevice.bNumConfigurations = WiiDevice.Configs.size();
 		if (WiiDevice.bNumConfigurations == 0)
 		{
-			Results->erase(Results->end() - 1);
+			Results.erase(Results.end() - 1);
 		}
 
 		BadDevice:;
 	}
 	libusb_free_device_list(List, false);
 
-	SetDeviceList(Results, IsInitial);
+	SetDeviceList(std::move(Results), IsInitial);
 }
 
 void CUSBControllerReal::USBThread()
@@ -577,9 +575,9 @@ void CUSBControllerReal::UpdateShouldScan()
 	}
 }
 
-void CUSBControllerReal::DestroyDeviceList(std::vector<USBDeviceDescriptorEtc>* Old)
+void CUSBControllerReal::DestroyDeviceList(std::vector<USBDeviceDescriptorEtc>& Old)
 {
-	for (auto itr = Old->begin(); itr != Old->end(); ++itr)
+	for (auto itr = Old.begin(); itr != Old.end(); ++itr)
 	{
 		libusb_unref_device((libusb_device*) itr->OpenInfo.second);
 	}

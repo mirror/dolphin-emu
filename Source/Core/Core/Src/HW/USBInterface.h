@@ -196,7 +196,8 @@ struct USBDeviceDescriptorEtc : public USBDeviceDescriptor
 	}
 };
 
-struct USBSetup {
+struct USBSetup
+{
 	u8 bmRequestType;
 	u8 bRequest;
 	u16 wValue;
@@ -251,15 +252,17 @@ public:
 	virtual void Destroy() = 0;
 	virtual IUSBDevice* OpenDevice(TUSBDeviceOpenInfo OpenInfo, IUSBDeviceClient* Client) = 0;
 	virtual void UpdateShouldScan() = 0;
-	virtual void DestroyDeviceList(std::vector<USBDeviceDescriptorEtc>* Old) = 0;
+	virtual void DestroyDeviceList(std::vector<USBDeviceDescriptorEtc>& Old) = 0;
 
 	bool UpdateDeviceList();
 	void DestroyOldDeviceList();
 	static void UpdateGlobalDeviceList();
 protected:
-	void SetDeviceList(std::vector<USBDeviceDescriptorEtc>* List, bool IsInitial);
+	void SetDeviceList(std::vector<USBDeviceDescriptorEtc>&& List, bool IsInitial);
+	virtual ~IUSBController();
 private:
-	std::unique_ptr<std::vector<USBDeviceDescriptorEtc>> m_NewDeviceList, m_DeviceList, m_OldDeviceList;
+	std::vector<USBDeviceDescriptorEtc>* volatile m_NewDeviceList;
+	std::vector<USBDeviceDescriptorEtc> m_DeviceList, m_OldDeviceList;
 };
 
 // public
@@ -279,23 +282,21 @@ class IUSBDevice : public IntrusiveMember<IUSBDevice>
 {
 public:
 	void CancelRequests(u8 Endpoint);
+	void ControlRequest(const USBSetup* Setup, void* Payload, void* UserData);
+	virtual void Close();
+	virtual void ProcessPending();
+	void WriteDeviceState(PointerWrap& p);
+
 	virtual u32 SetConfig(int Config) = 0;
 	virtual u32 SetDefaultConfig() = 0;
 	virtual u32 SetInterfaceAltSetting(int Interface, int Setting) = 0;
-	void ControlRequest(const USBSetup* Setup, void* Payload, void* UserData);
 	virtual void BulkRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData) = 0;
 	virtual void InterruptRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData) = 0;
 	virtual void IsochronousRequest(u8 Endpoint, size_t Length, size_t NumPackets, u16* PacketLengths, void* Payload, void* UserData) = 0;
-	void Close();
-	virtual void ProcessPending();
-
-	void WriteDeviceState(PointerWrap& p);
-
 protected:
-	IUSBDevice(IUSBDeviceClient* Client, TUSBDeviceOpenInfo OpenInfo);
+	IUSBDevice(TUSBDeviceOpenInfo OpenInfo, IUSBDeviceClient* Client);
 
 	virtual void _ControlRequest(const USBSetup* Request, void* Payload, void* UserData) = 0;
-	virtual void _Close() = 0;
 
 	friend class CUSBRequest;
 	IntrusiveList<CUSBRequest> m_IncompleteRequests;
@@ -310,7 +311,6 @@ private:
 };
 
 // private
-
 	void ReadDeviceState(PointerWrap& p, IUSBDeviceClient* Client);
 	extern volatile bool g_ShouldScan;
 	extern std::mutex g_QueueMutex;

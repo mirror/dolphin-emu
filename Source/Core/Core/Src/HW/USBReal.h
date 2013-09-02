@@ -25,18 +25,18 @@ class CUSBDeviceReal final : public IUSBDevice
 {
 public:
 	CUSBDeviceReal(libusb_device* Device, TUSBDeviceOpenInfo OpenInfo, libusb_device_handle* Handle, CUSBControllerReal* Controller, IUSBDeviceClient* Client);
+	virtual void ProcessPending() override;
+	virtual void Close() override;
 
-	virtual u32 SetConfig(int Config);
-	virtual u32 SetDefaultConfig();
-	virtual u32 SetInterfaceAltSetting(int Interface, int Setting);
-	virtual void BulkRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData);
-	virtual void InterruptRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData);
-	virtual void IsochronousRequest(u8 Endpoint, size_t Length, size_t NumPackets, u16* PacketLengths, void* Payload, void* UserData);
-	virtual void ProcessPending();
+	virtual u32 SetConfig(int Config) override;
+	virtual u32 SetDefaultConfig() override;
+	virtual u32 SetInterfaceAltSetting(int Interface, int Setting) override;
+	virtual void BulkRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData) override;
+	virtual void InterruptRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData) override;
+	virtual void IsochronousRequest(u8 Endpoint, size_t Length, size_t NumPackets, u16* PacketLengths, void* Payload, void* UserData) override;
 
 protected:
-	virtual void _ControlRequest(const USBSetup* Request, void* Payload, void* UserData);
-	virtual void _Close();
+	virtual void _ControlRequest(const USBSetup* Request, void* Payload, void* UserData) override;
 	void CheckClose();
 	friend class CUSBRequestReal;
 
@@ -53,10 +53,10 @@ class CUSBControllerReal : public IUSBController
 {
 public:
 	CUSBControllerReal();
-	virtual void Destroy();
-	virtual IUSBDevice* OpenDevice(TUSBDeviceOpenInfo OpenInfo, IUSBDeviceClient* Client);
-	virtual void UpdateShouldScan();
-	virtual void DestroyDeviceList(std::vector<USBDeviceDescriptorEtc>* Old);
+	virtual void Destroy() override;
+	virtual IUSBDevice* OpenDevice(TUSBDeviceOpenInfo OpenInfo, IUSBDeviceClient* Client) override;
+	virtual void UpdateShouldScan() override;
+	virtual void DestroyDeviceList(std::vector<USBDeviceDescriptorEtc>& Old) override;
 private:
 	virtual ~CUSBControllerReal();
 	void PollDevices(bool IsInitial);
