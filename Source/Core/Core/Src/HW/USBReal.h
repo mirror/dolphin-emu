@@ -31,12 +31,12 @@ public:
 	virtual u32 SetConfig(int Config) override;
 	virtual u32 SetDefaultConfig() override;
 	virtual u32 SetInterfaceAltSetting(int Interface, int Setting) override;
+	virtual bool ControlRequest(const USBSetup* Request, void* Payload, void* UserData) override;
 	virtual void BulkRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData) override;
 	virtual void InterruptRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData) override;
 	virtual void IsochronousRequest(u8 Endpoint, size_t Length, size_t NumPackets, u16* PacketLengths, void* Payload, void* UserData) override;
 
 protected:
-	virtual void _ControlRequest(const USBSetup* Request, void* Payload, void* UserData) override;
 	void CheckClose();
 	friend class CUSBRequestReal;
 
@@ -59,7 +59,7 @@ public:
 	virtual void DestroyDeviceList(std::vector<USBDeviceDescriptorEtc>& Old) override;
 private:
 	virtual ~CUSBControllerReal();
-	void PollDevices(bool IsInitial);
+	void PollDevices();
 	void USBThread();
 	static void USBThreadFunc(CUSBControllerReal* Self) { Self->USBThread(); }
 #ifdef CUSBDEVICE_SUPPORTS_HOTPLUG

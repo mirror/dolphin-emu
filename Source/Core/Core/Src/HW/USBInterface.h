@@ -52,17 +52,19 @@ static inline bool AppendRaw(u8** Ptr, size_t* Remaining, const void* Data, size
 	return true;
 }
 
+template <typename T>
+static inline T& EmplaceBack(std::vector<T>& Vec)
+{
+	T Result;
+	Vec.push_back(Result);
+	return Vec.back();
+}
+
 namespace USBInterface
 {
 
 class IUSBController;
 typedef std::pair<IUSBController*, void*> TUSBDeviceOpenInfo;
-
-enum
-{
-	UsbRealControllerId = 0,
-	NumControllerIds
-};
 
 enum
 {
@@ -162,6 +164,11 @@ struct USBEndpointDescriptorEtc : public USBEndpointDescriptor
 	bool operator==(const USBEndpointDescriptorEtc& other) const {
 		return !memcmp(this, &other, offsetof(USBEndpointDescriptor, pad));
 	}
+	void Fixup()
+	{
+		bLength = 0x07;
+		bDescriptorType = 5;
+	}
 };
 
 struct USBInterfaceDescriptorEtc : public USBInterfaceDescriptor
@@ -170,6 +177,12 @@ struct USBInterfaceDescriptorEtc : public USBInterfaceDescriptor
 	bool operator==(const USBInterfaceDescriptorEtc& other) const {
 		return !memcmp(this, &other, offsetof(USBInterfaceDescriptor, pad)) &&
 		       Endpoints == other.Endpoints;
+	}
+	void Fixup()
+	{
+		bLength = 0x09;
+		bDescriptorType = 4;
+		bNumEndpoints = Endpoints.size();
 	}
 };
 
@@ -182,6 +195,19 @@ struct USBConfigDescriptorEtc : public USBConfigDescriptor
 		       Rest == other.Rest &&
 		       Interfaces == other.Interfaces;
 	}
+	void Fixup()
+	{
+		bLength = 0x09;
+		bDescriptorType = 2;
+		bNumInterfaces = Interfaces.size();
+
+		wTotalLength = 0;
+		for (auto& Interface : Interfaces)
+		{
+			wTotalLength += Interface.bLength + 0x07 * Interface.Endpoints.size();
+		}
+		wTotalLength += Rest.size();
+	}
 };
 
 struct USBDeviceDescriptorEtc : public USBDeviceDescriptor
@@ -193,6 +219,12 @@ struct USBDeviceDescriptorEtc : public USBDeviceDescriptor
 		return OpenInfo == other.OpenInfo &&
 		       !memcmp(this, &other, offsetof(USBDeviceDescriptor, pad)) &&
 		       Configs == other.Configs;
+	}
+	void Fixup()
+	{
+		bLength = 0x12;
+		bDescriptorType = 1;
+		bNumConfigurations = Configs.size();
 	}
 };
 
@@ -249,6 +281,7 @@ protected:
 class IUSBController
 {
 public:
+	IUSBController() { m_NewDeviceList = NULL; }
 	virtual void Destroy() = 0;
 	virtual IUSBDevice* OpenDevice(TUSBDeviceOpenInfo OpenInfo, IUSBDeviceClient* Client) = 0;
 	virtual void UpdateShouldScan() = 0;
@@ -258,7 +291,7 @@ public:
 	void DestroyOldDeviceList();
 	static void UpdateGlobalDeviceList();
 protected:
-	void SetDeviceList(std::vector<USBDeviceDescriptorEtc>&& List, bool IsInitial);
+	void SetDeviceList(std::vector<USBDeviceDescriptorEtc>&& List);
 	virtual ~IUSBController();
 private:
 	std::vector<USBDeviceDescriptorEtc>* volatile m_NewDeviceList;
@@ -282,7 +315,8 @@ class IUSBDevice : public IntrusiveMember<IUSBDevice>
 {
 public:
 	void CancelRequests(u8 Endpoint);
-	void ControlRequest(const USBSetup* Setup, void* Payload, void* UserData);
+	// return value is whether this superclass handled it
+	virtual bool ControlRequest(const USBSetup* Setup, void* Payload, void* UserData);
 	virtual void Close();
 	virtual void ProcessPending();
 	void WriteDeviceState(PointerWrap& p);
@@ -295,8 +329,6 @@ public:
 	virtual void IsochronousRequest(u8 Endpoint, size_t Length, size_t NumPackets, u16* PacketLengths, void* Payload, void* UserData) = 0;
 protected:
 	IUSBDevice(TUSBDeviceOpenInfo OpenInfo, IUSBDeviceClient* Client);
-
-	virtual void _ControlRequest(const USBSetup* Request, void* Payload, void* UserData) = 0;
 
 	friend class CUSBRequest;
 	IntrusiveList<CUSBRequest> m_IncompleteRequests;

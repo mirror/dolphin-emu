@@ -26,14 +26,6 @@ struct timeval {
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 
-template <typename T>
-static inline T& EmplaceBack(std::vector<T>& Vec)
-{
-	T Result;
-	Vec.push_back(Result);
-	return Vec.back();
-}
-
 namespace USBInterface
 {
 
@@ -238,9 +230,13 @@ u32 CUSBDeviceReal::SetInterfaceAltSetting(int Interface, int Setting)
 	return 0;
 }
 
-void CUSBDeviceReal::_ControlRequest(const USBSetup* Request, void* Payload, void* UserData)
+bool CUSBDeviceReal::ControlRequest(const USBSetup* Request, void* Payload, void* UserData)
 {
 	DEBUG_LOG(USBINTERFACE, "USBReal: control request");
+	if (IUSBDevice::ControlRequest(Request, Payload, UserData))
+	{
+		return true;
+	}
 	size_t Length = Common::swap16(Request->wLength);
 	u8* Buf = new u8[sizeof(USBSetup) + Length];
 	memcpy(Buf, Request, sizeof(USBSetup));
@@ -255,6 +251,7 @@ void CUSBDeviceReal::_ControlRequest(const USBSetup* Request, void* Payload, voi
 	{
 		URequest->Complete(UsbErrDefault);
 	}
+	return true;
 }
 
 void CUSBDeviceReal::BulkRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData)
@@ -321,7 +318,7 @@ CUSBControllerReal::CUSBControllerReal()
 
 CUSBControllerReal::~CUSBControllerReal()
 {
-	SetDeviceList(std::vector<USBDeviceDescriptorEtc>(), false);
+	SetDeviceList(std::vector<USBDeviceDescriptorEtc>());
 #ifdef CUSBDEVICE_SUPPORTS_HOTPLUG
 	if (m_HotplugActive)
 	{
@@ -375,7 +372,7 @@ static void TryGetName(libusb_device* Device, libusb_device_descriptor* Desc, st
 #endif
 }
 
-void CUSBControllerReal::PollDevices(bool IsInitial)
+void CUSBControllerReal::PollDevices()
 {
 	if (!g_ShouldScan) {
 		return;
@@ -471,7 +468,7 @@ void CUSBControllerReal::PollDevices(bool IsInitial)
 	}
 	libusb_free_device_list(List, false);
 
-	SetDeviceList(std::move(Results), IsInitial);
+	SetDeviceList(std::move(Results));
 }
 
 void CUSBControllerReal::USBThread()
@@ -500,7 +497,7 @@ void CUSBControllerReal::USBThread()
 		{
 			if (m_HotplugTriggered)
 			{
-				PollDevices(false);
+				PollDevices();
 				m_HotplugTriggered = false;
 			}
 		}
@@ -512,7 +509,7 @@ void CUSBControllerReal::USBThread()
 				continue;
 			}
 			Timer.Update();
-			PollDevices(false);
+			PollDevices();
 		}
 	}
 }
@@ -571,7 +568,7 @@ void CUSBControllerReal::UpdateShouldScan()
 	if (g_ShouldScan)
 	{
 		// Ensure it's ready immediately
-		PollDevices(true);
+		PollDevices();
 	}
 }
 

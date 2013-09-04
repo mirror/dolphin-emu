@@ -20,17 +20,23 @@ enum {
 	USBEventDevicesChanged
 };
 
+enum {
+	NumControllerIds = 1
+};
+
 std::mutex g_QueueMutex;
-IntrusiveList<IUSBDevice> g_PendingDevices;
-IUSBController* g_Controllers[NumControllerIds];
-int g_InterfaceRefCount;
-std::unordered_set<IUSBDeviceChangeClient*> g_DeviceChangeClients;
-std::unordered_set<TUSBDeviceOpenInfo, PairHash<TUSBDeviceOpenInfo>> g_OpenDevices;
-std::unordered_map<IUSBController*, std::vector<USBDeviceDescriptorEtc>*> g_DeviceLists;
-std::vector<USBDeviceDescriptorEtc*> g_DeviceList;
-bool g_DidOneTimeSetup;
-int g_USBInterfaceEvent;
 volatile bool g_ShouldScan;
+
+static IntrusiveList<IUSBDevice> g_PendingDevices;
+static IUSBController* g_Controllers[NumControllerIds];
+static int g_InterfaceRefCount;
+static std::unordered_set<IUSBDeviceChangeClient*> g_DeviceChangeClients;
+static std::unordered_set<TUSBDeviceOpenInfo, PairHash<TUSBDeviceOpenInfo>> g_OpenDevices;
+static std::unordered_map<IUSBController*, std::vector<USBDeviceDescriptorEtc>*> g_DeviceLists;
+static std::vector<USBDeviceDescriptorEtc*> g_DeviceList;
+static bool g_DidOneTimeSetup;
+static int g_USBInterfaceEvent;
+static bool g_USBInterfaceConstructing;
 
 static bool UpdateDeviceLists()
 {
@@ -121,12 +127,12 @@ void IUSBController::UpdateGlobalDeviceList()
 	}
 }
 
-void IUSBController::SetDeviceList(std::vector<USBDeviceDescriptorEtc>&& List, bool IsInitial)
+void IUSBController::SetDeviceList(std::vector<USBDeviceDescriptorEtc>&& List)
 {
 	auto pList = new std::vector<USBDeviceDescriptorEtc>(std::move(List));
 	auto Old = Common::AtomicExchangeAcquire(m_NewDeviceList, pList);
 	delete Old;
-	if (!IsInitial)
+	if (!g_USBInterfaceConstructing)
 	{
 		CoreTiming::ScheduleEvent_Threadsafe_Immediate(g_USBInterfaceEvent, USBEventDevicesChanged);
 	}
@@ -174,27 +180,31 @@ void IUSBDevice::ProcessPending()
 	m_Pending = false;
 }
 
-void IUSBDevice::ControlRequest(const USBSetup* Setup, void* Payload, void* UserData)
+bool IUSBDevice::ControlRequest(const USBSetup* Setup, void* Payload, void* UserData)
 {
 	switch (Setup->bRequest)
 	{
-	case 0x09: // SET_CONFIGURATION
+	if (Setup->bmRequestType == 0 &&
+	    Setup->bRequest == 0x09)
 	{
+		// SET_CONFIGURATION
 		int Config = Setup->wValue;
 		u32 Result = SetConfig(Config);
 		(new CUSBRequest(this, UserData, -1, true))->Complete(Result);
-		break;
+		return true;
 	}
-	case 0x0b: // SET_INTERFACE
+	else if (Setup->bmRequestType == 1 &&
+	         Setup->bRequest == 0x0b)
 	{
+		// SET_INTERFACE
 		int Interface = Setup->wIndex;
 		int Setting = Setup->wValue;
 		u32 Result = SetInterfaceAltSetting(Interface, Setting);
 		(new CUSBRequest(this, UserData, -1, true))->Complete(Result);
-		break;
+		return true;
 	}
 	default:
-		return _ControlRequest(Setup, Payload, UserData);
+		return false;
 	}
 }
 
@@ -305,9 +315,11 @@ void RefInterface()
 	if (g_InterfaceRefCount++ == 0)
 	{
 		DEBUG_LOG(USBINTERFACE, "USB coming up");
+		g_USBInterfaceConstructing = true;
 #if defined(__LIBUSB__) || defined (_WIN32)
-		g_Controllers[UsbRealControllerId] = new CUSBControllerReal();
+		g_Controllers[0] = new CUSBControllerReal();
 #endif
+		g_USBInterfaceConstructing = false;
 		// get initial device list
 		UpdateDeviceLists();
 	}
