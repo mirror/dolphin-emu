@@ -484,6 +484,12 @@
     <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE_Device_sdio_slot0.cpp">
       <Filter>IPC HLE %28IOS/Starlet%29\SDIO - SD Card</Filter>
     </ClCompile>
+    <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE_Device_usb_hid.cpp">
+      <Filter>IPC HLE %28IOS/Starlet%29\USB/BT/Wiimote</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE_Device_usb_kbd.cpp">
+      <Filter>IPC HLE %28IOS/Starlet%29\USB/BT/Wiimote</Filter>
+    </ClCompile>
     <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE_Device_usb_oh0.cpp">
       <Filter>IPC HLE %28IOS/Starlet%29\USB/BT/Wiimote</Filter>
     </ClCompile>
@@ -971,6 +977,12 @@
     </ClInclude>
     <ClInclude Include="Src\IPC_HLE\WII_IPC_HLE_Device_sdio_slot0.h">
       <Filter>IPC HLE %28IOS/Starlet%29\SDIO - SD Card</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\IPC_HLE\WII_IPC_HLE_Device_usb_hid.h">
+      <Filter>IPC HLE %28IOS/Starlet%29\USB/BT/Wiimote</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\IPC_HLE\WII_IPC_HLE_Device_usb_kbd.h">
+      <Filter>IPC HLE %28IOS/Starlet%29\USB/BT/Wiimote</Filter>
     </ClInclude>
     <ClInclude Include="Src\IPC_HLE\WII_IPC_HLE_Device_usb_oh0.h">
       <Filter>IPC HLE %28IOS/Starlet%29\USB/BT/Wiimote</Filter>

@@ -99,7 +99,6 @@ void CUSBDeviceEmulatedKeyboard::SetKeyboardClientEnabled(bool Enabled)
 CUSBControllerEmulatedKeyboard::CUSBControllerEmulatedKeyboard()
 {
     AddKeyboardClient();
-    SetEnabled(KeyboardEnabled());
 }
 
 CUSBControllerEmulatedKeyboard::~CUSBControllerEmulatedKeyboard()

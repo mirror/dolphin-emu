@@ -4,6 +4,7 @@ void CKeyboardClient::AddKeyboardClient()
 {
     std::lock_guard<std::recursive_mutex> Lock(s_KeyboardClientMutex);
     s_KeyboardClientInstances.insert(this);
+    SetKeyboardClientEnabled(KeyboardEnabled());
 }
 
 void CKeyboardClient::DestroyKeyboardClient()
