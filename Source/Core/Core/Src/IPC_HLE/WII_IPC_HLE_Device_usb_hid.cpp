@@ -49,7 +49,7 @@ USBInterface::IUSBDevice* CWII_IPC_HLE_Device_usb_hid::GetDevice(u32 DevNum)
 		return itr->second;
 	}
 
-	DEBUG_LOG(WII_IPC_USB, "HID opening device %x", DevNum);
+	WARN_LOG(WII_IPC_USB, "HID opening device %x", DevNum);
 	auto uitr = m_UidMap.find(DevNum);
 	if (uitr == m_UidMap.end())
 	{

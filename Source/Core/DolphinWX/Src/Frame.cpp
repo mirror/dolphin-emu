@@ -38,6 +38,8 @@
 
 #include <wx/datetime.h> // wxWidgets
 
+#include "KeyboardClient.h"
+
 // Resources
 
 extern "C" {
@@ -817,6 +819,114 @@ bool TASInputHasFocus()
 	return false;
 }
 
+static u8 g_WxKeyCodeToHid[400];
+
+static void InitWxKeyCodeToHid()
+{
+	#define range(start, end, hid) \
+		for (int i = 0; i <= (end - start); i++) \
+			g_WxKeyCodeToHid[start + i] = hid + i
+	#define X(val, hid) \
+		g_WxKeyCodeToHid[(int) val] = hid
+	range('A', 'Z', 4);
+	X('/', 56); X('?', 56);
+	X('\\', 49); X('|', 49);
+	X('=', 46); X('+', 46);
+	X('-', 45); X('_', 45);
+	range('1', '9', 30);
+	X('0', 39);
+	X('!', 30);
+	X('@', 31);
+	X('#', 32);
+	X('$', 33);
+	X('%', 34);
+	X('^', 35);
+	X('&', 36);
+	X('*', 37);
+	X('(', 38);
+	X(')', 39);
+
+	X(WXK_BACK, 42);
+	X(WXK_TAB, 43);
+	X(WXK_RETURN, 40);
+	X(WXK_ESCAPE, 41);
+
+	X(WXK_SPACE, 44);
+	X(WXK_NUMPAD_SPACE, 44);
+	X(WXK_DELETE, 42);
+
+	X(WXK_END, 77);
+	X(WXK_HOME, 74);
+	X(WXK_LEFT, 80);
+	X(WXK_UP, 82);
+	X(WXK_RIGHT, 79);
+	X(WXK_DOWN, 81);
+
+	X(WXK_NUMPAD0, 98);
+	range(WXK_NUMPAD1, WXK_NUMPAD9, 89);
+
+	range(WXK_F1, WXK_F12, 58);
+	range(WXK_F13, WXK_F24, 104);
+	X(WXK_NUMLOCK, 83);
+	X(WXK_SCROLL, 71);
+	X(WXK_PAGEUP, 75);
+	X(WXK_PAGEDOWN, 78);
+
+	X(WXK_NUMPAD_SPACE, 44);
+	X(WXK_NUMPAD_TAB, 43);
+	X(WXK_NUMPAD_ENTER, 40);
+	range(WXK_NUMPAD_F1, WXK_NUMPAD_F4, 58);
+
+	X(WXK_NUMPAD_HOME, 74);
+	X(WXK_NUMPAD_LEFT, 80);
+	X(WXK_NUMPAD_UP, 82);
+	X(WXK_NUMPAD_RIGHT, 79);
+	X(WXK_NUMPAD_DOWN, 81);
+	X(WXK_NUMPAD_PAGEUP, 75);
+	X(WXK_NUMPAD_PAGEDOWN, 78);
+	X(WXK_NUMPAD_END, 77);
+	X(WXK_NUMPAD_BEGIN, 74);
+	X(WXK_NUMPAD_INSERT, 73);
+	X(WXK_NUMPAD_DELETE, 76);
+
+	X(WXK_NUMPAD_EQUAL, 103);
+	X(WXK_NUMPAD_MULTIPLY, 85);
+	X(WXK_NUMPAD_ADD, 87);
+	X(WXK_NUMPAD_SEPARATOR, 133);
+	X(WXK_NUMPAD_SUBTRACT, 86);
+	X(WXK_NUMPAD_DECIMAL, 99);
+	X(WXK_NUMPAD_DIVIDE, 84);
+
+	X(WXK_CONTROL, 224);
+	X(WXK_SHIFT, 225);
+	X(WXK_ALT, 226);
+	#undef Range
+	#undef X
+}
+
+static void DoUSBKeyboardEvent(wxKeyEvent& event, bool pressed)
+{
+	int wx_code = event.GetKeyCode();
+	if (wx_code == 0)
+	{
+		return;
+	}
+
+	if (!g_WxKeyCodeToHid[WXK_BACK])
+	{
+		InitWxKeyCodeToHid();
+	}
+	u8 hid_code = g_WxKeyCodeToHid[wx_code];
+
+	if (hid_code)
+	{
+		CKeyboardClient::SetKeyPressed(hid_code, pressed);
+	}
+	else
+	{
+		WARN_LOG(COMMON, "Unknown WX key code %d pressed.", wx_code);
+	}
+}
 
 void CFrame::OnKeyDown(wxKeyEvent& event)
 {
@@ -919,17 +1029,20 @@ void CFrame::OnKeyDown(wxKeyEvent& event)
 					}
 				}
 			}
-			// On OS X, we claim all keyboard events while
-			// emulation is running to avoid wxWidgets sounding
-			// the system beep for unhandled key events when
-			// receiving pad/wiimote keypresses which take an
-			// entirely different path through the HID subsystem.
-#ifndef __APPLE__
-			// On other platforms, we leave the key event alone
-			// so it can be passed on to the windowing system.
 			if (i == NUM_HOTKEYS)
+			{
+				DoUSBKeyboardEvent(event, true);
+#ifndef __APPLE__
+				// On OS X, we claim all keyboard events while
+				// emulation is running to avoid wxWidgets sounding
+				// the system beep for unhandled key events when
+				// receiving pad/wiimote keypresses which take an
+				// entirely different path through the HID subsystem.
+				// On other platforms, we leave the key event alone
+				// so it can be passed on to the windowing system.
 				event.Skip();
 #endif
+			}
 		}
 
 		// Actually perform the wiimote connection or disconnection
@@ -984,6 +1097,7 @@ void CFrame::OnKeyDown(wxKeyEvent& event)
 
 void CFrame::OnKeyUp(wxKeyEvent& event)
 {
+	DoUSBKeyboardEvent(event, false);
 	event.Skip();
 }
 

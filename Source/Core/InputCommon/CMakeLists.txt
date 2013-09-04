@@ -4,7 +4,8 @@ set(SRCS	Src/ControllerEmu.cpp
 			Src/UDPWrapper.cpp
 			Src/ControllerInterface/ControllerInterface.cpp
 			Src/ControllerInterface/Device.cpp
-			Src/ControllerInterface/ExpressionParser.cpp)
+			Src/ControllerInterface/ExpressionParser.cpp
+			Src/KeyboardClient.cpp)
 
 if(WIN32)
 	set(SRCS	${SRCS}

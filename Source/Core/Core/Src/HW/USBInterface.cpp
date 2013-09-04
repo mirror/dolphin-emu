@@ -6,6 +6,7 @@
 #include "Thread.h"
 #include "CoreTiming.h"
 #include "USBEmulated.h"
+#include "USBEmulatedKeyboard.h"
 #if defined(__LIBUSB__) || defined (_WIN32)
 #include "USBReal.h"
 #endif
@@ -22,7 +23,7 @@ enum {
 };
 
 enum {
-	NumControllerIds = 1
+	NumControllerIds = 2
 };
 
 std::mutex g_QueueMutex;
@@ -317,9 +318,12 @@ void RefInterface()
 	{
 		DEBUG_LOG(USBINTERFACE, "USB coming up");
 		g_USBInterfaceConstructing = true;
+
 #if defined(__LIBUSB__) || defined (_WIN32)
 		g_Controllers[0] = new CUSBControllerReal();
 #endif
+		g_Controllers[1] = new CUSBControllerEmulatedKeyboard();
+
 		g_USBInterfaceConstructing = false;
 		// get initial device list
 		UpdateDeviceLists();

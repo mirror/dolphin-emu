@@ -176,6 +176,7 @@
     <ClCompile Include="Src\InputConfig.cpp" />
     <ClCompile Include="Src\UDPWiimote.cpp" />
     <ClCompile Include="Src\UDPWrapper.cpp" />
+    <ClCompile Include="Src\KeyboardClient.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Src\ControllerEmu.h" />
@@ -192,6 +193,7 @@
     <ClInclude Include="Src\InputConfig.h" />
     <ClInclude Include="Src\UDPWiimote.h" />
     <ClInclude Include="Src\UDPWrapper.h" />
+    <ClCompile Include="Src\KeyboardClient.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="CMakeLists.txt" />

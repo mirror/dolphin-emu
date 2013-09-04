@@ -119,6 +119,7 @@ set(SRCS	Src/ActionReplay.cpp
 			Src/HW/StreamADPCM.cpp
 			Src/HW/SystemTimers.cpp
 			Src/HW/USBEmulated.cpp
+			Src/HW/USBEmulatedKeyboard.cpp
 			Src/HW/USBInterface.cpp
 			Src/HW/VideoInterface.cpp
 			Src/HW/WII_IOB.cpp

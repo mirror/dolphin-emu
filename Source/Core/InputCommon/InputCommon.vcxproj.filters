@@ -5,6 +5,7 @@
     <ClCompile Include="Src\InputConfig.cpp" />
     <ClCompile Include="Src\UDPWiimote.cpp" />
     <ClCompile Include="Src\UDPWrapper.cpp" />
+    <ClCompile Include="Src\KeyboardClient.cpp" />
     <ClCompile Include="Src\ControllerInterface\SDL\SDL.cpp">
       <Filter>ControllerInterface\SDL</Filter>
     </ClCompile>
@@ -36,6 +37,7 @@
     <ClInclude Include="Src\InputConfig.h" />
     <ClInclude Include="Src\UDPWiimote.h" />
     <ClInclude Include="Src\UDPWrapper.h" />
+    <ClInclude Include="Src\KeyboardClient.h" />
     <ClInclude Include="Src\ControllerInterface\SDL\SDL.h">
       <Filter>ControllerInterface\SDL</Filter>
     </ClInclude>

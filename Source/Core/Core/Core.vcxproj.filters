@@ -295,6 +295,9 @@
     <ClCompile Include="Src\HW\USBEmulated.cpp">
       <Filter>HW %28Flipper/Hollywood%29\USB Interface</Filter>
     </ClCompile>
+    <ClCompile Include="Src\HW\USBEmulatedKeyboard.cpp">
+      <Filter>HW %28Flipper/Hollywood%29\USB Interface</Filter>
+    </ClCompile>
     <ClCompile Include="Src\HW\USBInterface.cpp">
       <Filter>HW %28Flipper/Hollywood%29\USB Interface</Filter>
     </ClCompile>
@@ -841,6 +844,9 @@
       <Filter>HW %28Flipper/Hollywood%29\SI - Serial Interface</Filter>
     </ClInclude>
     <ClInclude Include="Src\HW\USBEmulated.h">
+      <Filter>HW %28Flipper/Hollywood%29\USB Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\HW\USBEmulatedKeyboard.h">
       <Filter>HW %28Flipper/Hollywood%29\USB Interface</Filter>
     </ClInclude>
     <ClInclude Include="Src\HW\USBInterface.h">
