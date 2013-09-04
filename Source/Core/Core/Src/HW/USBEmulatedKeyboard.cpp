@@ -11,12 +11,12 @@ CUSBDeviceEmulatedKeyboard::CUSBDeviceEmulatedKeyboard(TUSBDeviceOpenInfo OpenIn
 {
     m_PendingStateChange = true;
     m_PendingInterruptRequest = NULL;
+    AddKeyboardClient();
 }
 
 CUSBDeviceEmulatedKeyboard::~CUSBDeviceEmulatedKeyboard()
 {
-    std::lock_guard<std::mutex> Guard(s_KeyboardClientMutex);
-    s_KeyboardClientInstance = NULL;
+    DestroyKeyboardClient();
     if (m_PendingInterruptRequest)
     {
         // Don't bother completing it.
@@ -57,18 +57,18 @@ void CUSBDeviceEmulatedKeyboard::InterruptRequest(u8 Endpoint, size_t Length, vo
         return;
     }
 
-    std::lock_guard<std::mutex> Guard(s_KeyboardClientMutex);
+    std::lock_guard<std::recursive_mutex> Guard(s_KeyboardClientMutex);
     m_PendingInterruptRequest = new CUSBRequest(this, UserData, Endpoint);
     m_PendingPayload = Payload;
     if (m_PendingStateChange)
     {
         m_PendingStateChange = false;
-        UpdateReport(s_Report.Data);
+        UpdateKeyboardReport(s_KeyboardReport.Data);
     }
 }
 
 // called with s_KeyboardClientMutex locked
-void CUSBDeviceEmulatedKeyboard::UpdateReport(u8* Data)
+void CUSBDeviceEmulatedKeyboard::UpdateKeyboardReport(u8* Data)
 {
     DEBUG_LOG(USBINTERFACE, "USBEmulatedKeyboard: Update Report: mod=%02x keys=%02x %02x %02x %02x %02x %02x mpir=%p", Data[0], Data[2], Data[3], Data[4], Data[5], Data[6], Data[7], m_PendingInterruptRequest);
     if (m_PendingInterruptRequest)
@@ -81,6 +81,30 @@ void CUSBDeviceEmulatedKeyboard::UpdateReport(u8* Data)
     {
         m_PendingStateChange = true;
     }
+}
+
+void CUSBDeviceEmulatedKeyboard::SetKeyboardClientEnabled(bool Enabled)
+{
+    if (!Enabled)
+    {
+        std::lock_guard<std::recursive_mutex> Guard(s_KeyboardClientMutex);
+        if (m_PendingInterruptRequest)
+        {
+            m_PendingInterruptRequest->Complete(UsbErrDefault);
+            m_PendingInterruptRequest = NULL;
+        }
+    }
+}
+
+CUSBControllerEmulatedKeyboard::CUSBControllerEmulatedKeyboard()
+{
+    AddKeyboardClient();
+    SetEnabled(KeyboardEnabled());
+}
+
+CUSBControllerEmulatedKeyboard::~CUSBControllerEmulatedKeyboard()
+{
+    DestroyKeyboardClient();
 }
 
 USBDeviceDescriptorEtc CUSBControllerEmulatedKeyboard::GetDeviceDescriptor()
@@ -128,6 +152,11 @@ USBDeviceDescriptorEtc CUSBControllerEmulatedKeyboard::GetDeviceDescriptor()
     Device.Fixup();
 
     return std::move(Device);
+}
+
+void CUSBControllerEmulatedKeyboard::SetKeyboardClientEnabled(bool Enabled)
+{
+    SetEnabled(Enabled);
 }
 
 }

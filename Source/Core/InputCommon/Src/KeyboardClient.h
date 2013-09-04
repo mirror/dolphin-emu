@@ -6,6 +6,8 @@
 
 #include "Common.h"
 #include "Thread.h"
+#include "ConfigManager.h"
+#include <unordered_set>
 
 enum HIDModifiers
 {
@@ -34,10 +36,14 @@ enum HIDCodes
 class CKeyboardClient
 {
 public:
-    CKeyboardClient();
     static void SetKeyPressed(u8 Code, bool Pressed);
-    virtual void UpdateReport(u8* Data) = 0;
+    static void UpdateKeyboardEnabled();
 protected:
+    static bool KeyboardEnabled() { return SConfig::GetInstance().m_WiiKeyboard; }
+    virtual void UpdateKeyboardReport(u8* Data) {}
+    virtual void SetKeyboardClientEnabled(bool Enabled) {}
+    void AddKeyboardClient();
+    void DestroyKeyboardClient();
     static union Report
     {
         u8 Data[8];
@@ -47,8 +53,9 @@ protected:
             u8 Reserved;
             u8 PressedKeys[6];
         };
-    } s_Report;
-    static std::mutex s_KeyboardClientMutex;
-    static CKeyboardClient* s_KeyboardClientInstance;
+    } s_KeyboardReport;
+    static std::recursive_mutex s_KeyboardClientMutex;
+private:
+    static std::unordered_set<CKeyboardClient*> s_KeyboardClientInstances;
 };
 

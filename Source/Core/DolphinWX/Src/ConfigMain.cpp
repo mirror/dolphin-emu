@@ -30,6 +30,7 @@
 #include "HotkeyDlg.h"
 #include "Main.h"
 #include "VideoBackendBase.h"
+#include "KeyboardClient.h"
 
 #define TEXT_BOX(page, text) new wxStaticText(page, wxID_ANY, text, wxDefaultPosition, wxDefaultSize)
 
@@ -1200,6 +1201,7 @@ void CConfigMain::WiiSettingsChanged(wxCommandEvent& event)
 		break;
 	case ID_WII_KEYBOARD:
 		SConfig::GetInstance().m_WiiKeyboard = WiiKeyboard->IsChecked();
+		CKeyboardClient::UpdateKeyboardEnabled();
 		break;
 	}
 }

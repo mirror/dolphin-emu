@@ -20,22 +20,23 @@ public:
 	virtual bool ControlRequest(const USBSetup* Request, void* Payload, void* UserData) override;
 	virtual void InterruptRequest(u8 Endpoint, size_t Length, void* Payload, void* UserData) override;
 
-    virtual void UpdateReport(u8* Data);
+protected:
+    virtual void UpdateKeyboardReport(u8* Data) override;
+    virtual void SetKeyboardClientEnabled(bool Enabled) override;
 private:
     bool m_PendingStateChange;
     CUSBRequest* m_PendingInterruptRequest;
     void* m_PendingPayload;
 };
 
-class CUSBControllerEmulatedKeyboard : public IUSBControllerEmulated<CUSBDeviceEmulatedKeyboard>
+class CUSBControllerEmulatedKeyboard : public IUSBControllerEmulated<CUSBDeviceEmulatedKeyboard>, public CKeyboardClient
 {
 public:
-    CUSBControllerEmulatedKeyboard()
-    {
-        SetEnabled(true);
-    }
+    CUSBControllerEmulatedKeyboard();
+    ~CUSBControllerEmulatedKeyboard();
 protected:
     virtual USBDeviceDescriptorEtc GetDeviceDescriptor() override;
+    virtual void SetKeyboardClientEnabled(bool Enabled) override;
 };
 
 }
