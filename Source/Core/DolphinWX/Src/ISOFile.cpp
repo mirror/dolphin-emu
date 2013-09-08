@@ -24,7 +24,7 @@
 #include "ChunkFile.h"
 #include "ConfigManager.h"
 
-static const u32 CACHE_REVISION = 0x114;
+static const u32 CACHE_REVISION = 0x115;
 
 #define DVD_BANNER_WIDTH 96
 #define DVD_BANNER_HEIGHT 32
@@ -196,7 +196,12 @@ std::string GameListItem::GetCompany() const
 // (-1 = Japanese, 0 = English, etc)?
 std::string GameListItem::GetDescription(int _index) const
 {
-	const u32 index = _index;
+	if (GetPlatform() != GAMECUBE_DISC)
+	{
+		// wii games need to be offset by 1 for a zero index
+		++_index;
+	}
+	u32 const index = _index;
 
 	if (index < m_descriptions.size())
 		return m_descriptions[index];
@@ -210,6 +215,11 @@ std::string GameListItem::GetDescription(int _index) const
 // (-1 = Japanese, 0 = English, etc)?
 std::string GameListItem::GetVolumeName(int _index) const
 {
+	if (GetPlatform() != GAMECUBE_DISC)
+	{
+		// wii games need to be offset by 1 for a zero index
+		++_index;
+	}
 	u32 const index = _index;
 
 	if (index < m_volume_names.size() && !m_volume_names[index].empty())
@@ -224,7 +234,13 @@ std::string GameListItem::GetVolumeName(int _index) const
 // (-1 = Japanese, 0 = English, etc)?
 std::string GameListItem::GetBannerName(int _index) const
 {
+	if (GetPlatform() != GAMECUBE_DISC)
+	{
+		// wii games need to be offset by 1 for a zero index
+		++_index;
+	}
 	u32 const index = _index;
+
 
 	if (index < m_names.size() && !m_names[index].empty())
 		return m_names[index];
@@ -238,12 +254,18 @@ std::string GameListItem::GetBannerName(int _index) const
 // (-1 = Japanese, 0 = English, etc)?
 std::string GameListItem::GetName(int _index) const
 {
+	if (GetPlatform() != GAMECUBE_DISC)
+	{
+		// wii games need to be offset by 1 for a zero index
+		++_index;
+	}
+	u32 const index = _index;
 	// Prefer name from banner, fallback to name from volume, fallback to filename
 	
-	std::string name = GetBannerName(_index);
+	std::string name = GetBannerName(index);
 	
 	if (name.empty())
-		name = GetVolumeName(_index);
+		name = GetVolumeName(index);
 
 	if (name.empty())
 	{

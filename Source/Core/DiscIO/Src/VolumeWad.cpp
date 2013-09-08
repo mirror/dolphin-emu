@@ -149,4 +149,18 @@ u64 CVolumeWAD::GetRawSize() const
 		return 0;
 }
 
+std::string CVolumeWAD::GetName() const
+{
+	auto names = GetNames();
+	if (names.empty())
+		return "";
+	else 
+	{
+		if (names.size() >= 2) // wad names vector starts at japanese
+			return names[1];
+		else 
+			return names[0];
+	}
+}
+
 } // namespace
