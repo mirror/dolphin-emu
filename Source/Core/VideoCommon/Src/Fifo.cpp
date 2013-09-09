@@ -84,20 +84,11 @@ void Fifo_SetRendering(bool enabled)
 	g_bSkipCurrentFrame = !enabled;
 }
 
-// May be executed from any thread, even the graphics thread.
-// Created to allow for self shutdown.
 void ExitGpuLoop()
 {
-	// this sucks, do this better
-	abort();
-	/*
-	// This should break the wait loop in CPU thread
-	CommandProcessor::fifo.bFF_GPReadEnable = false;
-	SCPFifoStruct &fifo = CommandProcessor::fifo;
-	while(fifo.isGpuReadingData) Common::YieldCPU();
-	*/
 	// Terminate GPU thread loop
 	GpuRunningState = false;
+	// No need to wait - g_EmuThread.join() will take care of it.
 	EmuRunningState = true;
 }
 
