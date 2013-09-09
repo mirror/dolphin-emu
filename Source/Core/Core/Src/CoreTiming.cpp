@@ -13,6 +13,10 @@
 
 #define MAX_SLICE_LENGTH 20000
 
+namespace NetPlay {
+	bool IsNetPlayRunning();
+};
+
 namespace CoreTiming
 {
 
@@ -20,6 +24,7 @@ struct EventType
 {
 	TimedCallback callback;
 	const char *name;
+	bool did_whine;
 };
 
 std::vector<EventType> event_types;
@@ -229,6 +234,17 @@ u64 GetIdleTicks()
 // schedule things to be executed on the main thread.
 void ScheduleEvent_Threadsafe(int cyclesIntoFuture, int event_type, u64 userdata)
 {
+	if (NetPlay::IsNetPlayRunning() && !Core::IsCPUThread())
+	{
+		EventType& et = event_types[event_type];
+		if (!et.did_whine)
+		{
+			WARN_LOG(POWERPC, "Someone scheduled an off-thread \"%s\" event while netplay was active.  "
+			                  "This is likely to cause a desync.", et.name);
+			// don't care about thread safety
+			et.did_whine = true;
+		}
+	}
 	std::lock_guard<std::recursive_mutex> lk(externalEventSection);
 	Event *ne = GetNewTsEvent();
 	ne->time = globalTimer + cyclesIntoFuture;
