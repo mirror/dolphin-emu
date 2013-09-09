@@ -51,6 +51,7 @@ volatile bool interruptWaiting= false;
 volatile bool interruptTokenWaiting = false;
 u32 interruptTokenData;
 volatile bool interruptFinishWaiting = false;
+volatile u32 gpuBusy = 0;
 
 volatile u32 VITicks = CommandProcessor::m_cpClockOrigin;
 
@@ -141,8 +142,7 @@ void Init()
 static void SyncGPU() {
 	if (IsOnThread())
 	{
-		while (!interruptWaiting && cpuFifo.bFF_GPReadEnable &&
-			gpuFifo->CPReadWriteDistance && !AtBreakpointGpu())
+		while (Common::AtomicLoad(CommandProcessor::gpuBusy))
 			Common::YieldCPU();
 	}
 	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
@@ -760,17 +760,8 @@ void SetCpControlRegister()
 		ProcessorInterface::Fifo_CPUEnd = cpuFifo.CPEnd;
 	}
 			
-	if(cpuFifo.bFF_GPReadEnable && !m_CPCtrlReg.GPReadEnable)
-	{
-		cpuFifo.bFF_GPReadEnable = m_CPCtrlReg.GPReadEnable;
-		SyncGPU();
-		while(cpuFifo.isGpuReadingData) Common::YieldCPU();
-	}
-	else
-	{
-		cpuFifo.bFF_GPReadEnable = m_CPCtrlReg.GPReadEnable;
-		SyncGPU();
-	}
+	cpuFifo.bFF_GPReadEnable = m_CPCtrlReg.GPReadEnable;
+	SyncGPU();
 
 	DEBUG_LOG(COMMANDPROCESSOR, "\t GPREAD %s | BP %s | Int %s | OvF %s | UndF %s | LINK %s"
 		, cpuFifo.bFF_GPReadEnable ?				"ON" : "OFF"
@@ -797,10 +788,10 @@ void SetCpClearRegister()
 void Update()
 {
 	// called only when bSyncGPU is true
-	while (VITicks > m_cpClockOrigin && cpuFifo.isGpuReadingData && IsOnThread())
+	while (VITicks > m_cpClockOrigin && gpuBusy && IsOnThread())
 		Common::YieldCPU();
 
-	if (cpuFifo.isGpuReadingData)
+	if (gpuBusy)
 		Common::AtomicAdd(VITicks, SystemTimers::GetTicksPerSecond() / 10000);
 }
 } // end of namespace CommandProcessor

@@ -26,6 +26,7 @@ extern volatile bool interruptWaiting;
 extern volatile bool interruptTokenWaiting;
 extern u32 interruptTokenData;
 extern volatile bool interruptFinishWaiting;
+extern volatile u32 gpuBusy;
  
 // internal hardware addresses
 enum

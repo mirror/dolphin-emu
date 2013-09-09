@@ -43,7 +43,7 @@ void Fifo_PauseAndLock(bool doLock, bool unpauseOnUnlock)
 		EmulatorState(false);
 		if (!Core::IsGPUThread())
 			m_csHWVidOccupied.lock();
-		_dbg_assert_(COMMON, !CommandProcessor::gpuFifo->isGpuReadingData);
+		_dbg_assert_(COMMON, !CommandProcessor::gpuBusy);
 	}
 	else
 	{
@@ -155,7 +155,8 @@ void RunGpuLoop()
 		// check if we are able to run this buffer	
 		while (GpuRunningState && !CommandProcessor::interruptWaiting && fifo.bFF_GPReadEnable && fifo.CPReadWriteDistance && !AtBreakpointGpu())
 		{
-			fifo.isGpuReadingData = true;
+
+			Common::AtomicStore(CommandProcessor::gpuBusy, 1);
 			CommandProcessor::isPossibleWaitingSetDrawDone = fifo.bFF_GPLinkEnable ? true : false;
 
 			if (!Core::g_CoreStartupParameter.bSyncGPU || Common::AtomicLoad(CommandProcessor::VITicks) > CommandProcessor::m_cpClockOrigin)
@@ -193,7 +194,7 @@ void RunGpuLoop()
 			CommandProcessor::isPossibleWaitingSetDrawDone = false;
 		}
 
-		fifo.isGpuReadingData = false;
+		Common::AtomicStore(CommandProcessor::gpuBusy, 0);
 
 		if (EmuRunningState)
 		{
