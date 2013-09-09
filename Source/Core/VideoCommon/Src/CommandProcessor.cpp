@@ -709,7 +709,8 @@ void SetCpStatus(bool isCPUThread)
 
 void ProcessFifoEvents()
 {
-	if (IsOnThread() && (interruptWaiting || interruptFinishWaiting || interruptTokenWaiting))
+	if (IsOnThread() && !Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly &&
+	    (interruptWaiting || interruptFinishWaiting || interruptTokenWaiting))
 		CoreTiming::ProcessFifoWaitEvents();
 }
 
