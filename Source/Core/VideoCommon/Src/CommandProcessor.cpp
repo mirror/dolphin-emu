@@ -156,7 +156,7 @@ static void SyncGPU() {
 			PixelEngine::SetFinish_OnMainThread(0, 0);
 		}
 		cpuFifo.CPReadPointer = _gpuFifo.CPReadPointer;
-		cpuFifo.CPReadWriteDistance = 0;
+		cpuFifo.CPReadWriteDistance = _gpuFifo.CPReadWriteDistance;
 		_gpuFifo = cpuFifo;
 		// need another barrier here
 		if (interruptWaiting) {
