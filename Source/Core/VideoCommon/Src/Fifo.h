@@ -27,7 +27,8 @@ void RunGpu();
 void RunGpuLoop();
 void ExitGpuLoop();
 void EmulatorState(bool running);
-bool AtBreakpoint();
+bool AtBreakpointGpu();
+bool AtBreakpointCpu();
 void ResetVideoBuffer();
 void Fifo_SetRendering(bool bEnabled);
 

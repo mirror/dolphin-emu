@@ -245,7 +245,7 @@ u32 FifoCommandRunnable(u32 &command_size)
 			Host_SysMessage(szTemp);
 			INFO_LOG(VIDEO, "%s", szTemp);
 			{
-				SCPFifoStruct &fifo = CommandProcessor::fifo;
+				SCPFifoStruct &fifo = *CommandProcessor::gpuFifo;
 
 				char szTmp[512];
 				// sprintf(szTmp, "Illegal command %02x (at %08x)",cmd_byte,g_pDataReader->GetPtr());

@@ -43,7 +43,7 @@ void Fifo_PauseAndLock(bool doLock, bool unpauseOnUnlock)
 		EmulatorState(false);
 		if (!Core::IsGPUThread())
 			m_csHWVidOccupied.lock();
-		_dbg_assert_(COMMON, !CommandProcessor::fifo.isGpuReadingData);
+		_dbg_assert_(COMMON, !CommandProcessor::gpuFifo->isGpuReadingData);
 	}
 	else
 	{
@@ -88,10 +88,14 @@ void Fifo_SetRendering(bool enabled)
 // Created to allow for self shutdown.
 void ExitGpuLoop()
 {
+	// this sucks, do this better
+	abort();
+	/*
 	// This should break the wait loop in CPU thread
 	CommandProcessor::fifo.bFF_GPReadEnable = false;
 	SCPFifoStruct &fifo = CommandProcessor::fifo;
 	while(fifo.isGpuReadingData) Common::YieldCPU();
+	*/
 	// Terminate GPU thread loop
 	GpuRunningState = false;
 	EmuRunningState = true;
@@ -135,7 +139,7 @@ void RunGpuLoop()
 {
 	std::lock_guard<std::mutex> lk(m_csHWVidOccupied);
 	GpuRunningState = true;
-	SCPFifoStruct &fifo = CommandProcessor::fifo;
+	SCPFifoStruct &fifo = *CommandProcessor::gpuFifo;
 	u32 cyclesExecuted = 0;
 
 	while (GpuRunningState)
@@ -149,7 +153,7 @@ void RunGpuLoop()
 		Common::AtomicStore(CommandProcessor::VITicks, CommandProcessor::m_cpClockOrigin);
 
 		// check if we are able to run this buffer	
-		while (GpuRunningState && !CommandProcessor::interruptWaiting && fifo.bFF_GPReadEnable && fifo.CPReadWriteDistance && !AtBreakpoint())
+		while (GpuRunningState && !CommandProcessor::interruptWaiting && fifo.bFF_GPReadEnable && fifo.CPReadWriteDistance && !AtBreakpointGpu())
 		{
 			fifo.isGpuReadingData = true;
 			CommandProcessor::isPossibleWaitingSetDrawDone = fifo.bFF_GPLinkEnable ? true : false;
@@ -215,16 +219,22 @@ void RunGpuLoop()
 }
 
 
-bool AtBreakpoint()
+bool AtBreakpointGpu()
 {
-	SCPFifoStruct &fifo = CommandProcessor::fifo;
+	SCPFifoStruct &fifo = *CommandProcessor::gpuFifo;
+	return fifo.bFF_BPEnable && (fifo.CPReadPointer == fifo.CPBreakpoint);
+}
+
+bool AtBreakpointCpu()
+{
+	SCPFifoStruct &fifo = CommandProcessor::cpuFifo;
 	return fifo.bFF_BPEnable && (fifo.CPReadPointer == fifo.CPBreakpoint);
 }
 
 void RunGpu()
 {
-	SCPFifoStruct &fifo = CommandProcessor::fifo;
-	while (fifo.bFF_GPReadEnable && fifo.CPReadWriteDistance && !AtBreakpoint() )
+	SCPFifoStruct &fifo = *CommandProcessor::gpuFifo;
+	while (fifo.bFF_GPReadEnable && fifo.CPReadWriteDistance && !AtBreakpointGpu() )
 	{
 		u8 *uData = Memory::GetPointer(fifo.CPReadPointer);
 

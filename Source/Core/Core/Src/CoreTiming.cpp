@@ -12,6 +12,7 @@
 #include "VideoBackendBase.h"
 
 #define MAX_SLICE_LENGTH 20000
+#define FORCE_WHINE_ABOUT_THREADSAFE 1
 
 namespace NetPlay {
 	bool IsNetPlayRunning();
@@ -234,7 +235,8 @@ u64 GetIdleTicks()
 // schedule things to be executed on the main thread.
 void ScheduleEvent_Threadsafe(int cyclesIntoFuture, int event_type, u64 userdata)
 {
-	if (NetPlay::IsNetPlayRunning() && !Core::IsCPUThread())
+	if ((NetPlay::IsNetPlayRunning() || FORCE_WHINE_ABOUT_THREADSAFE)
+	    && !Core::IsCPUThread())
 	{
 		EventType& et = event_types[event_type];
 		if (!et.did_whine)
