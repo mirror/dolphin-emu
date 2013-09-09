@@ -62,7 +62,6 @@ struct SCPFifoStruct
 
 	// for GP watchdog hack
 	volatile u32 Fake_GPWDToken; // cicular incrementer
-	volatile u32 isGpuReadingData;
 };
 
 class VideoBackend
