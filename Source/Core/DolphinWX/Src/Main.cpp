@@ -438,11 +438,15 @@ int DolphinApp::OnExit()
 	WiimoteReal::Shutdown();
 	VideoBackend::ClearList();
 	SConfig::Shutdown();
-	LogManager::Shutdown();
 
 	delete m_locale;
 
-	return wxApp::OnExit();
+	int exitStatus = wxApp::OnExit();
+    
+    // LogManager is expected to be present while deleting our wxWidgets objects
+    LogManager::Shutdown();
+    
+    return exitStatus;
 }
 
 void DolphinApp::OnFatalException()
