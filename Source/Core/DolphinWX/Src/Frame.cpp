@@ -387,6 +387,8 @@ CFrame::~CFrame()
 	#if defined(HAVE_XRANDR) && HAVE_XRANDR
 		delete m_XRRConfig;
 	#endif
+
+	delete m_Mgr;
 }
 
 bool CFrame::RendererIsFullscreen()
