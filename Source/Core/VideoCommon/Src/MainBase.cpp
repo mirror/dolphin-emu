@@ -147,6 +147,7 @@ void VideoFifo_CheckEFBAccess()
 
 u32 VideoBackendHardware::Video_AccessEFB(EFBAccessType type, u32 x, u32 y, u32 InputData)
 {
+	CommandProcessor::SyncGPUIfIdleOnly();
 	if (s_BackendInitialized)
 	{
 		s_accessEFBArgs.type = type;
@@ -193,6 +194,7 @@ void VideoFifo_CheckPerfQueryRequest()
 
 u32 VideoBackendHardware::Video_GetQueryResult(PerfQueryType type)
 {
+	CommandProcessor::SyncGPUIfIdleOnly();
 	// TODO: Is this check sane?
 	if (!g_perf_query->IsFlushed())
 	{

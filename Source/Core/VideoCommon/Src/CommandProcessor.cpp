@@ -138,7 +138,8 @@ void Init()
 	et_UpdateInterrupts = CoreTiming::RegisterEvent("CPInterrupt", UpdateInterrupts_Wrapper);
 }
 
-static void SyncGPU() {
+static void SyncGPU()
+{
 	if (IsOnThread())
 	{
 		while (Common::AtomicLoad(CommandProcessor::gpuBusy))
@@ -166,7 +167,8 @@ static void SyncGPU() {
 	}
 }
 
-void SyncGPUIfIdleOnly() {
+void SyncGPUIfIdleOnly()
+{
 	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
 	{
 		SyncGPU();
