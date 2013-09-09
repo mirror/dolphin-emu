@@ -140,6 +140,7 @@ struct SCoreStartupParameter
 	int iBBDumpPort;
 	bool bVBeamSpeedHack;
 	bool bSyncGPU;
+	bool bSyncGPUAtIdleOnly;
 	bool bFastDiscSpeed;
 
 	int SelectedLanguage;

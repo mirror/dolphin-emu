@@ -15,13 +15,16 @@ extern bool MT;
 namespace CommandProcessor
 {
 
-extern SCPFifoStruct fifo; //This one is shared between gfx thread and emulator thread.
+//extern SCPFifoStruct fifo; //This one is shared between gfx thread and emulator thread.
+extern SCPFifoStruct *gpuFifo;
+extern SCPFifoStruct cpuFifo;
 extern volatile bool isPossibleWaitingSetDrawDone; //This one is used for sync gfx thread and emulator thread.
 extern volatile bool isHiWatermarkActive;
 extern volatile bool isLoWatermarkActive;
 extern volatile bool interruptSet;
 extern volatile bool interruptWaiting;
 extern volatile bool interruptTokenWaiting;
+extern u32 interruptTokenData;
 extern volatile bool interruptFinishWaiting;
 
 // internal hardware addresses
@@ -135,6 +138,8 @@ void Init();
 void Shutdown();
 void DoState(PointerWrap &p);
 
+void SyncGPUIfIdleOnly();
+
 // Read
 void Read16(u16& _rReturnValue, const u32 _Address);
 void Write16(const u16 _Data, const u32 _Address);
@@ -151,7 +156,6 @@ bool AllowIdleSkipping();
 void SetCpClearRegister();
 void SetCpControlRegister();
 void SetCpStatusRegister();
-void ProcessFifoToLoWatermark();
 void ProcessFifoAllDistance();
 void ProcessFifoEvents();
 void AbortFrame();

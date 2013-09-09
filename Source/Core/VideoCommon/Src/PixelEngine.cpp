@@ -19,6 +19,7 @@
 #include "HW/ProcessorInterface.h"
 #include "DLCache.h"
 #include "State.h"
+#include "Core.h"
 
 namespace PixelEngine
 {
@@ -199,7 +200,7 @@ void Read16(u16& _uReturnValue, const u32 _iAddress)
 		break;
 
 	case PE_TOKEN_REG:
-		_uReturnValue = Common::AtomicLoad(*(volatile u32*)&CommandProcessor::fifo.PEToken);
+		_uReturnValue = Common::AtomicLoad(*(volatile u32*)&CommandProcessor::cpuFifo.PEToken);
 		INFO_LOG(PIXELENGINE, "(r16) TOKEN_REG : %04x", _uReturnValue);
 		break;
 
@@ -403,8 +404,8 @@ void SetToken_OnMainThread(u64 userdata, int cyclesLate)
 	// XXX: No 16-bit atomic store available, so cheat and use 32-bit.
 	// That's what we've always done. We're counting on fifo.PEToken to be
 	// 4-byte padded.
-	Common::AtomicStore(*(volatile u32*)&CommandProcessor::fifo.PEToken, userdata & 0xffff);
-	INFO_LOG(PIXELENGINE, "VIDEO Backend raises INT_CAUSE_PE_TOKEN (btw, token: %04x)", CommandProcessor::fifo.PEToken);
+	Common::AtomicStore(*(volatile u32*)&CommandProcessor::cpuFifo.PEToken, userdata & 0xffff);
+	INFO_LOG(PIXELENGINE, "VIDEO Backend raises INT_CAUSE_PE_TOKEN (btw, token: %04x)", CommandProcessor::cpuFifo.PEToken);
 	if (userdata >> 16)
 	{
 		Common::AtomicStore(*(volatile u32*)&g_bSignalTokenInterrupt, 1);
@@ -432,7 +433,11 @@ void SetToken(const u16 _token, const int _bSetTokenAcknowledge)
 	}
 
 	CommandProcessor::interruptTokenWaiting = true;
-	CoreTiming::ScheduleEvent_Threadsafe(0, et_SetTokenOnMainThread, _token | (_bSetTokenAcknowledge << 16));
+	u32 data = _token | (_bSetTokenAcknowledge << 16);
+	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+		CommandProcessor::interruptTokenData = data;
+	else
+		CoreTiming::ScheduleEvent_Threadsafe(0, et_SetTokenOnMainThread, data);
 	IncrementCheckContextId();
 }
 
@@ -441,7 +446,8 @@ void SetToken(const u16 _token, const int _bSetTokenAcknowledge)
 void SetFinish()
 {
 	CommandProcessor::interruptFinishWaiting = true;
-	CoreTiming::ScheduleEvent_Threadsafe(0, et_SetFinishOnMainThread, 0);
+	if (!Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+		CoreTiming::ScheduleEvent_Threadsafe(0, et_SetFinishOnMainThread, 0);
 	INFO_LOG(PIXELENGINE, "VIDEO Set Finish");
 	IncrementCheckContextId();
 }

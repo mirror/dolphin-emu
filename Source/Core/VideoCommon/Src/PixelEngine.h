@@ -66,6 +66,8 @@ void Write32(const u32 _iValue, const u32 _iAddress);
 // gfx backend support
 void SetToken(const u16 _token, const int _bSetTokenAcknowledge);
 void SetFinish(void);
+void SetToken_OnMainThread(u64 userdata, int cyclesLate);
+void SetFinish_OnMainThread(u64 userdata, int cyclesLate);
 void ResetSetFinish(void);
 void ResetSetToken(void);
 
