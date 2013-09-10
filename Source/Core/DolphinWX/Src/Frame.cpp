@@ -388,6 +388,8 @@ CFrame::~CFrame()
 		delete m_XRRConfig;
 	#endif
 
+    // m_Mgr has installed itself as the event handler. Remove it.
+    wxWindowBase::PopEventHandler();
 	delete m_Mgr;
 }
 
