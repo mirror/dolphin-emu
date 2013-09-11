@@ -433,7 +433,7 @@ void SetToken(const u16 _token, const int _bSetTokenAcknowledge)
 
 	CommandProcessor::interruptTokenWaiting = true;
 	u32 data = _token | (_bSetTokenAcknowledge << 16);
-	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+	if (CommandProcessor::syncGPUAtIdleOnly)
 		CommandProcessor::interruptTokenData = data;
 	else
 		CoreTiming::ScheduleEvent_Threadsafe(0, et_SetTokenOnMainThread, data);
@@ -445,7 +445,7 @@ void SetToken(const u16 _token, const int _bSetTokenAcknowledge)
 void SetFinish()
 {
 	CommandProcessor::interruptFinishWaiting = true;
-	if (!Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+	if (!CommandProcessor::syncGPUAtIdleOnly)
 		CoreTiming::ScheduleEvent_Threadsafe(0, et_SetFinishOnMainThread, 0);
 	INFO_LOG(PIXELENGINE, "VIDEO Set Finish");
 	IncrementCheckContextId();

@@ -300,6 +300,10 @@ void VideoSoftware::Video_AbortFrame(void)
 {
 }
 
+void VideoSoftware::Video_UpdateWantDeterminism()
+{
+}
+
 readFn16 VideoSoftware::Video_CPRead16()
 {
 	return SWCommandProcessor::Read16;

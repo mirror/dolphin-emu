@@ -129,11 +129,12 @@ void RunGpuLoop()
 {
 	std::lock_guard<std::mutex> lk(m_csHWVidOccupied);
 	GpuRunningState = true;
-	SCPFifoStruct &fifo = *CommandProcessor::gpuFifo;
 	u32 cyclesExecuted = 0;
 
 	while (GpuRunningState)
 	{
+		SCPFifoStruct &fifo = *CommandProcessor::gpuFifo;
+
 		g_video_backend->PeekMessages();
 
 		VideoFifo_CheckAsyncRequest();
@@ -164,6 +165,11 @@ void RunGpuLoop()
 					Common::AtomicStore(fifo.SafeCPReadPointer, fifo.CPReadPointer);
 
 				Common::AtomicStore(fifo.CPReadPointer, readPtr);
+			}
+
+			if (!CommandProcessor::syncGPUAtIdleOnly)
+			{
+				CommandProcessor::SetCpStatus(false);
 			}
 
 			// This call is pretty important in DualCore mode and must be called in the FIFO Loop.

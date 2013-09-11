@@ -48,6 +48,9 @@ bool IsRunningInCurrentThread(); // this tells us whether we are running in the 
 bool IsCPUThread(); // this tells us whether we are the cpu thread.
 bool IsGPUThread();
 
+bool WantDeterminism();
+void UpdateWantDeterminism();
+
 void SetState(EState _State);
 EState GetState();
 

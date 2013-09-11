@@ -51,7 +51,7 @@ u64 g_currentLagCount = 0, g_totalLagCount = 0; // just stats
 u64 g_currentInputCount = 0, g_totalInputCount = 0; // just stats
 u64 g_recordingStartTime; // seconds since 1970 that recording started
 bool bSaveConfig = false, bSkipIdle = false, bDualCore = false, bProgressive = false, bDSPHLE = false, bFastDiscSpeed = false;
-bool bMemcard = false, g_bClearSave = false, bSyncGPU = false, bNetPlay = false;
+bool bMemcard = false, g_bClearSave = false, bSyncGPU = false, bSyncGPUAtIdleOnly = false, bNetPlay = false;
 std::string videoBackend = "unknown";
 int iCPUCore = 1;
 bool g_bDiscChange = false;
@@ -359,6 +359,10 @@ bool IsSyncGPU()
 {
 	return bSyncGPU;
 }
+bool IsSyncGPUAtIdleOnly()
+{
+	return bSyncGPUAtIdleOnly;
+}
 
 bool IsNetPlayRecording()
 {
@@ -456,6 +460,7 @@ bool BeginRecordingInput(int controllers)
 	g_currentByte = g_totalBytes = 0;
 
 	Core::DisplayMessage("Starting movie recording", 2000);
+	Core::UpdateWantDeterminism();
 	return true;
 }
 
@@ -696,6 +701,7 @@ void ReadHeader()
 		bongos = tmpHeader.bongos;
 		bSyncGPU = tmpHeader.bSyncGPU;
 		bNetPlay = tmpHeader.bNetPlay;
+		bSyncGPUAtIdleOnly = tmpHeader.bSyncGPUAtIdleOnly;
 		memcpy(revision, tmpHeader.revision, ArraySize(revision));
 	}
 	else
@@ -754,6 +760,8 @@ bool PlayInput(const char *filename)
 		g_bRecordingFromSaveState = true;
 		Movie::LoadInput(filename);
 	}
+
+	Core::UpdateWantDeterminism();
 
 	return true;
 
@@ -905,6 +913,7 @@ void LoadInput(const char *filename)
 				Core::DisplayMessage("Switched to recording", 2000);
 			}
 		}
+		Core::UpdateWantDeterminism();
 	}
 	else
 	{
@@ -1079,6 +1088,7 @@ void EndPlayInput(bool cont)
 		g_playMode = MODE_NONE;
 		Core::DisplayMessage("Movie End.", 2000);
 		g_bRecordingFromSaveState = false;
+		Core::UpdateWantDeterminism();
 		// we don't clear these things because otherwise we can't resume playback if we load a movie state later
 		//g_totalFrames = g_totalBytes = 0;
 		//delete tmpInput;
@@ -1123,6 +1133,7 @@ void SaveRecording(const char *filename)
 	header.bMemcard = bMemcard;
 	header.bClearSave = g_bClearSave;
 	header.bSyncGPU = bSyncGPU;
+	header.bSyncGPUAtIdleOnly = bSyncGPUAtIdleOnly;
 	header.bNetPlay = bNetPlay;
 	strncpy((char *)header.discChange, g_discChange.c_str(),ArraySize(header.discChange));
 	strncpy((char *)header.author, author.c_str(),ArraySize(header.author));
@@ -1183,6 +1194,7 @@ void GetSettings()
 	bFastDiscSpeed = SConfig::GetInstance().m_LocalCoreStartupParameter.bFastDiscSpeed;
 	videoBackend = g_video_backend->GetName();
 	bSyncGPU = SConfig::GetInstance().m_LocalCoreStartupParameter.bSyncGPU;
+	bSyncGPUAtIdleOnly = SConfig::GetInstance().m_LocalCoreStartupParameter.iSyncGPUAtIdleOnly != 0;
 	iCPUCore = SConfig::GetInstance().m_LocalCoreStartupParameter.iCPUCore;
 	bNetPlay = NetPlay::IsNetPlayRunning();
 	if (!Core::g_CoreStartupParameter.bWii)
