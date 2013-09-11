@@ -28,7 +28,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{1909CD2D-1707-456F-86CA-0DF42A727C99}</ProjectGuid>
-    <RootNamespace>Plugin_VideoOGL</RootNamespace>
+    <RootNamespace>Backend_OGL</RootNamespace>
     <ProjectName>VideoOGL</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -123,7 +123,6 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>opengl32.lib;glu32.lib;glew32s.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\Externals\GLew;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <OutputFile>..\..\..\Binary\$(PlatformName)\Plugins\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <Lib />
   </ItemDefinitionGroup>
@@ -135,7 +134,6 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>opengl32.lib;glu32.lib;glew64s.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\Externals\GLew;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <OutputFile>..\..\..\Binary\$(PlatformName)\Plugins\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <Lib />
   </ItemDefinitionGroup>
@@ -149,7 +147,6 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>opengl32.lib;glu32.lib;glew32s.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\Externals\GLew;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <OutputFile>..\..\..\Binary\$(PlatformName)\Plugins\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <Lib />
   </ItemDefinitionGroup>
@@ -163,7 +160,6 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>opengl32.lib;glu32.lib;glew32s.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\Externals\GLew;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <OutputFile>..\..\..\Binary\$(PlatformName)\Plugins\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <Lib />
   </ItemDefinitionGroup>
@@ -177,7 +173,6 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>opengl32.lib;glu32.lib;glew64s.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\Externals\GLew;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <OutputFile>..\..\..\Binary\$(PlatformName)\Plugins\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <Lib />
   </ItemDefinitionGroup>
@@ -191,7 +186,6 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>opengl32.lib;glu32.lib;glew64s.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\Externals\GLew;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <OutputFile>..\..\..\Binary\$(PlatformName)\Plugins\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <Lib />
   </ItemDefinitionGroup>
