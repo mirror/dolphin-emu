@@ -48,6 +48,7 @@ volatile bool interruptWaiting= false;
 volatile bool interruptTokenWaiting = false;
 u32 interruptTokenData;
 volatile bool interruptFinishWaiting = false;
+bool syncGPUAtIdleOnly = false;
 
 volatile u32 VITicks = CommandProcessor::m_cpClockOrigin;
 
@@ -109,16 +110,9 @@ void Init()
 	cpuFifo.bFF_LoWatermark = 0;
 	cpuFifo.bFF_LoWatermarkInt = 0;
 
-
-	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
-	{
-		_gpuFifo = cpuFifo;
-		gpuFifo = &_gpuFifo;
-	}
-	else
-	{
-		gpuFifo = &cpuFifo;
-	}
+	syncGPUAtIdleOnly = false;
+	gpuFifo = &cpuFifo;
+	UpdateSyncGPUAtIdleOnly();
 
 	interruptSet = false;
 	interruptWaiting = false;
@@ -148,7 +142,7 @@ static void SyncGPU()
 		while (GPUHasWork())
 			Common::YieldCPU();
 	}
-	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+	if (syncGPUAtIdleOnly)
 	{
 		// need a barrier here for ARM
 		if (interruptTokenWaiting)
@@ -162,25 +156,56 @@ static void SyncGPU()
 		cpuFifo.CPReadPointer = _gpuFifo.CPReadPointer;
 		_gpuFifo = cpuFifo;
 		// need another barrier here
-		if (interruptWaiting) {
-			// normally, UpdateInterruptsFromVideoBackend does this
-			UpdateInterrupts(1);
-		}
+		SetCpStatus(true);
 	}
 }
 
 void SyncGPUIfIdleOnly()
 {
-	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+	if (syncGPUAtIdleOnly)
 	{
 		SyncGPU();
 	}
 }
 
+void UpdateSyncGPUAtIdleOnly()
+{
+	// This can change when we start and stop recording.
+	int setting = Core::g_CoreStartupParameter.iSyncGPUAtIdleOnly;
+	bool on;
+	if (setting == 2)
+	{
+		on = Core::WantDeterminism();
+	}
+	else
+	{
+		on = setting;
+	}
+	on = on && IsOnThread() && SConfig::GetInstance().m_LocalCoreStartupParameter.bSkipIdle;
+	if (on != syncGPUAtIdleOnly)
+	{
+		SyncGPU();
+		if (on)
+		{
+			// Might have async requests still waiting.
+			CoreTiming::ProcessFifoWaitEvents();
+
+			_gpuFifo = cpuFifo;
+			gpuFifo = &_gpuFifo;
+		}
+		else
+		{
+			gpuFifo = &cpuFifo;
+		}
+		syncGPUAtIdleOnly = on;
+	}
+}
+
+
 bool IsPossibleWaitingSetDrawDone()
 {
 	// This is called from Idle.
-	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+	if (syncGPUAtIdleOnly)
 	{
 		// Time to sync.
 		SyncGPU();
@@ -200,7 +225,7 @@ static u32 GetReadWriteDistance()
 	if (writePointer < readPointer)
 		result += cpuFifo.CPEnd - cpuFifo.CPBase;
 
-	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+	if (syncGPUAtIdleOnly)
 	{
 		// Pretend we've advanced further.
 		result = std::min(result, (u32) 32);
@@ -211,7 +236,7 @@ static u32 GetReadWriteDistance()
 
 static u32 GetReadPointer()
 {
-	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+	if (syncGPUAtIdleOnly)
 	{
 		u32 result = cpuFifo.CPWritePointer - GetReadWriteDistance();
 		if (result < cpuFifo.CPBase)
@@ -544,10 +569,6 @@ void STACKALIGN GatherPipeBursted()
 	else
 		cpuFifo.CPWritePointer += GATHER_PIPE_SIZE;
 
-	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
-		SetCpStatus(true);
-
-
 	if (!IsOnThread())
 		RunGpu();
 
@@ -595,7 +616,7 @@ void AbortFrame()
 
 void SetCpStatus(bool isCPUThread)
 {
-	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+	if (syncGPUAtIdleOnly)
 	{
 		// We don't care.
 		cpuFifo.bFF_HiWatermark = 0;
@@ -651,7 +672,7 @@ void SetCpStatus(bool isCPUThread)
 
 void ProcessFifoEvents()
 {
-	if (IsOnThread() && !Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly &&
+	if (IsOnThread() && !syncGPUAtIdleOnly &&
 	    (interruptWaiting || interruptFinishWaiting || interruptTokenWaiting))
 		CoreTiming::ProcessFifoWaitEvents();
 }

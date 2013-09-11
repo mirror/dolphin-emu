@@ -45,6 +45,8 @@ class VideoSoftware : public VideoBackend
 	bool Video_IsPossibleWaitingSetDrawDone();
 	void Video_AbortFrame();
 
+	void Video_UpdateWantDeterminism();
+
 	readFn16  Video_CPRead16();
 	writeFn16 Video_CPWrite16();
 	readFn16  Video_PERead16();

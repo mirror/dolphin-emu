@@ -108,7 +108,8 @@ struct DTMHeader {
 	u8 bongos;
 	bool bSyncGPU;
 	bool bNetPlay;
-	u8 reserved[13];		// Padding for any new config options
+	bool bSyncGPUAtIdleOnly;
+	u8 reserved[12];		// Padding for any new config options
 	u8 discChange[40];		// Name of iso file to switch to, for two disc games.
 	u8 revision[20];		// Git hash
 	u8 reserved2[27];		// Make heading 256 bytes, just because we can
@@ -141,6 +142,7 @@ int GetCPUMode();
 bool IsStartingFromClearSave();
 bool IsUsingMemcard();
 bool IsSyncGPU();
+bool IsSyncGPUAtIdleOnly();
 void SetGraphicsConfig();
 void GetSettings();
 bool IsNetPlayRecording();

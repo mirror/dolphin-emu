@@ -129,11 +129,12 @@ void RunGpuLoop()
 {
 	std::lock_guard<std::mutex> lk(m_csHWVidOccupied);
 	GpuRunningState = true;
-	SCPFifoStruct &fifo = *CommandProcessor::gpuFifo;
 	u32 cyclesExecuted = 0;
 
 	while (GpuRunningState)
 	{
+		SCPFifoStruct &fifo = *CommandProcessor::gpuFifo;
+
 		g_video_backend->PeekMessages();
 
 		VideoFifo_CheckAsyncRequest();
@@ -166,7 +167,7 @@ void RunGpuLoop()
 				Common::AtomicStore(fifo.CPReadPointer, readPtr);
 			}
 
-			if (!Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+			if (!CommandProcessor::syncGPUAtIdleOnly)
 			{
 				CommandProcessor::SetCpStatus(false);
 			}

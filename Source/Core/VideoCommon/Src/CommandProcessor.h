@@ -23,6 +23,7 @@ extern volatile bool interruptWaiting;
 extern volatile bool interruptTokenWaiting;
 extern u32 interruptTokenData;
 extern volatile bool interruptFinishWaiting;
+extern bool syncGPUAtIdleOnly;
  
 // internal hardware addresses
 enum
@@ -137,6 +138,7 @@ void DoState(PointerWrap &p);
 
 bool GPUHasWork();
 void SyncGPUIfIdleOnly();
+void UpdateSyncGPUAtIdleOnly();
 bool IsPossibleWaitingSetDrawDone();
 
 // Read

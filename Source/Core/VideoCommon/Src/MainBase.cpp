@@ -306,6 +306,11 @@ void VideoBackendHardware::Video_AbortFrame()
 	CommandProcessor::AbortFrame();
 }
 
+void VideoBackendHardware::Video_UpdateWantDeterminism()
+{
+	CommandProcessor::UpdateSyncGPUAtIdleOnly();
+}
+
 readFn16 VideoBackendHardware::Video_CPRead16()
 {
 	return CommandProcessor::Read16;
