@@ -224,10 +224,12 @@ void RunGpu()
 		FPURoundMode::SaveSIMDState();
 		FPURoundMode::LoadDefaultSIMDState();
 		ReadDataFromFifo(uData, 32);
-		OpcodeDecoder_Run(g_bSkipCurrentFrame);
+		u32 cyclesExecuted = OpcodeDecoder_Run(g_bSkipCurrentFrame);
 		FPURoundMode::LoadSIMDState();
 
 		//DEBUG_LOG(COMMANDPROCESSOR, "Fifo wraps to base");
+		if (cyclesExecuted != 0)
+			fifo.SafeCPReadPointer = fifo.CPReadPointer;
 
 		if (fifo.CPReadPointer == fifo.CPEnd)
 			fifo.CPReadPointer = fifo.CPBase;

@@ -154,6 +154,7 @@ static void SyncGPU()
 			PixelEngine::SetFinish_OnMainThread(0, 0);
 		}
 		cpuFifo.CPReadPointer = _gpuFifo.CPReadPointer;
+		cpuFifo.SafeCPReadPointer = _gpuFifo.SafeCPReadPointer;
 		_gpuFifo = cpuFifo;
 		// need another barrier here
 		SetCpStatus(true);
