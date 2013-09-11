@@ -170,10 +170,11 @@ void RunGpuLoop()
 				if (Core::g_CoreStartupParameter.bSyncGPU && Common::AtomicLoad(CommandProcessor::VITicks) > cyclesExecuted)
 					Common::AtomicAdd(CommandProcessor::VITicks, -(s32)cyclesExecuted);
 
+				if (cyclesExecuted != 0)
+					Common::AtomicStore(fifo.SafeCPReadPointer, fifo.CPReadPointer);
+
 				Common::AtomicStore(fifo.CPReadPointer, readPtr);
 				Common::AtomicAdd(fifo.CPReadWriteDistance, -32);
-				if((GetVideoBufferEndPtr() - g_pVideoData) == 0)
-					Common::AtomicStore(fifo.SafeCPReadPointer, fifo.CPReadPointer);
 			}
 
 			CommandProcessor::SetCpStatus();
