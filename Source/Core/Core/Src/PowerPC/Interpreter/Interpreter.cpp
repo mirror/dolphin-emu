@@ -280,12 +280,13 @@ void Interpreter::Run()
 			// "fast" version of inner loop. well, it's not so fast.
 			while (CoreTiming::downcount > 0)
 			{
-				m_EndBlock = false;
 				int i;
 				int cycles = 0;
-				for (i = 0; !m_EndBlock; i++)
+				for (i = 0; ; i++)
 				{
 					cycles += SingleStepInner();
+					if (m_EndBlock)
+						break;
 				}
 				CoreTiming::downcount -= cycles;
 			}
