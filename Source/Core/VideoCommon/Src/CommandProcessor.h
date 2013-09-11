@@ -18,8 +18,6 @@ namespace CommandProcessor
 //extern SCPFifoStruct fifo; //This one is shared between gfx thread and emulator thread.
 extern SCPFifoStruct *gpuFifo;
 extern SCPFifoStruct cpuFifo;
-extern volatile bool isHiWatermarkActive;
-extern volatile bool isLoWatermarkActive;
 extern volatile bool interruptSet;
 extern volatile bool interruptWaiting;
 extern volatile bool interruptTokenWaiting;
@@ -147,7 +145,7 @@ void Write16(const u16 _Data, const u32 _Address);
 void Read32(u32& _rReturnValue, const u32 _Address);
 void Write32(const u32 _Data, const u32 _Address);
 
-void SetCpStatus(bool isCPUThread = false);
+void SetCpStatus(bool isCPUThread);
 void GatherPipeBursted();
 void UpdateInterrupts(u64 userdata);
 void UpdateInterruptsFromVideoBackend(u64 userdata);

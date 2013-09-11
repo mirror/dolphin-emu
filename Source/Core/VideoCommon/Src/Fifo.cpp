@@ -138,8 +138,6 @@ void RunGpuLoop()
 
 		VideoFifo_CheckAsyncRequest();
 
-		CommandProcessor::SetCpStatus();
-
 		Common::AtomicStore(CommandProcessor::VITicks, CommandProcessor::m_cpClockOrigin);
 
 		// check if we are able to run this buffer	
@@ -168,8 +166,11 @@ void RunGpuLoop()
 				Common::AtomicStore(fifo.CPReadPointer, readPtr);
 			}
 
-			CommandProcessor::SetCpStatus();
-		
+			if (!Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+			{
+				CommandProcessor::SetCpStatus(false);
+			}
+
 			// This call is pretty important in DualCore mode and must be called in the FIFO Loop.
 			// If we don't, s_swapRequested or s_efbAccessRequested won't be set to false
 			// leading the CPU thread to wait in Video_BeginField or Video_AccessEFB thus slowing things down.
@@ -232,5 +233,5 @@ void RunGpu()
 		else
 			fifo.CPReadPointer += 32;
 	}
-	CommandProcessor::SetCpStatus();
+	CommandProcessor::SetCpStatus(true);
 }
