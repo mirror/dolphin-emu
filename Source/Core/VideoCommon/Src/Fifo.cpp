@@ -167,7 +167,7 @@ void RunGpuLoop()
 				Common::AtomicStore(fifo.CPReadPointer, readPtr);
 			}
 
-			if (!CommandProcessor::syncGPUAtIdleOnly)
+			if (!CommandProcessor::deterministicGPUSync)
 			{
 				CommandProcessor::SetCpStatus(false);
 			}

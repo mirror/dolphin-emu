@@ -51,7 +51,7 @@ u64 g_currentLagCount = 0, g_totalLagCount = 0; // just stats
 u64 g_currentInputCount = 0, g_totalInputCount = 0; // just stats
 u64 g_recordingStartTime; // seconds since 1970 that recording started
 bool bSaveConfig = false, bSkipIdle = false, bDualCore = false, bProgressive = false, bDSPHLE = false, bFastDiscSpeed = false;
-bool bMemcard = false, g_bClearSave = false, bSyncGPU = false, bSyncGPUAtIdleOnly = false, bNetPlay = false;
+bool bMemcard = false, g_bClearSave = false, bSyncGPU = false, bDeterministicGPUSync = false, bNetPlay = false;
 std::string videoBackend = "unknown";
 int iCPUCore = 1;
 bool g_bDiscChange = false;
@@ -359,9 +359,9 @@ bool IsSyncGPU()
 {
 	return bSyncGPU;
 }
-bool IsSyncGPUAtIdleOnly()
+bool IsDeterministicGPUSync()
 {
-	return bSyncGPUAtIdleOnly;
+	return bDeterministicGPUSync;
 }
 
 bool IsNetPlayRecording()
@@ -701,7 +701,7 @@ void ReadHeader()
 		bongos = tmpHeader.bongos;
 		bSyncGPU = tmpHeader.bSyncGPU;
 		bNetPlay = tmpHeader.bNetPlay;
-		bSyncGPUAtIdleOnly = tmpHeader.bSyncGPUAtIdleOnly;
+		bDeterministicGPUSync = tmpHeader.bDeterministicGPUSync;
 		memcpy(revision, tmpHeader.revision, ArraySize(revision));
 	}
 	else
@@ -1133,7 +1133,7 @@ void SaveRecording(const char *filename)
 	header.bMemcard = bMemcard;
 	header.bClearSave = g_bClearSave;
 	header.bSyncGPU = bSyncGPU;
-	header.bSyncGPUAtIdleOnly = bSyncGPUAtIdleOnly;
+	header.bDeterministicGPUSync = bDeterministicGPUSync;
 	header.bNetPlay = bNetPlay;
 	strncpy((char *)header.discChange, g_discChange.c_str(),ArraySize(header.discChange));
 	strncpy((char *)header.author, author.c_str(),ArraySize(header.author));
@@ -1194,7 +1194,7 @@ void GetSettings()
 	bFastDiscSpeed = SConfig::GetInstance().m_LocalCoreStartupParameter.bFastDiscSpeed;
 	videoBackend = g_video_backend->GetName();
 	bSyncGPU = SConfig::GetInstance().m_LocalCoreStartupParameter.bSyncGPU;
-	bSyncGPUAtIdleOnly = SConfig::GetInstance().m_LocalCoreStartupParameter.iSyncGPUAtIdleOnly != 0;
+	bDeterministicGPUSync = SConfig::GetInstance().m_LocalCoreStartupParameter.iDeterministicGPUSync != 0;
 	iCPUCore = SConfig::GetInstance().m_LocalCoreStartupParameter.iCPUCore;
 	bNetPlay = NetPlay::IsNetPlayRunning();
 	if (!Core::g_CoreStartupParameter.bWii)

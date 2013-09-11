@@ -40,7 +40,7 @@ SCoreStartupParameter::SCoreStartupParameter()
   bDPL2Decoder(false), iLatency(14),
   bRunCompareServer(false), bRunCompareClient(false),
   bMMU(false), bDCBZOFF(false), bTLBHack(false), iBBDumpPort(0), bVBeamSpeedHack(false),
-  bSyncGPU(false), iSyncGPUAtIdleOnly(2), bFastDiscSpeed(false),
+  bSyncGPU(false), iDeterministicGPUSync(2), bFastDiscSpeed(false),
   SelectedLanguage(0), bWii(false),
   bConfirmStop(false), bHideCursor(false),
   bAutoHideCursor(false), bUsePanicHandlers(true), bOnScreenDisplayMessages(true),
@@ -79,7 +79,7 @@ void SCoreStartupParameter::LoadDefaults()
 	iBBDumpPort = -1;
 	bVBeamSpeedHack = false;
 	bSyncGPU = false;
-	iSyncGPUAtIdleOnly = 2;
+	iDeterministicGPUSync = 2;
 	bFastDiscSpeed = false;
 	bMergeBlocks = false;
 	bEnableMemcardSaving = true;
