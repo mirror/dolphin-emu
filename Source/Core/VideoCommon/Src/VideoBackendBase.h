@@ -40,9 +40,13 @@ struct SCPFifoStruct
 	u32 CPLoWatermark;
 	volatile u32 CPReadWriteDistance;
 	volatile u32 CPWritePointer;
-	volatile u32 CPReadPointer;
 	volatile u32 CPBreakpoint;
+
+	// Where we actually are in copying from the fifo to g_pVideoData.
+	volatile u32 CPReadPointer;
+	// The location of the command we're currently on, rounded down to 32.
 	volatile u32 SafeCPReadPointer;
+
 	// Super Monkey Ball Adventure require this.
 	// Because the read&check-PEToken-loop stays in its JITed block I suppose.
 	// So no possiblity to ack the Token irq by the scheduler until some sort of PPC watchdog do its mess.
