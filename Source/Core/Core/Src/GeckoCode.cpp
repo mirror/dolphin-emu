@@ -153,6 +153,28 @@ bool InstallCodeHandler()
 	// Install code handler
 	Memory::WriteBigEData((const u8*)data.data(), 0x80001800, data.length());
 
+	// Patch code handler to change original code location (0x800028b8) to
+	// 0x81808000
+	u8* codehandler_ptr = (u8*) Memory::GetPointer(0x80001800);
+	u8* codehandler_end = codehandler_ptr + data.length();
+	int patches = 0;
+	for (; codehandler_ptr + 8 <= codehandler_end; codehandler_ptr += 4)
+	{
+		u16* hi = (u16*) (codehandler_ptr + 2);
+		u16* lo = (u16*) (codehandler_ptr + 6);
+		if (Common::swap16(*hi) == 0x8000 && Common::swap16(*lo) == 0x28b8)
+		{
+			*hi = Common::swap16(0x8180);
+			*lo = Common::swap16(0x8000);
+			patches++;
+		}
+	}
+
+	if (patches != 2)
+	{
+		ERROR_LOG(ACTIONREPLAY, "codehandler.bin did not contain exactly 2 refs to 0x800028b8.");
+	}
+
 	// Add the return stub
 	Memory::Write_U32(0x48000000, 0x800028B8);
 	g_symbolDB.AddKnownSymbol(0x800028B8, 4, "DolphinReturnFromCodeHandler");
