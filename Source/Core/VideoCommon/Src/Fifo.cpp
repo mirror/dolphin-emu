@@ -87,6 +87,7 @@ void ExitGpuLoop()
 {
 	// Terminate GPU thread loop
 	GpuRunningState = false;
+	CommandProcessor::gpuFifo->bFF_GPReadEnable = false;
 	// No need to wait - g_EmuThread.join() will take care of it.
 	EmuRunningState = true;
 }
