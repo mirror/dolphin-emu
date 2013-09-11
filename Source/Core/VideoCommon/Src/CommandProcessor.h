@@ -18,7 +18,6 @@ namespace CommandProcessor
 //extern SCPFifoStruct fifo; //This one is shared between gfx thread and emulator thread.
 extern SCPFifoStruct *gpuFifo;
 extern SCPFifoStruct cpuFifo;
-extern volatile bool isPossibleWaitingSetDrawDone; //This one is used for sync gfx thread and emulator thread.
 extern volatile bool isHiWatermarkActive;
 extern volatile bool isLoWatermarkActive;
 extern volatile bool interruptSet;
@@ -26,7 +25,6 @@ extern volatile bool interruptWaiting;
 extern volatile bool interruptTokenWaiting;
 extern u32 interruptTokenData;
 extern volatile bool interruptFinishWaiting;
-extern volatile u32 gpuBusy;
  
 // internal hardware addresses
 enum
@@ -139,7 +137,9 @@ void Init();
 void Shutdown();
 void DoState(PointerWrap &p);
 
+bool GPUHasWork();
 void SyncGPUIfIdleOnly();
+bool IsPossibleWaitingSetDrawDone();
 
 // Read
 void Read16(u16& _rReturnValue, const u32 _Address);

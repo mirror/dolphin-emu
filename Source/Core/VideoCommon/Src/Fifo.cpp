@@ -43,7 +43,6 @@ void Fifo_PauseAndLock(bool doLock, bool unpauseOnUnlock)
 		EmulatorState(false);
 		if (!Core::IsGPUThread())
 			m_csHWVidOccupied.lock();
-		_dbg_assert_(COMMON, !CommandProcessor::gpuBusy);
 	}
 	else
 	{
@@ -144,12 +143,8 @@ void RunGpuLoop()
 		Common::AtomicStore(CommandProcessor::VITicks, CommandProcessor::m_cpClockOrigin);
 
 		// check if we are able to run this buffer	
-		while (GpuRunningState && !CommandProcessor::interruptWaiting && fifo.bFF_GPReadEnable && fifo.CPReadWriteDistance && !AtBreakpointGpu())
+		while (GpuRunningState && CommandProcessor::GPUHasWork())
 		{
-
-			Common::AtomicStore(CommandProcessor::gpuBusy, 1);
-			CommandProcessor::isPossibleWaitingSetDrawDone = fifo.bFF_GPLinkEnable ? true : false;
-
 			if (!Core::g_CoreStartupParameter.bSyncGPU || Common::AtomicLoad(CommandProcessor::VITicks) > CommandProcessor::m_cpClockOrigin)
 			{
 				u32 readPtr = fifo.CPReadPointer;
@@ -159,9 +154,6 @@ void RunGpuLoop()
 					readPtr = fifo.CPBase;
 				else
 					readPtr += 32;
-
-				_assert_msg_(COMMANDPROCESSOR, (s32)fifo.CPReadWriteDistance - 32 >= 0 ,
-					"Negative fifo.CPReadWriteDistance = %i in FIFO Loop !\nThat can produce instability in the game. Please report it.", fifo.CPReadWriteDistance - 32);
 
 				ReadDataFromFifo(uData, 32);
 
@@ -174,7 +166,6 @@ void RunGpuLoop()
 					Common::AtomicStore(fifo.SafeCPReadPointer, fifo.CPReadPointer);
 
 				Common::AtomicStore(fifo.CPReadPointer, readPtr);
-				Common::AtomicAdd(fifo.CPReadWriteDistance, -32);
 			}
 
 			CommandProcessor::SetCpStatus();
@@ -183,10 +174,7 @@ void RunGpuLoop()
 			// If we don't, s_swapRequested or s_efbAccessRequested won't be set to false
 			// leading the CPU thread to wait in Video_BeginField or Video_AccessEFB thus slowing things down.
 			VideoFifo_CheckAsyncRequest();		
-			CommandProcessor::isPossibleWaitingSetDrawDone = false;
 		}
-
-		Common::AtomicStore(CommandProcessor::gpuBusy, 0);
 
 		if (EmuRunningState)
 		{
@@ -227,7 +215,7 @@ bool AtBreakpointCpu()
 void RunGpu()
 {
 	SCPFifoStruct &fifo = *CommandProcessor::gpuFifo;
-	while (fifo.bFF_GPReadEnable && fifo.CPReadWriteDistance && !AtBreakpointGpu() )
+	while (CommandProcessor::GPUHasWork())
 	{
 		u8 *uData = Memory::GetPointer(fifo.CPReadPointer);
 
@@ -243,8 +231,6 @@ void RunGpu()
 			fifo.CPReadPointer = fifo.CPBase;
 		else
 			fifo.CPReadPointer += 32;
-
-		fifo.CPReadWriteDistance -= 32;
 	}
 	CommandProcessor::SetCpStatus();
 }

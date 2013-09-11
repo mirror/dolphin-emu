@@ -43,7 +43,6 @@ int m_bboxright;
 int m_bboxbottom;
 u16 m_tokenReg;
 
-volatile bool isPossibleWaitingSetDrawDone = false;
 volatile bool isHiWatermarkActive = false;
 volatile bool isLoWatermarkActive = false;
 volatile bool interruptSet= false;
@@ -51,7 +50,6 @@ volatile bool interruptWaiting= false;
 volatile bool interruptTokenWaiting = false;
 u32 interruptTokenData;
 volatile bool interruptFinishWaiting = false;
-volatile u32 gpuBusy = 0;
 
 volatile u32 VITicks = CommandProcessor::m_cpClockOrigin;
 
@@ -79,7 +77,6 @@ void DoState(PointerWrap &p)
 
 	p.Do(isHiWatermarkActive);
 	p.Do(isLoWatermarkActive);
-	p.Do(isPossibleWaitingSetDrawDone);
 	p.Do(interruptSet);
 	p.Do(interruptWaiting);
 	p.Do(interruptTokenWaiting);
@@ -132,18 +129,30 @@ void Init()
 	interruptFinishWaiting = false;
 	interruptTokenWaiting = false;
 
-	isPossibleWaitingSetDrawDone = false;
 	isHiWatermarkActive = false;
 	isLoWatermarkActive = false;
 
 	et_UpdateInterrupts = CoreTiming::RegisterEvent("CPInterrupt", UpdateInterrupts_Wrapper);
 }
 
+bool GPUHasWork()
+{
+	// In bSyncGPUAtIdleOnly mode, this is safe to call from SyncGPU, because:
+	// - gpuFifo->bFF_GPReadEnable/CPWritePointer/CPBreakpoint only change later in SyncGPU.
+	// - interruptWaiting *never* becomes true.
+	// - No work is done between setting the read pointer and comparing it
+	//   against CPWritePointer/CPBreakpoint.
+	return gpuFifo->bFF_GPReadEnable &&
+	       !interruptWaiting &&
+	       Common::AtomicLoad(gpuFifo->CPReadPointer) != Common::AtomicLoad(gpuFifo->CPWritePointer) &&
+		   !AtBreakpointGpu();
+}
+
 static void SyncGPU()
 {
 	if (IsOnThread())
 	{
-		while (Common::AtomicLoad(CommandProcessor::gpuBusy))
+		while (GPUHasWork())
 			Common::YieldCPU();
 	}
 	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
@@ -158,7 +167,6 @@ static void SyncGPU()
 			PixelEngine::SetFinish_OnMainThread(0, 0);
 		}
 		cpuFifo.CPReadPointer = _gpuFifo.CPReadPointer;
-		cpuFifo.CPReadWriteDistance = _gpuFifo.CPReadWriteDistance;
 		_gpuFifo = cpuFifo;
 		// need another barrier here
 		if (interruptWaiting) {
@@ -176,23 +184,51 @@ void SyncGPUIfIdleOnly()
 	}
 }
 
-static u32 GetFakeRwDistance()
+bool IsPossibleWaitingSetDrawDone()
 {
-	u32 prev;
-	if (cpuFifo.CPWritePointer >= cpuFifo.CPReadPointer)
-		prev = cpuFifo.CPWritePointer - cpuFifo.CPReadPointer;
+	// This is called from Idle.
+	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+	{
+		// Time to sync.
+		SyncGPU();
+		return false;
+	}
 	else
-		// why 32?
-		prev = cpuFifo.CPEnd - cpuFifo.CPReadPointer + cpuFifo.CPWritePointer - cpuFifo.CPBase + 32;
-	return std::min(prev, (u32) 16);
+	{
+		return GPUHasWork();
+	}
 }
 
-static u32 GetFakeReadPointer()
+static u32 GetReadWriteDistance()
 {
-	u32 result = cpuFifo.CPWritePointer - GetFakeRwDistance();
-	if (result < cpuFifo.CPBase)
+	u32 writePointer = cpuFifo.CPWritePointer;
+	u32 readPointer = Common::AtomicLoad(cpuFifo.SafeCPReadPointer);
+	u32 result = writePointer - readPointer;
+	if (writePointer < readPointer)
 		result += cpuFifo.CPEnd - cpuFifo.CPBase;
-	return 0;
+
+	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+	{
+		// Pretend we've advanced further.
+		result = std::min(result, (u32) 32);
+	}
+
+	return result;
+}
+
+static u32 GetReadPointer()
+{
+	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+	{
+		u32 result = cpuFifo.CPWritePointer - GetReadWriteDistance();
+		if (result < cpuFifo.CPBase)
+			result += cpuFifo.CPEnd - cpuFifo.CPBase;
+		return result;
+	}
+	else
+	{
+		return Common::AtomicLoad(cpuFifo.SafeCPReadPointer);
+	}
 }
 
 void Read16(u16& _rReturnValue, const u32 _Address)
@@ -226,45 +262,11 @@ void Read16(u16& _rReturnValue, const u32 _Address)
 	case FIFO_LO_WATERMARK_HI:	_rReturnValue = ReadHigh(cpuFifo.CPLoWatermark); return;
 
 	case FIFO_RW_DISTANCE_LO:
-		if (IsOnThread())
-		{
-			if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
-			{
-				_rReturnValue = ReadLow (GetFakeRwDistance());
-			}
-			else
-			{
-				if(cpuFifo.CPWritePointer >= cpuFifo.SafeCPReadPointer)
-					_rReturnValue = ReadLow (cpuFifo.CPWritePointer - cpuFifo.SafeCPReadPointer);
-				else
-					_rReturnValue = ReadLow (cpuFifo.CPEnd - cpuFifo.SafeCPReadPointer + cpuFifo.CPWritePointer - cpuFifo.CPBase + 32);
-			}
-		}
-		else
-		{
-			_rReturnValue = ReadLow (cpuFifo.CPReadWriteDistance);
-		}
+		_rReturnValue = ReadLow(GetReadWriteDistance());
 		DEBUG_LOG(COMMANDPROCESSOR, "Read FIFO_RW_DISTANCE_LO : %04x", _rReturnValue);
 		return;
 	case FIFO_RW_DISTANCE_HI:
-		if (IsOnThread())
-		{
-			if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
-			{
-				_rReturnValue = ReadHigh (GetFakeRwDistance());
-			}
-			else
-			{
-				if(cpuFifo.CPWritePointer >= cpuFifo.SafeCPReadPointer)
-					_rReturnValue = ReadHigh (cpuFifo.CPWritePointer - cpuFifo.SafeCPReadPointer);
-				else
-					_rReturnValue = ReadHigh (cpuFifo.CPEnd - cpuFifo.SafeCPReadPointer + cpuFifo.CPWritePointer - cpuFifo.CPBase + 32);
-			}
-		}
-		else
-		{
-			_rReturnValue = ReadHigh(cpuFifo.CPReadWriteDistance);
-		}
+		_rReturnValue = ReadLow(GetReadWriteDistance());
 		DEBUG_LOG(COMMANDPROCESSOR, "Read FIFO_RW_DISTANCE_HI : %04x", _rReturnValue);
 		return;
 	case FIFO_WRITE_POINTER_LO:
@@ -276,29 +278,11 @@ void Read16(u16& _rReturnValue, const u32 _Address)
 		DEBUG_LOG(COMMANDPROCESSOR, "Read FIFO_WRITE_POINTER_HI : %04x", _rReturnValue);
 		return;
 	case FIFO_READ_POINTER_LO:
-		if (IsOnThread())
-		{
-			if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
-				_rReturnValue = ReadLow (GetFakeReadPointer());
-			else
-				_rReturnValue = ReadLow (cpuFifo.SafeCPReadPointer);
-		}
-		else
-			_rReturnValue = ReadLow (cpuFifo.CPReadPointer);
+		_rReturnValue = ReadLow(GetReadPointer());
 		DEBUG_LOG(COMMANDPROCESSOR, "Read FIFO_READ_POINTER_LO : %04x", _rReturnValue);
 		return;
 	case FIFO_READ_POINTER_HI:
-		if (IsOnThread())
-		{
-			if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
-				_rReturnValue = ReadHigh (GetFakeReadPointer());
-			else
-				_rReturnValue = ReadHigh (cpuFifo.SafeCPReadPointer);
-		}
-		else
-		{
-			_rReturnValue = ReadHigh (cpuFifo.CPReadPointer);
-		}
+		_rReturnValue = ReadHigh(GetReadPointer());
 		DEBUG_LOG(COMMANDPROCESSOR, "Read FIFO_READ_POINTER_HI : %04x", _rReturnValue);
 		return;
 
@@ -503,7 +487,7 @@ void Write16(const u16 _Value, const u32 _Address)
 	case FIFO_RW_DISTANCE_HI:
 		WriteHigh((u32 &)cpuFifo.CPReadWriteDistance, _Value);
 		SyncGPU();
-		if (cpuFifo.CPReadWriteDistance == 0)
+		if (_Value == 0)
 		{
 			GPFifo::ResetGatherPipe();
 			ResetVideoBuffer();
@@ -553,8 +537,7 @@ void STACKALIGN GatherPipeBursted()
 		{
 			// In multibuffer mode is not allowed write in the same FIFO attached to the GPU.
 			// Fix Pokemon XD in DC mode.
-			if((ProcessorInterface::Fifo_CPUEnd == cpuFifo.CPEnd) && (ProcessorInterface::Fifo_CPUBase == cpuFifo.CPBase)
-				 && gpuFifo->CPReadWriteDistance > 0)
+			if (ProcessorInterface::Fifo_CPUEnd == cpuFifo.CPEnd && ProcessorInterface::Fifo_CPUBase == cpuFifo.CPBase)
 			{
 				SyncGPU();
 			}
@@ -571,12 +554,6 @@ void STACKALIGN GatherPipeBursted()
 	else
 		cpuFifo.CPWritePointer += GATHER_PIPE_SIZE;
 
-	Common::AtomicAdd(gpuFifo->CPReadWriteDistance, GATHER_PIPE_SIZE);
-	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
-	{
-		cpuFifo.CPReadWriteDistance += GATHER_PIPE_SIZE;
-	}
-
 	if (!IsOnThread())
 		RunGpu();
 
@@ -585,6 +562,8 @@ void STACKALIGN GatherPipeBursted()
 		// Overflow; block until the GPU thread is ready.
 		SyncGPU();
 	}
+
+	Common::AtomicStore(gpuFifo->CPWritePointer, cpuFifo.CPWritePointer);
 
 	// check if we are in sync
 	_assert_msg_(COMMANDPROCESSOR, cpuFifo.CPWritePointer	== ProcessorInterface::Fifo_CPUWritePointer, "FIFOs linked but out of sync");
@@ -635,8 +614,9 @@ void SetCpStatus(bool isCPUThread)
 	else
 	{
 		// overflow & underflow check
-		cpuFifo.bFF_HiWatermark = (cpuFifo.CPReadWriteDistance > cpuFifo.CPHiWatermark);
-		cpuFifo.bFF_LoWatermark = (cpuFifo.CPReadWriteDistance < cpuFifo.CPLoWatermark);
+		u32 distance = GetReadWriteDistance();
+		cpuFifo.bFF_HiWatermark = (distance > cpuFifo.CPHiWatermark);
+		cpuFifo.bFF_LoWatermark = (distance < cpuFifo.CPLoWatermark);
 	}
 
 	// breakpoint
@@ -725,8 +705,8 @@ void SetCpStatusRegister()
 {
 	// Here always there is one fifo attached to the GPU
 	m_CPStatusReg.Breakpoint = cpuFifo.bFF_Breakpoint;
-	m_CPStatusReg.ReadIdle = !cpuFifo.CPReadWriteDistance || cpuFifo.CPReadPointer == cpuFifo.CPWritePointer || AtBreakpointCpu();
-	m_CPStatusReg.CommandIdle = !cpuFifo.CPReadWriteDistance || AtBreakpointCpu() || !cpuFifo.bFF_GPReadEnable;
+	m_CPStatusReg.ReadIdle = cpuFifo.CPReadPointer == cpuFifo.CPWritePointer || AtBreakpointCpu();
+	m_CPStatusReg.CommandIdle = cpuFifo.CPReadPointer == cpuFifo.CPWritePointer || AtBreakpointCpu() || !cpuFifo.bFF_GPReadEnable;
 	m_CPStatusReg.UnderflowLoWatermark = cpuFifo.bFF_LoWatermark;
 	m_CPStatusReg.OverflowHiWatermark = cpuFifo.bFF_HiWatermark;
 
@@ -790,10 +770,10 @@ void SetCpClearRegister()
 void Update()
 {
 	// called only when bSyncGPU is true
-	while (VITicks > m_cpClockOrigin && gpuBusy && IsOnThread())
+	while (VITicks > m_cpClockOrigin && GPUHasWork() && IsOnThread())
 		Common::YieldCPU();
 
-	if (gpuBusy)
+	if (GPUHasWork())
 		Common::AtomicAdd(VITicks, SystemTimers::GetTicksPerSecond() / 10000);
 }
 } // end of namespace CommandProcessor

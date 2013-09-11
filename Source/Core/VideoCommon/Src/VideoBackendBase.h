@@ -38,6 +38,7 @@ struct SCPFifoStruct
 	volatile u32 CPEnd;
 	u32 CPHiWatermark;
 	u32 CPLoWatermark;
+	// Only for use when this is being written.
 	volatile u32 CPReadWriteDistance;
 	volatile u32 CPWritePointer;
 	volatile u32 CPBreakpoint;

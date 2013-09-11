@@ -420,7 +420,6 @@ void SetFinish_OnMainThread(u64 userdata, int cyclesLate)
 	Common::AtomicStore(*(volatile u32*)&g_bSignalFinishInterrupt, 1);
 	UpdateInterrupts();
 	CommandProcessor::interruptFinishWaiting = false;
-	CommandProcessor::isPossibleWaitingSetDrawDone = false;
 }
 
 // SetToken
