@@ -70,12 +70,6 @@ bool cXInterface::Initialize(void *config)
 	if (GLWin.parent == 0)
 		GLWin.parent = RootWindow(GLWin.dpy, GLWin.screen);
 
-	/* Set initial projection/viewing transformation.
-	 * We can't be sure we'll get a ConfigureNotify event when the window
-	 * first appears.
-	 */
-	glViewport(0, 0, (GLint) GLWin.width, (GLint) GLWin.height);
-
 	return true;
 }
 
@@ -107,8 +101,6 @@ void *cXInterface::CreateWindow(void)
 	XSync(GLWin.evdpy, True);
 
 	GLWin.xEventThread = std::thread(&cXInterface::XEventThread, this);
-	// Control window size and picture scaling
-	GLInterface->SetBackBufferDimensions(GLWin.width, GLWin.height);
 
 	return (void *) GLWin.win;
 }
@@ -228,9 +220,6 @@ void cX11Window::XEventThread()
 							lastMouse[1] = event.xmotion.y;
 						}
 					}
-					break;
-				case ConfigureNotify:
-					GLInterface->SetBackBufferDimensions(event.xconfigure.width, event.xconfigure.height);
 					break;
 				case ClientMessage:
 					if ((unsigned long) event.xclient.data.l[0] ==
