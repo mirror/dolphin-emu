@@ -6,7 +6,7 @@
 #include "Common.h"
 
 #if defined(HAVE_WX) && HAVE_WX
-#include "VideoConfigDialog.h"
+#include "VideoConfigDiag.h"
 #endif // HAVE_WX
 
 
@@ -53,7 +53,7 @@ void *DllDebugger(void *_hParent, bool Show)
 void VideoSoftware::ShowConfig(void *_hParent)
 {
 #if defined(HAVE_WX) && HAVE_WX
-	VideoConfigDialog diag((wxWindow*)_hParent, "Software", "gfx_software");
+	VideoConfigDiag diag((wxWindow*)_hParent, "Software", "gfx_software");
 	diag.ShowModal();
 #endif
 }

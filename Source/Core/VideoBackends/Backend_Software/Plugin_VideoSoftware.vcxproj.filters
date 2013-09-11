@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Src\BPMemLoader.cpp" />
@@ -24,7 +24,6 @@
     <ClCompile Include="Src\TextureSampler.cpp" />
     <ClCompile Include="Src\TransformUnit.cpp" />
     <ClCompile Include="Src\SWVertexLoader.cpp" />
-    <ClCompile Include="Src\VideoConfigDialog.cpp" />
     <ClCompile Include="Src\XFMemLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -53,7 +52,6 @@
     <ClInclude Include="Src\Vec3.h" />
     <ClInclude Include="Src\SWVertexLoader.h" />
     <ClInclude Include="Src\VideoBackend.h" />
-    <ClInclude Include="Src\VideoConfigDialog.h" />
     <ClInclude Include="Src\XFMemLoader.h" />
   </ItemGroup>
   <ItemGroup>
