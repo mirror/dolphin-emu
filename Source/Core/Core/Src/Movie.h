@@ -108,7 +108,7 @@ struct DTMHeader {
 	u8 bongos;
 	bool bSyncGPU;
 	bool bNetPlay;
-	bool bSyncGPUAtIdleOnly;
+	bool bDeterministicGPUSync;
 	u8 reserved[12];		// Padding for any new config options
 	u8 discChange[40];		// Name of iso file to switch to, for two disc games.
 	u8 revision[20];		// Git hash
@@ -142,7 +142,7 @@ int GetCPUMode();
 bool IsStartingFromClearSave();
 bool IsUsingMemcard();
 bool IsSyncGPU();
-bool IsSyncGPUAtIdleOnly();
+bool IsDeterministicGPUSync();
 void SetGraphicsConfig();
 void GetSettings();
 bool IsNetPlayRecording();

@@ -30,7 +30,7 @@ int et_UpdateInterrupts;
 // TODO(ector): Warn on bbox read/write
 
 // STATE_TO_SAVE
-// Note that gpuFifo == &cpuFifo except when bSyncGPUAtIdleOnly is on.
+// Note that gpuFifo == &cpuFifo except when bDeterministicGPUSync is on.
 SCPFifoStruct cpuFifo, _gpuFifo;
 SCPFifoStruct *gpuFifo;
 UCPStatusReg m_CPStatusReg;
@@ -48,7 +48,7 @@ volatile bool interruptWaiting= false;
 volatile bool interruptTokenWaiting = false;
 u32 interruptTokenData;
 volatile bool interruptFinishWaiting = false;
-bool syncGPUAtIdleOnly = false;
+bool deterministicGPUSync = false;
 
 volatile u32 VITicks = CommandProcessor::m_cpClockOrigin;
 
@@ -110,9 +110,9 @@ void Init()
 	cpuFifo.bFF_LoWatermark = 0;
 	cpuFifo.bFF_LoWatermarkInt = 0;
 
-	syncGPUAtIdleOnly = false;
+	deterministicGPUSync = false;
 	gpuFifo = &cpuFifo;
-	UpdateSyncGPUAtIdleOnly();
+	UpdateDeterministicGPUSync();
 
 	interruptSet = false;
 	interruptWaiting = false;
@@ -124,7 +124,7 @@ void Init()
 
 bool GPUHasWork()
 {
-	// In bSyncGPUAtIdleOnly mode, this is safe to call from SyncGPU, because:
+	// In bDeterministicGPUSync mode, this is safe to call from SyncGPU, because:
 	// - gpuFifo->bFF_GPReadEnable/CPWritePointer/CPBreakpoint only change later in SyncGPU.
 	// - interruptWaiting *never* becomes true.
 	// - No work is done between setting the read pointer and comparing it
@@ -142,7 +142,7 @@ static void SyncGPU()
 		while (GPUHasWork())
 			Common::YieldCPU();
 	}
-	if (syncGPUAtIdleOnly)
+	if (deterministicGPUSync)
 	{
 		// need a barrier here for ARM
 		if (interruptTokenWaiting)
@@ -161,18 +161,18 @@ static void SyncGPU()
 	}
 }
 
-void SyncGPUIfIdleOnly()
+void SyncGPUIfDeterministic()
 {
-	if (syncGPUAtIdleOnly)
+	if (deterministicGPUSync)
 	{
 		SyncGPU();
 	}
 }
 
-void UpdateSyncGPUAtIdleOnly()
+void UpdateDeterministicGPUSync()
 {
 	// This can change when we start and stop recording.
-	int setting = Core::g_CoreStartupParameter.iSyncGPUAtIdleOnly;
+	int setting = Core::g_CoreStartupParameter.iDeterministicGPUSync;
 	bool on;
 	if (setting == 2)
 	{
@@ -183,7 +183,7 @@ void UpdateSyncGPUAtIdleOnly()
 		on = setting;
 	}
 	on = on && IsOnThread() && SConfig::GetInstance().m_LocalCoreStartupParameter.bSkipIdle;
-	if (on != syncGPUAtIdleOnly)
+	if (on != deterministicGPUSync)
 	{
 		SyncGPU();
 		if (on)
@@ -198,7 +198,7 @@ void UpdateSyncGPUAtIdleOnly()
 		{
 			gpuFifo = &cpuFifo;
 		}
-		syncGPUAtIdleOnly = on;
+		deterministicGPUSync = on;
 	}
 }
 
@@ -206,7 +206,7 @@ void UpdateSyncGPUAtIdleOnly()
 bool IsPossibleWaitingSetDrawDone()
 {
 	// This is called from Idle.
-	if (syncGPUAtIdleOnly)
+	if (deterministicGPUSync)
 	{
 		// Time to sync.
 		SyncGPU();
@@ -226,7 +226,7 @@ static u32 GetReadWriteDistance()
 	if (writePointer < readPointer)
 		result += cpuFifo.CPEnd - cpuFifo.CPBase;
 
-	if (syncGPUAtIdleOnly)
+	if (deterministicGPUSync)
 	{
 		// Pretend we've advanced further.
 		result = std::min(result, (u32) 32);
@@ -237,7 +237,7 @@ static u32 GetReadWriteDistance()
 
 static u32 GetReadPointer()
 {
-	if (syncGPUAtIdleOnly)
+	if (deterministicGPUSync)
 	{
 		u32 result = cpuFifo.CPWritePointer - GetReadWriteDistance();
 		if (result < cpuFifo.CPBase)
@@ -428,45 +428,45 @@ void Write16(const u16 _Value, const u32 _Address)
 		break;
 	case FIFO_BASE_LO:
 		WriteLow ((u32 &)cpuFifo.CPBase, _Value & 0xFFE0);
-		SyncGPUIfIdleOnly();
+		SyncGPUIfDeterministic();
 		DEBUG_LOG(COMMANDPROCESSOR,"\t Write to FIFO_BASE_LO : %04x", _Value);
 		break;
 	case FIFO_BASE_HI:
 		WriteHigh((u32 &)cpuFifo.CPBase, _Value);
-		SyncGPUIfIdleOnly();
+		SyncGPUIfDeterministic();
 		DEBUG_LOG(COMMANDPROCESSOR,"\t Write to FIFO_BASE_HI : %04x", _Value);
 		break;
 
 	case FIFO_END_LO:
 		WriteLow ((u32 &)cpuFifo.CPEnd,  _Value & 0xFFE0);
-		SyncGPUIfIdleOnly();
+		SyncGPUIfDeterministic();
 		DEBUG_LOG(COMMANDPROCESSOR,"\t Write to FIFO_END_LO : %04x", _Value);
 		break;
 	case FIFO_END_HI:
 		WriteHigh((u32 &)cpuFifo.CPEnd,  _Value);
-		SyncGPUIfIdleOnly();
+		SyncGPUIfDeterministic();
 		DEBUG_LOG(COMMANDPROCESSOR,"\t Write to FIFO_END_HI : %04x", _Value);
 		break;
 
 	case FIFO_WRITE_POINTER_LO:
 		WriteLow ((u32 &)cpuFifo.CPWritePointer, _Value & 0xFFE0);
-		SyncGPUIfIdleOnly();
+		SyncGPUIfDeterministic();
 		DEBUG_LOG(COMMANDPROCESSOR,"\t Write to FIFO_WRITE_POINTER_LO : %04x", _Value);
 		break;
 	case FIFO_WRITE_POINTER_HI:
 		WriteHigh((u32 &)cpuFifo.CPWritePointer, _Value);
-		SyncGPUIfIdleOnly();
+		SyncGPUIfDeterministic();
 		DEBUG_LOG(COMMANDPROCESSOR,"\t Write to FIFO_WRITE_POINTER_HI : %04x", _Value);
 		break;
 
 	case FIFO_READ_POINTER_LO:
-		SyncGPUIfIdleOnly();
+		SyncGPUIfDeterministic();
 		WriteLow ((u32 &)cpuFifo.CPReadPointer, _Value & 0xFFE0);
 		gpuFifo->CPReadPointer = cpuFifo.CPReadPointer;
 		DEBUG_LOG(COMMANDPROCESSOR,"\t Write to FIFO_READ_POINTER_LO : %04x", _Value);
 		break;
 	case FIFO_READ_POINTER_HI:
-		SyncGPUIfIdleOnly();
+		SyncGPUIfDeterministic();
 		WriteHigh((u32 &)cpuFifo.CPReadPointer, _Value);
 		cpuFifo.SafeCPReadPointer = cpuFifo.CPReadPointer;
 		gpuFifo->CPReadPointer = cpuFifo.CPReadPointer;
@@ -494,12 +494,12 @@ void Write16(const u16 _Value, const u32 _Address)
 
 	case FIFO_BP_LO:
 		WriteLow ((u32 &)cpuFifo.CPBreakpoint, _Value & 0xFFE0);
-		SyncGPUIfIdleOnly();
+		SyncGPUIfDeterministic();
 		DEBUG_LOG(COMMANDPROCESSOR,"Write to FIFO_BP_LO : %04x", _Value);
 		break;
 	case FIFO_BP_HI:
 		WriteHigh((u32 &)cpuFifo.CPBreakpoint, _Value);
-		SyncGPUIfIdleOnly();
+		SyncGPUIfDeterministic();
 		DEBUG_LOG(COMMANDPROCESSOR,"Write to FIFO_BP_HI : %04x", _Value);
 		break;
 
@@ -617,7 +617,7 @@ void AbortFrame()
 
 void SetCpStatus(bool isCPUThread)
 {
-	if (syncGPUAtIdleOnly)
+	if (deterministicGPUSync)
 	{
 		// We don't care.
 		cpuFifo.bFF_HiWatermark = 0;
@@ -673,7 +673,7 @@ void SetCpStatus(bool isCPUThread)
 
 void ProcessFifoEvents()
 {
-	if (IsOnThread() && !syncGPUAtIdleOnly &&
+	if (IsOnThread() && !deterministicGPUSync &&
 	    (interruptWaiting || interruptFinishWaiting || interruptTokenWaiting))
 		CoreTiming::ProcessFifoWaitEvents();
 }

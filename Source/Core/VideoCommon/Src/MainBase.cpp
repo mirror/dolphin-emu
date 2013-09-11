@@ -149,7 +149,7 @@ void VideoFifo_CheckEFBAccess()
 
 u32 VideoBackendHardware::Video_AccessEFB(EFBAccessType type, u32 x, u32 y, u32 InputData)
 {
-	CommandProcessor::SyncGPUIfIdleOnly();
+	CommandProcessor::SyncGPUIfDeterministic();
 	if (s_BackendInitialized)
 	{
 		s_accessEFBArgs.type = type;
@@ -196,7 +196,7 @@ void VideoFifo_CheckPerfQueryRequest()
 
 u32 VideoBackendHardware::Video_GetQueryResult(PerfQueryType type)
 {
-	CommandProcessor::SyncGPUIfIdleOnly();
+	CommandProcessor::SyncGPUIfDeterministic();
 	// TODO: Is this check sane?
 	if (!g_perf_query->IsFlushed())
 	{
@@ -308,7 +308,7 @@ void VideoBackendHardware::Video_AbortFrame()
 
 void VideoBackendHardware::Video_UpdateWantDeterminism()
 {
-	CommandProcessor::UpdateSyncGPUAtIdleOnly();
+	CommandProcessor::UpdateDeterministicGPUSync();
 }
 
 readFn16 VideoBackendHardware::Video_CPRead16()
