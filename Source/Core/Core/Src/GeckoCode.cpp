@@ -11,6 +11,8 @@
 #include "vector"
 #include "PowerPC/PowerPC.h"
 #include "CommonPaths.h"
+#include "HLE/HLE_Misc.h"
+#include "PowerPC/PPCSymbolDB.h"
 
 namespace Gecko
 {
@@ -142,7 +144,7 @@ void SetActiveCodes(const std::vector<GeckoCode>& gcodes)
 
 bool InstallCodeHandler()
 {
-	u32 codelist_location = 0x800028B8; // Debugger on location (0x800022A8 = Debugger off, using codehandleronly.bin)
+	u32 codelist_location = 0x81808000; // patched
 	std::string data;
 	std::string _rCodeHandlerFilename = File::GetSysDirectory() + GECKO_CODE_HANDLER;
 	if (!File::ReadFileToString(false, _rCodeHandlerFilename.c_str(), data))
@@ -150,6 +152,10 @@ bool InstallCodeHandler()
 
 	// Install code handler
 	Memory::WriteBigEData((const u8*)data.data(), 0x80001800, data.length());
+
+	// Add the return stub
+	Memory::Write_U32(0x48000000, 0x800028B8);
+	g_symbolDB.AddKnownSymbol(0x800028B8, 4, "DolphinReturnFromCodeHandler");
 
 	// Turn off Pause on start
 	Memory::Write_U32(0, 0x80002774);
@@ -178,12 +184,15 @@ bool InstallCodeHandler()
 				const GeckoCode::Code& code = *current_code;
 
 				// Make sure we have enough memory to hold the code list
-				if ((codelist_location + 24 + i) < 0x80003000)
+				/*
+				if ((codelist_location + 24 + i) >= 0x80003000)
 				{
-					Memory::Write_U32(code.address, codelist_location + 8 + i);
-					Memory::Write_U32(code.data, codelist_location + 12 + i);
-					i += 8;
+					return false;
 				}
+				*/
+				Memory::Write_U32(code.address, codelist_location + 8 + i);
+				Memory::Write_U32(code.data, codelist_location + 12 + i);
+				i += 8;
 			}
 		}
 	}
@@ -199,6 +208,7 @@ bool InstallCodeHandler()
 	{
 		PowerPC::ppcState.iCache.Invalidate(0x80001800 + j);
 	}
+
 	return true;
 }
 
@@ -243,9 +253,9 @@ bool RunGeckoCode(GeckoCode& gecko_code)
 			// disable code to stop annoying error messages
 			gecko_code.enabled = false;
 
-			PanicAlertT("GeckoCode failed to run (CT%i CST%i) (%s)"
+			PanicAlertT("GeckoCode failed to run (CT%i CST%i - %08x %08x) (%s)"
 				"\n(either a bad code or the code type is not yet supported. Try using the native code handler by placing the codehandler.bin file into the Sys directory and restarting Dolphin.)"
-				, code.type, code.subtype, gecko_code.name.c_str());
+				, code.type, code.subtype, code.address, code.data, gecko_code.name.c_str());
 			return false;
 		}
 	}
@@ -287,22 +297,14 @@ void RunCodeHandler()
 
 		if (code_handler_installed)
 		{
-			if (PC == LR)
+			if (!HLE_Misc::g_CodeHandlerOldPC)
 			{
-				u32 oldLR = LR;
-				PowerPC::CoreMode oldMode = PowerPC::GetMode();
-
-				PC = 0x800018A8;
-				LR = 0;
-
-				// Execute the code handler in interpreter mode to track when it exits
-				PowerPC::SetMode(PowerPC::MODE_INTERPRETER);
-
-				while (PC != 0)
-					PowerPC::SingleStep();
-
-				PowerPC::SetMode(oldMode);
-				PC = LR = oldLR;
+				HLE_Misc::g_CodeHandlerOldLR = LR;
+				HLE_Misc::g_CodeHandlerOldPC = PC;
+				HLE_Misc::g_CodeHandlerOldR1 = GPR(1);
+				LR = 0x800028B8;
+				NPC = PC = 0x800018a8;
+				GPR(1) = 0x81807000;
 			}
 		}
 		else

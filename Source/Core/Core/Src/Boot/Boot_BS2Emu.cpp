@@ -426,6 +426,9 @@ bool CBoot::EmulatedBS2_Wii()
 
 		// return
 		PC = PowerPC::ppcState.gpr[3];
+
+		PatchEngine::ApplyFramePatches();
+
 	}
 
 	PowerPC::ppcState.DebugCount = 0;

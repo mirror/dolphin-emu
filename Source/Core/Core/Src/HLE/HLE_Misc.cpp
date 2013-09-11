@@ -21,6 +21,7 @@
 #include "PowerPC/PPCSymbolDB.h"
 #include "CommonPaths.h"
 #include "TextureCacheBase.h"
+#include "HLE_Misc.h"
 
 namespace HLE_Misc
 {
@@ -534,5 +535,19 @@ void OSBootDol()
 	HLE::UnPatch("__OSBootDol");
 	NPC = PC;
 }
+
+void DolphinReturnFromCodeHandler()
+{
+	if (!g_CodeHandlerOldPC)
+	{
+		PanicAlert("Returned from code handler more than once...");
+	}
+	LR = g_CodeHandlerOldLR;
+	NPC = g_CodeHandlerOldPC;
+	GPR(1) = g_CodeHandlerOldR1;
+	g_CodeHandlerOldLR = g_CodeHandlerOldPC = g_CodeHandlerOldR1 = 0;
+}
+
+u32 g_CodeHandlerOldLR, g_CodeHandlerOldPC, g_CodeHandlerOldR1;
 
 }

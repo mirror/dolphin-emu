@@ -100,7 +100,7 @@ static const SPatch OSPatches[] =
 	// ES_LAUNCH
 	{ "__OSBootDol",		HLE_Misc::OSBootDol, HLE_HOOK_REPLACE, HLE_TYPE_GENERIC },
 	{ "OSGetResetCode",		HLE_Misc::OSGetResetCode, HLE_HOOK_REPLACE, HLE_TYPE_GENERIC },
-
+	{ "DolphinReturnFromCodeHandler", HLE_Misc::DolphinReturnFromCodeHandler, HLE_HOOK_REPLACE, HLE_TYPE_GENERIC },
 };
 
 static const SPatch OSBreakPoints[] =
