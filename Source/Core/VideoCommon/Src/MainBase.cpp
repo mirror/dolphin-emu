@@ -296,8 +296,7 @@ void VideoBackendHardware::Video_GatherPipeBursted()
 bool VideoBackendHardware::Video_IsPossibleWaitingSetDrawDone()
 {
 	// this is called from Idle
-	CommandProcessor::SyncGPUIfIdleOnly();
-	return CommandProcessor::isPossibleWaitingSetDrawDone;
+	return CommandProcessor::IsPossibleWaitingSetDrawDone();
 }
 
 bool VideoBackendHardware::Video_IsHiWatermarkActive()
