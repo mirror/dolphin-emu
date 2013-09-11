@@ -296,12 +296,6 @@ bool VideoSoftware::Video_IsPossibleWaitingSetDrawDone(void)
 	return false;
 }
 
-bool VideoSoftware::Video_IsHiWatermarkActive(void)
-{
-	return false;
-}
-
-
 void VideoSoftware::Video_AbortFrame(void)
 {
 }

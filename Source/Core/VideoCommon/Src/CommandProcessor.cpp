@@ -42,8 +42,6 @@ int m_bboxright;
 int m_bboxbottom;
 u16 m_tokenReg;
 
-volatile bool isHiWatermarkActive = false;
-volatile bool isLoWatermarkActive = false;
 volatile bool interruptSet= false;
 volatile bool interruptWaiting= false;
 volatile bool interruptTokenWaiting = false;
@@ -74,8 +72,6 @@ void DoState(PointerWrap &p)
 	p.Do(m_tokenReg);
 	p.Do(cpuFifo);
 
-	p.Do(isHiWatermarkActive);
-	p.Do(isLoWatermarkActive);
 	p.Do(interruptSet);
 	p.Do(interruptWaiting);
 	p.Do(interruptTokenWaiting);
@@ -127,9 +123,6 @@ void Init()
 	interruptWaiting = false;
 	interruptFinishWaiting = false;
 	interruptTokenWaiting = false;
-
-	isHiWatermarkActive = false;
-	isLoWatermarkActive = false;
 
 	et_UpdateInterrupts = CoreTiming::RegisterEvent("CPInterrupt", UpdateInterrupts_Wrapper);
 }
@@ -544,14 +537,15 @@ void STACKALIGN GatherPipeBursted()
 		return;
 	}
 
-	if (IsOnThread())
-		SetCpStatus(true);
-
 	// update the fifo pointer
 	if (cpuFifo.CPWritePointer >= cpuFifo.CPEnd)
 		cpuFifo.CPWritePointer = cpuFifo.CPBase;
 	else
 		cpuFifo.CPWritePointer += GATHER_PIPE_SIZE;
+
+	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
+		SetCpStatus(true);
+
 
 	if (!IsOnThread())
 		RunGpu();
@@ -602,10 +596,6 @@ void SetCpStatus(bool isCPUThread)
 {
 	if (Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
 	{
-		if (!isCPUThread)
-		{
-			return;
-		}
 		// We don't care.
 		cpuFifo.bFF_HiWatermark = 0;
 		cpuFifo.bFF_LoWatermark = 0;
@@ -619,32 +609,20 @@ void SetCpStatus(bool isCPUThread)
 	}
 
 	// breakpoint
-	if (!isCPUThread)
+	if (cpuFifo.bFF_BPEnable && cpuFifo.CPBreakpoint == cpuFifo.CPReadPointer)
 	{
-		if (cpuFifo.bFF_BPEnable)
+		if (!cpuFifo.bFF_Breakpoint)
 		{
-			if (cpuFifo.CPBreakpoint == cpuFifo.CPReadPointer)
-			{
-				if (!cpuFifo.bFF_Breakpoint)
-				{
-					INFO_LOG(COMMANDPROCESSOR, "Hit breakpoint at %i", cpuFifo.CPReadPointer);
-					cpuFifo.bFF_Breakpoint = true;
-					IncrementCheckContextId();
-				}
-			}
-			else
-			{
-				if (cpuFifo.bFF_Breakpoint)
-					INFO_LOG(COMMANDPROCESSOR, "Cleared breakpoint at %i", cpuFifo.CPReadPointer);
-				cpuFifo.bFF_Breakpoint = false;
-			}
+			INFO_LOG(COMMANDPROCESSOR, "Hit breakpoint at %i", cpuFifo.CPReadPointer);
+			cpuFifo.bFF_Breakpoint = true;
+			IncrementCheckContextId();
 		}
-		else
-		{
-			if (cpuFifo.bFF_Breakpoint)
-				INFO_LOG(COMMANDPROCESSOR, "Cleared breakpoint at %i", cpuFifo.CPReadPointer);
-			cpuFifo.bFF_Breakpoint = false;
-		}
+	}
+	else
+	{
+		if (cpuFifo.bFF_Breakpoint)
+			INFO_LOG(COMMANDPROCESSOR, "Cleared breakpoint at %i", cpuFifo.CPReadPointer);
+		cpuFifo.bFF_Breakpoint = false;
 	}
 
 	bool bpInt = cpuFifo.bFF_Breakpoint && cpuFifo.bFF_BPInt;
@@ -653,36 +631,18 @@ void SetCpStatus(bool isCPUThread)
 
 	bool interrupt = (bpInt || ovfInt || undfInt) && m_CPCtrlReg.GPReadEnable;
 
-	isHiWatermarkActive = ovfInt && m_CPCtrlReg.GPReadEnable;
-	isLoWatermarkActive = undfInt && m_CPCtrlReg.GPReadEnable;
-
 	if (interrupt != interruptSet && !interruptWaiting)
 	{
-		u64 userdata = interrupt?1:0;
-		if (IsOnThread())
+		u64 userdata = interrupt ? 1 : 0;
+		if (!isCPUThread)
 		{
-			if (!interrupt || bpInt || undfInt || ovfInt)
-			{
-				if (!isCPUThread)
-				{
-					// GPU thread:
-					interruptWaiting = true;
-					if (!Core::g_CoreStartupParameter.bSyncGPUAtIdleOnly)
-					{
-						CommandProcessor::UpdateInterruptsFromVideoBackend(userdata);
-					}
-				}
-				else
-				{
-					// CPU thread:
-					interruptSet = interrupt;
-					INFO_LOG(COMMANDPROCESSOR,"Interrupt set");
-					ProcessorInterface::SetInterrupt(INT_CAUSE_CP, interrupt);
-				}
-			}
+			// GPU thread:
+			interruptWaiting = true;
+			CommandProcessor::UpdateInterruptsFromVideoBackend(userdata);
 		}
 		else
 		{
+			// CPU thread:
 			CommandProcessor::UpdateInterrupts(userdata);
 		}
 	}

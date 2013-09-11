@@ -138,8 +138,6 @@ void RunGpuLoop()
 
 		VideoFifo_CheckAsyncRequest();
 
-		CommandProcessor::SetCpStatus();
-
 		Common::AtomicStore(CommandProcessor::VITicks, CommandProcessor::m_cpClockOrigin);
 
 		// check if we are able to run this buffer
@@ -167,8 +165,6 @@ void RunGpuLoop()
 
 				Common::AtomicStore(fifo.CPReadPointer, readPtr);
 			}
-
-			CommandProcessor::SetCpStatus();
 
 			// This call is pretty important in DualCore mode and must be called in the FIFO Loop.
 			// If we don't, s_swapRequested or s_efbAccessRequested won't be set to false
@@ -232,5 +228,5 @@ void RunGpu()
 		else
 			fifo.CPReadPointer += 32;
 	}
-	CommandProcessor::SetCpStatus();
+	CommandProcessor::SetCpStatus(true);
 }
