@@ -263,7 +263,6 @@ void HLEGeckoCodehandler()
 	}
 	Memory::Write_U32(existing + 1, 0x80001800);
 	PowerPC::ppcState.iCache.Reset();
-	printf("resetting icache\n");
 }
 
 }
