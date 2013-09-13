@@ -105,9 +105,6 @@ volatile u32 g_bSignalFinishInterrupt;
 static int et_SetTokenOnMainThread;
 static int et_SetFinishOnMainThread;
 
-volatile u32 interruptSetToken = 0;
-volatile u32 interruptSetFinish = 0;
-
 u16 bbox[4];
 bool bbox_active;
 
@@ -128,8 +125,6 @@ void DoState(PointerWrap &p)
 
 	p.Do(g_bSignalTokenInterrupt);
 	p.Do(g_bSignalFinishInterrupt);
-	p.Do(interruptSetToken);
-	p.Do(interruptSetFinish);
 	
 	p.Do(bbox);
 	p.Do(bbox_active);
@@ -152,8 +147,6 @@ void Init()
 
 	g_bSignalTokenInterrupt = 0;
 	g_bSignalFinishInterrupt = 0;
-	interruptSetToken = 0;
-	interruptSetFinish = 0;
 
 	et_SetTokenOnMainThread = CoreTiming::RegisterEvent("SetToken", SetToken_OnMainThread);
 	et_SetFinishOnMainThread = CoreTiming::RegisterEvent("SetFinish", SetFinish_OnMainThread);
@@ -385,13 +378,11 @@ void UpdateInterrupts()
 void UpdateTokenInterrupt(bool active)
 {
 	ProcessorInterface::SetInterrupt(INT_CAUSE_PE_TOKEN, active);
-	Common::AtomicStore(interruptSetToken, active ? 1 : 0);
 }
 
 void UpdateFinishInterrupt(bool active)
 {
 	ProcessorInterface::SetInterrupt(INT_CAUSE_PE_FINISH, active);
-	Common::AtomicStore(interruptSetFinish, active ? 1 : 0);
 }
 
 // TODO(mb2): Refactor SetTokenINT_OnMainThread(u64 userdata, int cyclesLate).
@@ -451,34 +442,4 @@ void SetFinish()
 	IncrementCheckContextId();
 }
 
-//This function is used in CommandProcessor when write CTRL_REGISTER and the new fifo is attached.
-void ResetSetFinish()
-{
-	//if SetFinish happened but PE_CTRL_REGISTER not, I reset the interrupt else
-	//remove event from the queue
-	if (g_bSignalFinishInterrupt)
-	{
-		UpdateFinishInterrupt(false);
-		g_bSignalFinishInterrupt = false;
-	}
-	else
-	{
-		CoreTiming::RemoveEvent(et_SetFinishOnMainThread);
-	}
-	CommandProcessor::interruptFinishWaiting = false;
-}
-
-void ResetSetToken()
-{
-	if (g_bSignalTokenInterrupt)
-	{
-		UpdateTokenInterrupt(false);
-		g_bSignalTokenInterrupt = 0;
-	}
-	else
-	{
-		CoreTiming::RemoveEvent(et_SetTokenOnMainThread);
-	}
-	CommandProcessor::interruptTokenWaiting = false;
-}
 } // end of namespace PixelEngine
