@@ -398,7 +398,7 @@ void SetToken(const u16 _token, const int _bSetTokenAcknowledge)
 {
 	u32 data = _token | (_bSetTokenAcknowledge << 16);
 	if (CommandProcessor::deterministicGPUSync)
-		CommandProcessor::interruptTokenData = data;
+		CommandProcessor::interruptTokenData = data | (CommandProcessor::interruptTokenData & 0x10000);
 	else
 		CoreTiming::ScheduleEvent_Threadsafe(0, et_SetTokenOnMainThread, data);
 	IncrementCheckContextId();

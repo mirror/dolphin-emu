@@ -147,6 +147,7 @@ static void SyncGPU()
 		if (interruptTokenWaiting)
 		{
 			PixelEngine::SetToken_OnMainThread(interruptTokenData, 0);
+			interruptTokenData = 0;
 		}
 		if (interruptFinishWaiting)
 		{
