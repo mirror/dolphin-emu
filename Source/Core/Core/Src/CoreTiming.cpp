@@ -14,7 +14,7 @@
 #include "FifoQueue.h"
 
 #define MAX_SLICE_LENGTH 20000
-#define FORCE_WHINE_ABOUT_THREADSAFE 1
+#define FORCE_WHINE_ABOUT_THREADSAFE 0
 
 namespace CoreTiming
 {
