@@ -726,6 +726,8 @@ void SetCpControlRegister()
 			
 	cpuFifo.bFF_GPReadEnable = m_CPCtrlReg.GPReadEnable;
 	SyncGPU();
+	// Safe because nothing has been scheduled since the SyncGPU.
+	SetCpStatus(true);
 
 	DEBUG_LOG(COMMANDPROCESSOR, "\t GPREAD %s | BP %s | Int %s | OvF %s | UndF %s | LINK %s"
 		, cpuFifo.bFF_GPReadEnable ?				"ON" : "OFF"
