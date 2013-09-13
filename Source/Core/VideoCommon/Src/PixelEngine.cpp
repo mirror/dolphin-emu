@@ -99,9 +99,6 @@ static UPEAlphaReadReg		m_AlphaRead;
 static UPECtrlReg			m_Control;
 //static u16					m_Token; // token value most recently encountered
 
-volatile u32 g_bSignalTokenInterrupt;
-volatile u32 g_bSignalFinishInterrupt;
-
 static int et_SetTokenOnMainThread;
 static int et_SetFinishOnMainThread;
 
@@ -123,9 +120,6 @@ void DoState(PointerWrap &p)
 	p.Do(m_AlphaRead);
 	p.DoPOD(m_Control);
 
-	p.Do(g_bSignalTokenInterrupt);
-	p.Do(g_bSignalFinishInterrupt);
-	
 	p.Do(bbox);
 	p.Do(bbox_active);
 }
@@ -144,9 +138,6 @@ void Init()
 	m_DstAlphaConf.Hex = 0;
 	m_AlphaModeConf.Hex = 0;
 	m_AlphaRead.Hex = 0;
-
-	g_bSignalTokenInterrupt = 0;
-	g_bSignalFinishInterrupt = 0;
 
 	et_SetTokenOnMainThread = CoreTiming::RegisterEvent("SetToken", SetToken_OnMainThread);
 	et_SetFinishOnMainThread = CoreTiming::RegisterEvent("SetFinish", SetFinish_OnMainThread);
@@ -330,8 +321,14 @@ void Write16(const u16 _iValue, const u32 _iAddress)
 		{
 			UPECtrlReg tmpCtrl(_iValue);
 
-			if (tmpCtrl.PEToken)	g_bSignalTokenInterrupt = 0;
-			if (tmpCtrl.PEFinish)	g_bSignalFinishInterrupt = 0;
+			if (tmpCtrl.PEToken)
+			{
+				ProcessorInterface::SetInterrupt(INT_CAUSE_PE_TOKEN, false);
+			}
+			if (tmpCtrl.PEFinish)
+			{
+				ProcessorInterface::SetInterrupt(INT_CAUSE_PE_FINISH, false);
+			}
 
 			m_Control.PETokenEnable  = tmpCtrl.PETokenEnable;
 			m_Control.PEFinishEnable = tmpCtrl.PEFinishEnable;
@@ -339,7 +336,6 @@ void Write16(const u16 _iValue, const u32 _iAddress)
 			m_Control.PEFinish = 0;		// this flag is write only
 
 			DEBUG_LOG(PIXELENGINE, "(w16) CTRL_REGISTER: 0x%04x", _iValue);
-			UpdateInterrupts();
 		}
 		break;
 
@@ -366,25 +362,6 @@ bool AllowIdleSkipping()
 	return !SConfig::GetInstance().m_LocalCoreStartupParameter.bCPUThread || (!m_Control.PETokenEnable && !m_Control.PEFinishEnable);
 }
 
-void UpdateInterrupts()
-{
-	// check if there is a token-interrupt
-	UpdateTokenInterrupt((g_bSignalTokenInterrupt & m_Control.PETokenEnable));
-	
-	// check if there is a finish-interrupt
-	UpdateFinishInterrupt((g_bSignalFinishInterrupt & m_Control.PEFinishEnable));
-}
-
-void UpdateTokenInterrupt(bool active)
-{
-	ProcessorInterface::SetInterrupt(INT_CAUSE_PE_TOKEN, active);
-}
-
-void UpdateFinishInterrupt(bool active)
-{
-	ProcessorInterface::SetInterrupt(INT_CAUSE_PE_FINISH, active);
-}
-
 // TODO(mb2): Refactor SetTokenINT_OnMainThread(u64 userdata, int cyclesLate).
 //			  Think about the right order between tokenVal and tokenINT... one day maybe.
 //			  Cleanup++
@@ -396,11 +373,10 @@ void SetToken_OnMainThread(u64 userdata, int cyclesLate)
 	// That's what we've always done. We're counting on fifo.PEToken to be
 	// 4-byte padded.
 	Common::AtomicStore(*(volatile u32*)&CommandProcessor::cpuFifo.PEToken, userdata & 0xffff);
-	INFO_LOG(PIXELENGINE, "VIDEO Backend raises INT_CAUSE_PE_TOKEN (btw, token: %04x)", CommandProcessor::cpuFifo.PEToken);
-	if (userdata >> 16)
+	INFO_LOG(PIXELENGINE, "VIDEO Backend raises INT_CAUSE_PE_TOKEN data=%llx (btw, token: %04x)", userdata, CommandProcessor::cpuFifo.PEToken);
+	if (userdata >> 16 && m_Control.PETokenEnable)
 	{
-		Common::AtomicStore(*(volatile u32*)&g_bSignalTokenInterrupt, 1);
-		UpdateInterrupts();
+		ProcessorInterface::SetInterrupt(INT_CAUSE_PE_TOKEN, true);
 	}
 	CommandProcessor::interruptTokenWaiting = false;
 	IncrementCheckContextId();
@@ -408,38 +384,36 @@ void SetToken_OnMainThread(u64 userdata, int cyclesLate)
 
 void SetFinish_OnMainThread(u64 userdata, int cyclesLate)
 {
-	Common::AtomicStore(*(volatile u32*)&g_bSignalFinishInterrupt, 1);
-	UpdateInterrupts();
+	if (m_Control.PETokenEnable)
+	{
+		ProcessorInterface::SetInterrupt(INT_CAUSE_PE_FINISH, true);
+	}
 	CommandProcessor::interruptFinishWaiting = false;
+	IncrementCheckContextId();
 }
 
 // SetToken
 // THIS IS EXECUTED FROM VIDEO THREAD
 void SetToken(const u16 _token, const int _bSetTokenAcknowledge)
 {
-	if (_bSetTokenAcknowledge) // set token INT
-	{
-		Common::AtomicStore(*(volatile u32*)&g_bSignalTokenInterrupt, 1);
-	}
-
-	CommandProcessor::interruptTokenWaiting = true;
 	u32 data = _token | (_bSetTokenAcknowledge << 16);
 	if (CommandProcessor::deterministicGPUSync)
 		CommandProcessor::interruptTokenData = data;
 	else
 		CoreTiming::ScheduleEvent_Threadsafe(0, et_SetTokenOnMainThread, data);
 	IncrementCheckContextId();
+	CommandProcessor::interruptTokenWaiting = true;
 }
 
 // SetFinish
 // THIS IS EXECUTED FROM VIDEO THREAD (BPStructs.cpp) when a new frame has been drawn
 void SetFinish()
 {
-	CommandProcessor::interruptFinishWaiting = true;
 	if (!CommandProcessor::deterministicGPUSync)
 		CoreTiming::ScheduleEvent_Threadsafe(0, et_SetFinishOnMainThread, 0);
 	INFO_LOG(PIXELENGINE, "VIDEO Set Finish");
 	IncrementCheckContextId();
+	CommandProcessor::interruptFinishWaiting = true;
 }
 
 } // end of namespace PixelEngine
