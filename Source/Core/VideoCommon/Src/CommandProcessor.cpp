@@ -565,22 +565,25 @@ void STACKALIGN GatherPipeBursted()
 		return;
 	}
 
+	u32 newPointer = cpuFifo.CPWritePointer;
+
 	// update the fifo pointer
-	if (cpuFifo.CPWritePointer >= cpuFifo.CPEnd)
-		cpuFifo.CPWritePointer = cpuFifo.CPBase;
+	if (newPointer >= cpuFifo.CPEnd)
+		newPointer = cpuFifo.CPBase;
 	else
-		cpuFifo.CPWritePointer += GATHER_PIPE_SIZE;
+		newPointer += GATHER_PIPE_SIZE;
 
-	if (!IsOnThread())
-		RunGpu();
-
-	if (cpuFifo.CPWritePointer == cpuFifo.CPReadPointer)
+	if (deterministicGPUSync && newPointer == cpuFifo.CPReadPointer)
 	{
 		// Overflow; block until the GPU thread is ready.
 		SyncGPU();
 	}
 
-	Common::AtomicStore(gpuFifo->CPWritePointer, cpuFifo.CPWritePointer);
+	Common::AtomicStore(gpuFifo->CPWritePointer, newPointer);
+	Common::AtomicStore(cpuFifo.CPWritePointer, newPointer);
+
+	if (!IsOnThread())
+		RunGpu();
 
 	// check if we are in sync
 	_assert_msg_(COMMANDPROCESSOR, cpuFifo.CPWritePointer	== ProcessorInterface::Fifo_CPUWritePointer, "FIFOs linked but out of sync");
