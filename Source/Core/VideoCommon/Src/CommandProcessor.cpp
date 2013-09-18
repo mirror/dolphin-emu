@@ -573,10 +573,16 @@ void STACKALIGN GatherPipeBursted()
 	else
 		newPointer += GATHER_PIPE_SIZE;
 
-	if (deterministicGPUSync && newPointer == cpuFifo.CPReadPointer)
+	if (newPointer == cpuFifo.CPReadPointer)
 	{
-		// Overflow; block until the GPU thread is ready.
-		SyncGPU();
+		if (deterministicGPUSync)
+		{
+			SyncGPU();
+		}
+		else
+		{
+			_assert_msg_(COMMANDPROCESSOR, false, "FIFO overflow");
+		}
 	}
 
 	Common::AtomicStore(gpuFifo->CPWritePointer, newPointer);
