@@ -591,6 +591,11 @@ void STACKALIGN GatherPipeBursted()
 	if (!IsOnThread())
 		RunGpu();
 
+	if (!deterministicGPUSync)
+	{
+		SetCpStatus(true);
+	}
+
 	// check if we are in sync
 	_assert_msg_(COMMANDPROCESSOR, cpuFifo.CPWritePointer	== ProcessorInterface::Fifo_CPUWritePointer, "FIFOs linked but out of sync");
 	_assert_msg_(COMMANDPROCESSOR, cpuFifo.CPBase			== ProcessorInterface::Fifo_CPUBase, "FIFOs linked but out of sync");
