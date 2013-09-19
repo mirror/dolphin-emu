@@ -186,12 +186,17 @@ void UpdateDeterministicGPUSync()
 	on = on && IsOnThread() && SConfig::GetInstance().m_LocalCoreStartupParameter.bSkipIdle;
 	if (on != deterministicGPUSync)
 	{
-		SyncGPU();
+		if (gpuFifo)
+		{
+			SyncGPU();
+			if (on)
+			{
+				// Might have async requests still waiting.
+				CoreTiming::ProcessFifoWaitEvents();
+			}
+		}
 		if (on)
 		{
-			// Might have async requests still waiting.
-			CoreTiming::ProcessFifoWaitEvents();
-
 			_gpuFifo = cpuFifo;
 			gpuFifo = &_gpuFifo;
 		}
