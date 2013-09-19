@@ -98,8 +98,10 @@ set(SRCS	Src/ActionReplay.cpp
 			Src/HW/EXI_DeviceGecko.cpp
 			Src/HW/EXI_DeviceIPL.cpp
 			Src/HW/EXI_DeviceMemoryCard.cpp
+			Src/HW/EXI_DeviceMemoryCardFolder.cpp
 			Src/HW/EXI_DeviceMic.cpp
 			Src/HW/GCMemcard.cpp
+			Src/HW/GCMemcardDirectory.cpp
 			Src/HW/GCPad.cpp
 			Src/HW/GCPadEmu.cpp
 			Src/HW/GPFifo.cpp

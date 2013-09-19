@@ -266,7 +266,7 @@ bool GCMemcard::Save()
 	return mcdFile.Close();
 }
 
-void GCMemcard::calc_checksumsBE(u16 *buf, u32 length, u16 *csum, u16 *inv_csum)
+void calc_checksumsBE(u16 *buf, u32 length, u16 *csum, u16 *inv_csum)
 {
 	*csum = *inv_csum = 0;
 
@@ -397,7 +397,7 @@ bool GCMemcard::GCI_FileName(u8 index, std::string &filename) const
 	if (!m_valid || index > DIRLEN || (BE32(CurrentDir->Dir[index].Gamecode) == 0xFFFFFFFF))
 		return false;
 
-	filename = std::string((char*)CurrentDir->Dir[index].Gamecode, 4) + '_' + (char*)CurrentDir->Dir[index].Filename + ".gci";
+	filename = CurrentDir->Dir[index].GCI_FileName();
 	return true;
 }
 
@@ -577,7 +577,7 @@ bool GCMemcard::GetDEntry(u8 index, DEntry &dest) const
 	return true;
 }
 
-u16 GCMemcard::BlockAlloc::GetNextBlock(u16 Block) const
+u16 BlockAlloc::GetNextBlock(u16 Block) const
 {
 	if ((Block < MC_FST_BLOCKS) || (Block > 4091))
 		return 0;
@@ -585,7 +585,7 @@ u16 GCMemcard::BlockAlloc::GetNextBlock(u16 Block) const
 	return Common::swap16(Map[Block-MC_FST_BLOCKS]);
 }
 
-u16 GCMemcard::BlockAlloc::NextFreeBlock(u16 StartingBlock) const
+u16 BlockAlloc::NextFreeBlock(u16 StartingBlock) const
 {
 	if (FreeBlocks)
 	{
@@ -600,7 +600,7 @@ u16 GCMemcard::BlockAlloc::NextFreeBlock(u16 StartingBlock) const
 	return 0xFFFF;
 }
 
-bool GCMemcard::BlockAlloc::ClearBlocks(u16 FirstBlock, u16 BlockCount)
+bool BlockAlloc::ClearBlocks(u16 FirstBlock, u16 BlockCount)
 {
 	std::vector<u16> blocks;
 	while (FirstBlock != 0xFFFF && FirstBlock != 0)

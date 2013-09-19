@@ -5,16 +5,21 @@
 #ifndef __GCMEMCARD_h__
 #define __GCMEMCARD_h__
 
+#include "GCMemcard.h"
 #include "Common.h"
 #include "CommonPaths.h"
 #include "Sram.h"
 #include "StringUtil.h"
 #include "EXI_DeviceIPL.h"
 
+// Uncomment this to write the system data of the memorycard from directory to disc 
+//#define _WRITE_MC_HEADER 1
+
 #define BE64(x) (Common::swap64(x))
 #define BE32(x) (Common::swap32(x))
 #define BE16(x) (Common::swap16(x))
 #define ArrayByteSwap(a) (ByteSwap(a, a+sizeof(u8)));
+
 enum
 {
 	SLOT_A = 0,
@@ -56,10 +61,202 @@ enum
 	CI8,
 };
 
+struct GCMBlock
+{
+	GCMBlock() { erase(); }
+	void erase() { memset(block, 0xFF, BLOCK_SIZE); }
+	u8 block[BLOCK_SIZE];
+};
+
+void calc_checksumsBE(u16 *buf, u32 length, u16 *csum, u16 *inv_csum);
+
+#pragma pack(push,1)
+struct Header {			//Offset	Size	Description
+		// Serial in libogc
+	u8 serial[12];		//0x0000	12		?
+	u64 formatTime;		//0x000c	8		time of format (OSTime value)
+	u32 SramBias;		//0x0014	4		sram bias at time of format
+	u32 SramLang;		//0x0018	4		sram language
+	u8 Unk2[4];			//0x001c	4	 	? almost always 0
+	// end Serial in libogc
+	u8 deviceID[2];		//0x0020	2		0 if formated in slot A 1 if formated in slot B
+	u8 SizeMb[2];		//0x0022	2		size of memcard in Mbits
+	u16 Encoding;		//0x0024	2		encoding (ASCII or japanese)
+	u8 Unused1[468];	//0x0026	468		unused (0xff)
+	u16 UpdateCounter;	//0x01fa	2		update Counter (?, probably unused)
+	u16 Checksum;		//0x01fc	2		Additive Checksum
+	u16 Checksum_Inv;	//0x01fe	2		Inverse Checksum
+	u8 Unused2[7680];	//0x0200	0x1e00	unused (0xff)
+		
+		
+	void CARD_GetSerialNo(u32 *serial1,u32 *serial2) const
+	{
+		u32 serial[8];
+
+		for (int i = 0; i < 8; i++)
+		{
+			memcpy(&serial[i], (u8 *) this+(i*4), 4);
+		}
+
+		*serial1 = serial[0]^serial[2]^serial[4]^serial[6];
+		*serial2 = serial[1]^serial[3]^serial[5]^serial[7];
+	}
+
+	Header(int slot=0, u16 sizeMb = MemCard2043Mb, bool ascii = true)
+	{
+		memset(this, 0xFF, BLOCK_SIZE);
+		*(u16*)SizeMb = BE16(sizeMb);
+		Encoding = BE16(ascii ? 0 : 1);
+		u64 rand = CEXIIPL::GetGCTime();
+		formatTime = Common::swap64(rand);
+		for(int i = 0; i < 12; i++)
+		{
+			rand = (((rand * (u64)0x0000000041c64e6dULL) + (u64)0x0000000000003039ULL) >> 16);
+			serial[i] = (u8)(g_SRAM.flash_id[slot][i] + (u32)rand);
+			rand = (((rand * (u64)0x0000000041c64e6dULL) + (u64)0x0000000000003039ULL) >> 16);
+			rand &= (u64)0x0000000000007fffULL;
+		}
+		SramBias = g_SRAM.counter_bias;
+		SramLang = BE32(g_SRAM.lang);
+		// TODO: determine the purpose of Unk2 1 works for slot A, 0 works for both slot A and slot B
+		*(u32*)&Unk2 = 0;		// = _viReg[55];  static vu16* const _viReg = (u16*)0xCC002000;
+		*(u16*)&deviceID = 0;
+		calc_checksumsBE((u16*)this, 0xFE, &Checksum, &Checksum_Inv);
+	}
+};
+
+struct DEntry
+{
+	static const u8 DENTRY_SIZE = 0x40;
+	DEntry() { memset(this, 0xFF, DENTRY_SIZE); }
+	std::string GCI_FileName() const
+	{
+		return std::string((char*)Makercode, 2) + '-' + std::string((char*)Gamecode, 4) + '-' + (char*)Filename + ".gci";
+	}
+	u8 Gamecode[4];		//0x00		0x04	Gamecode
+	u8 Makercode[2];	//0x04		0x02	Makercode
+	u8 Unused1;			//0x06		0x01	reserved/unused (always 0xff, has no effect)
+	u8 BIFlags;			//0x07		0x01	banner gfx format and icon animation (Image Key)
+						//		bit(s)	description
+						//		2		Icon Animation 0: forward 1: ping-pong
+						//		1		[--0: No Banner 1: Banner present--] WRONG! YAGCD LIES!
+						//		0		[--Banner Color 0: RGB5A3 1: CI8--]  WRONG! YAGCD LIES!
+						//		bits 0 and 1: image format
+						//		00 no banner
+						//		01 CI8 banner
+						//		10 RGB5A3 banner
+						//		11 ? maybe ==00? Time Splitters 2 and 3 have it and don't have banner
+						//
+	u8 Filename[DENTRY_STRLEN];	//0x08		0x20	filename
+	u8 ModTime[4];		//0x28		0x04	Time of file's last modification in seconds since 12am, January 1st, 2000
+	u8 ImageOffset[4];	//0x2c		0x04	image data offset
+	u8 IconFmt[2];		//0x30		0x02	icon gfx format (2bits per icon)
+						//		bits	Description
+						//		00	no icon
+						//		01	CI8 with a shared color palette after the last frame
+						//		10	RGB5A3
+						//		11	CI8 with a unique color palette after itself
+						//
+	u8 AnimSpeed[2];	//0x32		0x02	animation speed (2bits per icon) (*1)
+						//		bits	Description
+						//		00	no icon
+						//		01	Icon lasts for 4 frames
+						//		10	Icon lasts for 8 frames
+						//		11	Icon lasts for 12 frames
+						//
+	u8 Permissions;		//0x34		0x01	file-permissions
+						//		bit	permission	Description
+						//		4	no move		File cannot be moved by the IPL
+						//		3	no copy		File cannot be copied by the IPL
+						//		2	public		Can be read by any game
+						//
+	u8 CopyCounter;		//0x35		0x01	copy counter (*2)
+	u8 FirstBlock[2];	//0x36		0x02	block no of first block of file (0 == offset 0)
+	u8 BlockCount[2];	//0x38		0x02	file-length (number of blocks in file)
+	u8 Unused2[2];		//0x3a		0x02	reserved/unused (always 0xffff, has no effect)
+	u8 CommentsAddr[4];	//0x3c		0x04	Address of the two comments within the file data (*3)
+};
+
+struct Directory
+{
+	DEntry Dir[DIRLEN];	//0x0000		Directory Entries (max 127)
+	u8 Padding[0x3a];
+	u16 UpdateCounter;	//0x1ffa	2	update Counter
+	u16 Checksum;		//0x1ffc	2	Additive Checksum
+	u16 Checksum_Inv;	//0x1ffe	2	Inverse Checksum
+	Directory()
+	{		
+		memset(this, 0xFF, BLOCK_SIZE);
+		UpdateCounter = 0;
+		Checksum = BE16(0xF003);
+		Checksum_Inv = 0;
+	}
+	void Replace(DEntry d, int idx)
+	{
+		Dir[idx]=d;
+		fixChecksums();
+	}
+	void fixChecksums()
+	{
+		calc_checksumsBE((u16*)this, 0xFFE, &Checksum, &Checksum_Inv);
+	}
+};
+
+struct BlockAlloc
+{
+	u16 Checksum;			//0x0000	2	Additive Checksum
+	u16 Checksum_Inv;		//0x0002	2	Inverse Checksum
+	u16 UpdateCounter;		//0x0004	2	update Counter
+	u16 FreeBlocks;			//0x0006	2	free Blocks
+	u16 LastAllocated;		//0x0008	2	last allocated Block
+	u16 Map[BAT_SIZE];		//0x000a	0x1ff8	Map of allocated Blocks
+	u16 GetNextBlock(u16 Block) const;
+	u16 NextFreeBlock(u16 StartingBlock=MC_FST_BLOCKS) const;
+	bool ClearBlocks(u16 StartingBlock, u16 Length);
+	void fixChecksums()
+	{
+		calc_checksumsBE((u16*)&UpdateCounter, 0xFFE, &Checksum, &Checksum_Inv);
+	}
+	BlockAlloc(u16 sizeMb = MemCard2043Mb)
+	{
+		memset(this, 0, BLOCK_SIZE);
+		//UpdateCounter = 0;
+		FreeBlocks = BE16((sizeMb * MBIT_TO_BLOCKS) - MC_FST_BLOCKS);
+		LastAllocated = BE16(4);
+		fixChecksums();
+	}
+	u16 AssignBlocksContiguous(u16 length)
+	{
+		u16 starting = BE16(LastAllocated)+1;
+		u16 current = starting;
+		while (current - starting + 1< length)
+		{
+			Map[current-5] = BE16(current+1);
+			current++;
+
+		}
+		Map[current-5] = 0xFFFF;
+		LastAllocated = BE16(current);
+		FreeBlocks = BE16(BE16(FreeBlocks)-length);
+		fixChecksums();
+		return BE16(starting);
+	}
+};
+#pragma pack(pop)
+
+class GCIFile
+{
+public:
+	void DoState(PointerWrap &p);
+	DEntry m_gci_header;
+	std::vector<GCMBlock> m_save_data;
+	bool m_dirty;
+	std::string m_filename;
+};
+
 class GCMemcard : NonCopyable
 {
 private:
-	friend class CMemcardManagerDebug;
 	bool m_valid;
 	std::string m_fileName;
 
@@ -72,102 +269,17 @@ private:
 		u8 block[BLOCK_SIZE];
 	};
 	std::vector<GCMBlock> mc_data_blocks;
-#pragma pack(push,1)
-	struct Header {			//Offset	Size	Description
-		 // Serial in libogc
-		u8 serial[12];		//0x0000	12		?
-		u64 formatTime;		//0x000c	8		time of format (OSTime value)
-		u32 SramBias;		//0x0014	4		sram bias at time of format
-		u32 SramLang;		//0x0018	4		sram language
-		u8 Unk2[4];			//0x001c	4	 	? almost always 0
-		// end Serial in libogc
-		u8 deviceID[2];		//0x0020	2		0 if formated in slot A 1 if formated in slot B
-		u8 SizeMb[2];		//0x0022	2		size of memcard in Mbits
-		u16 Encoding;		//0x0024	2		encoding (ASCII or japanese)
-		u8 Unused1[468];	//0x0026	468		unused (0xff)
-		u16 UpdateCounter;	//0x01fa	2		update Counter (?, probably unused)
-		u16 Checksum;		//0x01fc	2		Additive Checksum
-		u16 Checksum_Inv;	//0x01fe	2		Inverse Checksum
-		u8 Unused2[7680];	//0x0200	0x1e00	unused (0xff)
-	} hdr;
+	Header hdr;
+	
+	Directory dir, dir_backup, *CurrentDir, *PreviousDir;
+	BlockAlloc bat,bat_backup, *CurrentBat, *PreviousBat;
 
-	struct DEntry
-	{
-		u8 Gamecode[4];		//0x00		0x04	Gamecode
-		u8 Makercode[2];	//0x04		0x02	Makercode
-		u8 Unused1;			//0x06		0x01	reserved/unused (always 0xff, has no effect)
-		u8 BIFlags;			//0x07		0x01	banner gfx format and icon animation (Image Key)
-							//		bit(s)	description
-							//		2		Icon Animation 0: forward 1: ping-pong
-							//		1		[--0: No Banner 1: Banner present--] WRONG! YAGCD LIES!
-							//		0		[--Banner Color 0: RGB5A3 1: CI8--]  WRONG! YAGCD LIES!
-							//		bits 0 and 1: image format
-							//		00 no banner
-							//		01 CI8 banner
-							//		10 RGB5A3 banner
-							//		11 ? maybe ==00? Time Splitters 2 and 3 have it and don't have banner
-							//
-		u8 Filename[DENTRY_STRLEN];	//0x08		0x20	filename
-		u8 ModTime[4];		//0x28		0x04	Time of file's last modification in seconds since 12am, January 1st, 2000
-		u8 ImageOffset[4];	//0x2c		0x04	image data offset
-		u8 IconFmt[2];		//0x30		0x02	icon gfx format (2bits per icon)
-							//		bits	Description
-							//		00	no icon
-							//		01	CI8 with a shared color palette after the last frame
-							//		10	RGB5A3
-							//		11	CI8 with a unique color palette after itself
-							//
-		u8 AnimSpeed[2];	//0x32		0x02	animation speed (2bits per icon) (*1)
-							//		bits	Description
-							//		00	no icon
-							//		01	Icon lasts for 4 frames
-							//		10	Icon lasts for 8 frames
-							//		11	Icon lasts for 12 frames
-							//
-		u8 Permissions;		//0x34		0x01	file-permissions
-							//		bit	permission	Description
-							//		4	no move		File cannot be moved by the IPL
-							//		3	no copy		File cannot be copied by the IPL
-							//		2	public		Can be read by any game
-							//
-		u8 CopyCounter;		//0x35		0x01	copy counter (*2)
-		u8 FirstBlock[2];	//0x36		0x02	block no of first block of file (0 == offset 0)
-		u8 BlockCount[2];	//0x38		0x02	file-length (number of blocks in file)
-		u8 Unused2[2];		//0x3a		0x02	reserved/unused (always 0xffff, has no effect)
-		u8 CommentsAddr[4];	//0x3c		0x04	Address of the two comments within the file data (*3)
-	};
-
-	struct Directory
-	{
-		DEntry Dir[DIRLEN];	//0x0000		Directory Entries (max 127)
-		u8 Padding[0x3a];
-		u16 UpdateCounter;	//0x1ffa	2	update Counter
-		u16 Checksum;		//0x1ffc	2	Additive Checksum
-		u16 Checksum_Inv;	//0x1ffe	2	Inverse Checksum
-	} dir, dir_backup;
-
-	Directory *CurrentDir, *PreviousDir;
-	struct BlockAlloc
-	{
-		u16 Checksum;			//0x0000	2	Additive Checksum
-		u16 Checksum_Inv;		//0x0002	2	Inverse Checksum
-		u16 UpdateCounter;		//0x0004	2	update Counter
-		u16 FreeBlocks;			//0x0006	2	free Blocks
-		u16 LastAllocated;		//0x0008	2	last allocated Block
-		u16 Map[BAT_SIZE];		//0x000a	0x1ff8	Map of allocated Blocks
-		u16 GetNextBlock(u16 Block) const;
-		u16 NextFreeBlock(u16 StartingBlock=MC_FST_BLOCKS) const;
-		bool ClearBlocks(u16 StartingBlock, u16 Length);
-	} bat,bat_backup;
-
-	BlockAlloc *CurrentBat, *PreviousBat;
 	struct GCMC_Header
 	{
 		Header *hdr;
 		Directory *dir, *dir_backup;
 		BlockAlloc *bat, *bat_backup;
 	};
-#pragma pack(pop)
 
 	u32 ImportGciInternal(FILE* gcih, const char *inputFile, const std::string &outputFile);
 	static void FormatInternal(GCMC_Header &GCP);
@@ -181,7 +293,6 @@ public:
 	bool Format(bool sjis = false, u16 SizeMb = MemCard2043Mb);
 	static bool Format(u8 * card_data, bool sjis = false, u16 SizeMb = MemCard2043Mb);
 	
-	static void calc_checksumsBE(u16 *buf, u32 length, u16 *csum, u16 *inv_csum);
 	u32 TestChecksums() const;
 	bool FixChecksums();
 	
@@ -251,6 +362,155 @@ public:
 	void CARD_GetSerialNo(u32 *serial1,u32 *serial2);
 	s32 FZEROGX_MakeSaveGameValid(DEntry& direntry, std::vector<GCMBlock> &FileBuffer);
 	s32 PSO_MakeSaveGameValid(DEntry& direntry, std::vector<GCMBlock> &FileBuffer);
+};
+
+class GCMemcardDirectory : NonCopyable
+{
+public:
+	GCMemcardDirectory(std::string directory, int slot = 0, u16 sizeMb = MemCard2043Mb, bool ascii=true);
+	~GCMemcardDirectory(){Flush();}
+	void Flush();
+
+	s32 Read(u32 address, s32 length, u8* destaddress);
+	s32 Write(u32 destaddress, s32 length, u8* srcaddress);
+	void clearBlock(u32 blocknum);
+	void clearAll() {};
+	void DoState(PointerWrap &p);
+private:
+	bool LoadGCI(std::string fileName);
+	//s32 DirectoryRead(u32 offset, u32 length, u8* destaddress);
+	s32 DirectoryWrite( u32 destaddress, u32 length, u8* srcaddress);
+
+	
+	s32 m_LastBlock;
+	u8* m_LastBlockAddress;
+
+	Header m_hdr;
+	Directory m_dir1, m_dir2;
+	BlockAlloc m_bat1, m_bat2;
+	std::vector<GCIFile> m_saves;
+
+
+	std::string m_SaveDirectory;
+/*************************************************************/
+/* FZEROGX_MakeSaveGameValid                                 */
+/* (use just before writing a F-Zero GX system .gci file)    */
+/*                                                           */
+/* Parameters:                                               */
+/*    direntry:   [Description needed]                       */
+/*    FileBuffer: [Description needed]                       */
+/*                                                           */
+/* Returns: Error code                                       */
+/*************************************************************/
+
+s32 FZEROGX_MakeSaveGameValid(DEntry& direntry, std::vector<GCMBlock> &FileBuffer)
+{
+	u32 i,j;
+	u32 serial1,serial2;
+	u16 chksum = 0xFFFF;
+	int block = 0;
+
+	// check for F-Zero GX system file
+	if (strcmp((char*)direntry.Filename,"f_zero.dat")!=0) return 0;
+
+	// get encrypted destination memory card serial numbers
+	m_hdr.CARD_GetSerialNo(&serial1,&serial2);
+
+	// set new serial numbers
+	*(u16*)&FileBuffer[1].block[0x0066] = BE16(BE32(serial1) >> 16);
+	*(u16*)&FileBuffer[3].block[0x1580] = BE16(BE32(serial2) >> 16);
+	*(u16*)&FileBuffer[1].block[0x0060] = BE16(BE32(serial1) & 0xFFFF);
+	*(u16*)&FileBuffer[1].block[0x0200] = BE16(BE32(serial2) & 0xFFFF);
+
+	// calc 16-bit checksum
+	for (i=0x02;i<0x8000;i++)
+	{				
+		chksum ^= (FileBuffer[block].block[i-(block*0x2000)]&0xFF);
+		for (j=8; j > 0; j--)
+		{
+			if (chksum&1) chksum = (chksum>>1)^0x8408;
+			else chksum >>= 1;
+		}
+		if (!(i%0x2000)) block ++;
+	}
+
+	// set new checksum
+	*(u16*)&FileBuffer[0].block[0x00] = BE16(~chksum);
+
+	return 1;
+}
+
+/***********************************************************/
+/* PSO_MakeSaveGameValid                                   */
+/* (use just before writing a PSO system .gci file)        */
+/*                                                         */
+/* Parameters:                                             */
+/*    direntry:   [Description needed]                     */
+/*    FileBuffer: [Description needed]                     */
+/*                                                         */
+/* Returns: Error code                                     */
+/***********************************************************/
+
+s32 PSO_MakeSaveGameValid(DEntry& direntry, std::vector<GCMBlock> &FileBuffer)
+{
+	u32 i,j;
+	u32 chksum;
+	u32 crc32LUT[256];
+	u32 serial1,serial2;
+	u32 pso3offset = 0x00;
+
+	// check for PSO1&2 system file
+	if (strcmp((char*)direntry.Filename,"PSO_SYSTEM")!=0)
+	{
+		// check for PSO3 system file
+		if (strcmp((char*)direntry.Filename,"PSO3_SYSTEM")==0)
+		{
+			// PSO3 data block size adjustment
+			pso3offset = 0x10;
+		}
+		else
+		{
+			// nothing to do
+			return 0;
+		}
+	}
+
+	// get encrypted destination memory card serial numbers
+	m_hdr.CARD_GetSerialNo(&serial1,&serial2);
+
+	// set new serial numbers
+	*(u32*)&FileBuffer[1].block[0x0158] = serial1;
+	*(u32*)&FileBuffer[1].block[0x015C] = serial2;
+
+	// generate crc32 LUT
+	for (i=0; i < 256; i++)
+	{
+		chksum = i;
+		for (j=8; j > 0; j--)
+		{
+			if (chksum & 1)
+				chksum = (chksum>>1)^0xEDB88320;
+			else
+				chksum >>= 1;
+		}
+
+		crc32LUT[i] = chksum;
+	}
+
+	// PSO initial crc32 value
+	chksum = 0xDEBB20E3;
+
+	// calc 32-bit checksum
+	for (i=0x004C; i < 0x0164+pso3offset; i++)
+	{
+		chksum = ((chksum>>8)&0xFFFFFF)^crc32LUT[(chksum^FileBuffer[1].block[i])&0xFF];
+	}
+
+	// set new checksum
+	*(u32*)&FileBuffer[1].block[0x0048] = BE32(chksum^0xFFFFFFFF);
+
+	return 1;
+}
 };
 #endif
 

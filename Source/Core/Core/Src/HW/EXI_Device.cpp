@@ -7,6 +7,7 @@
 #include "EXI_Device.h"
 #include "EXI_DeviceIPL.h"
 #include "EXI_DeviceMemoryCard.h"
+#include "EXI_DeviceMemoryCardFolder.h"
 #include "EXI_DeviceAD16.h"
 #include "EXI_DeviceMic.h"
 #include "EXI_DeviceEthernet.h"
@@ -93,7 +94,7 @@ IEXIDevice* EXIDevice_Create(TEXIDevices device_type, const int channel_num)
 {
 	IEXIDevice* result = NULL;
 
-	switch (device_type)
+ 	switch (device_type)
 	{
 	case EXIDEVICE_DUMMY:
 		result = new CEXIDummy("Dummy");
@@ -103,6 +104,10 @@ IEXIDevice* EXIDevice_Create(TEXIDevices device_type, const int channel_num)
 		result = new CEXIMemoryCard(channel_num);
 		break;
 
+	case EXIDEVICE_MEMORYCARDFOLDER:
+		result = new CEXIMemoryCardFolder(channel_num);
+		break;
+		
 	case EXIDEVICE_MASKROM:
 		result = new CEXIIPL();
 		break;

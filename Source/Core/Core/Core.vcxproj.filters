@@ -570,6 +570,12 @@
     <ClCompile Include="Src\IPC_HLE\WII_Socket.cpp">
       <Filter>IPC HLE %28IOS/Starlet%29\Net</Filter>
     </ClCompile>
+    <ClCompile Include="Src\HW\EXI_DeviceMemoryCardFolder.cpp">
+      <Filter>HW %28Flipper/Hollywood%29\EXI - Expansion Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\HW\GCMemcardDirectory.cpp">
+      <Filter>HW %28Flipper/Hollywood%29\GCMemcard</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Src\ConfigManager.h" />
@@ -1043,9 +1049,6 @@
       <Filter>FifoPlayer</Filter>
     </ClInclude>
     <ClInclude Include="Src\Movie.h" />
-    <ClInclude Include="Src\HW\GCMemcard.h">
-      <Filter>HW %28Flipper/Hollywood%29\GCMemcard</Filter>
-    </ClInclude>
     <ClInclude Include="Src\PowerPC\JitInterface.h">
       <Filter>PowerPC</Filter>
     </ClInclude>
@@ -1067,6 +1070,12 @@
     <ClInclude Include="Src\ec_wii.h" />
     <ClInclude Include="Src\IPC_HLE\WII_Socket.h">
       <Filter>IPC HLE %28IOS/Starlet%29\Net</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\HW\EXI_DeviceMemoryCardFolder.h">
+      <Filter>HW %28Flipper/Hollywood%29\EXI - Expansion Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\HW\GCMemcard.h">
+      <Filter>HW %28Flipper/Hollywood%29\GCMemcard</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
