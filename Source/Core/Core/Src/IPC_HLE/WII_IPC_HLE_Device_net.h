@@ -152,7 +152,7 @@ public:
 	virtual bool Open(u32 _CommandAddress, u32 _Mode)
 	{
 		INFO_LOG(WII_IPC_NET, "NET_KD_TIME: Open");
-		Memory::Write_U32(GetDeviceID(), _CommandAddress+4);
+		Memory::IOS_Write_U32(GetDeviceID(), _CommandAddress+4);
 		return true;
 	}
 
@@ -160,17 +160,17 @@ public:
 	{
 		INFO_LOG(WII_IPC_NET, "NET_KD_TIME: Close");
 		if (!_bForce)
-			Memory::Write_U32(0, _CommandAddress + 4);
+			Memory::IOS_Write_U32(0, _CommandAddress + 4);
 		return true;
 	}
 
 	virtual bool IOCtl(u32 _CommandAddress) 
 	{
-		u32 Parameter		= Memory::Read_U32(_CommandAddress + 0x0C);
-		u32 BufferIn		= Memory::Read_U32(_CommandAddress + 0x10);
-		u32 BufferInSize	= Memory::Read_U32(_CommandAddress + 0x14);
-		u32 BufferOut		= Memory::Read_U32(_CommandAddress + 0x18);
-		u32 BufferOutSize	= Memory::Read_U32(_CommandAddress + 0x1C);		
+		u32 Parameter		= Memory::IOS_Read_U32(_CommandAddress + 0x0C);
+		u32 BufferIn		= Memory::IOS_Read_U32(_CommandAddress + 0x10);
+		u32 BufferInSize	= Memory::IOS_Read_U32(_CommandAddress + 0x14);
+		u32 BufferOut		= Memory::IOS_Read_U32(_CommandAddress + 0x18);
+		u32 BufferOutSize	= Memory::IOS_Read_U32(_CommandAddress + 0x1C);		
 
 		switch (Parameter)
 		{
@@ -180,18 +180,18 @@ public:
 
 			for (int i=0; i<0x20; i++)
 			{
-				m_RtcCounter[i] = Memory::Read_U8(BufferIn+i);
+				m_RtcCounter[i] = Memory::IOS_Read_U8(BufferIn+i);
 			}
 
 			// send back for sync?? at least there is a out buffer...
 			for (int i=0; i<0x20; i++)
 			{
-				Memory::Write_U8(m_RtcCounter[i], BufferOut+i);
+				Memory::IOS_Write_U8(m_RtcCounter[i], BufferOut+i);
 			}
 
 			INFO_LOG(WII_IPC_NET, "NET_KD_TIME: Set RTC Counter");
 
-			Memory::Write_U32(0, _CommandAddress + 0x4);
+			Memory::IOS_Write_U32(0, _CommandAddress + 0x4);
 			return true;
 
 		case IOCTL_NW24_GET_TIME_DIFF: // Input: none, Output: 32
@@ -207,7 +207,7 @@ public:
 		}
 
 		// write return value
-		Memory::Write_U32(0, _CommandAddress + 0x4);
+		Memory::IOS_Write_U32(0, _CommandAddress + 0x4);
 		return true;
 	}
 

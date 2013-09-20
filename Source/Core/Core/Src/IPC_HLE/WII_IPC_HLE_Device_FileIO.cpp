@@ -51,7 +51,7 @@ bool CWII_IPC_HLE_Device_FileIO::Close(u32 _CommandAddress, bool _bForce)
 
 	// Close always return 0 for success
 	if (_CommandAddress && !_bForce)
-		Memory::Write_U32(0, _CommandAddress + 4);
+		Memory::IOS_Write_U32(0, _CommandAddress + 4);
 	m_Active = false;
 	return true;
 }
@@ -85,7 +85,7 @@ bool CWII_IPC_HLE_Device_FileIO::Open(u32 _CommandAddress, u32 _Mode)
 	}
 
 	if (_CommandAddress)
-		Memory::Write_U32(ReturnValue, _CommandAddress+4);
+		Memory::IOS_Write_U32(ReturnValue, _CommandAddress+4);
 	m_Active = true;
 	return true;
 }
@@ -116,8 +116,8 @@ File::IOFile CWII_IPC_HLE_Device_FileIO::OpenFile()
 bool CWII_IPC_HLE_Device_FileIO::Seek(u32 _CommandAddress)
 {
 	u32 ReturnValue	= FS_RESULT_FATAL;
-	const u32 SeekOffset = Memory::Read_U32(_CommandAddress + 0xC);
-	const u32 Mode = Memory::Read_U32(_CommandAddress + 0x10);
+	const u32 SeekOffset = Memory::IOS_Read_U32(_CommandAddress + 0xC);
+	const u32 Mode = Memory::IOS_Read_U32(_CommandAddress + 0x10);
 
 	if (auto file = OpenFile())
 	{
@@ -157,7 +157,7 @@ bool CWII_IPC_HLE_Device_FileIO::Seek(u32 _CommandAddress)
 		// TODO: This can't be right.
 		ReturnValue = FS_FILE_NOT_EXIST;
 	}
-	Memory::Write_U32(ReturnValue, _CommandAddress + 0x4);
+	Memory::IOS_Write_U32(ReturnValue, _CommandAddress + 0x4);
 
 	return true;
 }
@@ -165,8 +165,8 @@ bool CWII_IPC_HLE_Device_FileIO::Seek(u32 _CommandAddress)
 bool CWII_IPC_HLE_Device_FileIO::Read(u32 _CommandAddress) 
 {	
 	u32 ReturnValue = FS_EACCESS;
-	const u32 Address	= Memory::Read_U32(_CommandAddress + 0xC); // Read to this memory address
-	const u32 Size	= Memory::Read_U32(_CommandAddress + 0x10);
+	const u32 Address	= Memory::IOS_Read_U32(_CommandAddress + 0xC); // Read to this memory address
+	const u32 Size	= Memory::IOS_Read_U32(_CommandAddress + 0x10);
 
 
 	if (auto file = OpenFile())
@@ -197,15 +197,15 @@ bool CWII_IPC_HLE_Device_FileIO::Read(u32 _CommandAddress)
 		ReturnValue = FS_FILE_NOT_EXIST;
 	}
 
-	Memory::Write_U32(ReturnValue, _CommandAddress + 0x4);
+	Memory::IOS_Write_U32(ReturnValue, _CommandAddress + 0x4);
 	return true;
 }
 
 bool CWII_IPC_HLE_Device_FileIO::Write(u32 _CommandAddress) 
 {		
 	u32 ReturnValue = FS_EACCESS;
-	const u32 Address	= Memory::Read_U32(_CommandAddress + 0xC); // Write data from this memory address
-	const u32 Size	= Memory::Read_U32(_CommandAddress + 0x10);
+	const u32 Address	= Memory::IOS_Read_U32(_CommandAddress + 0xC); // Write data from this memory address
+	const u32 Size	= Memory::IOS_Read_U32(_CommandAddress + 0x10);
 
 
 	if (auto file = OpenFile())
@@ -231,7 +231,7 @@ bool CWII_IPC_HLE_Device_FileIO::Write(u32 _CommandAddress)
 		ReturnValue = FS_FILE_NOT_EXIST;
 	}
 
-	Memory::Write_U32(ReturnValue, _CommandAddress + 0x4);
+	Memory::IOS_Write_U32(ReturnValue, _CommandAddress + 0x4);
 	return true;
 }
 
@@ -241,7 +241,7 @@ bool CWII_IPC_HLE_Device_FileIO::IOCtl(u32 _CommandAddress)
 #if defined(_DEBUG) || defined(DEBUGFAST)
 	DumpCommands(_CommandAddress);
 #endif
-	const u32 Parameter =  Memory::Read_U32(_CommandAddress + 0xC);	
+	const u32 Parameter =  Memory::IOS_Read_U32(_CommandAddress + 0xC);	
 	u32 ReturnValue = 0;
 
 	switch (Parameter)
@@ -252,12 +252,12 @@ bool CWII_IPC_HLE_Device_FileIO::IOCtl(u32 _CommandAddress)
 			{
 				u32 m_FileLength = (u32)file.GetSize();
 
-				const u32 BufferOut = Memory::Read_U32(_CommandAddress + 0x18);
+				const u32 BufferOut = Memory::IOS_Read_U32(_CommandAddress + 0x18);
 				INFO_LOG(WII_IPC_FILEIO, "FileIO: ISFS_IOCTL_GETFILESTATS");
 				INFO_LOG(WII_IPC_FILEIO, "  File: %s, Length: %i, Pos: %i", m_Name.c_str(), m_FileLength, m_SeekPos);
 
-				Memory::Write_U32(m_FileLength, BufferOut);
-				Memory::Write_U32(m_SeekPos, BufferOut+4);
+				Memory::IOS_Write_U32(m_FileLength, BufferOut);
+				Memory::IOS_Write_U32(m_SeekPos, BufferOut+4);
 			}
 			else
 			{
@@ -274,7 +274,7 @@ bool CWII_IPC_HLE_Device_FileIO::IOCtl(u32 _CommandAddress)
 
 	}
 
-	Memory::Write_U32(ReturnValue, _CommandAddress + 0x4);
+	Memory::IOS_Write_U32(ReturnValue, _CommandAddress + 0x4);
 
 	return true;
 }

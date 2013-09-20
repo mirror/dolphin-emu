@@ -364,6 +364,55 @@ u32 Read_Opcode(u32 _Address)
 	return _var;
 }
 
+u8 IOS_Read_U8(const u32 _Address)
+{
+	u8 _var_mmu = 0;
+	MMUTable::read8(MMUTable::EmuPointer(_Address), _var_mmu, ACCESS_MASK_PHYSICAL);
+	return _var_mmu;
+}
+
+u16 IOS_Read_U16(const u32 _Address)
+{
+	u16 _var_mmu = 0;
+	MMUTable::read16(MMUTable::EmuPointer(_Address), _var_mmu, ACCESS_MASK_PHYSICAL);
+	return _var_mmu;
+}
+
+u32 IOS_Read_U32(const u32 _Address)
+{
+	u32 _var_mmu = 0;
+	MMUTable::read32(MMUTable::EmuPointer(_Address), _var_mmu, ACCESS_MASK_PHYSICAL);
+	return _var_mmu;
+}
+
+u64 IOS_Read_U64(const u32 _Address)
+{
+	u64 _var_mmu = 0;
+	MMUTable::read64(MMUTable::EmuPointer(_Address), _var_mmu, ACCESS_MASK_PHYSICAL);
+	return _var_mmu;
+}
+
+void IOS_Write_U8(const u8 data, const u32 _Address)
+{
+	MMUTable::write8(MMUTable::EmuPointer(_Address), data, ACCESS_MASK_PHYSICAL);
+}
+
+void IOS_Write_U16(const u16 data, const u32 _Address)
+{
+	MMUTable::write16(MMUTable::EmuPointer(_Address), data, ACCESS_MASK_PHYSICAL);
+}
+
+void IOS_Write_U32(const u32 data, const u32 _Address)
+{
+	MMUTable::write32(MMUTable::EmuPointer(_Address), data, ACCESS_MASK_PHYSICAL);
+}
+
+void IOS_Write_U64(const u64 data, const u32 _Address)
+{
+	MMUTable::write64(MMUTable::EmuPointer(_Address), data, ACCESS_MASK_PHYSICAL);
+}
+
+
 u8 Read_U8(const u32 _Address)
 {    
 #ifdef MMUTABLE_CHECK

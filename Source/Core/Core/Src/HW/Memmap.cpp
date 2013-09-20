@@ -783,6 +783,11 @@ void WriteBigEData(const u8 *_pData, const u32 _Address, const u32 _iSize)
 	memcpy(GetPointer(_Address), _pData, _iSize);
 }
 
+void IOS_Memset(const u32 _Address, const u8 _iValue, const u32 _iLength)
+{
+	MMUTable::memset_emu(MMUTable::EmuPointer(_Address), _iValue, _iLength, ACCESS_MASK_PHYSICAL);
+}
+
 void Memset(const u32 _Address, const u8 _iValue, const u32 _iLength)
 {
 	MMUTable::memset_emu(MMUTable::EmuPointer(_Address), _iValue, _iLength);

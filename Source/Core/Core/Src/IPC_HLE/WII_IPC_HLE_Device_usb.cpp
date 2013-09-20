@@ -176,7 +176,7 @@ bool CWII_IPC_HLE_Device_usb_oh1_57e_305::Open(u32 _CommandAddress, u32 _Mode)
 	m_HCIEndpoint.m_address = 0;
 	m_ACLEndpoint.m_address = 0;
 
-	Memory::Write_U32(GetDeviceID(), _CommandAddress + 4);
+	Memory::IOS_Write_U32(GetDeviceID(), _CommandAddress + 4);
 	m_Active = true;
 	return true;
 }
@@ -192,7 +192,7 @@ bool CWII_IPC_HLE_Device_usb_oh1_57e_305::Close(u32 _CommandAddress, bool _bForc
 	m_ACLEndpoint.m_address = 0;
 
 	if (!_bForce)
-		Memory::Write_U32(0, _CommandAddress + 4);
+		Memory::IOS_Write_U32(0, _CommandAddress + 4);
 	m_Active = false;
 	return true;
 }
@@ -206,16 +206,16 @@ bool CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtl(u32 _CommandAddress)
 bool CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtlV(u32 _CommandAddress)
 {
 /*
-	Memory::Write_U8(255, 0x80149950);  // BTM LOG  // 3 logs L2Cap  // 4 logs l2_csm$
-	Memory::Write_U8(255, 0x80149949);  // Security Manager
-	Memory::Write_U8(255, 0x80149048);  // HID
-	Memory::Write_U8(3, 0x80152058);    // low ??   // >= 4 and you will get a lot of event messages of the same type
-	Memory::Write_U8(1, 0x80152018);    // WUD
-	Memory::Write_U8(1, 0x80151FC8);    // DEBUGPrint
-	Memory::Write_U8(1, 0x80151488);    // WPAD_LOG
-	Memory::Write_U8(1, 0x801514A8);    // USB_LOG
-	Memory::Write_U8(1, 0x801514D8);    // WUD_DEBUGPrint
-	Memory::Write_U8(1, 0x80148E09);    // HID LOG
+	Memory::IOS_Write_U8(255, 0x80149950);  // BTM LOG  // 3 logs L2Cap  // 4 logs l2_csm$
+	Memory::IOS_Write_U8(255, 0x80149949);  // Security Manager
+	Memory::IOS_Write_U8(255, 0x80149048);  // HID
+	Memory::IOS_Write_U8(3, 0x80152058);    // low ??   // >= 4 and you will get a lot of event messages of the same type
+	Memory::IOS_Write_U8(1, 0x80152018);    // WUD
+	Memory::IOS_Write_U8(1, 0x80151FC8);    // DEBUGPrint
+	Memory::IOS_Write_U8(1, 0x80151488);    // WPAD_LOG
+	Memory::IOS_Write_U8(1, 0x801514A8);    // USB_LOG
+	Memory::IOS_Write_U8(1, 0x801514D8);    // WUD_DEBUGPrint
+	Memory::IOS_Write_U8(1, 0x80148E09);    // HID LOG
 */
 
 	bool _SendReply = false;
@@ -258,7 +258,7 @@ bool CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtlV(u32 _CommandAddress)
 
 	case USBV0_IOCTL_BLKMSG:
 		{
-			u8 Command = Memory::Read_U8(CommandBuffer.InBuffer[0].m_Address);
+			u8 Command = Memory::IOS_Read_U8(CommandBuffer.InBuffer[0].m_Address);
 			switch (Command)
 			{
 			case ACL_DATA_OUT: // ACL data is received from the stack
@@ -306,7 +306,7 @@ bool CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtlV(u32 _CommandAddress)
 
 	case USBV0_IOCTL_INTRMSG:
 		{
-			u8 Command = Memory::Read_U8(CommandBuffer.InBuffer[0].m_Address);
+			u8 Command = Memory::IOS_Read_U8(CommandBuffer.InBuffer[0].m_Address);
 			if (Command == HCI_EVENT) // We are given a HCI buffer to fill
 			{
 				CtrlBuffer temp(_CommandAddress);
@@ -340,7 +340,7 @@ bool CWII_IPC_HLE_Device_usb_oh1_57e_305::IOCtlV(u32 _CommandAddress)
 	}
 
 	// write return value
-	Memory::Write_U32(0, _CommandAddress + 4);
+	Memory::IOS_Write_U32(0, _CommandAddress + 4);
 	return _SendReply;
 }
 

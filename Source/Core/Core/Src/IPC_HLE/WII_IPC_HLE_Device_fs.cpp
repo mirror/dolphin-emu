@@ -40,7 +40,7 @@ bool CWII_IPC_HLE_Device_fs::Open(u32 _CommandAddress, u32 _Mode)
 		File::CreateDir(Path.c_str());
 	}
 
-	Memory::Write_U32(GetDeviceID(), _CommandAddress+4);
+	Memory::IOS_Write_U32(GetDeviceID(), _CommandAddress+4);
 	m_Active = true;
 	return true;
 }
@@ -49,7 +49,7 @@ bool CWII_IPC_HLE_Device_fs::Close(u32 _CommandAddress, bool _bForce)
 {
 	INFO_LOG(WII_IPC_FILEIO, "Close");
 	if (!_bForce)
-		Memory::Write_U32(0, _CommandAddress + 4);
+		Memory::IOS_Write_U32(0, _CommandAddress + 4);
 	m_Active = false;
 	return true;
 }
@@ -80,7 +80,7 @@ bool CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 	// to avoid returning bad values
 	for(u32 i = 0; i < CommandBuffer.NumberPayloadBuffer; i++)
 	{
-		Memory::Memset(CommandBuffer.PayloadBuffer[i].m_Address, 0,
+		Memory::IOS_Memset(CommandBuffer.PayloadBuffer[i].m_Address, 0,
 			CommandBuffer.PayloadBuffer[i].m_Size);
 	}
 
@@ -125,11 +125,11 @@ bool CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 				size_t numFile = FileSearch.GetFileNames().size();
 				INFO_LOG(WII_IPC_FILEIO, "\t%lu files found", (unsigned long)numFile);
 
-				Memory::Write_U32((u32)numFile, CommandBuffer.PayloadBuffer[0].m_Address);
+				Memory::IOS_Write_U32((u32)numFile, CommandBuffer.PayloadBuffer[0].m_Address);
 			}
 			else
 			{
-				u32 MaxEntries = Memory::Read_U32(CommandBuffer.InBuffer[0].m_Address);
+				u32 MaxEntries = Memory::IOS_Read_U32(CommandBuffer.InBuffer[0].m_Address);
 
 				memset(Memory::GetPointer(CommandBuffer.PayloadBuffer[0].m_Address), 0, CommandBuffer.PayloadBuffer[0].m_Size);
 
@@ -161,7 +161,7 @@ bool CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 					INFO_LOG(WII_IPC_FILEIO, "\tFound: %s", FileName.c_str());
 				}
 
-				Memory::Write_U32((u32)numFiles, CommandBuffer.PayloadBuffer[1].m_Address);
+				Memory::IOS_Write_U32((u32)numFiles, CommandBuffer.PayloadBuffer[1].m_Address);
 			}
 
 			ReturnValue = FS_RESULT_OK;
@@ -217,8 +217,8 @@ bool CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 				WARN_LOG(WII_IPC_FILEIO, "FS: fsBlock failed, cannot find directory: %s", path.c_str());
 			}
 
-			Memory::Write_U32(fsBlocks, CommandBuffer.PayloadBuffer[0].m_Address);
-			Memory::Write_U32(iNodes, CommandBuffer.PayloadBuffer[1].m_Address);
+			Memory::IOS_Write_U32(fsBlocks, CommandBuffer.PayloadBuffer[0].m_Address);
+			Memory::IOS_Write_U32(iNodes, CommandBuffer.PayloadBuffer[1].m_Address);
 		}
 		break;
 
@@ -228,29 +228,29 @@ bool CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 		break;
 	}
 
-	Memory::Write_U32(ReturnValue, _CommandAddress+4);
+	Memory::IOS_Write_U32(ReturnValue, _CommandAddress+4);
 
 	return true; 
 }
 
 bool CWII_IPC_HLE_Device_fs::IOCtl(u32 _CommandAddress) 
 { 
-	//u32 DeviceID = Memory::Read_U32(_CommandAddress + 8);
+	//u32 DeviceID = Memory::IOS_Read_U32(_CommandAddress + 8);
 	//LOG(WII_IPC_FILEIO, "FS: IOCtl (Device=%s, DeviceID=%08x)", GetDeviceName().c_str(), DeviceID);
 
-	u32 Parameter =  Memory::Read_U32(_CommandAddress + 0xC);
-	u32 BufferIn =  Memory::Read_U32(_CommandAddress + 0x10);
-	u32 BufferInSize =  Memory::Read_U32(_CommandAddress + 0x14);
-	u32 BufferOut = Memory::Read_U32(_CommandAddress + 0x18);
-	u32 BufferOutSize = Memory::Read_U32(_CommandAddress + 0x1C);
+	u32 Parameter =  Memory::IOS_Read_U32(_CommandAddress + 0xC);
+	u32 BufferIn =  Memory::IOS_Read_U32(_CommandAddress + 0x10);
+	u32 BufferInSize =  Memory::IOS_Read_U32(_CommandAddress + 0x14);
+	u32 BufferOut = Memory::IOS_Read_U32(_CommandAddress + 0x18);
+	u32 BufferOutSize = Memory::IOS_Read_U32(_CommandAddress + 0x1C);
 
 	/* Prepare the out buffer(s) with zeroes as a safety precaution
 	   to avoid returning bad values. */
 	//LOG(WII_IPC_FILEIO, "Cleared %u bytes of the out buffer", _BufferOutSize);
-	Memory::Memset(BufferOut, 0, BufferOutSize);
+	Memory::IOS_Memset(BufferOut, 0, BufferOutSize);
 
 	u32 ReturnValue = ExecuteCommand(Parameter, BufferIn, BufferInSize, BufferOut, BufferOutSize);	
-	Memory::Write_U32(ReturnValue, _CommandAddress + 4);
+	Memory::IOS_Write_U32(ReturnValue, _CommandAddress + 4);
 
 	return true; 
 }
@@ -288,11 +288,11 @@ s32 CWII_IPC_HLE_Device_fs::ExecuteCommand(u32 _Parameter, u32 _BufferIn, u32 _B
 			_dbg_assert_(WII_IPC_FILEIO, _BufferOutSize == 0);
 			u32 Addr = _BufferIn;
 
-			u32 OwnerID = Memory::Read_U32(Addr); Addr += 4;
-			u16 GroupID = Memory::Read_U16(Addr); Addr += 2;
+			u32 OwnerID = Memory::IOS_Read_U32(Addr); Addr += 4;
+			u16 GroupID = Memory::IOS_Read_U16(Addr); Addr += 2;
 			std::string DirName(HLE_IPC_BuildFilename((const char*)Memory::GetPointer(Addr), 64)); Addr += 64;
 			Addr += 9; // owner attribs, permission
-			u8 Attribs = Memory::Read_U8(Addr);
+			u8 Attribs = Memory::IOS_Read_U8(Addr);
 
 			INFO_LOG(WII_IPC_FILEIO, "FS: CREATE_DIR %s, OwnerID %#x, GroupID %#x, Attributes %#x", DirName.c_str(), OwnerID, GroupID, Attribs);
 
@@ -308,13 +308,13 @@ s32 CWII_IPC_HLE_Device_fs::ExecuteCommand(u32 _Parameter, u32 _BufferIn, u32 _B
 		{
 			u32 Addr = _BufferIn;
 		
-			u32 OwnerID = Memory::Read_U32(Addr); Addr += 4;
-			u16 GroupID = Memory::Read_U16(Addr); Addr += 2;
+			u32 OwnerID = Memory::IOS_Read_U32(Addr); Addr += 4;
+			u16 GroupID = Memory::IOS_Read_U16(Addr); Addr += 2;
 			std::string Filename = HLE_IPC_BuildFilename((const char*)Memory::GetPointer(_BufferIn), 64); Addr += 64;
-			u8 OwnerPerm = Memory::Read_U8(Addr); Addr += 1;
-			u8 GroupPerm = Memory::Read_U8(Addr); Addr += 1;
-			u8 OtherPerm = Memory::Read_U8(Addr); Addr += 1;
-			u8 Attributes = Memory::Read_U8(Addr); Addr += 1;
+			u8 OwnerPerm = Memory::IOS_Read_U8(Addr); Addr += 1;
+			u8 GroupPerm = Memory::IOS_Read_U8(Addr); Addr += 1;
+			u8 OtherPerm = Memory::IOS_Read_U8(Addr); Addr += 1;
+			u8 Attributes = Memory::IOS_Read_U8(Addr); Addr += 1;
 
 			INFO_LOG(WII_IPC_FILEIO, "FS: SetAttrib %s", Filename.c_str());
 			DEBUG_LOG(WII_IPC_FILEIO, "    OwnerID: 0x%08x", OwnerID);
@@ -362,13 +362,13 @@ s32 CWII_IPC_HLE_Device_fs::ExecuteCommand(u32 _Parameter, u32 _BufferIn, u32 _B
 			if (_BufferOutSize == 76)
 			{
 				u32 Addr = _BufferOut;
-				Memory::Write_U32(OwnerID, Addr);										Addr += 4;
-				Memory::Write_U16(GroupID, Addr);										Addr += 2;
+				Memory::IOS_Write_U32(OwnerID, Addr);										Addr += 4;
+				Memory::IOS_Write_U16(GroupID, Addr);										Addr += 2;
 				memcpy(Memory::GetPointer(Addr), Memory::GetPointer(_BufferIn), 64);	Addr += 64;
-				Memory::Write_U8(OwnerPerm, Addr);										Addr += 1;
-				Memory::Write_U8(GroupPerm, Addr);										Addr += 1;
-				Memory::Write_U8(OtherPerm, Addr);										Addr += 1;
-				Memory::Write_U8(Attributes, Addr);										Addr += 1;
+				Memory::IOS_Write_U8(OwnerPerm, Addr);										Addr += 1;
+				Memory::IOS_Write_U8(GroupPerm, Addr);										Addr += 1;
+				Memory::IOS_Write_U8(OtherPerm, Addr);										Addr += 1;
+				Memory::IOS_Write_U8(Attributes, Addr);										Addr += 1;
 			}
 
 			return FS_RESULT_OK;
@@ -440,13 +440,13 @@ s32 CWII_IPC_HLE_Device_fs::ExecuteCommand(u32 _Parameter, u32 _BufferIn, u32 _B
 			_dbg_assert_(WII_IPC_FILEIO, _BufferOutSize == 0);
 
 			u32 Addr = _BufferIn;
-			u32 OwnerID = Memory::Read_U32(Addr); Addr += 4;
-			u16 GroupID = Memory::Read_U16(Addr); Addr += 2;
+			u32 OwnerID = Memory::IOS_Read_U32(Addr); Addr += 4;
+			u16 GroupID = Memory::IOS_Read_U16(Addr); Addr += 2;
 			std::string Filename(HLE_IPC_BuildFilename((const char*)Memory::GetPointer(Addr), 64)); Addr += 64;
-			u8 OwnerPerm = Memory::Read_U8(Addr); Addr++;
-			u8 GroupPerm = Memory::Read_U8(Addr); Addr++;
-			u8 OtherPerm = Memory::Read_U8(Addr); Addr++;
-			u8 Attributes = Memory::Read_U8(Addr); Addr++;
+			u8 OwnerPerm = Memory::IOS_Read_U8(Addr); Addr++;
+			u8 GroupPerm = Memory::IOS_Read_U8(Addr); Addr++;
+			u8 OtherPerm = Memory::IOS_Read_U8(Addr); Addr++;
+			u8 Attributes = Memory::IOS_Read_U8(Addr); Addr++;
 
 			INFO_LOG(WII_IPC_FILEIO, "FS: CreateFile %s", Filename.c_str());
 			DEBUG_LOG(WII_IPC_FILEIO, "    OwnerID: 0x%08x", OwnerID);

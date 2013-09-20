@@ -119,9 +119,9 @@ private:
 		{
 			if (m_address)
 			{
-				u32 InBufferNum		= Memory::Read_U32(m_address + 0x10);
-				u32 BufferVector	= Memory::Read_U32(m_address + 0x18);
-				m_buffer = Memory::Read_U32(
+				u32 InBufferNum		= Memory::IOS_Read_U32(m_address + 0x10);
+				u32 BufferVector	= Memory::IOS_Read_U32(m_address + 0x18);
+				m_buffer = Memory::IOS_Read_U32(
 					BufferVector + InBufferNum * sizeof(SIOCtlVBuffer::SBuffer));
 			}
 		}
@@ -133,7 +133,7 @@ private:
 
 		inline void SetRetVal(const u32 retval) const
 		{
-			Memory::Write_U32(retval, m_address + 4);
+			Memory::IOS_Write_U32(retval, m_address + 4);
 		}
 
 		inline bool IsValid() const

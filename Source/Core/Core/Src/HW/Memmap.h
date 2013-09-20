@@ -136,6 +136,16 @@ u16 Read_U16(const u32 _Address);
 u32 Read_U32(const u32 _Address);
 u64 Read_U64(const u32 _Address);
 
+u8 IOS_Read_U8(const u32 _Address);
+u16 IOS_Read_U16(const u32 _Address);
+u32 IOS_Read_U32(const u32 _Address);
+u64 IOS_Read_U64(const u32 _Address);
+void IOS_Write_U8(const u8 data, const u32 _Address);
+void IOS_Write_U16(const u16 data, const u32 _Address);
+void IOS_Write_U32(const u32 data, const u32 _Address);
+void IOS_Write_U64(const u64 data, const u32 _Address);
+
+
 // used by JIT. Return zero-extended 32bit values
 u32 Read_U8_ZX(const u32 _Address);
 u32 Read_U16_ZX(const u32 _Address);
@@ -161,6 +171,7 @@ u8* GetPointer(const u32 _Address);
 void DMA_LCToMemory(const u32 _iMemAddr, const u32 _iCacheAddr, const u32 _iNumBlocks);
 void DMA_MemoryToLC(const u32 _iCacheAddr, const u32 _iMemAddr, const u32 _iNumBlocks);
 void Memset(const u32 _Address, const u8 _Data, const u32 _iLength);
+void IOS_Memset(const u32 _Address, const u8 _iValue, const u32 _iLength);
 
 // TLB functions
 void SDRUpdated();

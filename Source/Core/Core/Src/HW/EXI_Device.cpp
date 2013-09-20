@@ -48,7 +48,7 @@ void IEXIDevice::DMAWrite(u32 _uAddr, u32 _uSize)
 	u8 uByte;
 	while (_uSize--)
 	{
-		MMUTable::read8(MMUTable::EmuPointer(_uAddr), uByte, ACCESS_MASK_PHYSICAL);
+		MMUTable::read8(MMUTable::EmuPointer(_uAddr&0x03ffffff), uByte, ACCESS_MASK_PHYSICAL);
 //		u8 uByte = Memory::Read_U8(_uAddr++);
 		TransferByte(uByte);
 		_uAddr++;
@@ -63,7 +63,7 @@ void IEXIDevice::DMARead(u32 _uAddr, u32 _uSize)
 	{
 		TransferByte(uByte);
 //		Memory::Write_U8(uByte, _uAddr++);
-		MMUTable::write8(MMUTable::EmuPointer(_uAddr), uByte, ACCESS_MASK_PHYSICAL); 
+		MMUTable::write8(MMUTable::EmuPointer(_uAddr&0x3ffffff), uByte, ACCESS_MASK_PHYSICAL); 
 		_uAddr++;
 	}
 };

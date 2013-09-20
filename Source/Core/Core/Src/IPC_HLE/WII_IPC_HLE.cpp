@@ -325,8 +325,8 @@ void ExecuteCommand(u32 _Address)
 {
 	bool CmdSuccess = false;
 
-	ECommandType Command = static_cast<ECommandType>(Memory::Read_U32(_Address));
-	volatile s32 DeviceID = Memory::Read_U32(_Address + 8);
+	ECommandType Command = static_cast<ECommandType>(Memory::IOS_Read_U32(_Address));
+	volatile s32 DeviceID = Memory::IOS_Read_U32(_Address + 8);
 
 	IWII_IPC_HLE_Device* pDevice = (DeviceID >= 0 && DeviceID < IPC_MAX_FDS) ? g_FdMap[DeviceID] : NULL;
 
@@ -336,11 +336,20 @@ void ExecuteCommand(u32 _Address)
 	{
 	case COMMAND_OPEN_DEVICE:
 	{
-		u32 Mode = Memory::Read_U32(_Address + 0x10);
+		u32 Mode = Memory::IOS_Read_U32(_Address + 0x10);
 		DeviceID = getFreeDeviceId();
 		
+
 		std::string DeviceName;
-		Memory::GetString(DeviceName, Memory::Read_U32(_Address + 0xC));
+		u32 nameaddr = Memory::IOS_Read_U32(_Address + 0xC);
+		u8 tmpchar = Memory::IOS_Read_U8(nameaddr);
+		while(tmpchar != 0x00)
+		{
+			nameaddr++;
+			DeviceName.push_back(tmpchar);
+			tmpchar = Memory::IOS_Read_U8(nameaddr);
+		}
+//		Memory::GetString(DeviceName, Memory::IOS_Read_U32(_Address + 0xC));
 
 		
 		WARN_LOG(WII_IPC_HLE, "Trying to open %s as %d", DeviceName.c_str(), DeviceID);
@@ -356,13 +365,13 @@ void ExecuteCommand(u32 _Address)
 						es_inuse[j] = true;
 						g_FdMap[DeviceID] = es_handles[j];
 						CmdSuccess = es_handles[j]->Open(_Address, Mode);
-						Memory::Write_U32(DeviceID, _Address+4);
+						Memory::IOS_Write_U32(DeviceID, _Address+4);
 						break;
 					}
 				}
 				if (j == ES_MAX_COUNT)
 				{
-					Memory::Write_U32(FS_EESEXHAUSTED, _Address + 4);
+					Memory::IOS_Write_U32(FS_EESEXHAUSTED, _Address + 4);
 					CmdSuccess = true;
 				}
 
@@ -376,12 +385,12 @@ void ExecuteCommand(u32 _Address)
 					CmdSuccess = pDevice->Open(_Address, Mode);
 					INFO_LOG(WII_IPC_FILEIO, "IOP: ReOpen (Device=%s, DeviceID=%08x, Mode=%i)",
 						pDevice->GetDeviceName().c_str(), DeviceID, Mode);
-					Memory::Write_U32(DeviceID, _Address+4);
+					Memory::IOS_Write_U32(DeviceID, _Address+4);
 				}
 				else
 				{
 					WARN_LOG(WII_IPC_HLE, "Unimplemented device: %s", DeviceName.c_str());
-					Memory::Write_U32(FS_ENOENT, _Address+4);
+					Memory::IOS_Write_U32(FS_ENOENT, _Address+4);
 					CmdSuccess = true;
 				}
 			}
@@ -392,7 +401,7 @@ void ExecuteCommand(u32 _Address)
 
 				INFO_LOG(WII_IPC_FILEIO, "IOP: Open File (Device=%s, ID=%08x, Mode=%i)",
 						pDevice->GetDeviceName().c_str(), DeviceID, Mode);
-				if (Memory::Read_U32(_Address + 4) == (u32)DeviceID)
+				if (Memory::IOS_Read_U32(_Address + 4) == (u32)DeviceID)
 				{
 					g_FdMap[DeviceID] = pDevice;
 				}
@@ -406,7 +415,7 @@ void ExecuteCommand(u32 _Address)
 		}
 		else
 		{
-			Memory::Write_U32(FS_EFDEXHAUSTED, _Address + 4);
+			Memory::IOS_Write_U32(FS_EFDEXHAUSTED, _Address + 4);
 			CmdSuccess = true;
 		}
 		break;
@@ -437,7 +446,7 @@ void ExecuteCommand(u32 _Address)
 		}
 		else
 		{
-			Memory::Write_U32(FS_EINVAL, _Address + 4);
+			Memory::IOS_Write_U32(FS_EINVAL, _Address + 4);
 			CmdSuccess = true;
 		}
 		break;
@@ -450,7 +459,7 @@ void ExecuteCommand(u32 _Address)
 		}
 		else
 		{
-			Memory::Write_U32(FS_EINVAL, _Address + 4);
+			Memory::IOS_Write_U32(FS_EINVAL, _Address + 4);
 			CmdSuccess = true;
 		}
 		break;
@@ -463,7 +472,7 @@ void ExecuteCommand(u32 _Address)
 		}
 		else
 		{
-			Memory::Write_U32(FS_EINVAL, _Address + 4);
+			Memory::IOS_Write_U32(FS_EINVAL, _Address + 4);
 			CmdSuccess = true;
 		}
 		break;
@@ -476,7 +485,7 @@ void ExecuteCommand(u32 _Address)
 		}
 		else
 		{
-			Memory::Write_U32(FS_EINVAL, _Address + 4);
+			Memory::IOS_Write_U32(FS_EINVAL, _Address + 4);
 			CmdSuccess = true;
 		}
 		break;
@@ -506,9 +515,9 @@ void ExecuteCommand(u32 _Address)
 
 	// It seems that the original hardware overwrites the command after it has been
 	// executed. We write 8 which is not any valid command, and what IOS does 
-	Memory::Write_U32(8, _Address);
+	Memory::IOS_Write_U32(8, _Address);
 	// IOS seems to write back the command that was responded to
-	Memory::Write_U32(Command, _Address + 8);
+	Memory::IOS_Write_U32(Command, _Address + 8);
 
 	if (CmdSuccess)
 	{

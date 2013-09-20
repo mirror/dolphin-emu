@@ -67,7 +67,7 @@ public:
 	{
 		(void)_Mode;
 		WARN_LOG(WII_IPC_HLE, "%s does not support Open()", m_Name.c_str());
-		Memory::Write_U32(FS_ENOENT, _CommandAddress + 4);
+		Memory::IOS_Write_U32(FS_ENOENT, _CommandAddress + 4);
 		m_Active = true;
 		return true;
 	}
@@ -76,7 +76,7 @@ public:
 	{
 		WARN_LOG(WII_IPC_HLE, "%s does not support Close()", m_Name.c_str());
 		if (!_bForce)
-			Memory::Write_U32(FS_EINVAL, _CommandAddress + 4);
+			Memory::IOS_Write_U32(FS_EINVAL, _CommandAddress + 4);
 		m_Active = false;
 		return true;
 	}
@@ -112,10 +112,10 @@ protected:
 			// These are the Ioctlv parameters in the IOS communication. The BufferVector
 			// is a memory address offset at where the in and out buffer addresses are
 			// stored.
-			Parameter			= Memory::Read_U32(m_Address + 0x0C); // command 3, arg0
-			NumberInBuffer		= Memory::Read_U32(m_Address + 0x10); // 4, arg1
-			NumberPayloadBuffer	= Memory::Read_U32(m_Address + 0x14); // 5, arg2
-			BufferVector		= Memory::Read_U32(m_Address + 0x18); // 6, arg3
+			Parameter			= Memory::IOS_Read_U32(m_Address + 0x0C); // command 3, arg0
+			NumberInBuffer		= Memory::IOS_Read_U32(m_Address + 0x10); // 4, arg1
+			NumberPayloadBuffer	= Memory::IOS_Read_U32(m_Address + 0x14); // 5, arg2
+			BufferVector		= Memory::IOS_Read_U32(m_Address + 0x18); // 6, arg3
 
 			// The start of the out buffer
 			u32 BufferVectorOffset = BufferVector;
@@ -124,9 +124,9 @@ protected:
 			for (u32 i = 0; i < NumberInBuffer; i++)
 			{
 				SBuffer Buffer;
-				Buffer.m_Address	= Memory::Read_U32(BufferVectorOffset);
+				Buffer.m_Address	= Memory::IOS_Read_U32(BufferVectorOffset);
 				BufferVectorOffset += 4;
-				Buffer.m_Size		= Memory::Read_U32(BufferVectorOffset);
+				Buffer.m_Size		= Memory::IOS_Read_U32(BufferVectorOffset);
 				BufferVectorOffset += 4;
 				InBuffer.push_back(Buffer);
 				DEBUG_LOG(WII_IPC_HLE, "SIOCtlVBuffer in%i: 0x%08x, 0x%x",
@@ -137,9 +137,9 @@ protected:
 			for (u32 i = 0; i < NumberPayloadBuffer; i++)
 			{
 				SBuffer Buffer;
-				Buffer.m_Address	= Memory::Read_U32(BufferVectorOffset);
+				Buffer.m_Address	= Memory::IOS_Read_U32(BufferVectorOffset);
 				BufferVectorOffset += 4;
-				Buffer.m_Size		= Memory::Read_U32(BufferVectorOffset);
+				Buffer.m_Size		= Memory::IOS_Read_U32(BufferVectorOffset);
 				BufferVectorOffset += 4;
 				PayloadBuffer.push_back(Buffer);
 				DEBUG_LOG(WII_IPC_HLE, "SIOCtlVBuffer io%i: 0x%08x, 0x%x",
@@ -170,7 +170,7 @@ protected:
 		for (u32 i = 0; i < _NumberOfCommands; i++)
 		{
 			GENERIC_LOG(LogType, Verbosity, "    Command%02i: 0x%08x", i,
-						Memory::Read_U32(_CommandAddress + i*4));	
+						Memory::IOS_Read_U32(_CommandAddress + i*4));	
 		}
 	}
 	
@@ -183,8 +183,8 @@ protected:
 		u32 BufferOffset = BufferVector;
 		for (u32 i = 0; i < NumberInBuffer; i++)
 		{
-			u32 InBuffer        = Memory::Read_U32(BufferOffset); BufferOffset += 4;
-			u32 InBufferSize    = Memory::Read_U32(BufferOffset); BufferOffset += 4;
+			u32 InBuffer        = Memory::IOS_Read_U32(BufferOffset); BufferOffset += 4;
+			u32 InBufferSize    = Memory::IOS_Read_U32(BufferOffset); BufferOffset += 4;
 
 			GENERIC_LOG(LogType, LogTypes::LINFO, "%s - IOCtlV InBuffer[%i]:",
 				GetDeviceName().c_str(), i);
@@ -193,7 +193,7 @@ protected:
 			for (u32 j = 0; j < InBufferSize; j++)
 			{
 				char Buffer[128];
-				sprintf(Buffer, "%02x ", Memory::Read_U8(InBuffer+j));
+				sprintf(Buffer, "%02x ", Memory::IOS_Read_U8(InBuffer+j));
 				Temp.append(Buffer);
 			}
 
@@ -202,8 +202,8 @@ protected:
 
 		for (u32 i = 0; i < NumberOutBuffer; i++)
 		{
-			u32 OutBuffer        = Memory::Read_U32(BufferOffset); BufferOffset += 4;
-			u32 OutBufferSize    = Memory::Read_U32(BufferOffset); BufferOffset += 4;
+			u32 OutBuffer        = Memory::IOS_Read_U32(BufferOffset); BufferOffset += 4;
+			u32 OutBufferSize    = Memory::IOS_Read_U32(BufferOffset); BufferOffset += 4;
 
 			GENERIC_LOG(LogType, LogTypes::LINFO, "%s - IOCtlV OutBuffer[%i]:",
 				GetDeviceName().c_str(), i);
@@ -229,7 +229,7 @@ public:
 	{
 		(void)Mode;
 		WARN_LOG(WII_IPC_HLE, "%s faking Open()", m_Name.c_str());
-		Memory::Write_U32(GetDeviceID(), CommandAddress + 4);
+		Memory::IOS_Write_U32(GetDeviceID(), CommandAddress + 4);
 		m_Active = true;
 		return true;
 	}
@@ -237,7 +237,7 @@ public:
 	{
 		WARN_LOG(WII_IPC_HLE, "%s faking Close()", m_Name.c_str());
 		if (!bForce)
-			Memory::Write_U32(FS_SUCCESS, CommandAddress + 4);
+			Memory::IOS_Write_U32(FS_SUCCESS, CommandAddress + 4);
 		m_Active = false;
 		return true;
 	}
@@ -245,13 +245,13 @@ public:
 	bool IOCtl(u32 CommandAddress)
 	{
 		WARN_LOG(WII_IPC_HLE, "%s faking IOCtl()", m_Name.c_str());
-		Memory::Write_U32(FS_SUCCESS, CommandAddress + 4);
+		Memory::IOS_Write_U32(FS_SUCCESS, CommandAddress + 4);
 		return true;
 	}
 	bool IOCtlV(u32 CommandAddress)
 	{
 		WARN_LOG(WII_IPC_HLE, "%s faking IOCtlV()", m_Name.c_str());
-		Memory::Write_U32(FS_SUCCESS, CommandAddress + 4);
+		Memory::IOS_Write_U32(FS_SUCCESS, CommandAddress + 4);
 		return true;
 	}
 };

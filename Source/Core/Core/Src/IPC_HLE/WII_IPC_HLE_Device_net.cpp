@@ -70,7 +70,7 @@ CWII_IPC_HLE_Device_net_kd_request::~CWII_IPC_HLE_Device_net_kd_request()
 bool CWII_IPC_HLE_Device_net_kd_request::Open(u32 _CommandAddress, u32 _Mode)
 {
 	INFO_LOG(WII_IPC_NET, "NET_KD_REQ: Open");
-	Memory::Write_U32(GetDeviceID(), _CommandAddress + 4);
+	Memory::IOS_Write_U32(GetDeviceID(), _CommandAddress + 4);
 	m_Active = true;
 	return true;
 }
@@ -79,18 +79,18 @@ bool CWII_IPC_HLE_Device_net_kd_request::Close(u32 _CommandAddress, bool _bForce
 {
 	INFO_LOG(WII_IPC_NET, "NET_KD_REQ: Close");
 	if (!_bForce)
-		Memory::Write_U32(0, _CommandAddress + 4);
+		Memory::IOS_Write_U32(0, _CommandAddress + 4);
 	m_Active = false;
 	return true;
 }
 
 bool CWII_IPC_HLE_Device_net_kd_request::IOCtl(u32 _CommandAddress) 
 {
-	u32 Parameter		= Memory::Read_U32(_CommandAddress + 0xC);
-	u32 BufferIn		= Memory::Read_U32(_CommandAddress + 0x10);
-	u32 BufferInSize	= Memory::Read_U32(_CommandAddress + 0x14);
-	u32 BufferOut		= Memory::Read_U32(_CommandAddress + 0x18);
-	u32 BufferOutSize	= Memory::Read_U32(_CommandAddress + 0x1C);    
+	u32 Parameter		= Memory::IOS_Read_U32(_CommandAddress + 0xC);
+	u32 BufferIn		= Memory::IOS_Read_U32(_CommandAddress + 0x10);
+	u32 BufferInSize	= Memory::IOS_Read_U32(_CommandAddress + 0x14);
+	u32 BufferOut		= Memory::IOS_Read_U32(_CommandAddress + 0x18);
+	u32 BufferOutSize	= Memory::IOS_Read_U32(_CommandAddress + 0x1C);    
 
 	u32 ReturnValue = 0;
 	switch (Parameter)
@@ -145,7 +145,7 @@ bool CWII_IPC_HLE_Device_net_kd_request::IOCtl(u32 _CommandAddress)
 	}
 
 	// g_ReplyQueueLater.push(std::pair<u32, std::string>(_CommandAddress, GetDeviceName()));
-	Memory::Write_U32(ReturnValue, _CommandAddress + 4);
+	Memory::IOS_Write_U32(ReturnValue, _CommandAddress + 4);
 
 	return true; 
 }
@@ -191,7 +191,7 @@ CWII_IPC_HLE_Device_net_ncd_manage::~CWII_IPC_HLE_Device_net_ncd_manage()
 bool CWII_IPC_HLE_Device_net_ncd_manage::Open(u32 _CommandAddress, u32 _Mode)
 {
 	INFO_LOG(WII_IPC_NET, "NET_NCD_MANAGE: Open");
-	Memory::Write_U32(GetDeviceID(), _CommandAddress+4);
+	Memory::IOS_Write_U32(GetDeviceID(), _CommandAddress+4);
 	m_Active = true;
 	return true;
 }
@@ -200,7 +200,7 @@ bool CWII_IPC_HLE_Device_net_ncd_manage::Close(u32 _CommandAddress, bool _bForce
 {
 	INFO_LOG(WII_IPC_NET, "NET_NCD_MANAGE: Close");
 	if (!_bForce)
-		Memory::Write_U32(0, _CommandAddress + 4);
+		Memory::IOS_Write_U32(0, _CommandAddress + 4);
 	m_Active = false;
 	return true;
 }
@@ -228,16 +228,16 @@ bool CWII_IPC_HLE_Device_net_ncd_manage::IOCtlV(u32 _CommandAddress)
 			netcfg_connection_t *conn = &m_Ifconfig.connection[i];
 
 			Memory::WriteBigEData((const u8*)conn, addr, 26);
-			Memory::Write_U16(Common::swap16(conn->mtu), addr+26);
+			Memory::IOS_Write_U16(Common::swap16(conn->mtu), addr+26);
 			Memory::WriteBigEData((const u8*)conn->padding_3, addr+28, 8);
 
 			Memory::WriteBigEData((const u8*)&conn->proxy_settings, addr+36, 260);
-			Memory::Write_U16(Common::swap16(conn->proxy_settings.proxy_port), addr+296);
+			Memory::IOS_Write_U16(Common::swap16(conn->proxy_settings.proxy_port), addr+296);
 			Memory::WriteBigEData((const u8*)&conn->proxy_settings.proxy_username, addr+298, 65);
-			Memory::Write_U8(conn->padding_4, addr+363);
+			Memory::IOS_Write_U8(conn->padding_4, addr+363);
 
 			Memory::WriteBigEData((const u8*)&conn->proxy_settings_copy, addr+364, 260);
-			Memory::Write_U16(Common::swap16(conn->proxy_settings_copy.proxy_port), addr+624);
+			Memory::IOS_Write_U16(Common::swap16(conn->proxy_settings_copy.proxy_port), addr+624);
 			Memory::WriteBigEData((const u8*)&conn->proxy_settings_copy.proxy_username, addr+626, 65);
 			Memory::WriteBigEData((const u8*)conn->padding_5, addr+691, 1641);
 			addr += sizeof(netcfg_connection_t);
@@ -349,7 +349,7 @@ bool CWII_IPC_HLE_Device_net_ncd_manage::IOCtlV(u32 _CommandAddress)
 		break;
 	}
 
-	Memory::Write_U32(ReturnValue, _CommandAddress+4);
+	Memory::IOS_Write_U32(ReturnValue, _CommandAddress+4);
 	return true;
 }
 
@@ -367,7 +367,7 @@ CWII_IPC_HLE_Device_net_ip_top::~CWII_IPC_HLE_Device_net_ip_top()
 bool CWII_IPC_HLE_Device_net_ip_top::Open(u32 _CommandAddress, u32 _Mode)
 {
 	INFO_LOG(WII_IPC_NET, "NET_IP_TOP: Open");
-	Memory::Write_U32(GetDeviceID(), _CommandAddress+4);
+	Memory::IOS_Write_U32(GetDeviceID(), _CommandAddress+4);
 	m_Active = true;
 	return true;
 }
@@ -376,23 +376,23 @@ bool CWII_IPC_HLE_Device_net_ip_top::Close(u32 _CommandAddress, bool _bForce)
 {
 	INFO_LOG(WII_IPC_NET, "NET_IP_TOP: Close");
 	if (!_bForce)
-		Memory::Write_U32(0, _CommandAddress + 4);
+		Memory::IOS_Write_U32(0, _CommandAddress + 4);
 	m_Active = false;
 	return true;
 }
 
 bool CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress) 
 { 
-	u32 BufferIn		= Memory::Read_U32(_CommandAddress + 0x10);
-	u32 BufferInSize	= Memory::Read_U32(_CommandAddress + 0x14);
-	u32 BufferOut		= Memory::Read_U32(_CommandAddress + 0x18);
-	u32 BufferOutSize	= Memory::Read_U32(_CommandAddress + 0x1C);
-	u32 Command			= Memory::Read_U32(_CommandAddress + 0x0C);
+	u32 BufferIn		= Memory::IOS_Read_U32(_CommandAddress + 0x10);
+	u32 BufferInSize	= Memory::IOS_Read_U32(_CommandAddress + 0x14);
+	u32 BufferOut		= Memory::IOS_Read_U32(_CommandAddress + 0x18);
+	u32 BufferOutSize	= Memory::IOS_Read_U32(_CommandAddress + 0x1C);
+	u32 Command			= Memory::IOS_Read_U32(_CommandAddress + 0x0C);
 
 //	INFO_LOG(WII_IPC_NET,"%s - Command(0x%08x) BufferIn(0x%08x, 0x%x) BufferOut(0x%08x, 0x%x)\n", GetDeviceName().c_str(), Command, BufferIn, BufferInSize, BufferOut, BufferOutSize);
 
 	u32 ReturnValue = ExecuteCommand(Command, BufferIn, BufferInSize, BufferOut, BufferOutSize);	
-	Memory::Write_U32(ReturnValue, _CommandAddress + 0x4);
+	Memory::IOS_Write_U32(ReturnValue, _CommandAddress + 0x4);
 
 	return true;
 }
@@ -427,7 +427,7 @@ struct GC_sockaddr_in
 u32 CWII_IPC_HLE_Device_net_ip_top::ExecuteCommand(u32 _Command, u32 _BufferIn, u32 BufferInSize, u32 BufferOut, u32 BufferOutSize)
 {
 	// Clean the location of the output buffer to zeros as a safety precaution */
-	Memory::Memset(BufferOut, 0, BufferOutSize);
+	Memory::IOS_Memset(BufferOut, 0, BufferOutSize);
 
 	switch (_Command)
 	{
@@ -436,10 +436,10 @@ u32 CWII_IPC_HLE_Device_net_ip_top::ExecuteCommand(u32 _Command, u32 _BufferIn, 
 
 	case IOCTL_SO_SOCKET:
 	{
-		u32 AF		= Memory::Read_U32(_BufferIn);
-		u32 TYPE	= Memory::Read_U32(_BufferIn + 0x04);
-		u32 PROT	= Memory::Read_U32(_BufferIn + 0x04 * 2);
-//		u32 Unk1	= Memory::Read_U32(_BufferIn + 0x04 * 3);
+		u32 AF		= Memory::IOS_Read_U32(_BufferIn);
+		u32 TYPE	= Memory::IOS_Read_U32(_BufferIn + 0x04);
+		u32 PROT	= Memory::IOS_Read_U32(_BufferIn + 0x04 * 2);
+//		u32 Unk1	= Memory::IOS_Read_U32(_BufferIn + 0x04 * 3);
 		u32 Socket	= (u32)socket(AF, TYPE, PROT);
 		return Common::swap32(Socket); // So it doesn't get mangled later on
 		break;
@@ -462,8 +462,8 @@ u32 CWII_IPC_HLE_Device_net_ip_top::ExecuteCommand(u32 _Command, u32 _BufferIn, 
 
 	case IOCTL_SO_LISTEN:
 	{
-		u32 S = Memory::Read_U32(_BufferIn);
-		u32 BACKLOG = Memory::Read_U32(_BufferIn + 0x04);
+		u32 S = Memory::IOS_Read_U32(_BufferIn);
+		u32 BACKLOG = Memory::IOS_Read_U32(_BufferIn + 0x04);
 		u32 Return = listen(S, BACKLOG);
 		return Return;
 		break;
@@ -472,7 +472,7 @@ u32 CWII_IPC_HLE_Device_net_ip_top::ExecuteCommand(u32 _Command, u32 _BufferIn, 
 	case IOCTL_SO_ACCEPT:
 	{
 		//TODO: (Sonic)Check if this is correct
-		u32 S = Memory::Read_U32(_BufferIn);
+		u32 S = Memory::IOS_Read_U32(_BufferIn);
 		socklen_t addrlen;
 		struct sockaddr_in address;
 		u32 Return = (u32)accept(S, (struct sockaddr *)&address, &addrlen);
@@ -520,6 +520,6 @@ bool CWII_IPC_HLE_Device_net_ip_top::IOCtlV(u32 _CommandAddress)
 			break;
 	}
 
-	Memory::Write_U32(ReturnValue, _CommandAddress+4);
+	Memory::IOS_Write_U32(ReturnValue, _CommandAddress+4);
 	return true; 
 }
