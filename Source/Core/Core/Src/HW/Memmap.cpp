@@ -667,7 +667,13 @@ void InitHWMemFuncsWii()
 	daf.write_u16 = &wth_write16;
 	daf.write_u32 = &wth_write32;
 	daf.write_u64 = &wth_write64;
+	MMUTable::map_mmio_device(&daf, NULL, 0x1000000, 0x0c000000);
 	MMUTable::map_mmio_device(&daf, NULL, 0x1000000, 0x0d000000);
+	MMUTable::daf_reset_to_no_except(&daf);
+	daf.read_u16 = &MMIO_Device_PI_read16; 
+	daf.read_u32 = &MMIO_Device_PI_read32;
+	daf.write_u32 = &MMIO_Device_PI_write32;
+	MMUTable::map_mmio_device(&daf, NULL, 0x1000, 0x0c003000);
 }
 
 writeFn32 GetHWWriteFun32(const u32 _Address)
