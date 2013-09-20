@@ -95,7 +95,7 @@ CEXIMemoryCard::CEXIMemoryCard(const int index)
 		memory_card_size = nintendo_card_id * SIZE_TO_Mb;
 
 		memory_card_content = new u8[memory_card_size];
-		GCMemcard::Format(memory_card_content, m_strFilename.find(".JAP.raw") != std::string::npos, nintendo_card_id);
+		GCMemcard::Format(memory_card_content, m_strFilename.find(".JAP.raw") == std::string::npos, nintendo_card_id);
 		memset(memory_card_content+MC_HDR_SIZE, 0xFF, memory_card_size-MC_HDR_SIZE); 
 		WARN_LOG(EXPANSIONINTERFACE, "No memory card found. Will create a new one.");
 	}

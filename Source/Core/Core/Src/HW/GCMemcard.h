@@ -102,7 +102,7 @@ struct Header {			//Offset	Size	Description
 		*serial2 = serial[1]^serial[3]^serial[5]^serial[7];
 	}
 
-	Header(int slot=0, u16 sizeMb = MemCard2043Mb, bool ascii = true)
+	Header(int slot = 0, u16 sizeMb = MemCard2043Mb, bool ascii = true)
 	{
 		memset(this, 0xFF, BLOCK_SIZE);
 		*(u16*)SizeMb = BE16(sizeMb);
@@ -262,36 +262,25 @@ private:
 
 	u32 maxBlock;
 	u16 m_sizeMb;
-	struct GCMBlock
-	{
-		GCMBlock(){erase();}
-		void erase() {memset(block, 0xFF, BLOCK_SIZE);}
-		u8 block[BLOCK_SIZE];
-	};
-	std::vector<GCMBlock> mc_data_blocks;
+
 	Header hdr;
-	
 	Directory dir, dir_backup, *CurrentDir, *PreviousDir;
 	BlockAlloc bat,bat_backup, *CurrentBat, *PreviousBat;
 
-	struct GCMC_Header
-	{
-		Header *hdr;
-		Directory *dir, *dir_backup;
-		BlockAlloc *bat, *bat_backup;
-	};
+	std::vector<GCMBlock> mc_data_blocks;
 
 	u32 ImportGciInternal(FILE* gcih, const char *inputFile, const std::string &outputFile);
-	static void FormatInternal(GCMC_Header &GCP);
-	void initDirBatPointers() ;
+	void initDirBatPointers();
 public:
 
 	GCMemcard(const char* fileName, bool forceCreation=false, bool sjis=false);
 	bool IsValid() const { return m_valid; }
 	bool IsAsciiEncoding() const;
 	bool Save();
-	bool Format(bool sjis = false, u16 SizeMb = MemCard2043Mb);
-	static bool Format(u8 * card_data, bool sjis = false, u16 SizeMb = MemCard2043Mb);
+	bool Format(bool ascii = true, u16 SizeMb = MemCard2043Mb);
+	static bool Format(u8 * card_data, bool ascii = true, u16 SizeMb = MemCard2043Mb);
+	static s32 FZEROGX_MakeSaveGameValid(Header& cardheader, DEntry& direntry, std::vector<GCMBlock> &FileBuffer);
+	static s32 PSO_MakeSaveGameValid(Header& cardheader, DEntry& direntry, std::vector<GCMBlock> &FileBuffer);
 	
 	u32 TestChecksums() const;
 	bool FixChecksums();
@@ -328,10 +317,6 @@ public:
 	// Copies a DEntry from u8 index to DEntry& data
 	bool GetDEntry(u8 index, DEntry &dest) const;
 
-	// assumes there's enough space in buffer
-	// old determines if function uses old or new method of copying data
-	// some functions only work with old way, some only work with new way
-	// TODO: find a function that works for all calls or split into 2 functions
 	u32 GetSaveData(u8 index, std::vector<GCMBlock> &saveBlocks) const;
 
 	// adds the file to the directory and copies its contents
@@ -358,10 +343,6 @@ public:
 
 	// reads the animation frames
 	u32 ReadAnimRGBA8(u8 index, u32* buffer, u8 *delays) const;
-
-	void CARD_GetSerialNo(u32 *serial1,u32 *serial2);
-	s32 FZEROGX_MakeSaveGameValid(DEntry& direntry, std::vector<GCMBlock> &FileBuffer);
-	s32 PSO_MakeSaveGameValid(DEntry& direntry, std::vector<GCMBlock> &FileBuffer);
 };
 
 class GCMemcardDirectory : NonCopyable
@@ -392,125 +373,6 @@ private:
 
 
 	std::string m_SaveDirectory;
-/*************************************************************/
-/* FZEROGX_MakeSaveGameValid                                 */
-/* (use just before writing a F-Zero GX system .gci file)    */
-/*                                                           */
-/* Parameters:                                               */
-/*    direntry:   [Description needed]                       */
-/*    FileBuffer: [Description needed]                       */
-/*                                                           */
-/* Returns: Error code                                       */
-/*************************************************************/
-
-s32 FZEROGX_MakeSaveGameValid(DEntry& direntry, std::vector<GCMBlock> &FileBuffer)
-{
-	u32 i,j;
-	u32 serial1,serial2;
-	u16 chksum = 0xFFFF;
-	int block = 0;
-
-	// check for F-Zero GX system file
-	if (strcmp((char*)direntry.Filename,"f_zero.dat")!=0) return 0;
-
-	// get encrypted destination memory card serial numbers
-	m_hdr.CARD_GetSerialNo(&serial1,&serial2);
-
-	// set new serial numbers
-	*(u16*)&FileBuffer[1].block[0x0066] = BE16(BE32(serial1) >> 16);
-	*(u16*)&FileBuffer[3].block[0x1580] = BE16(BE32(serial2) >> 16);
-	*(u16*)&FileBuffer[1].block[0x0060] = BE16(BE32(serial1) & 0xFFFF);
-	*(u16*)&FileBuffer[1].block[0x0200] = BE16(BE32(serial2) & 0xFFFF);
-
-	// calc 16-bit checksum
-	for (i=0x02;i<0x8000;i++)
-	{				
-		chksum ^= (FileBuffer[block].block[i-(block*0x2000)]&0xFF);
-		for (j=8; j > 0; j--)
-		{
-			if (chksum&1) chksum = (chksum>>1)^0x8408;
-			else chksum >>= 1;
-		}
-		if (!(i%0x2000)) block ++;
-	}
-
-	// set new checksum
-	*(u16*)&FileBuffer[0].block[0x00] = BE16(~chksum);
-
-	return 1;
-}
-
-/***********************************************************/
-/* PSO_MakeSaveGameValid                                   */
-/* (use just before writing a PSO system .gci file)        */
-/*                                                         */
-/* Parameters:                                             */
-/*    direntry:   [Description needed]                     */
-/*    FileBuffer: [Description needed]                     */
-/*                                                         */
-/* Returns: Error code                                     */
-/***********************************************************/
-
-s32 PSO_MakeSaveGameValid(DEntry& direntry, std::vector<GCMBlock> &FileBuffer)
-{
-	u32 i,j;
-	u32 chksum;
-	u32 crc32LUT[256];
-	u32 serial1,serial2;
-	u32 pso3offset = 0x00;
-
-	// check for PSO1&2 system file
-	if (strcmp((char*)direntry.Filename,"PSO_SYSTEM")!=0)
-	{
-		// check for PSO3 system file
-		if (strcmp((char*)direntry.Filename,"PSO3_SYSTEM")==0)
-		{
-			// PSO3 data block size adjustment
-			pso3offset = 0x10;
-		}
-		else
-		{
-			// nothing to do
-			return 0;
-		}
-	}
-
-	// get encrypted destination memory card serial numbers
-	m_hdr.CARD_GetSerialNo(&serial1,&serial2);
-
-	// set new serial numbers
-	*(u32*)&FileBuffer[1].block[0x0158] = serial1;
-	*(u32*)&FileBuffer[1].block[0x015C] = serial2;
-
-	// generate crc32 LUT
-	for (i=0; i < 256; i++)
-	{
-		chksum = i;
-		for (j=8; j > 0; j--)
-		{
-			if (chksum & 1)
-				chksum = (chksum>>1)^0xEDB88320;
-			else
-				chksum >>= 1;
-		}
-
-		crc32LUT[i] = chksum;
-	}
-
-	// PSO initial crc32 value
-	chksum = 0xDEBB20E3;
-
-	// calc 32-bit checksum
-	for (i=0x004C; i < 0x0164+pso3offset; i++)
-	{
-		chksum = ((chksum>>8)&0xFFFFFF)^crc32LUT[(chksum^FileBuffer[1].block[i])&0xFF];
-	}
-
-	// set new checksum
-	*(u32*)&FileBuffer[1].block[0x0048] = BE32(chksum^0xFFFFFFFF);
-
-	return 1;
-}
 };
 #endif
 

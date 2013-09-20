@@ -34,8 +34,8 @@ bool GCMemcardDirectory::LoadGCI(std::string fileName)
 			return false;
 		}
 		*(u16*)&gci.m_gci_header.FirstBlock = m_bat1.AssignBlocksContiguous(numBlocks);
-		PSO_MakeSaveGameValid(gci.m_gci_header, gci.m_save_data);
-		FZEROGX_MakeSaveGameValid(gci.m_gci_header, gci.m_save_data);
+		GCMemcard::PSO_MakeSaveGameValid(m_hdr, gci.m_gci_header, gci.m_save_data);
+		GCMemcard::FZEROGX_MakeSaveGameValid(m_hdr, gci.m_gci_header, gci.m_save_data);
 
 /*		u16 csum;
 		u16 csum_inv;
