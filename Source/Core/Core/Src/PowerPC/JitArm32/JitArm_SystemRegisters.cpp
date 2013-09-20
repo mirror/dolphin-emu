@@ -110,6 +110,7 @@ void JitArm::mtcrf(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(bJITSystemRegistersOff)
+
 	ARMReg rA = gpr.GetReg();
 
 	// USES_CR
@@ -130,16 +131,17 @@ void JitArm::mtcrf(UGeckoInstruction inst)
 		}
 		else
 		{
+			ARMReg rB = gpr.GetReg();
+			MOV(rA, gpr.R(inst.RS));
 			for (int i = 0; i < 8; i++)
 			{
 				if ((crm & (0x80 >> i)) != 0)
 				{
-					MOV(rA, gpr.R(inst.RS));
-					LSR(rA, rA, 28 - (i * 4));
-					AND(rA, rA, 0xF);
-					STRB(rA, R9, PPCSTATE_OFF(cr_fast[i]));
+					UBFX(rB, rA, 28 - (i * 4), 4); 
+					STRB(rB, R9, PPCSTATE_OFF(cr_fast[i]));
 				}
 			}
+			gpr.Unlock(rB);
 		}
 	}
 	gpr.Unlock(rA);
@@ -244,11 +246,11 @@ void JitArm::crXXX(UGeckoInstruction inst)
 	{
 	case 33:	// crnor
 		ORR(rA, rA, rB);
-		RBIT(rA, rA);
+		MVN(rA, rA);
 		break;
 
 	case 129:	// crandc
-		RBIT(rB, rB);
+		MVN(rB, rB);
 		AND(rA, rA, rB);
 		break;
 
@@ -258,7 +260,7 @@ void JitArm::crXXX(UGeckoInstruction inst)
 
 	case 225:	// crnand
 		AND(rA, rA, rB);
-		RBIT(rA, rA);
+		MVN(rA, rA);
 		break;
 
 	case 257:	// crand
@@ -267,11 +269,11 @@ void JitArm::crXXX(UGeckoInstruction inst)
 
 	case 289:	// creqv
 		EOR(rA, rA, rB);
-		RBIT(rA, rA);
+		MVN(rA, rA);
 		break;
 
 	case 417:	// crorc
-		RBIT(rB, rB);
+		MVN(rA, rA);
 		ORR(rA, rA, rB);
 		break;
 
