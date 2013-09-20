@@ -1142,7 +1142,7 @@ void *memcpy_emu_to_real(void *dst, EmuPointer src, size_t n)
 }
 */
 
-EmuPointer memset_emu(EmuPointer s, int c, size_t n)
+EmuPointer memset_emu(EmuPointer s, int c, size_t n, u32 am)
 {
 	u8 buffer[sizeof(u64)];
 	memset(buffer, c, sizeof(u64));
@@ -1150,42 +1150,42 @@ EmuPointer memset_emu(EmuPointer s, int c, size_t n)
 	EmuPointer rv(s.m_addr);
 	if(n && (s.m_addr & 1))
 	{
-		write8(s, buffer[0]);
+		write8(s, buffer[0], am);
 		n-=sizeof(u8);
 		s.m_addr+=sizeof(u8);
 	}
 	if(n && (s.m_addr & 2))
 	{
-		write16(s, *(const u16*)buffer);
+		write16(s, *(const u16*)buffer, am);
 		n-=sizeof(u16);
 		s.m_addr+=sizeof(u16);
 	}
 	if(n && (s.m_addr & 4))
 	{
-		write32(s, *(const u32*)buffer);
+		write32(s, *(const u32*)buffer, am);
 		n-=sizeof(u32);
 		s.m_addr+=sizeof(u32);
 		
 	}
 	while(n>=sizeof(u64))
 	{
-		write64(s, *(const u64*)buffer);
+		write64(s, *(const u64*)buffer, am);
 		n-=sizeof(u64);
 		s.m_addr+=sizeof(u64);
 	}
 	if(n&4)
 	{
-		write32(s, *(const u32*)buffer);
+		write32(s, *(const u32*)buffer, am);
 		s.m_addr+=sizeof(u32);
 	}
 	if(n&2)
 	{
-		write16(s, *(const u16*)buffer);
+		write16(s, *(const u16*)buffer, am);
 		s.m_addr+=sizeof(u16);
 	}
 	if(n&1)
 	{
-		write8(s, *buffer);
+		write8(s, *buffer, am);
 	}
 	return rv;
 	
