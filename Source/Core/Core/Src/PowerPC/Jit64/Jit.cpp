@@ -23,6 +23,7 @@
 #include "../PPCTables.h"
 #include "../PPCAnalyst.h"
 #include "../../HW/Memmap.h"
+#include "../../HW/MMUTable.h"
 #include "../../HW/GPFifo.h"
 #include "Jit.h"
 #include "JitAsm.h"
@@ -182,7 +183,8 @@ void Jit64::Init()
 	jo.optimizeGatherPipe = true;
 	jo.fastInterrupts = false;
 	jo.accurateSinglePrecision = true;
-	js.memcheck = Core::g_CoreStartupParameter.bMMU;
+//	js.memcheck = Core::g_CoreStartupParameter.bMMU;
+	js.memcheck = true;
 
 	gpr.SetEmitter(this);
 	fpr.SetEmitter(this);
@@ -250,6 +252,21 @@ static const bool ImHereDebug = false;
 static const bool ImHereLog = false;
 static std::map<u32, int> been_here;
 
+
+static bool no_pc_path = false;
+static u32 pc_path[0x100] = {0};
+int path_index=0;
+
+static void do_pc_path()
+{
+	if(no_pc_path) return;
+	if(pc_path[path_index] != PC)
+	{
+		path_index = (path_index+1)&0xff;
+		pc_path[path_index] = PC;
+	}
+}
+
 static void ImHere()
 {
 	static File::IOFile f;
@@ -271,7 +288,7 @@ static void ImHere()
 		if ((been_here.find(PC)->second) & 1023)
 			return;
 	}
-	DEBUG_LOG(DYNA_REC, "I'm here - PC = %08x , LR = %08x", PC, LR);
+//	DEBUG_LOG(DYNA_REC, "I'm here - PC = %08x , LR = %08x", PC, LR);
 	been_here[PC] = 1;
 }
 
@@ -404,6 +421,8 @@ void STACKALIGN Jit64::Jit(u32 em_address)
 	blocks.FinalizeBlock(block_num, jo.enableBlocklink, DoJit(em_address, &code_buffer, b));
 }
 
+
+
 const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlock *b)
 {
 	int blockSize = code_buf->GetSize();
@@ -425,12 +444,14 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 		}
 	}
 
+/*
 	if (em_address == 0)
 	{
 		// Memory exception occurred during instruction fetch
 		memory_exception = true;
 	}
-
+*/
+/*
 	if (Core::g_CoreStartupParameter.bMMU && (em_address & JIT_ICACHE_VMEM_BIT))
 	{
 		if (!Memory::TranslateAddress(em_address, Memory::FLAG_OPCODE))
@@ -438,6 +459,25 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 			// Memory exception occurred during instruction fetch
 			memory_exception = true;
 		}
+	}
+*/
+	u32 out;
+
+
+	MMUTable::resync_access_mask();
+
+	
+	if(em_address == 0x3f800000)
+	{
+		path_index = (path_index+1)&0xff;
+		pc_path[path_index] = PC;
+		no_pc_path = true;
+		WARN_LOG(MASTER_LOG, "bad addr hit!");
+	}
+	
+	if (MMUTable::read_instr_ne(MMUTable::EmuPointer(em_address), out) < 0)
+	{
+		memory_exception = true;
 	}
 
 	int size = 0;
@@ -478,6 +518,7 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 	const u8 *normalEntry = GetCodePtr();
 	b->normalEntry = normalEntry;
 
+	ABI_CallFunction((void *)&do_pc_path); //Used to get a trace of the last few blocks before a crash, sometimes VERY useful
 	if (ImHereDebug)
 		ABI_CallFunction((void *)&ImHere); //Used to get a trace of the last few blocks before a crash, sometimes VERY useful
 
@@ -698,7 +739,7 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 		MOV(32, M(&NPC), Imm32(js.compilerPC));
 
 		OR(32, M((void *)&PowerPC::ppcState.Exceptions), Imm32(EXCEPTION_ISI));
-
+/*
 		// Remove the invalid instruction from the icache, forcing a recompile
 #ifdef _M_IX86
 		if (js.compilerPC & JIT_ICACHE_VMEM_BIT)
@@ -716,7 +757,7 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 			MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICache() + (js.compilerPC & JIT_ICACHE_MASK)));
 		MOV(32,MatR(RAX),Imm32(JIT_ICACHE_INVALID_WORD));
 #endif
-
+*/
 		WriteExceptionExit();
 	}
 

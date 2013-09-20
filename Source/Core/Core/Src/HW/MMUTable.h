@@ -7,23 +7,25 @@
 
 
 #define MMUTABLE_CHECK
-//#define MMU_ALL_READ_WARNINGS
-//#define MMU_ALL_WRITE_WARNINGS
+#define MMU_ALL_READ_WARNINGS
+#define MMU_ALL_WRITE_WARNINGS
 
-//#define MMU_ON_MAP_ALL_WARN
+#define MMU_ON_MAP_ALL_WARN
 
 //#define MMU_ERROR_ON_ALIGNMENT
 
-//#define  MMU_ON_MSR_CHANGE_WARNING
-//#define MMU_ON_IBAT_CHANGE_WARNING
-//#define MMU_ON_DBAT_CHANGE_WARNING
-//#define MMU_READ32_EXEC_WARNING
+//#define MMU_ON_MSR_CHANGE_WARNING
+#define MMU_ON_IBAT_CHANGE_WARNING
+#define MMU_ON_DBAT_CHANGE_WARNING
+#define MMU_READ32_EXEC_WARNING
 #define MMU_ON_SR_CHANGE_WARNING
 #define MMU_ON_SDR_CHANGE_WARNING
 //#define MMU_ON_PAGETABLE_READ_WARNING
 //#define MMU_ON_PAGETABLE_WRITE_WARNING
 #define MMU_ON_ERROR_READ_WARN
 #define MMU_ON_ERROR_WRITE_WARN
+#define MMU_ON_MAP_PTE_WARN
+#define MMU_ON_UNMAP_PTE_WARN
 
 #ifdef MMU_ALL_READ_WARNINGS
 #define  MMU_READ32_EXEC_WARNING
@@ -195,6 +197,13 @@ int write64_ne(const EmuPointer addr, const u64 in, u32 am=get_access_mask());
 */
 static inline int read_instr_ne(const EmuPointer addr, u32 &out, u32 am=get_access_mask())
 {
+	if((memory_access[access_mask][addr.m_addr>>12].typei & 0x10))
+	{
+		const u8 *mem = (const u8 *)memory_access[access_mask][addr.m_addr>>12].contexti;
+		out = Common::swap32(*(const u32 *)&mem[addr.m_addr&0xfff]);
+		return 0;
+
+	}
 	const void *contexti = memory_access[access_mask][addr.m_addr>>12].contexti;
 #ifdef MMU_ERROR_ON_ALIGNMENT
 	if(addr.m_addr & 3)
@@ -231,6 +240,13 @@ static inline int read_instr(const EmuPointer addr, u32 &out, u32 am=get_access_
 
 static inline int read8_ne(const EmuPointer addr, u8 &out, u32 am=get_access_mask())
 {
+	if((memory_access[access_mask][addr.m_addr>>12].typed & 0x10))
+	{
+		const u8 *mem = (const u8 *)memory_access[access_mask][addr.m_addr>>12].contextd;
+		out = mem[addr.m_addr&0xfff];
+		return 0;
+
+	}
 	const void *contextd = memory_access[am][addr.m_addr>>12].contextd;
 	return memory_access[am][addr.m_addr>>12].daf.read_u8(contextd, addr.m_addr, out);
 }
@@ -261,6 +277,13 @@ static inline int read8(const EmuPointer addr, u8 &out, u32 am=get_access_mask()
 
 static inline int read16_ne(const EmuPointer addr, u16 &out, u32 am=get_access_mask())
 {
+	if((memory_access[access_mask][addr.m_addr>>12].typed & 0x10))
+	{
+		const u8 *mem = (const u8 *)memory_access[access_mask][addr.m_addr>>12].contextd;
+		out = Common::swap16(*(const u16 *)&mem[addr.m_addr&0xfff]);
+		return 0;
+
+	}
 	const void *contextd = memory_access[am][addr.m_addr>>12].contextd;
 #ifdef MMU_ERROR_ON_ALIGNMENT
 	if(addr.m_addr & 1)
@@ -297,6 +320,13 @@ static inline int read16(const EmuPointer addr, u16 &out, u32 am=get_access_mask
 
 static inline int read32_ne(const EmuPointer addr, u32 &out, u32 am=get_access_mask())
 {
+	if((memory_access[access_mask][addr.m_addr>>12].typed & 0x10))
+	{
+		const u8 *mem = (const u8 *)memory_access[access_mask][addr.m_addr>>12].contextd;
+		out = Common::swap32(*(const u32 *)&mem[addr.m_addr&0xfff]);
+		return 0;
+
+	}
 	const void *contextd = memory_access[am][addr.m_addr>>12].contextd;
 #ifdef MMU_ERROR_ON_ALIGNMENT
 	if(addr.m_addr & 3)
@@ -327,7 +357,7 @@ static inline int read32(const EmuPointer addr, u32 &out, u32 am=get_access_mask
 		}
 		Memory::GenerateDSIExceptionEx(addr.m_addr, DSISR_bits);
 #ifdef MMU_READ32_WARNING
-		WARN_LOG(MASTER_LOG, "Program read32 DSI[%08x] rv=%d", addr.m_addr, rv);
+		WARN_LOG(MASTER_LOG, "Program read32 DSI[%08x] rv=%d @ %08x", addr.m_addr, rv, PC);
 #endif
 	}
 	return rv;
@@ -335,6 +365,13 @@ static inline int read32(const EmuPointer addr, u32 &out, u32 am=get_access_mask
 
 static inline int read64_ne(const EmuPointer addr, u64 &out, u32 am=get_access_mask())
 {
+	if((memory_access[access_mask][addr.m_addr>>12].typed & 0x10))
+	{
+		const u8 *mem = (const u8 *)memory_access[access_mask][addr.m_addr>>12].contextd;
+		out = Common::swap64(*(const u64 *)&mem[addr.m_addr&0xfff]);
+		return 0;
+
+	}
 	const void *contextd = memory_access[am][addr.m_addr>>12].contextd;
 #ifdef MMU_ERROR_ON_ALIGNMENT
 	if(addr.m_addr & 7)
@@ -371,6 +408,17 @@ static inline int read64(const EmuPointer addr, u64 &out, u32 am=get_access_mask
 
 static inline int write8_ne(const EmuPointer addr, const u8 in, u32 am=get_access_mask())
 {
+	if(((addr.m_addr&0x0fffffff)==0xc00))
+	{
+		ERROR_LOG(MASTER_LOG, "Program write16_ne to syscall handler[%08x] [PC=0x%08x, LR=0x%08x, MSR=%08x]", addr.m_addr, PowerPC::ppcState.pc, PowerPC::ppcState.spr[SPR_LR], PowerPC::ppcState.msr);
+	}
+	if((memory_access[access_mask][addr.m_addr>>12].typed & 0x10))
+	{
+		u8 *mem = (u8 *)memory_access[access_mask][addr.m_addr>>12].contextd;
+		*(u8 *)&mem[addr.m_addr&0xfff] = in;
+		return 0;
+
+	}
 	void *contextd = memory_access[am][addr.m_addr>>12].contextd;
 	return memory_access[am][addr.m_addr>>12].daf.write_u8(contextd, addr.m_addr, in);
 }
@@ -400,6 +448,17 @@ static inline int write8(const EmuPointer addr, const u8 in, u32 am=get_access_m
 } 
 static inline int write16_ne(const EmuPointer addr, const u16 in, u32 am=get_access_mask())
 {
+	if(((addr.m_addr&0x0fffffff)==0xc00))
+	{
+		ERROR_LOG(MASTER_LOG, "Program write16_ne to syscall handler[%08x] [PC=0x%08x, LR=0x%08x, MSR=%08x]", addr.m_addr, PowerPC::ppcState.pc, PowerPC::ppcState.spr[SPR_LR], PowerPC::ppcState.msr);
+	}
+	if((memory_access[access_mask][addr.m_addr>>12].typed & 0x10))
+	{
+		u8 *mem = (u8 *)memory_access[access_mask][addr.m_addr>>12].contextd;
+		*(u16 *)&mem[addr.m_addr&0xfff] = Common::swap16(in);
+		return 0;
+
+	}
 	void *contextd = memory_access[am][addr.m_addr>>12].contextd;
 #ifdef MMU_ERROR_ON_ALIGNMENT
 	if(addr.m_addr & 1)
@@ -435,6 +494,17 @@ static inline int write16(const EmuPointer addr, const u16 in, u32 am=get_access
 
 static inline int write32_ne(const EmuPointer addr, const u32 in, u32 am=get_access_mask())
 {
+	if(((addr.m_addr&0x0fffffff)==0xc00))
+	{
+		ERROR_LOG(MASTER_LOG, "Program write32_ne to syscall handler[%08x] [PC=0x%08x, LR=0x%08x, MSR=%08x]", addr.m_addr, PowerPC::ppcState.pc, PowerPC::ppcState.spr[SPR_LR], PowerPC::ppcState.msr);
+	}
+	if((memory_access[access_mask][addr.m_addr>>12].typed & 0x10))
+	{
+		u8 *mem = (u8 *)memory_access[access_mask][addr.m_addr>>12].contextd;
+		*(u32 *)&mem[addr.m_addr&0xfff] = Common::swap32(in);
+		return 0;
+
+	}
 	void *contextd = memory_access[am][addr.m_addr>>12].contextd;
 #ifdef MMU_ERROR_ON_ALIGNMENT
 	if(addr.m_addr & 3)
@@ -470,6 +540,17 @@ static inline int write32(const EmuPointer addr, const u32 in, u32 am=get_access
 
 static inline int write64_ne(const EmuPointer addr, const u64 in, u32 am=get_access_mask())
 {
+	if(((addr.m_addr&0x0fffffff)==0xc00))
+	{
+		ERROR_LOG(MASTER_LOG, "Program write64_ne to syscall handler[%08x] [PC=0x%08x, LR=0x%08x, MSR=%08x]", addr.m_addr, PowerPC::ppcState.pc, PowerPC::ppcState.spr[SPR_LR], PowerPC::ppcState.msr);
+	}
+	if((memory_access[access_mask][addr.m_addr>>12].typed & 0x10))
+	{
+		u8 *mem = (u8 *)memory_access[access_mask][addr.m_addr>>12].contextd;
+		*(u64 *)&mem[addr.m_addr&0xfff] = Common::swap64(in);
+		return 0;
+
+	}
 	void *contextd = memory_access[am][addr.m_addr>>12].contextd;
 #ifdef MMU_ERROR_ON_ALIGNMENT
 	if(addr.m_addr & 7)
@@ -509,7 +590,7 @@ u8 *get_physical_addr_pointer(const EmuPointer &addr);
 
 //void *memcpy_emu_to_real(void *dst, EmuPointer src, size_t n);
 //EmuPointer memcpy_real_to_emu(EmuPointer dst, const void *src, size_t n);
-EmuPointer memset_emu(EmuPointer s, int c, size_t n);
+EmuPointer memset_emu(EmuPointer s, int c, size_t n, u32 am=get_access_mask());
 
 
 } // MMUTable Namespace

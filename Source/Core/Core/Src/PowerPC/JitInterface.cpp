@@ -26,6 +26,7 @@
 #include "Profiler.h"
 #include "PPCSymbolDB.h"
 #include "HW/Memmap.h"
+#include "HW/MMUTable.h"
 #include "ConfigManager.h"
 
 bool bFakeVMEM = false;
@@ -201,6 +202,10 @@ namespace JitInterface
 	// Memory functions
 	u32 Read_Opcode_JIT_Uncached(const u32 _Address)
 	{
+		u32 instr = 0;
+		MMUTable::read_instr(MMUTable::EmuPointer(_Address), instr);
+		return instr;
+/*
 		u8* iCache;
 		u32 addr;
 		if (_Address & JIT_ICACHE_VMEM_BIT)
@@ -235,10 +240,15 @@ namespace JitInterface
 		}
 
 		return inst;
+*/
 	}
 
 	u32 Read_Opcode_JIT(u32 _Address)
 	{
+		u32 instr = 0;
+		MMUTable::read_instr(MMUTable::EmuPointer(_Address), instr);
+		return instr;
+
 	#ifdef FAST_ICACHE	
 		if (bMMU && !bFakeVMEM && (_Address & Memory::ADDR_MASK_MEM1))
 		{

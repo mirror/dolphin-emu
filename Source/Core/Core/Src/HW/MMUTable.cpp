@@ -5,6 +5,7 @@
 
 
 #include <stdio.h>
+#include "../PowerPC/JitInterface.h"
 
 
 namespace MMUTable
@@ -22,7 +23,11 @@ const u32 MAP_PAGE_HISTORY_MASK = 0x3;
 const u32 MAP_TYPE_PTE=4;
 const u32 MAP_TYPE_BAT=8;
 const u32 MAP_TYPE_MASK=0xc;
-
+/*
+const u32 MAP_DIRECT_MEM=0x10;
+const u32 MAP_DIRECT_IO=0x20;
+const u32 MAP_DIRECT_MASK=0x30;
+*/
 MMUMappingAccess memory_access[ACCESS_COUNT][0x100000];
 
 
@@ -247,24 +252,31 @@ static inline void map_ipages(int a_mask, u32 virt_page_start, u32 page_count, u
 	u32 new_type = flags & MAP_TYPE_MASK;
 	for(u32 i=0; i<page_count; i++)
 	{
+		if((virt_page_start+i==0x8042b) && (a_mask==3))
+		{
+			WARN_LOG(MASTER_LOG, "**************3:0x8042b phys:0x%08x, pp:%08x, flags: %08x", phys_page_start+i, pp, flags);
+		}
 		u32 old_type = memory_access[a_mask][virt_page_start + i].typei & MAP_TYPE_MASK;
 		if((new_type == MAP_TYPE_PTE) && (old_type == MAP_TYPE_BAT))
 		{
-			WARN_LOG(MASTER_LOG, "map_ipages(0x%02hhx, 0x%08x, 0x%08x, 0x%08x, 0x%08x, 0%08x) TRIED TO MAP PTE TO BAT REGION!", a_mask, virt_page_start, page_count, phys_page_start, pp, flags);
+			if(memory_access[a_mask][virt_page_start + i].contexti != memory_access[ACCESS_MASK_PHYSICAL][phys_page_start + i].contexti)
+			{
+				WARN_LOG(MASTER_LOG, "map_ipages(0x%02hhx, 0x%08x, 0x%08x, 0x%08x, 0x%08x, 0%08x) TRIED TO MAP PTE TO BAT REGION! [0x%p 0x%p]", a_mask, virt_page_start, page_count, phys_page_start, pp, flags, memory_access[a_mask][virt_page_start + i].contexti, memory_access[ACCESS_MASK_PHYSICAL][phys_page_start + i].contexti);
+			}
 			continue;
 		}
 		memory_access[a_mask][virt_page_start + i].typei = new_type;
+//		memory_access[a_mask][virt_page_start + i].typei = memory_access[ACCESS_MASK_PHYSICAL][phys_page_start + i].typei | new_type;
+		memory_access[a_mask][virt_page_start + i].contexti = memory_access[ACCESS_MASK_PHYSICAL][phys_page_start + i].contexti;
 		switch(flags&3)
 		{
 			case MAP_PAGE_NO_RC:
 			{
 				memory_access[a_mask][virt_page_start + i].iaf.read_u32_exec = &read_via_pt_no_r<u32>;
-				memory_access[a_mask][virt_page_start + i].contexti = (void*)1;
 			}
 			default:
 			{
 				memory_access[a_mask][virt_page_start + i].iaf = memory_access[ACCESS_MASK_PHYSICAL][phys_page_start + i].iaf;
-				memory_access[a_mask][virt_page_start + i].contexti = memory_access[ACCESS_MASK_PHYSICAL][phys_page_start + i].contexti;
 				if(PP_NOACCESS(pp))
 				{
 					memory_access[a_mask][virt_page_start + i].iaf.read_u32_exec = &trigger_read_exception<u32, ISI_PROT>;
@@ -294,8 +306,16 @@ static inline void map_dpages(int a_mask, u32 virt_page_start, u32 page_count, u
 	for(u32 i=0; i<page_count; i++)
 	{
 		u32 old_type = memory_access[a_mask][virt_page_start + i].typed & MAP_TYPE_MASK;
-		if((new_type == MAP_TYPE_PTE) && (old_type == MAP_TYPE_BAT)) continue;
+		if((new_type == MAP_TYPE_PTE) && (old_type == MAP_TYPE_BAT))
+		{
+			if(memory_access[a_mask][virt_page_start + i].contextd != memory_access[ACCESS_MASK_PHYSICAL][phys_page_start + i].contextd)
+			{
+				WARN_LOG(MASTER_LOG, "map_dpages(0x%02hhx, 0x%08x, 0x%08x, 0x%08x, 0x%08x, 0%08x) TRIED TO MAP PTE TO BAT REGION! [0x%p 0x%p]", a_mask, virt_page_start, page_count, phys_page_start, pp, flags, memory_access[a_mask][virt_page_start + i].contextd, memory_access[ACCESS_MASK_PHYSICAL][phys_page_start + i].contextd);
+			}
+			continue;
+		}
 		memory_access[a_mask][virt_page_start + i].typed = new_type;
+//		memory_access[a_mask][virt_page_start + i].typed = memory_access[ACCESS_MASK_PHYSICAL][phys_page_start + i].typed | new_type;
 		memory_access[a_mask][virt_page_start + i].daf = memory_access[ACCESS_MASK_PHYSICAL][phys_page_start + i].daf;
 		memory_access[a_mask][virt_page_start + i].contextd = memory_access[ACCESS_MASK_PHYSICAL][phys_page_start + i].contextd;
 		switch(flags&3)
@@ -392,7 +412,7 @@ static void unmap_pte(int pteg_index, u32 pteh, u32 ptel)
 	}
 	if(i==16)
 	{
-//		WARN_LOG(MASTER_LOG, "couldn't find vsid in segment registers, sad day");
+//		WARN_LOG(MASTER_LOG, "no vsid[%06x] in sr pte:%08x %08x", vsid, pteh, ptel);
 /*
 		for(i=0;i<4; i++)
 		{
@@ -414,13 +434,15 @@ static void unmap_pte(int pteg_index, u32 pteh, u32 ptel)
 	u32 api = pteh & 0x3f;
 	
 	u32 target_va_page_addr = (i<<28)| (api<<22) | (morebits)<<12;
+
+	JitInterface::InvalidateICache(target_va_page_addr, 0x1000);
 //	u32 sr_options = PowerPC::ppcState.sr[i];
 
 
 #ifdef MMU_ON_UNMAP_PTE_WARN
 	if(ptel != 0)
 	{
-		WARN_LOG(MASTER_LOG, "page_table: unmapping 0x%08x [pteh: %08x ptel: %08x sr: %08x] ", target_va_page_addr, pteh, ptel, PowerPC::ppcState.sr[i]);
+		WARN_LOG(MASTER_LOG, "page_table: unmapping 0x%08x [pteh: %08x ptel: %08x sr: %08x pc: %08x] ", target_va_page_addr, pteh, ptel, PowerPC::ppcState.sr[i], PowerPC::ppcState.pc);
 	}
 #endif
 
@@ -453,10 +475,20 @@ void map_pte(int pteg_index, u32 pteh, u32 ptel)
 	{
 		if((PowerPC::ppcState.sr[i] & 0xffffff)==vsid) break;
 	}
+	u32 morebits = (vsid ^ pteg_index);
+	if(pteh & 0x40) morebits = ~morebits;
+	morebits &= 0x3ff;
+
+	u32 api = pteh & 0x3f;
+	
+	u32 target_va_page_addr = (i<<28)| (api<<22) | (morebits)<<12;
+	JitInterface::InvalidateICache(target_va_page_addr, 0x1000);
+	u32 target_phys_page_addr = ptel & 0xfffff000;
 	if(i==16)
 	{
 		// vsid not set yey?
 		// ok, but maybe we can do something later..
+		WARN_LOG(MASTER_LOG, "no vsid[%06x] in sr va: %08x pa: %08x", vsid, target_va_page_addr, target_phys_page_addr);
 /*
 		WARN_LOG(MASTER_LOG, "couldn't find vsid in segment registers, sad day");
 		for(i=0;i<4; i++)
@@ -471,20 +503,12 @@ void map_pte(int pteg_index, u32 pteh, u32 ptel)
 		return;
 	}
 
-	u32 morebits = (vsid ^ pteg_index);
-	if(pteh & 0x40) morebits = ~morebits;
-	morebits &= 0x3ff;
-
-	u32 api = pteh & 0x3f;
-	
-	u32 target_va_page_addr = (i<<28)| (api<<22) | (morebits)<<12;
-	u32 target_phys_page_addr = ptel & 0xfffff000;
 
 
 #ifdef MMU_ON_MAP_PTE_WARN
 	if(ptel != 0)
 	{
-		WARN_LOG(MASTER_LOG, "page_table: mapping 0x%08x => 0x%08x [pteh: %08x ptel: %08x sr: %08x] ", target_phys_page_addr, target_va_page_addr, pteh, ptel, PowerPC::ppcState.sr[i]);
+		WARN_LOG(MASTER_LOG, "page_table: mapping 0x%08x => 0x%08x [pteh: %08x ptel: %08x sr: %08x pc: %08x] ", target_phys_page_addr, target_va_page_addr, pteh, ptel, PowerPC::ppcState.sr[i], PowerPC::ppcState.pc);
 	}
 #endif
 
@@ -636,7 +660,7 @@ u32 access_mask = 0;
 
 void set_access_mask(u32 new_access_mask)
 {
-	if(new_access_mask < ACCESS_COUNT) access_mask = new_access_mask;
+	access_mask = new_access_mask;
 }
 
 void on_msr_change()
@@ -659,6 +683,8 @@ void reset()
 			memory_access[j][i].iaf = INoTranslation;
 			memory_access[j][i].contextd = NULL;
 			memory_access[j][i].contexti = NULL;
+			memory_access[j][i].typed = 0;
+			memory_access[j][i].typei = 0;
 		}
 	}
 }
@@ -667,33 +693,26 @@ void reset_mappings()
 {
 	WARN_LOG(MASTER_LOG, "********* RESET MMU MAPPINGS *********");
 	
+	for(int i=0; i<0x100000; i++)
+	{
+		// reset page table sections to just be normal via physical addrs
+		if(memory_access[ACCESS_MASK_PHYSICAL][i].daf == DPageTableFuncs)
+		{
+			memory_access[ACCESS_MASK_PHYSICAL][i].daf = DRWAccess;
+		}
+	}
+
+	// for other access modes, let's wipe all translation
 	for(int j=1; j<ACCESS_COUNT; j++)
 	{
-		if((j & ACCESS_MASK_DR) == ACCESS_MASK_DR_ON)
+		for(int i=0; i<0x100000; i++)
 		{
-			for(int i=0; i<0x100000; i++)
-			{
-				memory_access[j][i].daf = DNoTranslation;
-				memory_access[j][i].contextd = NULL;
-			}
-		}
-		else
-		{
-			for(int i=0; i<0x100000; i++)
-			{
-				if(memory_access[j][i].daf == DPageTableFuncs)
-				{
-					memory_access[j][i].daf = DRWAccess;
-				}
-			}
-		}
-		if((j & ACCESS_MASK_IR) == ACCESS_MASK_IR_ON)
-		{
-			for(int i=0; i<0x100000; i++)
-			{
-				memory_access[j][i].iaf = INoTranslation;
-				memory_access[j][i].contexti = NULL;
-			}
+			memory_access[j][i].daf = DNoTranslation;
+			memory_access[j][i].contextd = NULL;
+			memory_access[j][i].typed = 0;
+			memory_access[j][i].iaf = INoTranslation;
+			memory_access[j][i].contexti = NULL;
+			memory_access[j][i].typei = 0;
 		}
 	}
 }
@@ -720,6 +739,7 @@ void map_mmio_device(DAccessFuncs *daf, void *contextd, u32 phys_size, u32 phys_
 		{
 			for(u32 i=0; i<count; i++)
 			{
+//				memory_access[j][page + i].typed = MAP_DIRECT_IO;
 				memory_access[j][page + i].daf = *daf;
 				memory_access[j][page + i].contextd = contextd;
 			}
@@ -739,6 +759,7 @@ void map_physical(u8 *real_base, u32 phys_size, u32 phys_addr)
 		{
 			for(u32 i=0; i<count; i++)
 			{
+//				memory_access[j][page + i].typed = MAP_DIRECT_MEM;
 				memory_access[j][page + i].daf = DRWAccess;
 				memory_access[j][page + i].contextd = real_base + i*MMUTABLE_PAGE_SIZE;
 			}
@@ -747,6 +768,7 @@ void map_physical(u8 *real_base, u32 phys_size, u32 phys_addr)
 		{
 			for(u32 i=0; i<count; i++)
 			{
+//				memory_access[j][page + i].typei = MAP_DIRECT_MEM;
 				memory_access[j][page + i].iaf = IAccess;
 				memory_access[j][page + i].contexti = real_base + i*MMUTABLE_PAGE_SIZE;
 			}
@@ -780,10 +802,11 @@ void on_ibatl_change(int index, u32 ibatu_value, u32 ibatl_value)
 #ifdef MMU_ON_MAP_BAT_WARN
 	if(ibatu_value != 0)
 	{
-		WARN_LOG(MASTER_LOG, "IBAT%d: %08x -> %08x [size: %08x]", index, brpn_phys_page<<12, base_virt_page<<12, count<<12);
+		WARN_LOG(MASTER_LOG, "IBAT%d: %08x -> %08x [size: %08x] @ %08x", index, brpn_phys_page<<12, base_virt_page<<12, count<<12, PC);
 	}
 #endif
 
+//	JitInterface::InvalidateICache(base_virt_page<<12, count<<12);
 	for(u32 j=1; j<ACCESS_COUNT; j++)
 	{
 		if((j & ACCESS_MASK_IR) == ACCESS_MASK_IR_OFF) continue;
@@ -819,9 +842,11 @@ void on_ibatu_change(int index, u32 ibatu_old_value, u32 ibatu_new_value, u32 ib
 #ifdef MMU_ON_MAP_BAT_WARN
 	if(ibatu_new_value != 0)
 	{
-		WARN_LOG(MASTER_LOG, "IBAT%d: %08x -> %08x [size: %08x]", index, brpn_phys_page<<12, new_base_virt_page<<12, new_count<<12);
+		WARN_LOG(MASTER_LOG, "IBAT%d: %08x -> %08x [size: %08x] @ %08x", index, brpn_phys_page<<12, new_base_virt_page<<12, new_count<<12, PC);
 	}
 #endif
+//	JitInterface::InvalidateICache(old_base_virt_page<<12, old_count<<12);
+//	JitInterface::InvalidateICache(new_base_virt_page<<12, new_count<<12);
 
 	for(u32 j=1; j<ACCESS_COUNT; j++)
 	{
@@ -860,7 +885,7 @@ void on_dbatl_change(int index, u32 dbatu_value, u32 dbatl_value)
 #ifdef MMU_ON_MAP_BAT_WARN
 	if(dbatu_value != 0)
 	{
-		WARN_LOG(MASTER_LOG, "DBAT%d: %08x -> %08x [size: %08x]", index, brpn_phys_page<<12, base_virt_page<<12, count<<12);
+		WARN_LOG(MASTER_LOG, "DBAT%d: %08x -> %08x [size: %08x] @ %08x", index, brpn_phys_page<<12, base_virt_page<<12, count<<12, PC);
 	}
 #endif
 
@@ -899,7 +924,7 @@ void on_dbatu_change(int index, u32 dbatu_old_value, u32 dbatu_new_value, u32 db
 #ifdef MMU_ON_MAP_BAT_WARN
 	if(dbatu_new_value != 0)
 	{
-		WARN_LOG(MASTER_LOG, "DBAT%d: %08x -> %08x [size: %08x]", index, brpn_phys_page<<12, new_base_virt_page<<12, new_count<<12);
+		WARN_LOG(MASTER_LOG, "DBAT%d: %08x -> %08x [size: %08x] @ %08x", index, brpn_phys_page<<12, new_base_virt_page<<12, new_count<<12, PC);
 	}
 #endif
 
@@ -1020,9 +1045,9 @@ void on_sr_change(int sr, u32 new_value)
 #ifdef MMU_ON_SR_CHANGE_WARNING
 	WARN_LOG(MASTER_LOG, "Program on_sr_change() sr=0x%02hhx new_value=0x%08x", sr, new_value);
 #endif
-//	reset_mappings();
-//	construct_pagetable(PowerPC::ppcState.spr[SPR_SDR]);
-//	bat_sync();
+	reset_mappings();
+	construct_pagetable(PowerPC::ppcState.spr[SPR_SDR]);
+	bat_sync();
 }
 
 u8 *get_phys_addr_ptr(const EmuPointer &addr)
