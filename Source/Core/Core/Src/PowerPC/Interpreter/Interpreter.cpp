@@ -15,7 +15,7 @@
 #include "Atomic.h"
 #include "HLE/HLE.h"
 
-
+bool do_trace=false;
 namespace {
 	u32 last_pc;
 }
@@ -111,8 +111,12 @@ int Interpreter::SingleStepInner(void)
 	}
 	else
 	{
-		NPC = PC + sizeof(UGeckoInstruction);
 		instCode.hex = Memory::Read_Opcode(PC);
+		if(do_trace)
+		{
+			WARN_LOG(MASTER_LOG, "trace PC: %08x NPC: %08x used NPC: %08x instr: %08x MSR: %08x", PC, NPC, PC + sizeof(UGeckoInstruction), instCode.hex, MSR);
+		}
+		NPC = PC + sizeof(UGeckoInstruction);
 
 //		if(PC==0x801632B4) startTrace=1;
 //		if(PC==0x802b8f28) startTrace=0;
@@ -161,6 +165,7 @@ int Interpreter::SingleStepInner(void)
 		}
 		else
 		{
+			Common::AtomicOr(PowerPC::ppcState.Exceptions, EXCEPTION_PROGRAM);
 			// Memory exception on instruction fetch
 			PowerPC::CheckExceptions();
 			m_EndBlock = true;
@@ -298,7 +303,7 @@ void Interpreter::unknown_instruction(UGeckoInstruction _inst)
 	{
 		char disasm[256];
 		DisassembleGekko(Memory::ReadUnchecked_U32(last_pc), last_pc, disasm, 256);
-		NOTICE_LOG(POWERPC, "Last PC = %08x : %s", last_pc, disasm);
+//		NOTICE_LOG(POWERPC, "Last PC = %08x : %s", last_pc, disasm);
 		Dolphin_Debugger::PrintCallstack();
 		_dbg_assert_msg_(POWERPC, 0, "\nIntCPU: Unknown instruction %08x at PC = %08x  last_PC = %08x  LR = %08x\n", _inst.hex, PC, last_pc, LR);
 	}

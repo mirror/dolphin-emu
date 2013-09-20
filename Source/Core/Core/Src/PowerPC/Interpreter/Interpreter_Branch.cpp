@@ -9,6 +9,8 @@
 #include "Atomic.h"
 #include "../../HW/MMUTable.h"
 
+extern bool do_trace;
+
 void Interpreter::bx(UGeckoInstruction _inst)
 {
 	if (_inst.LK)
@@ -98,6 +100,7 @@ void Interpreter::CompiledBlock(UGeckoInstruction _inst)
 
 void Interpreter::rfi(UGeckoInstruction _inst)
 {
+	WARN_LOG(MASTER_LOG,"pre -RFI! PC: %08x NPC: %08x MSR: %08x R3: %08x R4: %08x R5: %08x R6: %08x SRR0: %08x SRR1: %08x \n", PC, NPC, MSR, m_GPR[3], m_GPR[4], m_GPR[5], m_GPR[6], SRR0, SRR1);
 	// Restore saved bits from SRR1 to MSR.
 	// Gecko/Broadway can save more bits than explicitly defined in ppc spec
 	const int mask = 0x87C0FFFF;
@@ -112,6 +115,8 @@ void Interpreter::rfi(UGeckoInstruction _inst)
 	// set NPC to saved offset and resume
 	NPC = SRR0;
 	m_EndBlock = true;
+	WARN_LOG(MASTER_LOG,"post-RFI! PC: %08x NPC: %08x MSR: %08x R3: %08x R4: %08x R5: %08x R6: %08x SRR0: %08x SRR1: %08x \n", PC, NPC, MSR, m_GPR[3], m_GPR[4], m_GPR[5], m_GPR[6], SRR0, SRR1);
+	do_trace = false;
 }
 
 void Interpreter::rfid(UGeckoInstruction _inst) 

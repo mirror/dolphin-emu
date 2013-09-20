@@ -9,6 +9,7 @@
 #include "../PowerPC.h"
 #include "../CPUCoreBase.h"
 
+
 class Interpreter : public CPUCoreBase
 {
 public:

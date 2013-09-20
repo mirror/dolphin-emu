@@ -384,6 +384,7 @@ void Interpreter::dcbtst(UGeckoInstruction _inst)
 
 void Interpreter::dcbz(UGeckoInstruction _inst)
 {
+	if(((Helper_Get_EA_X(_inst) & 0x0fffffffUL) < 0x8000)) return;
 	// HACK but works... we think
 	if (!Core::g_CoreStartupParameter.bDCBZOFF)
 		Memory::Memset(Helper_Get_EA_X(_inst) & (~31), 0, 32);
