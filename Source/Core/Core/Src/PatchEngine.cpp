@@ -51,16 +51,18 @@ void LoadPatchSection(const char *section, std::vector<Patch> &patches,
 {
 	// Load the name of all enabled patches
 	std::string enabledSectionName = std::string(section) + "_Enabled";
-	std::vector<std::string> enabledLines;
 	std::set<std::string> enabledNames;
-	localIni.GetLines(enabledSectionName.c_str(), enabledLines);
-	for (auto iter = enabledLines.begin(); iter != enabledLines.end(); ++iter)
+	if (const IniFile::Section* sect = localIni.GetSection(enabledSectionName.c_str()))
 	{
-		const std::string& line = *iter;
-		if (line.size() != 0 && line[0] == '$')
+		std::vector<std::string> enabledLines = sect->GetLines();
+		for (auto iter = enabledLines.begin(); iter != enabledLines.end(); ++iter)
 		{
-			std::string name = line.substr(1, line.size() - 1);
-			enabledNames.insert(name);
+			const std::string& line = *iter;
+			if (line.size() != 0 && line[0] == '$')
+			{
+				std::string name = line.substr(1, line.size() - 1);
+				enabledNames.insert(name);
+			}
 		}
 	}
 
@@ -68,9 +70,14 @@ void LoadPatchSection(const char *section, std::vector<Patch> &patches,
 
 	for (size_t i = 0; i < ArraySize(inis); ++i)
 	{
-		std::vector<std::string> lines;
 		Patch currentPatch;
-		inis[i]->GetLines(section, lines);
+		const IniFile::Section* sect = localIni.GetSection(section);
+		if (!sect)
+		{
+			continue;
+		}
+
+		std::vector<std::string> lines = sect->GetLines();
 
 		for (auto iter = lines.begin(); iter != lines.end(); ++iter)
 		{
@@ -123,13 +130,14 @@ void LoadPatchSection(const char *section, std::vector<Patch> &patches,
 
 static void LoadDiscList(const char *section, std::vector<std::string> &_discList, IniFile &ini)
 {
-	std::vector<std::string> lines;
-	if (!ini.GetLines(section, lines))
+	const IniFile::Section* sect = ini.GetSection(section);
+	if (!sect)
 		return;
+	std::vector<std::string> lines = sect->GetLines();
 
-	for (std::vector<std::string>::const_iterator iter = lines.begin(); iter != lines.end(); ++iter)
+	for (auto itr = lines.begin(); itr != lines.end(); ++itr)
 	{
-		std::string line = *iter;
+		std::string line = *itr;
 		if (line.size())
 			_discList.push_back(line);
 	}
@@ -138,22 +146,19 @@ static void LoadDiscList(const char *section, std::vector<std::string> &_discLis
 static void LoadSpeedhacks(const char *section, std::map<u32, int> &hacks, IniFile &ini)
 {
 	std::vector<std::string> keys;
-	ini.GetKeys(section, keys);
-	for (std::vector<std::string>::const_iterator iter = keys.begin(); iter != keys.end(); ++iter)
+	IniFile::Section* sect = ini.GetOrCreateSection(section);
+	for (auto itr = sect->keys.begin(); itr != sect->keys.end(); ++itr)
 	{
-		std::string key = *iter;
-		std::string value;
-		ini.Get(section, key.c_str(), &value, "BOGUS");
-		if (value != "BOGUS")
-		{
-			u32 address;
-			u32 cycles;
-			bool success = true;
-			success &= TryParse(key, &address);
-			success &= TryParse(value, &cycles);
-			if (success) {
-				speedHacks[address] = (int)cycles;
-			}
+		std::string key = itr->first;
+		std::string value = itr->second.second;
+
+		u32 address;
+		u32 cycles;
+		bool success = true;
+		success &= TryParse(key, &address);
+		success &= TryParse(value, &cycles);
+		if (success) {
+			speedHacks[address] = (int)cycles;
 		}
 	}
 }
