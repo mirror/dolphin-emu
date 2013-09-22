@@ -160,7 +160,8 @@ std::vector<std::string> CVolumeWiiCrypted::GetNames() const
 {
 	std::vector<std::string> names;
 	
-	auto const string_decoder = CVolumeGC::GetStringDecoder(GetCountry());
+	// Treat all titles in disc header as SJIS
+	auto const string_decoder = CVolumeGC::GetStringDecoder(IVolume::COUNTRY_JAPAN);
 
 	char name[0xFF] = {};
 	if (m_pReader != NULL && Read(0x20, 0x60, (u8*)&name))
