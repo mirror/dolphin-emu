@@ -57,6 +57,8 @@
     <ClCompile Include="Src\VertexShaderCache.cpp">
       <Filter>Render</Filter>
     </ClCompile>
+    <ClCompile Include="Src\main.cpp" />
+    <ClCompile Include="Src\SamplerCache.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Src\VertexManager.h">
@@ -92,5 +94,12 @@
     <ClInclude Include="Src\TextureCache.h">
       <Filter>Render</Filter>
     </ClInclude>
+    <ClInclude Include="Src\Globals.h" />
+    <ClInclude Include="Src\main.h" />
+    <ClInclude Include="Src\SamplerCache.h" />
+    <ClInclude Include="Src\VideoBackend.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="CMakeLists.txt" />
   </ItemGroup>
 </Project>
