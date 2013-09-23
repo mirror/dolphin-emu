@@ -1,0 +1,149 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{47411FDB-1BF2-48D0-AB4E-C7C41160F898}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Src\AboutDolphin.cpp" />
+    <ClCompile Include="Src\ARCodeAddEdit.cpp" />
+    <ClCompile Include="Src\CheatsWindow.cpp" />
+    <ClCompile Include="Src\ConfigMain.cpp" />
+    <ClCompile Include="Src\Debugger\BreakpointDlg.cpp" />
+    <ClCompile Include="Src\Debugger\BreakpointView.cpp" />
+    <ClCompile Include="Src\Debugger\BreakpointWindow.cpp" />
+    <ClCompile Include="Src\Debugger\CodeView.cpp" />
+    <ClCompile Include="Src\Debugger\CodeWindow.cpp" />
+    <ClCompile Include="Src\Debugger\CodeWindowFunctions.cpp" />
+    <ClCompile Include="Src\Debugger\DebuggerPanel.cpp" />
+    <ClCompile Include="Src\Debugger\DebuggerUIUtil.cpp" />
+    <ClCompile Include="Src\Debugger\DSPDebugWindow.cpp" />
+    <ClCompile Include="Src\Debugger\DSPRegisterView.cpp" />
+    <ClCompile Include="Src\Debugger\JitWindow.cpp" />
+    <ClCompile Include="Src\Debugger\MemoryCheckDlg.cpp" />
+    <ClCompile Include="Src\Debugger\MemoryView.cpp" />
+    <ClCompile Include="Src\Debugger\MemoryWindow.cpp" />
+    <ClCompile Include="Src\Debugger\RegisterView.cpp" />
+    <ClCompile Include="Src\Debugger\RegisterWindow.cpp" />
+    <ClCompile Include="Src\FifoPlayerDlg.cpp" />
+    <ClCompile Include="Src\Frame.cpp" />
+    <ClCompile Include="Src\FrameAui.cpp" />
+    <ClCompile Include="Src\FrameTools.cpp" />
+    <ClCompile Include="Src\GameListCtrl.cpp" />
+    <ClCompile Include="Src\GeckoCodeDiag.cpp" />
+    <ClCompile Include="Src\GLInterface\WGL.cpp" />
+    <ClCompile Include="Src\HotkeyDlg.cpp" />
+    <ClCompile Include="Src\InputConfigDiag.cpp" />
+    <ClCompile Include="Src\InputConfigDiagBitmaps.cpp" />
+    <ClCompile Include="Src\ISOFile.cpp" />
+    <ClCompile Include="Src\ISOProperties.cpp" />
+    <ClCompile Include="Src\LogConfigWindow.cpp" />
+    <ClCompile Include="Src\LogWindow.cpp" />
+    <ClCompile Include="Src\Main.cpp" />
+    <ClCompile Include="Src\MainNoGUI.cpp" />
+    <ClCompile Include="Src\MemcardManager.cpp" />
+    <ClCompile Include="Src\MemoryCards\WiiSaveCrypted.cpp" />
+    <ClCompile Include="Src\NetWindow.cpp" />
+    <ClCompile Include="Src\PatchAddEdit.cpp" />
+    <ClCompile Include="Src\PHackSettings.cpp" />
+    <ClCompile Include="Src\TASInputDlg.cpp" />
+    <ClCompile Include="Src\UDPConfigDiag.cpp" />
+    <ClCompile Include="Src\VideoConfigDiag.cpp" />
+    <ClCompile Include="Src\WiimoteConfigDiag.cpp" />
+    <ClCompile Include="Src\WXInputBase.cpp" />
+    <ClCompile Include="Src\WxUtils.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="Src\AboutDolphin.h" />
+    <ClInclude Include="Src\ARCodeAddEdit.h" />
+    <ClInclude Include="Src\CheatsWindow.h" />
+    <ClInclude Include="Src\ConfigMain.h" />
+    <ClInclude Include="Src\Debugger\BreakpointDlg.h" />
+    <ClInclude Include="Src\Debugger\BreakpointView.h" />
+    <ClInclude Include="Src\Debugger\BreakpointWindow.h" />
+    <ClInclude Include="Src\Debugger\CodeView.h" />
+    <ClInclude Include="Src\Debugger\CodeWindow.h" />
+    <ClInclude Include="Src\Debugger\DebuggerPanel.h" />
+    <ClInclude Include="Src\Debugger\DebuggerUIUtil.h" />
+    <ClInclude Include="Src\Debugger\DSPDebugWindow.h" />
+    <ClInclude Include="Src\Debugger\DSPRegisterView.h" />
+    <ClInclude Include="Src\Debugger\JitWindow.h" />
+    <ClInclude Include="Src\Debugger\MemoryCheckDlg.h" />
+    <ClInclude Include="Src\Debugger\MemoryView.h" />
+    <ClInclude Include="Src\Debugger\MemoryWindow.h" />
+    <ClInclude Include="Src\Debugger\RegisterView.h" />
+    <ClInclude Include="Src\Debugger\RegisterWindow.h" />
+    <ClInclude Include="Src\FifoPlayerDlg.h" />
+    <ClInclude Include="Src\Frame.h" />
+    <ClInclude Include="Src\GameListCtrl.h" />
+    <ClInclude Include="Src\GeckoCodeDiag.h" />
+    <ClInclude Include="Src\GLInterface.h" />
+    <ClInclude Include="Src\GLInterface\InterfaceBase.h" />
+    <ClInclude Include="Src\GLInterface\WGL.h" />
+    <ClInclude Include="Src\Globals.h" />
+    <ClInclude Include="Src\HotkeyDlg.h" />
+    <ClInclude Include="Src\InputConfigDiag.h" />
+    <ClInclude Include="Src\ISOFile.h" />
+    <ClInclude Include="Src\ISOProperties.h" />
+    <ClInclude Include="Src\LogConfigWindow.h" />
+    <ClInclude Include="Src\LogWindow.h" />
+    <ClInclude Include="Src\Main.h" />
+    <ClInclude Include="Src\MemcardManager.h" />
+    <ClInclude Include="Src\MemoryCards\WiiSaveCrypted.h" />
+    <ClInclude Include="Src\NetWindow.h" />
+    <ClInclude Include="Src\PatchAddEdit.h" />
+    <ClInclude Include="Src\PHackSettings.h" />
+    <ClInclude Include="Src\TASInputDlg.h" />
+    <ClInclude Include="Src\UDPConfigDiag.h" />
+    <ClInclude Include="Src\VideoConfigDiag.h" />
+    <ClInclude Include="Src\WiimoteConfigDiag.h" />
+    <ClInclude Include="Src\WXInputBase.h" />
+    <ClInclude Include="Src\WxUtils.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="DolphinWX.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\..\..\Installer\Dolphin.ico" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
