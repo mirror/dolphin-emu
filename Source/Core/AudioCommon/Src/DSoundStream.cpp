@@ -6,7 +6,6 @@
 #include <functional>
 
 #include <windows.h>
-#include <dxerr.h>
 
 #include "AudioCommon.h"
 #include "DSoundStream.h"
@@ -43,7 +42,8 @@ bool DSound::CreateBuffer()
 	else
 	{
 		// Failed.
-		PanicAlertT("Sound buffer creation failed: %s", DXGetErrorString(res)); 
+		//PanicAlertT("Sound buffer creation failed: %s", DXGetErrorString(res));
+		PanicAlertT("Sound buffer creation failed: %s", "(shuffle2) Please replace me with a meaningful string");
 		dsBuffer = NULL;
 		return false;
 	}
