@@ -135,7 +135,12 @@
     <ClCompile Include="Src\LogConfigWindow.cpp" />
     <ClCompile Include="Src\LogWindow.cpp" />
     <ClCompile Include="Src\Main.cpp" />
-    <ClCompile Include="Src\MainNoGUI.cpp" />
+    <ClCompile Include="Src\MainNoGUI.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Src\MemcardManager.cpp" />
     <ClCompile Include="Src\MemoryCards\WiiSaveCrypted.cpp" />
     <ClCompile Include="Src\NetWindow.cpp" />
