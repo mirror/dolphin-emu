@@ -503,6 +503,9 @@
     <ProjectReference Include="..\Common\Common.vcxproj">
       <Project>{2e6c348c-c75c-4d94-8d1e-9c1fcbf3efe4}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\Common\SCMRevGen.vcxproj">
+      <Project>{41279555-f94f-4ebc-99de-af863c10c5c4}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\DiscIO\DiscIO.vcxproj">
       <Project>{160bdc25-5626-4b0d-bdd8-2953d9777fb5}</Project>
     </ProjectReference>
