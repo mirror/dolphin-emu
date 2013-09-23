@@ -492,7 +492,7 @@ bool NetPlayClient::StartGame(const std::string &path)
 			if (m_pad_map[i] > 0)
 				controllers_mask |= (1 << i);
 			if (m_wiimote_map[i] > 0)
-				controllers_mask |= (1 << i + 4);
+				controllers_mask |= (1 << (i + 4));
 		}
 		Movie::BeginRecordingInput(controllers_mask);
 	}
@@ -501,6 +501,12 @@ bool NetPlayClient::StartGame(const std::string &path)
 	m_dialog->BootGame(path);
 
 	UpdateDevices();
+
+	for (unsigned int i = 0; i < 4; ++i)
+	{
+		g_wiimote_sources[i] = m_wiimote_map[i] > 0 ? WIIMOTE_SRC_EMU : WIIMOTE_SRC_NONE;
+		GetUsbPointer()->AccessWiiMote(i | 0x100)->Activate(m_wiimote_map[i] > 0);
+	}
 
 	// Needed to prevent locking up at boot if (when) the wiimotes connect out of order.
 	NetWiimote nw;

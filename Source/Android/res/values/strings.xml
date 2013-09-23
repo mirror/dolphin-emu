@@ -31,6 +31,8 @@
     <!-- Emulation Overlay -->
     <string name="overlay_savestate">Save State</string>
     <string name="overlay_loadstate">Load State</string>
+    <string name="overlay_exit_emulation">Exit</string>
+    <string name="overlay_exit_emulation_confirm">Are you sure you wish to exit this game?</string>
     <string name="overlay_slot1">Slot 1</string>
     <string name="overlay_slot2">Slot 2</string>
     <string name="overlay_slot3">Slot 3</string>
@@ -86,7 +88,7 @@
     <string name="enhancements">Enhancements</string>
     <string name="internal_resolution">Internal Resolution</string>
     <string name="internal_resolution_descrip">Specifies the resolution used to render at. A high resolution will improve visual quality a lot but is also quite heavy on performance and might cause glitches in certain games.</string>
-    <string name="FSAA">Full Scene Antialiasing</string>
+    <string name="FSAA">Full-scene Anti-aliasing</string>
     <string name="FSAA_descrip">Reduces the amount of aliasing caused by rasterizing 3D graphics. This makes the rendered picture look less blocky. Heavily decreases emulation speed and sometimes causes issues.</string>
     <string name="anisotropic_filtering">Anisotropic Filtering</string>
     <string name="anisotropic_filtering_descrip">Enhances visual quality of textures that are at oblique viewing angles. Might cause issues in a small number of games.</string>

@@ -46,7 +46,7 @@ public:
 	void Push(Arg&& t)
 	{
 		// create the element, add it to the queue
-		m_write_ptr->current = std::move(t);
+		m_write_ptr->current = std::forward<Arg>(t);
 		// set the next pointer to a new element ptr
 		// then advance the write pointer 
 		ElementPtr* new_ptr = new ElementPtr();
@@ -90,43 +90,6 @@ public:
 		m_size = 0;
 		delete m_read_ptr;
 		m_write_ptr = m_read_ptr = new ElementPtr();
-	}
-
-private:
-	class ElementPtr;
-
-public:
-	class iterator
-	{
-	public:
-		iterator() {}
-		bool operator==(iterator other) { return other.m_pp == m_pp; }
-		bool operator!=(iterator other) { return !(*this == other); }
-		T* operator->() { return &**this; }
-		T& operator*() { return (*m_pp)->current; }
-		void operator++() { m_pp = &(*m_pp)->next; }
-	protected:
-		iterator(ElementPtr *volatile *pp) : m_pp(pp) {}
-		ElementPtr *volatile *m_pp;
-		friend class FifoQueue<T, NeedSize>;
-	};
-
-	iterator begin()
-	{
-		return iterator(&m_read_ptr);
-	}
-
-	iterator end()
-	{
-		return iterator(&m_write_ptr->next);
-	}
-
-	iterator erase(iterator itr)
-	{
-		ElementPtr *elp = *itr.m_pp;
-		*itr.m_pp = AtomicLoadAcquire(elp->next);
-		delete elp;
-		return itr;
 	}
 
 private:
