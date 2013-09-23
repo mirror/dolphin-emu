@@ -4,7 +4,8 @@
 
 #pragma once
 
-#include <D3DX11.h>
+#include <dxgi.h>
+#include <d3d11.h>
 #include <D3Dcompiler.h>
 #include "Common.h"
 #include <vector>
@@ -24,11 +25,11 @@ namespace D3D
 
 HRESULT LoadDXGI();
 HRESULT LoadD3D();
-HRESULT LoadD3DX();
+//HRESULT LoadD3DX();
 HRESULT LoadD3DCompiler();
 void UnloadDXGI();
 void UnloadD3D();
-void UnloadD3DX();
+//void UnloadD3DX();
 void UnloadD3DCompiler();
 
 D3D_FEATURE_LEVEL GetFeatureLevel(IDXGIAdapter* adapter);
@@ -74,6 +75,7 @@ void SetDebugObjectName(T resource, const char* name)
 }  // namespace
 
 
+/*
 // Used to not require the SDK and runtime versions to match:
 // Linking with d3dx11.lib makes the most recent d3dx11_xx.dll of the
 // compiler's SDK a requirement, but this backend works with DX11 runtimes
@@ -94,6 +96,7 @@ extern D3DX11SAVETEXTURETOFILEWTYPE PD3DX11SaveTextureToFileW;
 #else
 #define PD3DX11SaveTextureToFile PD3DX11SaveTextureToFileA
 #endif
+*/
 
 typedef HRESULT (WINAPI* CREATEDXGIFACTORY)(REFIID, void**);
 extern CREATEDXGIFACTORY PCreateDXGIFactory;

@@ -16,12 +16,14 @@ HINSTANCE hD3DCompilerDll = NULL;
 D3DREFLECT PD3DReflect = NULL;
 int d3dcompiler_dll_ref = 0;
 
+/*
 HINSTANCE hD3DXDll = NULL;
 D3DX11COMPILEFROMMEMORYTYPE PD3DX11CompileFromMemory = NULL;
 D3DX11FILTERTEXTURETYPE PD3DX11FilterTexture = NULL;
 D3DX11SAVETEXTURETOFILEATYPE PD3DX11SaveTextureToFileA = NULL;
 D3DX11SAVETEXTURETOFILEWTYPE PD3DX11SaveTextureToFileW = NULL;
 int d3dx_dll_ref = 0;
+*/
 
 CREATEDXGIFACTORY PCreateDXGIFactory = NULL;
 HINSTANCE hDXGIDll = NULL;
@@ -97,6 +99,7 @@ HRESULT LoadD3D()
 	return S_OK;
 }
 
+/*
 HRESULT LoadD3DX()
 {
 	if (d3dx_dll_ref++ > 0) return S_OK;
@@ -134,6 +137,7 @@ HRESULT LoadD3DX()
 
 	return S_OK;
 }
+*/
 
 HRESULT LoadD3DCompiler()
 {
@@ -174,6 +178,7 @@ void UnloadDXGI()
 	PCreateDXGIFactory = NULL;
 }
 
+/*
 void UnloadD3DX()
 {
 	if (!d3dx_dll_ref) return;
@@ -185,6 +190,7 @@ void UnloadD3DX()
 	PD3DX11SaveTextureToFileA = NULL;
 	PD3DX11SaveTextureToFileW = NULL;
 }
+*/
 
 void UnloadD3D()
 {
@@ -269,13 +275,13 @@ HRESULT Create(HWND wnd)
 
 	hr = LoadDXGI();
 	if (SUCCEEDED(hr)) hr = LoadD3D();
-	if (SUCCEEDED(hr)) hr = LoadD3DX();
+	//if (SUCCEEDED(hr)) hr = LoadD3DX();
 	if (SUCCEEDED(hr)) hr = LoadD3DCompiler();
 	if (FAILED(hr))
 	{
 		UnloadDXGI();
 		UnloadD3D();
-		UnloadD3DX();
+		//UnloadD3DX();
 		UnloadD3DCompiler();
 		return hr;
 	}
@@ -416,7 +422,7 @@ void Close()
 	device = NULL;
 
 	// unload DLLs
-	UnloadD3DX();
+	//UnloadD3DX();
 	UnloadD3D();
 	UnloadDXGI();
 }
