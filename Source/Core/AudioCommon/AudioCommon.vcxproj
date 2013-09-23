@@ -82,6 +82,12 @@
     <ClCompile Include="Src\Mixer.cpp" />
     <ClCompile Include="Src\NullSoundStream.cpp" />
     <ClCompile Include="Src\OpenALStream.cpp" />
+    <ClCompile Include="Src\stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Src\WaveFile.cpp" />
     <ClCompile Include="Src\XAudio2Stream.cpp" />
   </ItemGroup>
@@ -95,11 +101,20 @@
     <ClInclude Include="Src\NullSoundStream.h" />
     <ClInclude Include="Src\OpenALStream.h" />
     <ClInclude Include="Src\SoundStream.h" />
+    <ClInclude Include="Src\stdafx.h" />
     <ClInclude Include="Src\WaveFile.h" />
     <ClInclude Include="Src\XAudio2Stream.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Externals\soundtouch\SoundTouch.vcxproj">
+      <Project>{ec082900-b4d8-42e9-9663-77f02f6936ae}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Common\Common.vcxproj">
+      <Project>{2e6c348c-c75c-4d94-8d1e-9c1fcbf3efe4}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

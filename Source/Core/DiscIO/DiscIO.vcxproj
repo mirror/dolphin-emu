@@ -88,6 +88,12 @@
     <ClCompile Include="Src\Filesystem.cpp" />
     <ClCompile Include="Src\FileSystemGCWii.cpp" />
     <ClCompile Include="Src\NANDContentLoader.cpp" />
+    <ClCompile Include="Src\stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Src\VolumeCommon.cpp" />
     <ClCompile Include="Src\VolumeCreator.cpp" />
     <ClCompile Include="Src\VolumeDirectory.cpp" />
@@ -112,6 +118,7 @@
     <ClInclude Include="Src\Filesystem.h" />
     <ClInclude Include="Src\FileSystemGCWii.h" />
     <ClInclude Include="Src\NANDContentLoader.h" />
+    <ClInclude Include="Src\stdafx.h" />
     <ClInclude Include="Src\Volume.h" />
     <ClInclude Include="Src\VolumeCreator.h" />
     <ClInclude Include="Src\VolumeDirectory.h" />
@@ -123,6 +130,17 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Externals\polarssl\visualc\PolarSSL.vcxproj">
+      <Project>{bdb6578b-0691-4e80-a46c-df21639fd3b8}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Externals\zlib\zlib.vcxproj">
+      <Project>{ff213b23-2c26-4214-9f88-85271e557e87}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Common\Common.vcxproj">
+      <Project>{2e6c348c-c75c-4d94-8d1e-9c1fcbf3efe4}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

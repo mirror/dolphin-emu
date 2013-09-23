@@ -150,6 +150,7 @@
     <ClCompile Include="Src\x64DLCache.cpp">
       <Filter>Vertex Loading</Filter>
     </ClCompile>
+    <ClCompile Include="Src\stdafx.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Src\CommandProcessor.h" />
@@ -288,6 +289,7 @@
     <ClInclude Include="Src\VertexLoaderManager.h">
       <Filter>Vertex Loading</Filter>
     </ClInclude>
+    <ClInclude Include="Src\stdafx.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />

@@ -101,6 +101,12 @@
     <ClCompile Include="Src\PixelShaderManager.cpp" />
     <ClCompile Include="Src\RenderBase.cpp" />
     <ClCompile Include="Src\Statistics.cpp" />
+    <ClCompile Include="Src\stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Src\TextureCacheBase.cpp" />
     <ClCompile Include="Src\TextureConversionShader.cpp" />
     <ClCompile Include="Src\VertexLoader.cpp" />
@@ -153,6 +159,7 @@
     <ClInclude Include="Src\RenderBase.h" />
     <ClInclude Include="Src\ShaderGenCommon.h" />
     <ClInclude Include="Src\Statistics.h" />
+    <ClInclude Include="Src\stdafx.h" />
     <ClInclude Include="Src\TextureCacheBase.h" />
     <ClInclude Include="Src\TextureConversionShader.h" />
     <ClInclude Include="Src\TextureDecoder.h" />
@@ -174,6 +181,14 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Externals\SOIL\SOIL.vcxproj">
+      <Project>{b441cc62-877e-4b3f-93e0-0de80544f705}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Common\Common.vcxproj">
+      <Project>{2e6c348c-c75c-4d94-8d1e-9c1fcbf3efe4}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

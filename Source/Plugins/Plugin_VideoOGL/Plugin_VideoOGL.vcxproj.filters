@@ -59,6 +59,7 @@
     </ClCompile>
     <ClCompile Include="Src\main.cpp" />
     <ClCompile Include="Src\SamplerCache.cpp" />
+    <ClCompile Include="Src\stdafx.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Src\VertexManager.h">
@@ -98,6 +99,7 @@
     <ClInclude Include="Src\main.h" />
     <ClInclude Include="Src\SamplerCache.h" />
     <ClInclude Include="Src\VideoBackend.h" />
+    <ClInclude Include="Src\stdafx.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />

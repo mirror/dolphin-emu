@@ -85,6 +85,12 @@
     <ClCompile Include="Src\RasterFont.cpp" />
     <ClCompile Include="Src\Rasterizer.cpp" />
     <ClCompile Include="Src\SetupUnit.cpp" />
+    <ClCompile Include="Src\stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Src\SWCommandProcessor.cpp" />
     <ClCompile Include="Src\SWmain.cpp" />
     <ClCompile Include="Src\SWPixelEngine.cpp" />
@@ -112,6 +118,7 @@
     <ClInclude Include="Src\RasterFont.h" />
     <ClInclude Include="Src\Rasterizer.h" />
     <ClInclude Include="Src\SetupUnit.h" />
+    <ClInclude Include="Src\stdafx.h" />
     <ClInclude Include="Src\SWCommandProcessor.h" />
     <ClInclude Include="Src\SWPixelEngine.h" />
     <ClInclude Include="Src\SWRenderer.h" />
@@ -129,6 +136,14 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Externals\wxWidgets3\build\msw\wx_base.vcxproj">
+      <Project>{1c8436c9-dbaf-42be-83bc-cf3ec9175abe}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Core\VideoCommon\VideoCommon.vcxproj">
+      <Project>{3de9ee35-3e91-4f27-a014-2866ad8c3fe3}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

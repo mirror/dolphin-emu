@@ -49,6 +49,7 @@
       <Filter>Render</Filter>
     </ClCompile>
     <ClCompile Include="Src\main.cpp" />
+    <ClCompile Include="Src\stdafx.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Src\D3DBase.h">
@@ -90,5 +91,6 @@
     <ClInclude Include="Src\main.h" />
     <ClInclude Include="Src\Globals.h" />
     <ClInclude Include="Src\VideoBackend.h" />
+    <ClInclude Include="Src\stdafx.h" />
   </ItemGroup>
 </Project>

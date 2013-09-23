@@ -92,9 +92,7 @@
     <ClCompile Include="src\connecthostport.c" />
     <ClCompile Include="src\igd_desc_parse.c" />
     <ClCompile Include="src\minisoap.c" />
-    <ClCompile Include="src\minissdpc.c" />
     <ClCompile Include="src\miniupnpc.c" />
-    <ClCompile Include="src\miniupnpcmodule.c" />
     <ClCompile Include="src\miniwget.c" />
     <ClCompile Include="src\minixml.c" />
     <ClCompile Include="src\portlistingparse.c" />

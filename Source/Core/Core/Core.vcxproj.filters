@@ -757,6 +757,7 @@
       <Filter>PowerPC\JitArm32</Filter>
     </ClCompile>
     <ClCompile Include="Src\PowerPC\GDBStub.cpp" />
+    <ClCompile Include="Src\stdafx.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Src\BootManager.h" />
@@ -1281,6 +1282,7 @@
       <Filter>PowerPC\JitArm32</Filter>
     </ClInclude>
     <ClInclude Include="Src\PowerPC\GDBStub.h" />
+    <ClInclude Include="Src\stdafx.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />

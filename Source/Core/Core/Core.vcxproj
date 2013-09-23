@@ -288,6 +288,12 @@
     <ClCompile Include="Src\PowerPC\Profiler.cpp" />
     <ClCompile Include="Src\PowerPC\SignatureDB.cpp" />
     <ClCompile Include="Src\State.cpp" />
+    <ClCompile Include="Src\stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Src\Tracer.cpp" />
     <ClCompile Include="Src\VolumeHandler.cpp" />
     <ClCompile Include="Src\x64MemTools.cpp" />
@@ -477,11 +483,38 @@
     <ClInclude Include="Src\PowerPC\Profiler.h" />
     <ClInclude Include="Src\PowerPC\SignatureDB.h" />
     <ClInclude Include="Src\State.h" />
+    <ClInclude Include="Src\stdafx.h" />
     <ClInclude Include="Src\Tracer.h" />
     <ClInclude Include="Src\VolumeHandler.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Externals\Bochs_disasm\Bochs_disasm.vcxproj">
+      <Project>{8ada04d7-6db1-4da4-ab55-64fb12a0997b}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Externals\LZO\LZO.vcxproj">
+      <Project>{ab993f38-c31d-4897-b139-a620c42bc565}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Externals\polarssl\visualc\PolarSSL.vcxproj">
+      <Project>{bdb6578b-0691-4e80-a46c-df21639fd3b8}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\AudioCommon\AudioCommon.vcxproj">
+      <Project>{54aa7840-5beb-4a0c-9452-74ba4cc7fd44}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Common\Common.vcxproj">
+      <Project>{2e6c348c-c75c-4d94-8d1e-9c1fcbf3efe4}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\DiscIO\DiscIO.vcxproj">
+      <Project>{160bdc25-5626-4b0d-bdd8-2953d9777fb5}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\InputCommon\InputCommon.vcxproj">
+      <Project>{6bbd47cf-91fd-4077-b676-8b76980178a9}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\VideoCommon\VideoCommon.vcxproj">
+      <Project>{3de9ee35-3e91-4f27-a014-2866ad8c3fe3}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
