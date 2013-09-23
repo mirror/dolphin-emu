@@ -27,7 +27,6 @@
 
 CPUCoreBase *cpu_core_base;
 
-extern bool do_trace;
 namespace PowerPC
 {
 
@@ -337,7 +336,6 @@ void CheckExceptions()
 
 	if (exceptions & EXCEPTION_ISI)
 	{
-		printf("EXCEPTION_ISI\n");
 		SRR0 = PC;
 		// Page fault occurred
 		SRR1 = (MSR & 0x87C0FFFF) | (1 << 30);
@@ -346,12 +344,11 @@ void CheckExceptions()
 		MMUTable::on_msr_change();
 		PC = NPC = 0x00000400;
 
-		WARN_LOG(MASTER_LOG, "EXCEPTION_ISI %08x", SRR0);
+		INFO_LOG(POWERPC, "EXCEPTION_ISI %08x", SRR0);
 		Common::AtomicAnd(ppcState.Exceptions, ~EXCEPTION_ISI);
 	}
 	else if (exceptions & EXCEPTION_PROGRAM)
 	{
-		printf("EXCEPTION_PROGRAM\n");
 		SRR0 = PC;
 		// say that it's a trap exception
 		SRR1 = (MSR & 0x87C0FFFF) | 0x20000;
@@ -365,8 +362,6 @@ void CheckExceptions()
 	} 
 	else if (exceptions & EXCEPTION_SYSCALL)
 	{
-		do_trace=true;
-		printf("EXCEPTION_SYSCALL\n");
 		SRR0 = NPC;
 		SRR1 = MSR & 0x87C0FFFF;
 		MSR |= (MSR >> 16) & 1;
@@ -380,7 +375,6 @@ void CheckExceptions()
 	else if (exceptions & EXCEPTION_FPU_UNAVAILABLE)
 	{			
 		//This happens a lot - Gamecube OS uses deferred FPU context switching
-		printf("EXCEPTION_FPU_UNAVAILABLE\n");
 		SRR0 = PC;	// re-execute the instruction
 		SRR1 = MSR & 0x87C0FFFF;
 		MSR |= (MSR >> 16) & 1;
@@ -393,7 +387,6 @@ void CheckExceptions()
 	}
 	else if (exceptions & EXCEPTION_DSI)
 	{
-		printf("EXCEPTION_DSI\n");
 		SRR0 = PC;
 		SRR1 = MSR & 0x87C0FFFF;
 		MSR |= (MSR >> 16) & 1;
@@ -407,7 +400,6 @@ void CheckExceptions()
 	} 
 	else if (exceptions & EXCEPTION_ALIGNMENT)
 	{
-		printf("EXCEPTION_ALIGNMENT\n");
 		//This never happens ATM
 		// perhaps we can get dcb* instructions to use this :p
 		SRR0 = PC;
@@ -428,7 +420,6 @@ void CheckExceptions()
 	{
 		if (exceptions & EXCEPTION_EXTERNAL_INT)
 		{
-			printf("EXCEPTION_EXTERNAL\n");
 			// Pokemon gets this "too early", it hasn't a handler yet
 			SRR0 = NPC;
 			SRR1 = MSR & 0x87C0FFFF;
@@ -444,7 +435,6 @@ void CheckExceptions()
 		}
 		else if (exceptions & EXCEPTION_PERFORMANCE_MONITOR)
 		{
-			printf("EXCEPTION_PERFORMANCE\n");
 			SRR0 = NPC;
 			SRR1 = MSR & 0x87C0FFFF;
 			MSR |= (MSR >> 16) & 1;
@@ -457,7 +447,6 @@ void CheckExceptions()
 		}
 		else if (exceptions & EXCEPTION_DECREMENTER)
 		{
-			printf("EXCEPTION_DECREMENTER\n");
 			SRR0 = NPC;
 			SRR1 = MSR & 0x87C0FFFF;
 			MSR |= (MSR >> 16) & 1;

@@ -15,7 +15,6 @@
 #include "Atomic.h"
 #include "HLE/HLE.h"
 
-bool do_trace=false;
 namespace {
 	u32 last_pc;
 }
@@ -112,10 +111,6 @@ int Interpreter::SingleStepInner(void)
 	else
 	{
 		instCode.hex = Memory::Read_Opcode(PC);
-		if(do_trace)
-		{
-			WARN_LOG(MASTER_LOG, "trace PC: %08x NPC: %08x used NPC: %08x instr: %08x MSR: %08x", PC, NPC, PC + sizeof(UGeckoInstruction), instCode.hex, MSR);
-		}
 		NPC = PC + sizeof(UGeckoInstruction);
 
 //		if(PC==0x801632B4) startTrace=1;
@@ -165,7 +160,6 @@ int Interpreter::SingleStepInner(void)
 		}
 		else
 		{
-			Common::AtomicOr(PowerPC::ppcState.Exceptions, EXCEPTION_PROGRAM);
 			// Memory exception on instruction fetch
 			PowerPC::CheckExceptions();
 			m_EndBlock = true;
