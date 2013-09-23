@@ -26,21 +26,25 @@
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -94,7 +98,6 @@
   <ItemGroup>
     <ClCompile Include="Src\ActionReplay.cpp" />
     <ClCompile Include="Src\ARDecrypt.cpp" />
-    <ClCompile Include="Src\ArmMemTools.cpp" />
     <ClCompile Include="Src\BootManager.cpp" />
     <ClCompile Include="Src\Boot\Boot.cpp" />
     <ClCompile Include="Src\Boot\Boot_BS2Emu.cpp" />
@@ -241,7 +244,6 @@
     <ClCompile Include="Src\NetPlayClient.cpp" />
     <ClCompile Include="Src\NetPlayServer.cpp" />
     <ClCompile Include="Src\PatchEngine.cpp" />
-    <ClCompile Include="Src\PowerPC\GDBStub.cpp" />
     <ClCompile Include="Src\PowerPC\Interpreter\Interpreter.cpp" />
     <ClCompile Include="Src\PowerPC\Interpreter\Interpreter_Branch.cpp" />
     <ClCompile Include="Src\PowerPC\Interpreter\Interpreter_FloatingPoint.cpp" />
@@ -276,21 +278,6 @@
     <ClCompile Include="Src\PowerPC\Jit64\Jit_LoadStorePaired.cpp" />
     <ClCompile Include="Src\PowerPC\Jit64\Jit_Paired.cpp" />
     <ClCompile Include="Src\PowerPC\Jit64\Jit_SystemRegisters.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\Jit.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArmCache.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_BackPatch.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_Branch.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_FloatingPoint.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_Integer.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_LoadStore.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_LoadStoreFloating.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_LoadStorePaired.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_Paired.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_SystemRegisters.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_Tables.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\JitAsm.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\JitFPRCache.cpp" />
-    <ClCompile Include="Src\PowerPC\JitArm32\JitRegCache.cpp" />
     <ClCompile Include="Src\PowerPC\JitCommon\JitAsmCommon.cpp" />
     <ClCompile Include="Src\PowerPC\JitCommon\JitBackpatch.cpp" />
     <ClCompile Include="Src\PowerPC\JitCommon\JitBase.cpp" />
@@ -466,7 +453,6 @@
     <ClInclude Include="Src\NetPlayServer.h" />
     <ClInclude Include="Src\PatchEngine.h" />
     <ClInclude Include="Src\PowerPC\CPUCoreBase.h" />
-    <ClInclude Include="Src\PowerPC\GDBStub.h" />
     <ClInclude Include="Src\PowerPC\Gekko.h" />
     <ClInclude Include="Src\PowerPC\Interpreter\Interpreter.h" />
     <ClInclude Include="Src\PowerPC\Interpreter\Interpreter_FPUtils.h" />
@@ -479,13 +465,6 @@
     <ClInclude Include="Src\PowerPC\Jit64\Jit64_Tables.h" />
     <ClInclude Include="Src\PowerPC\Jit64\JitAsm.h" />
     <ClInclude Include="Src\PowerPC\Jit64\JitRegCache.h" />
-    <ClInclude Include="Src\PowerPC\JitArm32\Jit.h" />
-    <ClInclude Include="Src\PowerPC\JitArm32\JitArmCache.h" />
-    <ClInclude Include="Src\PowerPC\JitArm32\JitArm_FPUtils.h" />
-    <ClInclude Include="Src\PowerPC\JitArm32\JitArm_Tables.h" />
-    <ClInclude Include="Src\PowerPC\JitArm32\JitAsm.h" />
-    <ClInclude Include="Src\PowerPC\JitArm32\JitFPRCache.h" />
-    <ClInclude Include="Src\PowerPC\JitArm32\JitRegCache.h" />
     <ClInclude Include="Src\PowerPC\JitCommon\JitAsmCommon.h" />
     <ClInclude Include="Src\PowerPC\JitCommon\JitBackpatch.h" />
     <ClInclude Include="Src\PowerPC\JitCommon\JitBase.h" />

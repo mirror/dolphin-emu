@@ -133,9 +133,6 @@
     <Filter Include="IPC HLE %28IOS/Starlet%29\USB/BT/Wiimote">
       <UniqueIdentifier>{8352be4d-d37d-4f55-adec-b940a9712802}</UniqueIdentifier>
     </Filter>
-    <Filter Include="PowerPC\JitArm32">
-      <UniqueIdentifier>{ed121a37-b6c7-4991-aac2-8f0ae931eb4a}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Src\BootManager.cpp" />
@@ -678,15 +675,6 @@
     <ClCompile Include="Src\PowerPC\Jit64IL\JitILAsm.cpp">
       <Filter>PowerPC\JitIL</Filter>
     </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\Jit.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\JitAsm.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\JitFPRCache.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
     <ClCompile Include="Src\PowerPC\Jit64\Jit_Branch.cpp">
       <Filter>PowerPC\Jit64</Filter>
     </ClCompile>
@@ -717,46 +705,6 @@
     <ClCompile Include="Src\PowerPC\Jit64\JitRegCache.cpp">
       <Filter>PowerPC\Jit64</Filter>
     </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\JitRegCache.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_BackPatch.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_Branch.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_FloatingPoint.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_Integer.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_LoadStore.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_LoadStoreFloating.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_LoadStorePaired.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_Paired.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_SystemRegisters.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArm_Tables.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\PowerPC\JitArm32\JitArmCache.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\ArmMemTools.cpp">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\PowerPC\GDBStub.cpp" />
     <ClCompile Include="Src\stdafx.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -1254,34 +1202,12 @@
     <ClInclude Include="Src\PowerPC\Jit64IL\JitILAsm.h">
       <Filter>PowerPC\JitIL</Filter>
     </ClInclude>
-    <ClInclude Include="Src\PowerPC\JitArm32\Jit.h">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClInclude>
-    <ClInclude Include="Src\PowerPC\JitArm32\JitAsm.h">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClInclude>
-    <ClInclude Include="Src\PowerPC\JitArm32\JitFPRCache.h">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClInclude>
-    <ClInclude Include="Src\PowerPC\JitArm32\JitRegCache.h">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClInclude>
     <ClInclude Include="Src\PowerPC\Jit64\JitRegCache.h">
       <Filter>PowerPC\Jit64</Filter>
     </ClInclude>
     <ClInclude Include="Src\PowerPC\Jit64\JitAsm.h">
       <Filter>PowerPC\Jit64</Filter>
     </ClInclude>
-    <ClInclude Include="Src\PowerPC\JitArm32\JitArm_FPUtils.h">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClInclude>
-    <ClInclude Include="Src\PowerPC\JitArm32\JitArm_Tables.h">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClInclude>
-    <ClInclude Include="Src\PowerPC\JitArm32\JitArmCache.h">
-      <Filter>PowerPC\JitArm32</Filter>
-    </ClInclude>
-    <ClInclude Include="Src\PowerPC\GDBStub.h" />
     <ClInclude Include="Src\stdafx.h" />
   </ItemGroup>
   <ItemGroup>
