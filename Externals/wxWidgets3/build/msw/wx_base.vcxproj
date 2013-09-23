@@ -1231,7 +1231,12 @@
     <ClCompile Include="..\..\src\generic\statusbr.cpp" />
     <ClCompile Include="..\..\src\generic\tabg.cpp" />
     <ClCompile Include="..\..\src\generic\textdlgg.cpp" />
-    <ClCompile Include="..\..\src\generic\textmeasure.cpp" />
+    <ClCompile Include="..\..\src\generic\textmeasure.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\src\generic\timectrlg.cpp" />
     <ClCompile Include="..\..\src\generic\timer.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>

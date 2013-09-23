@@ -2924,9 +2924,6 @@
     <ClCompile Include="..\..\src\generic\paletteg.cpp">
       <Filter>Generic</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\generic\preferencesg.cpp">
-      <Filter>Generic</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\generic\printps.cpp">
       <Filter>Generic</Filter>
     </ClCompile>
@@ -3488,6 +3485,9 @@
     <ClCompile Include="..\..\src\msw\ole\uuid.cpp">
       <Filter>MSW\ole</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\common\textmeasurecmn.cpp" />
+    <ClCompile Include="..\..\src\common\threadinfo.cpp" />
+    <ClCompile Include="..\..\src\msw\ole\safearray.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\common\unictabl.inc">
