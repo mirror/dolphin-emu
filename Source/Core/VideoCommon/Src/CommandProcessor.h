@@ -20,6 +20,7 @@ extern SCPFifoStruct *gpuFifo;
 extern SCPFifoStruct cpuFifo;
 extern volatile bool interruptSet;
 extern volatile bool interruptWaiting;
+extern volatile bool gpuRunning;
 extern volatile bool interruptTokenWaiting;
 extern u32 interruptTokenData;
 extern volatile bool interruptFinishWaiting;

@@ -20,7 +20,6 @@ extern u8* g_pVideoData;
 
 namespace
 {
-static volatile bool GpuRunningState = false;
 static volatile bool EmuRunningState = false;
 static std::mutex m_csHWVidOccupied;
 // STATE_TO_SAVE
@@ -58,13 +57,13 @@ void Fifo_Init()
 {
 	videoBuffer = (u8*)AllocateMemoryPages(FIFO_SIZE);
 	size = 0;
-	GpuRunningState = false;
+	CommandProcessor::gpuRunning = false;
 	Common::AtomicStore(CommandProcessor::VITicks, CommandProcessor::m_cpClockOrigin);
 }
 
 void Fifo_Shutdown()
 {
-	if (GpuRunningState) PanicAlert("Fifo shutting down while active");
+	if (CommandProcessor::gpuRunning) PanicAlert("Fifo shutting down while active");
 	FreeMemoryPages(videoBuffer, FIFO_SIZE);
 }
 
@@ -86,8 +85,7 @@ void Fifo_SetRendering(bool enabled)
 void ExitGpuLoop()
 {
 	// Terminate GPU thread loop
-	GpuRunningState = false;
-	CommandProcessor::gpuFifo->bFF_GPReadEnable = false;
+	CommandProcessor::gpuRunning = false;
 	// No need to wait - g_EmuThread.join() will take care of it.
 	EmuRunningState = true;
 }
@@ -129,10 +127,10 @@ void ResetVideoBuffer()
 void RunGpuLoop()
 {
 	std::lock_guard<std::mutex> lk(m_csHWVidOccupied);
-	GpuRunningState = true;
+	CommandProcessor::gpuRunning = true;
 	u32 cyclesExecuted = 0;
 
-	while (GpuRunningState)
+	while (CommandProcessor::gpuRunning)
 	{
 		SCPFifoStruct &fifo = *CommandProcessor::gpuFifo;
 
@@ -143,7 +141,7 @@ void RunGpuLoop()
 		Common::AtomicStore(CommandProcessor::VITicks, CommandProcessor::m_cpClockOrigin);
 
 		// check if we are able to run this buffer
-		while (GpuRunningState && CommandProcessor::GPUHasWork())
+		while (CommandProcessor::GPUHasWork())
 		{
 			if (!Core::g_CoreStartupParameter.bSyncGPU || Common::AtomicLoad(CommandProcessor::VITicks) > CommandProcessor::m_cpClockOrigin)
 			{
@@ -217,6 +215,7 @@ bool AtBreakpointCpu()
 
 void RunGpu()
 {
+	CommandProcessor::gpuRunning = true;
 	SCPFifoStruct &fifo = *CommandProcessor::gpuFifo;
 	while (CommandProcessor::GPUHasWork())
 	{

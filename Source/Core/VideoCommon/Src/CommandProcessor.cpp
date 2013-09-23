@@ -45,6 +45,7 @@ u16 m_tokenReg;
 volatile bool interruptSet= false;
 volatile bool interruptWaiting= false;
 volatile bool interruptTokenWaiting = false;
+volatile bool gpuRunning = false;
 u32 interruptTokenData;
 volatile bool interruptFinishWaiting = false;
 bool deterministicGPUSync = false;
@@ -128,7 +129,8 @@ bool GPUHasWork()
 	// - interruptWaiting *never* becomes true.
 	// - No work is done between setting the read pointer and comparing it
 	//   against CPWritePointer/CPBreakpoint.
-	return gpuFifo->bFF_GPReadEnable &&
+	return gpuRunning &&
+	       gpuFifo->bFF_GPReadEnable &&
 	       !interruptWaiting &&
 	       Common::AtomicLoad(gpuFifo->CPReadPointer) != Common::AtomicLoad(gpuFifo->CPWritePointer) &&
 		   !AtBreakpointGpu();
