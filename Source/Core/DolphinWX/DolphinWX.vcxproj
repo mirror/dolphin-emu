@@ -75,7 +75,25 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
-  <ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Src\AboutDolphin.cpp" />
