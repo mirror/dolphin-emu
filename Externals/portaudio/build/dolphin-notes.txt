@@ -1,0 +1,5 @@
+This directory contains the Visual Studio project files which were used to build portaudio.
+* use in portaudio\build\msvc\
+* portaudio's files are very old and messy
+* Makes it easier to update portaudio in the future
+* Uses dolphin's VSProps, so we know it's properly compatible

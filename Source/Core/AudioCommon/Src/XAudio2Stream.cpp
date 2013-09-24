@@ -5,6 +5,8 @@
 #include "AudioCommon.h"
 #include "XAudio2Stream.h"
 
+#pragma comment(lib, "xaudio2.lib")
+
 const int NUM_BUFFERS = 3;
 const int SAMPLES_PER_BUFFER = 96;
 

@@ -53,29 +53,29 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\..\VSProps\Base.props" />
     <Import Project="..\..\VSProps\PrecompiledHeader.props" />
-    <Import Project="..\..\VSProps\Dolphin.Win32.props" />
     <Import Project="..\..\VSProps\CodeGen_Debug.props" />
+    <Import Project="..\..\VSProps\Dolphin.Win32.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\..\VSProps\Base.props" />
     <Import Project="..\..\VSProps\PrecompiledHeader.props" />
-    <Import Project="..\..\VSProps\Dolphin.x64.props" />
     <Import Project="..\..\VSProps\CodeGen_Debug.props" />
+    <Import Project="..\..\VSProps\Dolphin.x64.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\..\VSProps\Base.props" />
     <Import Project="..\..\VSProps\PrecompiledHeader.props" />
-    <Import Project="..\..\VSProps\Dolphin.Win32.props" />
     <Import Project="..\..\VSProps\CodeGen_Release.props" />
+    <Import Project="..\..\VSProps\Dolphin.Win32.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\..\VSProps\Base.props" />
     <Import Project="..\..\VSProps\PrecompiledHeader.props" />
-    <Import Project="..\..\VSProps\Dolphin.x64.props" />
     <Import Project="..\..\VSProps\CodeGen_Release.props" />
+    <Import Project="..\..\VSProps\Dolphin.x64.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
@@ -83,21 +83,61 @@
     <ClCompile>
       <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)..\Data" "$(TargetDir)" /e /s /y /d
+echo Copying External .dlls
+xcopy "$(SolutionDir)..\Externals\OpenAL\Win32\*.dll" "$(TargetDir)" /e /s /y /q /d
+xcopy "$(SolutionDir)..\Externals\SDL\$(PlatformName)\*.dll" "$(TargetDir)" /e /s /y /q /d
+</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copying Data\* to $(TargetDir)</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)..\Data" "$(TargetDir)" /e /s /y /d
+echo Copying External .dlls
+xcopy "$(SolutionDir)..\Externals\OpenAL\Win32\*.dll" "$(TargetDir)" /e /s /y /q /d
+xcopy "$(SolutionDir)..\Externals\SDL\$(PlatformName)\*.dll" "$(TargetDir)" /e /s /y /q /d
+</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copying Data\* to $(TargetDir)</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)..\Data" "$(TargetDir)" /e /s /y /d
+echo Copying External .dlls
+xcopy "$(SolutionDir)..\Externals\OpenAL\Win64\*.dll" "$(TargetDir)" /e /s /y /q /d
+xcopy "$(SolutionDir)..\Externals\SDL\$(PlatformName)\*.dll" "$(TargetDir)" /e /s /y /q /d
+</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copying Data\* to $(TargetDir)</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+    <PostBuildEvent>
+      <Command>xcopy "$(SolutionDir)..\Data" "$(TargetDir)" /e /s /y /d
+echo Copying External .dlls
+xcopy "$(SolutionDir)..\Externals\OpenAL\Win64\*.dll" "$(TargetDir)" /e /s /y /q /d
+xcopy "$(SolutionDir)..\Externals\SDL\$(PlatformName)\*.dll" "$(TargetDir)" /e /s /y /q /d
+</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copying Data\* to $(TargetDir)</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Src\AboutDolphin.cpp" />
