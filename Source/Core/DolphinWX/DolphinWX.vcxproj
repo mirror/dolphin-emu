@@ -221,6 +221,9 @@
     <ProjectReference Include="..\..\..\Externals\Bochs_disasm\Bochs_disasm.vcxproj">
       <Project>{8ada04d7-6db1-4da4-ab55-64fb12a0997b}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\Externals\CLRun\clrun\CLRun.vcxproj">
+      <Project>{aa862e5e-a993-497a-b6a0-0e8e94b10050}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\Externals\libpng\png\png.vcxproj">
       <Project>{4c9f135b-a85e-430c-bad4-4c67ef5fc12c}</Project>
     </ProjectReference>
@@ -230,6 +233,9 @@
     <ProjectReference Include="..\..\..\Externals\miniupnpc\miniupnpc.vcxproj">
       <Project>{31643fdb-1bb8-4965-9de7-000fc88d35ae}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\Externals\SFML\build\vc2010\SFML_Network.vcxproj">
+      <Project>{93d73454-2512-424e-9cda-4bb357fe13dd}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\Externals\wxWidgets3\build\msw\wx_base.vcxproj">
       <Project>{1c8436c9-dbaf-42be-83bc-cf3ec9175abe}</Project>
     </ProjectReference>
@@ -238,9 +244,6 @@
     </ProjectReference>
     <ProjectReference Include="..\..\Plugins\Plugin_VideoDX11\Plugin_VideoDX11.vcxproj">
       <Project>{96020103-4ba5-4fd2-b4aa-5b6d24492d4e}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Plugins\Plugin_VideoDX9\Plugin_VideoDX9.vcxproj">
-      <Project>{ae0d0227-7fc2-4957-8f0d-fa665e10bea2}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\Plugins\Plugin_VideoOGL\Plugin_VideoOGL.vcxproj">
       <Project>{ec1a314c-5588-4506-9c1e-2e58e5817f75}</Project>

@@ -205,6 +205,9 @@
     <Text Include="CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Externals\CLRun\clrun\CLRun.vcxproj">
+      <Project>{aa862e5e-a993-497a-b6a0-0e8e94b10050}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\Externals\SOIL\SOIL.vcxproj">
       <Project>{b441cc62-877e-4b3f-93e0-0de80544f705}</Project>
     </ProjectReference>
