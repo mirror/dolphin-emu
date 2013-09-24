@@ -44,10 +44,6 @@ public:
 
 	bool is_connected;
 
-#ifdef USE_UPNP
-	void TryPortmapping(u16 port);
-#endif
-
 private:
 	class Client
 	{
@@ -94,22 +90,6 @@ private:
 	sf::SocketTCP m_socket;
 	std::thread m_thread;
 	sf::Selector<sf::SocketTCP> m_selector;
-
-#ifdef USE_UPNP
-	static void mapPortThread(const u16 port);
-	static void unmapPortThread();
-
-	static bool initUPnP();
-	static bool UPnPMapPort(const std::string& addr, const u16 port);
-	static bool UPnPUnmapPort(const u16 port);
-
-	static struct UPNPUrls m_upnp_urls;
-	static struct IGDdatas m_upnp_data;
-	static u16 m_upnp_mapped;
-	static bool m_upnp_inited;
-	static bool m_upnp_error;
-	static std::thread m_upnp_thread;
-#endif
 };
 
 #endif

@@ -11,6 +11,7 @@ set(LIBS	core
 			audiocommon
 			z
 			sfml-network
+			enet
 			${GTK2_LIBRARIES})
 
 if(NOT ANDROID)
@@ -168,10 +169,6 @@ if(wxWidgets_FOUND)
 	set(DOLPHIN_EXE ${DOLPHIN_EXE_BASE})
 else()
 	set(DOLPHIN_EXE ${DOLPHIN_EXE_BASE}-nogui)
-endif()
-
-if(USE_UPNP)
-  set(LIBS  ${LIBS} miniupnpc)
 endif()
 
 include(FindGettext)

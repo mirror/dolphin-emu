@@ -130,7 +130,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link />
     <PostBuildEvent>
@@ -145,7 +145,7 @@ xcopy "$(SolutionDir)..\Externals\msvcrt\$(PlatformName)\*.dll" "$(TargetDir)" /
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link />
     <PostBuildEvent>
@@ -160,7 +160,7 @@ xcopy "$(SolutionDir)..\Externals\msvcrt\$(PlatformName)\*.dll" "$(TargetDir)" /
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OpenMPSupport>
       </OpenMPSupport>
     </ClCompile>
@@ -177,7 +177,7 @@ xcopy "$(SolutionDir)..\Externals\msvcrt\$(PlatformName)\*.dll" "$(TargetDir)" /
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugFast|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link />
     <PostBuildEvent>
@@ -192,7 +192,7 @@ xcopy "$(SolutionDir)..\Externals\msvcrt\$(PlatformName)\*.dll" "$(TargetDir)" /
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OpenMPSupport>
       </OpenMPSupport>
     </ClCompile>
@@ -208,10 +208,13 @@ xcopy "$(SolutionDir)..\Externals\msvcrt\$(PlatformName)\*.dll" "$(TargetDir)" /
     </PostBuildEvent>
     <ResourceCompile>
     </ResourceCompile>
+    <ResourceCompile>
+      <AdditionalIncludeDirectories>..\..\..\Externals\wxWidgets3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugFast|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\Externals\GLew\include;..\Common\Src;..\VideoCommon\Src;..\AudioCommon\Src;..\Core\Src;..\Core\Src\PowerPC\JitCommon;..\DebuggerWX\Src;..\..\..\Externals\Bochs_disasm;..\InputCommon\Src;..\DiscIO\Src;..\..\..\Externals\SFML\include;..\..\..\Externals\wxWidgets3;..\..\..\Externals\wxWidgets3\include;..\..\..\Externals\CLRun\include;..\..\..\Externals\miniupnpc\src;..\..\..\Externals;..\..\..\Externals\polarssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link />
     <PostBuildEvent>
@@ -344,6 +347,9 @@ xcopy "$(SolutionDir)..\Externals\msvcrt\$(PlatformName)\*.dll" "$(TargetDir)" /
   <ItemGroup>
     <ProjectReference Include="..\..\..\Externals\Bochs_disasm\Bochs_disasm.vcxproj">
       <Project>{cd3d4c3c-1027-4d33-b047-aec7b56d0bf6}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Externals\enet\enet.vcxproj">
+      <Project>{d5c805b7-acc6-4260-a7b9-e685ae5e54fc}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\..\Externals\libpng\png\png.vcxproj">
       <Project>{01573c36-ac6e-49f6-94ba-572517eb9740}</Project>
