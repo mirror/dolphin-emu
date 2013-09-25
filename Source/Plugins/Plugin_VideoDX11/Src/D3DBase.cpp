@@ -14,6 +14,7 @@ namespace DX11
 
 HINSTANCE hD3DCompilerDll = NULL;
 D3DREFLECT PD3DReflect = NULL;
+pD3DCompile PD3DCompile = NULL;
 int d3dcompiler_dll_ref = 0;
 
 /*
@@ -164,6 +165,8 @@ HRESULT LoadD3DCompiler()
 
 	PD3DReflect = (D3DREFLECT)GetProcAddress(hD3DCompilerDll, "D3DReflect");
 	if (PD3DReflect == NULL) MessageBoxA(NULL, "GetProcAddress failed for D3DReflect!", "Critical error", MB_OK | MB_ICONERROR);
+	PD3DCompile = (pD3DCompile)GetProcAddress(hD3DCompilerDll, "D3DCompile");
+	if (PD3DCompile == NULL) MessageBoxA(NULL, "GetProcAddress failed for D3DCompile!", "Critical error", MB_OK | MB_ICONERROR);
 
 	return S_OK;
 }

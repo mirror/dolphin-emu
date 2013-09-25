@@ -6,7 +6,7 @@
 
 #include <dxgi.h>
 #include <d3d11.h>
-#include <D3Dcompiler.h>
+#include <d3dcompiler.h>
 #include "Common.h"
 #include <vector>
 
@@ -98,12 +98,13 @@ extern D3DX11SAVETEXTURETOFILEWTYPE PD3DX11SaveTextureToFileW;
 #endif
 */
 
-typedef HRESULT (WINAPI* CREATEDXGIFACTORY)(REFIID, void**);
+typedef HRESULT (WINAPI *CREATEDXGIFACTORY)(REFIID, void**);
 extern CREATEDXGIFACTORY PCreateDXGIFactory;
-typedef HRESULT (WINAPI* D3D11CREATEDEVICE)(IDXGIAdapter*, D3D_DRIVER_TYPE, HMODULE, UINT, CONST D3D_FEATURE_LEVEL*, UINT, UINT, ID3D11Device**, D3D_FEATURE_LEVEL*, ID3D11DeviceContext**);
+typedef HRESULT (WINAPI *D3D11CREATEDEVICE)(IDXGIAdapter*, D3D_DRIVER_TYPE, HMODULE, UINT, CONST D3D_FEATURE_LEVEL*, UINT, UINT, ID3D11Device**, D3D_FEATURE_LEVEL*, ID3D11DeviceContext**);
 extern D3D11CREATEDEVICE PD3D11CreateDevice;
 
 typedef HRESULT (WINAPI *D3DREFLECT)(LPCVOID, SIZE_T, REFIID, void**);
 extern D3DREFLECT PD3DReflect;
+extern pD3DCompile PD3DCompile;
 
 }  // namespace DX11

@@ -4,9 +4,6 @@
 
 #include <string>
 
-#include <d3dcompiler.h>
-#pragma comment(lib, "d3dcompiler.lib")
-
 #include "VideoConfig.h"
 
 #include "D3DBase.h"
@@ -40,7 +37,7 @@ bool CompileVertexShader(const char* code, unsigned int len, D3DBlob** blob)
 #else
 	UINT flags = D3D10_SHADER_ENABLE_BACKWARDS_COMPATIBILITY|D3D10_SHADER_OPTIMIZATION_LEVEL3|D3D10_SHADER_SKIP_VALIDATION;
 #endif
-	HRESULT hr = D3DCompile(code, len, NULL, NULL, NULL, "main", D3D::VertexShaderVersionString(),
+	HRESULT hr = PD3DCompile(code, len, NULL, NULL, NULL, "main", D3D::VertexShaderVersionString(),
 							flags, 0, &shaderBuffer, &errorBuffer);
 	
 	if (errorBuffer)
@@ -98,7 +95,7 @@ bool CompileGeometryShader(const char* code, unsigned int len, D3DBlob** blob,
 #else
 	UINT flags = D3D10_SHADER_ENABLE_BACKWARDS_COMPATIBILITY|D3D10_SHADER_OPTIMIZATION_LEVEL3|D3D10_SHADER_SKIP_VALIDATION;
 #endif
-	HRESULT hr = D3DCompile(code, len, NULL, pDefines, NULL, "main", D3D::GeometryShaderVersionString(),
+	HRESULT hr = PD3DCompile(code, len, NULL, pDefines, NULL, "main", D3D::GeometryShaderVersionString(),
 							flags, 0, &shaderBuffer, &errorBuffer);
 
 	if (errorBuffer)
@@ -158,7 +155,7 @@ bool CompilePixelShader(const char* code, unsigned int len, D3DBlob** blob,
 #else
 	UINT flags = D3D10_SHADER_OPTIMIZATION_LEVEL3;
 #endif
-	HRESULT hr = D3DCompile(code, len, NULL, pDefines, NULL, "main", D3D::PixelShaderVersionString(),
+	HRESULT hr = PD3DCompile(code, len, NULL, pDefines, NULL, "main", D3D::PixelShaderVersionString(),
 							flags, 0, &shaderBuffer, &errorBuffer);
 
 	if (errorBuffer)
