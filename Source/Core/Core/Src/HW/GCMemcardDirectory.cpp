@@ -80,8 +80,10 @@ bool GCMemcardDirectory::LoadGCI(std::string fileName, int region)
 		if (dirChecksum == 0xFFFF) dirChecksum = 0;
 		if (dirChecksum_Inv == 0xFFFF) dirChecksum_Inv = 0;
 */	
-		m_dir1.Replace(gci.m_gci_header, m_saves.size());
+		int idx = m_saves.size();
+		m_dir1.Replace(gci.m_gci_header, idx);
 		m_saves.push_back(gci);
+		SetUsedBlocks(idx);
 
 		return true;
 	}
@@ -163,13 +165,21 @@ s32 GCMemcardDirectory::Read(u32 address, s32 length, u8* destaddress)
 		m_LastBlock = -1;
 		for (int i = 0; i < m_saves.size(); ++i)
 		{
-			u16 start = BE16(m_saves[i].m_gci_header.FirstBlock);
-			u16 end = start + BE16(m_saves[i].m_gci_header.BlockCount);
-			if (start <= block && block < end)
+			if (BE32(m_saves[i].m_gci_header.Gamecode) != 0xFFFFFFFF)
 			{
-				m_LastBlock = block;
-				m_LastBlockAddress = m_saves[i].m_save_data[block-start].block;
-				break;
+				
+				if (m_saves[i].m_used_blocks.size() == 0)
+				{
+					SetUsedBlocks(i);
+				}
+
+				int idx = m_saves[i].UsesBlock(block);
+				if (idx != -1)
+				{
+					m_LastBlock = block;
+					m_LastBlockAddress = m_saves[i].m_save_data[idx].block;
+					break;
+				}
 			}
 		}
 		if (m_LastBlock == -1)
@@ -223,22 +233,22 @@ s32 GCMemcardDirectory::Write(u32 destaddress, s32 length, u8* srcaddress)
 		m_LastBlock = -1;
 		for (int i = 0; i < m_saves.size(); ++i)
 		{
-			u16 start = BE16(m_saves[i].m_gci_header.FirstBlock);
-			u16 num_blocks = BE16(m_saves[i].m_gci_header.BlockCount);
-			while (m_saves[i].m_save_data.size() < num_blocks)
+			if (BE32(m_saves[i].m_gci_header.Gamecode) != 0xFFFFFFFF)
 			{
-				m_saves[i].m_save_data.push_back(GCMBlock());
-			}
-			u16 end = start + num_blocks;
-			if (start <= block && block < end)
-			{
-				m_saves[i].m_dirty = true;
-				m_LastBlock = block;
-				u16 saveblock = block-start;
-				while (m_saves[i].m_save_data.size() < saveblock+1)
-					m_saves[i].m_save_data.push_back(GCMBlock());
-				m_LastBlockAddress = m_saves[i].m_save_data[block-start].block;
-				break;
+				
+				if (m_saves[i].m_used_blocks.size() == 0)
+				{
+					SetUsedBlocks(i);
+				}
+
+				int idx = m_saves[i].UsesBlock(block);
+				if (idx != -1)
+				{
+					m_saves[i].m_dirty = true;
+					m_LastBlock = block;
+					m_LastBlockAddress = m_saves[i].m_save_data[idx].block;
+					break;
+				}
 			}
 		}
 		if (m_LastBlock == -1)
@@ -340,13 +350,21 @@ void GCMemcardDirectory::clearBlock(u32 blocknum)
 		m_LastBlock = -1;
 		for (int i = 0; i < m_saves.size(); ++i)
 		{
-			u16 start = BE16(m_saves[i].m_gci_header.FirstBlock);
-			u16 end = start + BE16(m_saves[i].m_gci_header.BlockCount);
-			if (start <= blocknum && blocknum < end)
+			if (BE32(m_saves[i].m_gci_header.Gamecode) != 0xFFFFFFFF)
 			{
-				m_LastBlock = blocknum;
-				m_LastBlockAddress = m_saves[i].m_save_data[blocknum-start].block;
-				break;
+				if (m_saves[i].m_used_blocks.size() == 0)
+				{
+					SetUsedBlocks(i);
+				}
+
+				int idx = m_saves[i].UsesBlock(blocknum);
+				if (idx != -1)
+				{
+					m_saves[i].m_dirty = true;
+					m_LastBlock = blocknum;
+					m_LastBlockAddress = m_saves[i].m_save_data[idx].block;
+					break;
+				}
 			}
 		}
 		if (m_LastBlock == -1)
@@ -355,6 +373,44 @@ void GCMemcardDirectory::clearBlock(u32 blocknum)
 	((GCMBlock*)m_LastBlockAddress)->erase();
 }
 
+bool GCMemcardDirectory::SetUsedBlocks(int saveIndex)
+{
+	BlockAlloc *currentBat;
+	if (BE16(m_bat2.UpdateCounter) > BE16(m_bat1.UpdateCounter))
+		currentBat = &m_bat2;
+	else
+		currentBat = &m_bat1;
+
+	u16 block = BE16(m_saves[saveIndex].m_gci_header.FirstBlock);
+	m_saves[saveIndex].m_used_blocks;
+	while (block != 0xFFFF)
+	{
+		m_saves[saveIndex].m_used_blocks.push_back(block);
+		block = currentBat->GetNextBlock(block);
+		if (block == 0)
+		{
+			PanicAlert("BAT Incorrect, Dolphin will now exit");
+			exit(0);
+		}
+	}
+
+	u16 num_blocks = BE16(m_saves[saveIndex].m_gci_header.BlockCount);
+
+	if (m_saves[saveIndex].m_used_blocks.size() != num_blocks)
+	{
+		PanicAlert("Warning BAT number of blocks does not match file header");
+		return false;
+	}
+
+//	m_saves[saveIndex].m_save_data.resize(numBlocks);
+	int allocated_blocks = m_saves[saveIndex].m_save_data.size();
+	while (allocated_blocks < num_blocks)
+	{
+		m_saves[saveIndex].m_save_data.push_back(GCMBlock());
+		++allocated_blocks;
+	}
+	return true;
+}
 void GCMemcardDirectory::Flush()
 {
 	DEntry invalid;
@@ -413,6 +469,17 @@ void GCMemcardDirectory::DoState(PointerWrap &p)
 	}
 }
 
+
+int GCIFile::UsesBlock(u16 blocknum)
+{
+	for (int i = 0; i < m_used_blocks.size(); ++i)
+	{
+		if (m_used_blocks[i]==blocknum)
+			return i;
+	}
+	return -1;
+}
+
 void GCIFile::DoState(PointerWrap &p)
 {
 	p.DoPOD<DEntry>(m_gci_header);
@@ -425,5 +492,6 @@ void GCIFile::DoState(PointerWrap &p)
 	{
 		p.DoPOD<GCMBlock>(*itr);
 	}
+	p.Do(m_used_blocks);
 
 }
