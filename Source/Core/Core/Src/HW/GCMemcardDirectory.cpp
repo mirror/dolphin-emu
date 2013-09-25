@@ -3,8 +3,8 @@
 // Refer to the license.txt file included.
 
 #include "GCMemcard.h"
-
-bool GCMemcardDirectory::LoadGCI(std::string fileName)
+#include "Volume.h"
+bool GCMemcardDirectory::LoadGCI(std::string fileName, int region)
 {
 	File::IOFile gcifile(fileName, "rb");
 	if (gcifile)
@@ -16,6 +16,35 @@ bool GCMemcardDirectory::LoadGCI(std::string fileName)
 		{
 			ERROR_LOG(EXPANSIONINTERFACE, "%s failed to read header", fileName.c_str());
 			return false;
+		}
+
+		// check region
+		switch (gci.m_gci_header.Gamecode[3])
+		{
+		case 'J':
+			if (region != DiscIO::IVolume::COUNTRY_JAPAN)
+			{
+				PanicAlertT("GCI save file was not loaded because it is the wrong region for this memory card:\n%s", fileName.c_str());
+				return false;
+			}
+			break;
+		case 'E':
+			if (region != DiscIO::IVolume::COUNTRY_USA)
+			{
+				PanicAlertT("GCI save file was not loaded because it is the wrong region for this memory card:\n%s", fileName.c_str());
+				return false;
+			}
+			break;
+		case 'C':
+			// Used by Datel Action Replay Save
+			break;
+		default:
+			if (region != DiscIO::IVolume::COUNTRY_EUROPE)
+			{
+				PanicAlertT("GCI save file was not loaded because it is the wrong region for this memory card:\n%s", fileName.c_str());
+				return false;
+			}
+			break;
 		}
 		u16 numBlocks = BE16(gci.m_gci_header.BlockCount);
 		u32 size = numBlocks*BLOCK_SIZE;
@@ -58,7 +87,7 @@ bool GCMemcardDirectory::LoadGCI(std::string fileName)
 	}
 	return false;
 }
-GCMemcardDirectory::GCMemcardDirectory(std::string directory, int slot, u16 sizeMb, bool ascii) : m_hdr(slot, sizeMb, ascii), m_saves(0), m_bat1(sizeMb), m_LastBlock(-1), m_SaveDirectory(directory)
+GCMemcardDirectory::GCMemcardDirectory(std::string directory, int slot, u16 sizeMb, bool ascii, int region) : m_hdr(slot, sizeMb, ascii), m_saves(0), m_bat1(sizeMb), m_LastBlock(-1), m_SaveDirectory(directory)
 {
 	if (File::Exists(m_SaveDirectory + "hdr"))
 	{
@@ -79,7 +108,7 @@ GCMemcardDirectory::GCMemcardDirectory(std::string directory, int slot, u16 size
 			{
 				PanicAlert("There are too many gci files in the folder\n%s\nOnly the first 127 will be available", m_SaveDirectory.c_str());
 			}
-			LoadGCI(FST_Temp.children[j].physicalName);
+			LoadGCI(FST_Temp.children[j].physicalName, region);
 		}
 	}
 	m_dir1.fixChecksums();

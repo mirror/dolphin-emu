@@ -348,7 +348,7 @@ public:
 class GCMemcardDirectory : NonCopyable
 {
 public:
-	GCMemcardDirectory(std::string directory, int slot = 0, u16 sizeMb = MemCard2043Mb, bool ascii=true);
+	GCMemcardDirectory(std::string directory, int slot = 0, u16 sizeMb = MemCard2043Mb, bool ascii=true, int region=0);
 	~GCMemcardDirectory(){Flush();}
 	void Flush();
 
@@ -358,7 +358,7 @@ public:
 	void clearAll() {};
 	void DoState(PointerWrap &p);
 private:
-	bool LoadGCI(std::string fileName);
+	bool LoadGCI(std::string fileName, int region);
 	//s32 DirectoryRead(u32 offset, u32 length, u8* destaddress);
 	s32 DirectoryWrite( u32 destaddress, u32 length, u8* srcaddress);
 

@@ -117,7 +117,7 @@ CEXIMemoryCardFolder::CEXIMemoryCardFolder(const int index)
  
 	card_id = 0xc221; // It's a Nintendo brand memcard
  
-	memcarddir = new GCMemcardDirectory(m_strDirectoryName, card_index, MemCard2043Mb, ascii);
+	memcarddir = new GCMemcardDirectory(m_strDirectoryName, card_index, MemCard2043Mb, ascii, CountryCode);
 	nintendo_card_id = 0x00000080;
 	memory_card_size = MemCard2043Mb * SIZE_TO_Mb;
 	u8 header[20] = {0};
