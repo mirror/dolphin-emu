@@ -55,22 +55,43 @@ CEXIMemoryCardFolder::CEXIMemoryCardFolder(const int index)
 	if (volume)
 		CountryCode = volume->GetCountry();
 	bool ascii = true;
-	m_strFilename = File::GetUserPath(D_GCUSER_IDX);
+	m_strDirectoryName = File::GetUserPath(D_GCUSER_IDX);
 	switch (CountryCode)
 	{
 	case  DiscIO::IVolume::COUNTRY_JAPAN:
 		ascii = false;
-		m_strFilename += JAP_DIR DIR_SEP;
+		m_strDirectoryName += JAP_DIR DIR_SEP;
 		break;
 	case DiscIO::IVolume::COUNTRY_USA:
-		m_strFilename += USA_DIR DIR_SEP;
+		m_strDirectoryName += USA_DIR DIR_SEP;
 		break;
 	default:
-		m_strFilename += EUR_DIR DIR_SEP;
+		CountryCode = DiscIO::IVolume::COUNTRY_EUROPE;
+		m_strDirectoryName += EUR_DIR DIR_SEP;
 	}
-	m_strFilename += StringFromFormat("Card %c", 'A'+card_index)+ DIR_SEP;
-	File::CreateFullPath(m_strFilename);
-
+	m_strDirectoryName += StringFromFormat("Card %c", 'A'+card_index) + DIR_SEP;
+	if (!File::Exists(m_strDirectoryName))
+	{
+		File::CreateFullPath(m_strDirectoryName);
+		std::string ini_memcard = (card_index == 0) ? SConfig::GetInstance().m_strMemoryCardA : SConfig::GetInstance().m_strMemoryCardB;
+		if (File::Exists(ini_memcard))
+		{
+			GCMemcard memcard(ini_memcard.c_str());
+			if (memcard.IsValid())
+			{
+				for (u8 i = 0; i < DIRLEN; i++)
+				{
+					memcard.ExportGci(i, NULL, m_strDirectoryName);
+				}
+			}
+		}
+	}
+	else if (!File::IsDirectory(m_strDirectoryName))
+	{
+		// TODO more user friendly abort
+		PanicAlert("%s is not a directory", m_strDirectoryName.c_str());
+		exit(0);
+	}
 	// we're potentially leaking events here, since there's no UnregisterEvent until emu shutdown, but I guess it's inconsequential
 	et_this_card = CoreTiming::RegisterEvent((card_index == 0) ? "memcardFlushA" : "memcardFlushB", FlushCallback);
 	et_cmd_done = CoreTiming::RegisterEvent((card_index == 0) ? "memcardDoneA" : "memcardDoneB", CmdDoneCallback);
@@ -96,7 +117,7 @@ CEXIMemoryCardFolder::CEXIMemoryCardFolder(const int index)
  
 	card_id = 0xc221; // It's a Nintendo brand memcard
  
-	memcarddir = new GCMemcardDirectory(m_strFilename, card_index, MemCard2043Mb, ascii);
+	memcarddir = new GCMemcardDirectory(m_strDirectoryName, card_index, MemCard2043Mb, ascii);
 	nintendo_card_id = 0x00000080;
 	memory_card_size = MemCard2043Mb * SIZE_TO_Mb;
 	u8 header[20] = {0};

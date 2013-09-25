@@ -23,7 +23,6 @@ bool GCMemcardDirectory::LoadGCI(std::string fileName)
 		{
 			size = gcifile.GetSize()-DENTRY_SIZE;
 			WARN_LOG(EXPANSIONINTERFACE, "%s\n%x, %x", fileName.c_str(), gcifile.GetSize(), size-DENTRY_SIZE);
-			PanicAlert("%s\n%x, %x", fileName.c_str(), gcifile.GetSize(), size-DENTRY_SIZE);
 		}
 		gci.m_save_data.resize(numBlocks);
 		

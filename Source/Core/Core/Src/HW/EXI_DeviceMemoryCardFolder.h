@@ -60,7 +60,7 @@ private:
 		cmdChipErase			= 0xF4,
 	};
 
-	std::string m_strFilename;
+	std::string m_strDirectoryName;
 	int card_index;
 	int et_this_card, et_cmd_done;
 	//! memory card state
