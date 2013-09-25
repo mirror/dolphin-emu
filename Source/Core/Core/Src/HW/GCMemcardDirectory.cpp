@@ -224,7 +224,12 @@ s32 GCMemcardDirectory::Write(u32 destaddress, s32 length, u8* srcaddress)
 		for (int i = 0; i < m_saves.size(); ++i)
 		{
 			u16 start = BE16(m_saves[i].m_gci_header.FirstBlock);
-			u16 end = start + BE16(m_saves[i].m_gci_header.BlockCount);
+			u16 num_blocks = BE16(m_saves[i].m_gci_header.BlockCount);
+			while (m_saves[i].m_save_data.size() < num_blocks)
+			{
+				m_saves[i].m_save_data.push_back(GCMBlock());
+			}
+			u16 end = start + num_blocks;
 			if (start <= block && block < end)
 			{
 				m_saves[i].m_dirty = true;
@@ -355,19 +360,29 @@ void GCMemcardDirectory::Flush()
 	DEntry invalid;
 	for (int i = 0; i < m_saves.size(); ++i)
 	{
-		if (m_saves[i].m_dirty && BE32(m_saves[i].m_gci_header.Gamecode) != 0xFFFFFFFF)
+		if (m_saves[i].m_dirty)
 		{
-			m_saves[i].m_dirty = false;
-			if (m_saves[i].m_filename.empty())
+			if (BE32(m_saves[i].m_gci_header.Gamecode) != 0xFFFFFFFF)
 			{
-				std::string filename = m_saves[i].m_gci_header.GCI_FileName();
-				m_saves[i].m_filename = m_SaveDirectory+filename;
+				m_saves[i].m_dirty = false;
+				if (m_saves[i].m_filename.empty())
+				{
+					std::string filename = m_saves[i].m_gci_header.GCI_FileName();
+					m_saves[i].m_filename = m_SaveDirectory+filename;
+				}
+				File::IOFile GCI(m_saves[i].m_filename, "wb");
+				if (GCI)
+				{
+					GCI.WriteBytes(&m_saves[i].m_gci_header, DENTRY_SIZE);
+					GCI.WriteBytes(m_saves[i].m_save_data.data(), BLOCK_SIZE*m_saves[i].m_save_data.size());
+				}
 			}
-			File::IOFile GCI(m_saves[i].m_filename, "wb");
-			if (GCI)
+			else if (m_saves[i].m_filename.length() != 0)
 			{
-				GCI.WriteBytes(&m_saves[i].m_gci_header, DENTRY_SIZE);
-				GCI.WriteBytes(m_saves[i].m_save_data.data(), BLOCK_SIZE*m_saves[i].m_save_data.size());
+				m_saves[i].m_dirty = false;
+				std::string &oldname = m_saves[i].m_filename;
+				File::Rename(oldname, oldname + ".deleted");
+				m_saves[i].m_filename.clear();
 			}
 		}
 	}
