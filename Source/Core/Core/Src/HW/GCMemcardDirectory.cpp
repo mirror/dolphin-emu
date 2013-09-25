@@ -23,6 +23,7 @@ bool GCMemcardDirectory::LoadGCI(std::string fileName)
 		{
 			size = gcifile.GetSize()-DENTRY_SIZE;
 			WARN_LOG(EXPANSIONINTERFACE, "%s\n%x, %x", fileName.c_str(), gcifile.GetSize(), size-DENTRY_SIZE);
+			PanicAlert("%s\n%x, %x", fileName.c_str(), gcifile.GetSize(), size-DENTRY_SIZE);
 		}
 		gci.m_save_data.resize(numBlocks);
 		
@@ -237,7 +238,10 @@ s32 GCMemcardDirectory::DirectoryWrite(u32 destaddress, u32 length, u8* srcaddre
 
 	if (Dnum == DIRLEN)
 	{
-		// nothing to do
+		// first 58 bytes should always be 0xff
+		// needed to update the update ctr, checksums
+		// could check for writes to the 6 important bytes but doubtful that it improves performance noticably
+		memcpy((u8*)(dest)+offset, srcaddress, length);
 	}
 	else if (Dnum < m_saves.size())
 	{
