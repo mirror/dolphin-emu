@@ -87,7 +87,13 @@ int GCMemcardDirectory::LoadGCI(std::string fileName, int region)
 			m_saves.pop_back();
 			return NO_INDEX;
 		}
-		*(u16*)&gci.m_gci_header.FirstBlock = m_bat1.AssignBlocksContiguous(numBlocks);
+		u16 first_block = m_bat1.AssignBlocksContiguous(numBlocks);
+		if (first_block == 0xFFFF)
+		{
+			PanicAlertT("%s\nwas not loaded because there are not enough free blocks on virtual memorycard", fileName.c_str());
+			return NO_INDEX;
+		}
+		*(u16*)&gci.m_gci_header.FirstBlock = first_block;
 		GCMemcard::PSO_MakeSaveGameValid(m_hdr, gci.m_gci_header, gci.m_save_data);
 		GCMemcard::FZEROGX_MakeSaveGameValid(m_hdr, gci.m_gci_header, gci.m_save_data);
 

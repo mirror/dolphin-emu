@@ -228,6 +228,8 @@ struct BlockAlloc
 	u16 AssignBlocksContiguous(u16 length)
 	{
 		u16 starting = BE16(LastAllocated)+1;
+		if (length > BE16(FreeBlocks))
+			return 0xFFFF;
 		u16 current = starting;
 		while (current - starting + 1< length)
 		{
