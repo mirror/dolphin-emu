@@ -18,6 +18,7 @@
     <ClCompile Include="Src\SDCardUtil.cpp" />
     <ClCompile Include="Src\stdafx.cpp" />
     <ClCompile Include="Src\StringUtil.cpp" />
+    <ClCompile Include="Src\STUNClient.cpp" />
     <ClCompile Include="Src\SymbolDB.cpp" />
     <ClCompile Include="Src\SysConf.cpp" />
     <ClCompile Include="Src\Thread.cpp" />
@@ -80,6 +81,7 @@
     <ClInclude Include="Src\stdafx.h" />
     <ClInclude Include="Src\StdThread.h" />
     <ClInclude Include="Src\StringUtil.h" />
+    <ClInclude Include="Src\STUNClient.h" />
     <ClInclude Include="Src\SymbolDB.h" />
     <ClInclude Include="Src\SysConf.h" />
     <ClInclude Include="Src\Thread.h" />

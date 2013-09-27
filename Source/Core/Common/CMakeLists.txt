@@ -16,6 +16,7 @@ set(SRCS	Src/BreakPoints.cpp
 			Src/SettingsHandler.cpp
 			Src/SDCardUtil.cpp
 			Src/StringUtil.cpp
+			Src/STUNClient.cpp
 			Src/SymbolDB.cpp
 			Src/SysConf.cpp
 			Src/Thread.cpp
