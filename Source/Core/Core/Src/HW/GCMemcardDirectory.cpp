@@ -190,37 +190,13 @@ s32 GCMemcardDirectory::Read(u32 address, s32 length, u8* destaddress)
 		m_LastBlockAddress = (u8*)&m_bat2;
 		break;
 	default:
-		m_LastBlock = -1;
-		for (int i = 0; i < m_saves.size(); ++i)
-		{
-			if (BE32(m_saves[i].m_gci_header.Gamecode) != 0xFFFFFFFF)
-			{
-				
-				if (m_saves[i].m_used_blocks.size() == 0)
-				{
-					SetUsedBlocks(i);
-				}
-
-				int idx = m_saves[i].UsesBlock(block);
-				if (idx != -1)
-				{
-					if (!m_saves[i].LoadSaveBlocks())
-					{
-						int num_blocks = BE16(m_saves[i].m_gci_header.BlockCount);
-						while (num_blocks)
-						{
-							m_saves[i].m_save_data.push_back(GCMBlock());
-							num_blocks--;
-						}
-					}
-					m_LastBlock = block;
-					m_LastBlockAddress = m_saves[i].m_save_data[idx].block;
-					break;
-				}
-			}
-		}
+		m_LastBlock = SaveAreaRW(block);
+		
 		if (m_LastBlock == -1)
+		{
 			memset(destaddress, 0xFF, length);
+			return 0;
+		}
 	}
 	
 	memcpy(destaddress, m_LastBlockAddress+offset, length);
@@ -267,38 +243,12 @@ s32 GCMemcardDirectory::Write(u32 destaddress, s32 length, u8* srcaddress)
 		m_LastBlockAddress = (u8*)&m_bat2;
 		break;
 	default:
-		m_LastBlock = -1;
-		for (int i = 0; i < m_saves.size(); ++i)
-		{
-			if (BE32(m_saves[i].m_gci_header.Gamecode) != 0xFFFFFFFF)
-			{
-				
-				if (m_saves[i].m_used_blocks.size() == 0)
-				{
-					SetUsedBlocks(i);
-				}
-
-				int idx = m_saves[i].UsesBlock(block);
-				if (idx != -1)
-				{
-					if (!m_saves[i].LoadSaveBlocks())
-					{
-						int num_blocks = BE16(m_saves[i].m_gci_header.BlockCount);
-						while (num_blocks)
-						{
-							m_saves[i].m_save_data.push_back(GCMBlock());
-							num_blocks--;
-						}
-					}
-					m_saves[i].m_dirty = true;
-					m_LastBlock = block;
-					m_LastBlockAddress = m_saves[i].m_save_data[idx].block;
-					break;
-				}
-			}
-		}
+		m_LastBlock = SaveAreaRW(block, true);
 		if (m_LastBlock == -1)
+		{
 			PanicAlert("Writing to unallocated block");
+			return 0;
+		}
 	}
 	
 	memcpy(m_LastBlockAddress+offset, srcaddress, length);
@@ -360,12 +310,12 @@ s32 GCMemcardDirectory::DirectoryWrite(u32 destaddress, u32 length, u8* srcaddre
 	return 0;
 }
 
-void GCMemcardDirectory::clearBlock(u32 blocknum)
+void GCMemcardDirectory::clearBlock(u32 block)
 {
-	switch (blocknum)
+	switch (block)
 	{
 	case 0:
-		m_LastBlock = blocknum;
+		m_LastBlock = block;
 		m_LastBlockAddress = (u8*)&m_hdr;
 		break;
 	case 1:
@@ -373,7 +323,7 @@ void GCMemcardDirectory::clearBlock(u32 blocknum)
 		{
 			m_saves.clear();
 		}
-		m_LastBlock = blocknum;
+		m_LastBlock = block;
 		m_LastBlockAddress = (u8*)&m_dir1;
 		break;
 	case 2:
@@ -381,51 +331,61 @@ void GCMemcardDirectory::clearBlock(u32 blocknum)
 		{
 			m_saves.clear();
 		}
-		m_LastBlock = blocknum;
+		m_LastBlock = block;
 		m_LastBlockAddress = (u8*)&m_dir2;
 		break;
 	case 3:
-		m_LastBlock = blocknum;
+		m_LastBlock = block;
 		m_LastBlockAddress = (u8*)&m_bat1;
 		break;
 	case 4:
-		m_LastBlock = blocknum;
+		m_LastBlock = block;
 		m_LastBlockAddress = (u8*)&m_bat2;
 		break;
 	default:
-		m_LastBlock = -1;
-		for (int i = 0; i < m_saves.size(); ++i)
-		{
-			if (BE32(m_saves[i].m_gci_header.Gamecode) != 0xFFFFFFFF)
-			{
-				if (m_saves[i].m_used_blocks.size() == 0)
-				{
-					SetUsedBlocks(i);
-				}
-
-				int idx = m_saves[i].UsesBlock(blocknum);
-				if (idx != -1)
-				{
-					if (!m_saves[i].LoadSaveBlocks())
-					{
-						int num_blocks = BE16(m_saves[i].m_gci_header.BlockCount);
-						while (num_blocks)
-						{
-							m_saves[i].m_save_data.push_back(GCMBlock());
-							num_blocks--;
-						}
-					}
-					m_saves[i].m_dirty = true;
-					m_LastBlock = blocknum;
-					m_LastBlockAddress = m_saves[i].m_save_data[idx].block;
-					break;
-				}
-			}
-		}
+		m_LastBlock = SaveAreaRW(block, true);
 		if (m_LastBlock == -1)
 			return;
 	}
 	((GCMBlock*)m_LastBlockAddress)->erase();
+}
+
+inline s32 GCMemcardDirectory::SaveAreaRW(u32 block, bool writing)
+{		
+	for (int i = 0; i < m_saves.size(); ++i)
+	{
+		if (BE32(m_saves[i].m_gci_header.Gamecode) != 0xFFFFFFFF)
+		{
+			if (m_saves[i].m_used_blocks.size() == 0)
+			{
+				SetUsedBlocks(i);
+			}
+
+			int idx = m_saves[i].UsesBlock(block);
+			if (idx != -1)
+			{
+				if (!m_saves[i].LoadSaveBlocks())
+				{
+					int num_blocks = BE16(m_saves[i].m_gci_header.BlockCount);
+					while (num_blocks)
+					{
+						m_saves[i].m_save_data.push_back(GCMBlock());
+						num_blocks--;
+					}
+				}
+
+				if (writing)
+				{
+					m_saves[i].m_dirty = true;
+				}
+
+				m_LastBlock = block;
+				m_LastBlockAddress = m_saves[i].m_save_data[idx].block;
+				return m_LastBlock;
+			}
+		}
+	}
+	return -1;
 }
 
 bool GCMemcardDirectory::SetUsedBlocks(int saveIndex)
