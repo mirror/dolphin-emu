@@ -51,9 +51,14 @@ CEXIMemoryCardFolder::CEXIMemoryCardFolder(const int index)
 {
 	
 	DiscIO::IVolume::ECountry CountryCode = DiscIO::IVolume::COUNTRY_UNKNOWN;
+	u32 CurrentGameId = 0;
 	DiscIO::IVolume * volume = DiscIO::CreateVolumeFromFilename(SConfig::GetInstance().m_LocalCoreStartupParameter.m_strFilename);
 	if (volume)
+	{
 		CountryCode = volume->GetCountry();
+		volume->Read(0, 4, (u8*)&CurrentGameId);
+		CurrentGameId = BE32(CurrentGameId);
+	}
 	bool ascii = true;
 	m_strDirectoryName = File::GetUserPath(D_GCUSER_IDX);
 	switch (CountryCode)
@@ -117,7 +122,7 @@ CEXIMemoryCardFolder::CEXIMemoryCardFolder(const int index)
  
 	card_id = 0xc221; // It's a Nintendo brand memcard
  
-	memcarddir = new GCMemcardDirectory(m_strDirectoryName, card_index, MemCard2043Mb, ascii, CountryCode);
+	memcarddir = new GCMemcardDirectory(m_strDirectoryName, card_index, MemCard2043Mb, ascii, CountryCode, CurrentGameId);
 	nintendo_card_id = 0x00000080;
 	memory_card_size = MemCard2043Mb * SIZE_TO_Mb;
 	u8 header[20] = {0};

@@ -249,6 +249,16 @@ struct BlockAlloc
 class GCIFile
 {
 public:
+	bool LoadSaveBlocks();
+	bool HasCopyProtection()
+	{
+		if ((strcmp((char*)m_gci_header.Filename,"PSO_SYSTEM")==0) ||
+			(strcmp((char*)m_gci_header.Filename,"PSO3_SYSTEM")==0) ||
+			(strcmp((char*)m_gci_header.Filename,"f_zero.dat")==0))
+			return true;
+		return false;
+	}
+
 	void DoState(PointerWrap &p);
 	DEntry m_gci_header;
 	std::vector<GCMBlock> m_save_data;
@@ -352,7 +362,7 @@ public:
 class GCMemcardDirectory : NonCopyable
 {
 public:
-	GCMemcardDirectory(std::string directory, int slot = 0, u16 sizeMb = MemCard2043Mb, bool ascii=true, int region=0);
+	GCMemcardDirectory(std::string directory, int slot = 0, u16 sizeMb = MemCard2043Mb, bool ascii=true, int region=0, int gameId=0);
 	~GCMemcardDirectory(){Flush();}
 	void Flush();
 
@@ -367,7 +377,7 @@ private:
 	s32 DirectoryWrite( u32 destaddress, u32 length, u8* srcaddress);
 	bool SetUsedBlocks(int saveIndex); 
 
-	
+	u32 m_GameId;
 	s32 m_LastBlock;
 	u8* m_LastBlockAddress;
 

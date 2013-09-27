@@ -78,14 +78,9 @@ int GCMemcardDirectory::LoadGCI(std::string fileName, int region)
 			return NO_INDEX;
 		}
 
-		gci.m_save_data.resize(numBlocks);
-
-		if (!gcifile.ReadBytes((gci.m_save_data).data(), size))
+		if (m_GameId == BE32(gci.m_gci_header.Gamecode))
 		{
-			PanicAlert("%s failed to read save data size:%x", fileName.c_str(), size);
-			ERROR_LOG(EXPANSIONINTERFACE, "%s failed to read save data", fileName.c_str());
-			m_saves.pop_back();
-			return NO_INDEX;
+			gci.LoadSaveBlocks();
 		}
 		u16 first_block = m_bat1.AssignBlocksContiguous(numBlocks);
 		if (first_block == 0xFFFF)
@@ -94,23 +89,12 @@ int GCMemcardDirectory::LoadGCI(std::string fileName, int region)
 			return NO_INDEX;
 		}
 		*(u16*)&gci.m_gci_header.FirstBlock = first_block;
-		GCMemcard::PSO_MakeSaveGameValid(m_hdr, gci.m_gci_header, gci.m_save_data);
-		GCMemcard::FZEROGX_MakeSaveGameValid(m_hdr, gci.m_gci_header, gci.m_save_data);
-
-/*		u16 csum;
-		u16 csum_inv;
-		GCMemcard::calc_checksumsBE((u16*)&gci.header, 0x20, &csum, &csum_inv);
-		//csum + 0x20; adjust for old entry of all 0xFFFF
-		dirChecksum = dirChecksum + BE16(csum) + 0x20;
-		dirChecksum_Inv = dirChecksum_Inv + BE16(csum_inv);
-		if (m_saves.size() == 0)
+		if (gci.HasCopyProtection() && gci.LoadSaveBlocks())
 		{
-			//dirChecksum_Inv - 1; adjust for old entry of all 0xFFFF
-			dirChecksum_Inv--;
+
+			GCMemcard::PSO_MakeSaveGameValid(m_hdr, gci.m_gci_header, gci.m_save_data);
+			GCMemcard::FZEROGX_MakeSaveGameValid(m_hdr, gci.m_gci_header, gci.m_save_data);
 		}
-		if (dirChecksum == 0xFFFF) dirChecksum = 0;
-		if (dirChecksum_Inv == 0xFFFF) dirChecksum_Inv = 0;
-*/	
 		int idx = m_saves.size();
 		m_dir1.Replace(gci.m_gci_header, idx);
 		m_saves.push_back(std::move(gci));
@@ -120,7 +104,14 @@ int GCMemcardDirectory::LoadGCI(std::string fileName, int region)
 	}
 	return NO_INDEX;
 }
-GCMemcardDirectory::GCMemcardDirectory(std::string directory, int slot, u16 sizeMb, bool ascii, int region) : m_hdr(slot, sizeMb, ascii), m_saves(0), m_bat1(sizeMb), m_LastBlock(-1), m_SaveDirectory(directory)
+
+GCMemcardDirectory::GCMemcardDirectory(std::string directory, int slot, u16 sizeMb, bool ascii, int region, int gameId) 
+	: m_GameId(gameId),
+	m_LastBlock(-1),
+	m_hdr(slot, sizeMb, ascii),
+	m_bat1(sizeMb),
+	m_saves(0),
+	m_SaveDirectory(directory)
 {
 	if (File::Exists(m_SaveDirectory + "hdr"))
 	{
@@ -213,6 +204,15 @@ s32 GCMemcardDirectory::Read(u32 address, s32 length, u8* destaddress)
 				int idx = m_saves[i].UsesBlock(block);
 				if (idx != -1)
 				{
+					if (!m_saves[i].LoadSaveBlocks())
+					{
+						int num_blocks = BE16(m_saves[i].m_gci_header.BlockCount);
+						while (num_blocks)
+						{
+							m_saves[i].m_save_data.push_back(GCMBlock());
+							num_blocks--;
+						}
+					}
 					m_LastBlock = block;
 					m_LastBlockAddress = m_saves[i].m_save_data[idx].block;
 					break;
@@ -281,6 +281,15 @@ s32 GCMemcardDirectory::Write(u32 destaddress, s32 length, u8* srcaddress)
 				int idx = m_saves[i].UsesBlock(block);
 				if (idx != -1)
 				{
+					if (!m_saves[i].LoadSaveBlocks())
+					{
+						int num_blocks = BE16(m_saves[i].m_gci_header.BlockCount);
+						while (num_blocks)
+						{
+							m_saves[i].m_save_data.push_back(GCMBlock());
+							num_blocks--;
+						}
+					}
 					m_saves[i].m_dirty = true;
 					m_LastBlock = block;
 					m_LastBlockAddress = m_saves[i].m_save_data[idx].block;
@@ -397,6 +406,15 @@ void GCMemcardDirectory::clearBlock(u32 blocknum)
 				int idx = m_saves[i].UsesBlock(blocknum);
 				if (idx != -1)
 				{
+					if (!m_saves[i].LoadSaveBlocks())
+					{
+						int num_blocks = BE16(m_saves[i].m_gci_header.BlockCount);
+						while (num_blocks)
+						{
+							m_saves[i].m_save_data.push_back(GCMBlock());
+							num_blocks--;
+						}
+					}
 					m_saves[i].m_dirty = true;
 					m_LastBlock = blocknum;
 					m_LastBlockAddress = m_saves[i].m_save_data[idx].block;
@@ -439,13 +457,6 @@ bool GCMemcardDirectory::SetUsedBlocks(int saveIndex)
 		return false;
 	}
 
-//	m_saves[saveIndex].m_save_data.resize(numBlocks);
-	int allocated_blocks = m_saves[saveIndex].m_save_data.size();
-	while (allocated_blocks < num_blocks)
-	{
-		m_saves[saveIndex].m_save_data.push_back(GCMBlock());
-		++allocated_blocks;
-	}
 	return true;
 }
 void GCMemcardDirectory::Flush()
@@ -474,11 +485,24 @@ void GCMemcardDirectory::Flush()
 			{
 				m_saves[i].m_dirty = false;
 				std::string &oldname = m_saves[i].m_filename;
-				File::Rename(oldname, oldname + ".deleted");
+				std::string deletedname = oldname + ".deleted";
+				if (File::Exists(deletedname))
+					File::Delete(deletedname);
+				File::Rename(oldname, deletedname);
 				m_saves[i].m_filename.clear();
 				m_saves[i].m_save_data.clear();
 				m_saves[i].m_used_blocks.clear();
 			}
+		}
+
+		// Unload the save data for any game that is not running
+		// we could use !m_dirty, but some games have multiple gci files and may not write to them simultaneously
+		// this ensures that the save data for all of the current games gci files are stored in the savestate
+		u32 gamecode = BE32(m_saves[i].m_gci_header.Gamecode);
+		if (gamecode != m_GameId && gamecode != 0xFFFFFFFF && m_saves[i].m_save_data.size())
+		{
+			INFO_LOG(EXPANSIONINTERFACE, "Flushing savedata to disk for %s", m_saves[i].m_filename.c_str());
+			m_saves[i].m_save_data.clear();
 		}
 	}
 #if _WRITE_MC_HEADER
@@ -508,6 +532,30 @@ void GCMemcardDirectory::DoState(PointerWrap &p)
 	}
 }
 
+bool GCIFile::LoadSaveBlocks()
+{	
+	if (m_save_data.size() == 0)
+	{
+		if (m_filename.empty())
+			return false;
+
+		File::IOFile savefile(m_filename, "rb");
+		if (!savefile)
+			return false;
+		
+		INFO_LOG(EXPANSIONINTERFACE, "Reading savedata from disk for %s", m_filename.c_str());
+		savefile.Seek(DENTRY_SIZE, SEEK_SET);
+		u16 num_blocks = BE16(m_gci_header.BlockCount);
+		m_save_data.resize(num_blocks);
+		if (!savefile.ReadBytes(m_save_data.data(), num_blocks*BLOCK_SIZE))
+		{
+			PanicAlert("failed to read data from gci file %s", m_filename.c_str());
+			m_save_data.clear();
+			return false;
+		}
+	}
+	return true;
+}
 
 int GCIFile::UsesBlock(u16 blocknum)
 {
