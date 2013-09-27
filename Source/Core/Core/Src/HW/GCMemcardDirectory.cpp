@@ -255,61 +255,6 @@ s32 GCMemcardDirectory::Write(u32 destaddress, s32 length, u8* srcaddress)
 	return 0;
 }
 
-s32 GCMemcardDirectory::DirectoryWrite(u32 destaddress, u32 length, u8* srcaddress)
-{
-	u32 block = destaddress / BLOCK_SIZE;
-	u32 offset = destaddress % BLOCK_SIZE;
-	bool currentdir = false;
-	Directory * dest = (block == 1) ? &m_dir1 : &m_dir2;
-	Directory * other = (block != 1) ? &m_dir1 : &m_dir2;
-	if (BE16(dest->UpdateCounter) > BE16(other->UpdateCounter))
-	{
-		currentdir = true;
-	}
-	else
-	{
-		
-		memcpy((u8*)(dest)+offset, srcaddress, length);
-	}
-	m_LastBlock = -1;
-	u16 Dnum = offset / DENTRY_SIZE;
-	u16 Doffset = offset % DENTRY_SIZE;
-
-	if (Dnum == DIRLEN)
-	{
-		// first 58 bytes should always be 0xff
-		// needed to update the update ctr, checksums
-		// could check for writes to the 6 important bytes but doubtful that it improves performance noticably
-		memcpy((u8*)(dest)+offset, srcaddress, length);
-	}
-	else if (Dnum < m_saves.size())
-	{
-		if (memcmp(((u8*)&(m_saves[Dnum].m_gci_header))+Doffset, srcaddress, length))
-		{
-			m_saves[Dnum].m_dirty = true;
-			memcpy(((u8*)&(m_saves[Dnum].m_gci_header))+Doffset, srcaddress, length);
-			memcpy(((u8*)&(dest->Dir[Dnum]))+Doffset, srcaddress, length);
-		}
-	}
-	else
-	{
-		if (Dnum - m_saves.size() > 1)
-		{
-			PanicAlert("Gap left when adding directory entry???");
-			exit(0);
-		}
-		else
-		{
-			GCIFile temp;
-			temp.m_dirty = true;
-			memcpy(((u8*)&(temp.m_gci_header))+Doffset, srcaddress, length);
-			memcpy(((u8*)&(dest->Dir[Dnum]))+Doffset, srcaddress, length);
-			m_saves.push_back(temp);
-		}
-	}
-	return 0;
-}
-
 void GCMemcardDirectory::clearBlock(u32 block)
 {
 	switch (block)
@@ -386,6 +331,61 @@ inline s32 GCMemcardDirectory::SaveAreaRW(u32 block, bool writing)
 		}
 	}
 	return -1;
+}
+
+s32 GCMemcardDirectory::DirectoryWrite(u32 destaddress, u32 length, u8* srcaddress)
+{
+	u32 block = destaddress / BLOCK_SIZE;
+	u32 offset = destaddress % BLOCK_SIZE;
+	bool currentdir = false;
+	Directory * dest = (block == 1) ? &m_dir1 : &m_dir2;
+	Directory * other = (block != 1) ? &m_dir1 : &m_dir2;
+	if (BE16(dest->UpdateCounter) > BE16(other->UpdateCounter))
+	{
+		currentdir = true;
+	}
+	else
+	{
+		
+		memcpy((u8*)(dest)+offset, srcaddress, length);
+	}
+	m_LastBlock = -1;
+	u16 Dnum = offset / DENTRY_SIZE;
+	u16 Doffset = offset % DENTRY_SIZE;
+
+	if (Dnum == DIRLEN)
+	{
+		// first 58 bytes should always be 0xff
+		// needed to update the update ctr, checksums
+		// could check for writes to the 6 important bytes but doubtful that it improves performance noticably
+		memcpy((u8*)(dest)+offset, srcaddress, length);
+	}
+	else if (Dnum < m_saves.size())
+	{
+		if (memcmp(((u8*)&(m_saves[Dnum].m_gci_header))+Doffset, srcaddress, length))
+		{
+			m_saves[Dnum].m_dirty = true;
+			memcpy(((u8*)&(m_saves[Dnum].m_gci_header))+Doffset, srcaddress, length);
+			memcpy(((u8*)&(dest->Dir[Dnum]))+Doffset, srcaddress, length);
+		}
+	}
+	else
+	{
+		if (Dnum - m_saves.size() > 1)
+		{
+			PanicAlert("Gap left when adding directory entry???");
+			exit(0);
+		}
+		else
+		{
+			GCIFile temp;
+			temp.m_dirty = true;
+			memcpy(((u8*)&(temp.m_gci_header))+Doffset, srcaddress, length);
+			memcpy(((u8*)&(dest->Dir[Dnum]))+Doffset, srcaddress, length);
+			m_saves.push_back(temp);
+		}
+	}
+	return 0;
 }
 
 bool GCMemcardDirectory::SetUsedBlocks(int saveIndex)
