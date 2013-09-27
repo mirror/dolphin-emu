@@ -4,7 +4,8 @@
 
 #include "GCMemcard.h"
 #include "Volume.h"
-bool GCMemcardDirectory::LoadGCI(std::string fileName, int region)
+const int NO_INDEX = -1;
+int GCMemcardDirectory::LoadGCI(std::string fileName, int region)
 {
 	File::IOFile gcifile(fileName, "rb");
 	if (gcifile)
@@ -15,7 +16,7 @@ bool GCMemcardDirectory::LoadGCI(std::string fileName, int region)
 		if (!gcifile.ReadBytes(&(gci.m_gci_header), DENTRY_SIZE))
 		{
 			ERROR_LOG(EXPANSIONINTERFACE, "%s failed to read header", fileName.c_str());
-			return false;
+			return NO_INDEX;
 		}
 
 		// check region
@@ -25,14 +26,14 @@ bool GCMemcardDirectory::LoadGCI(std::string fileName, int region)
 			if (region != DiscIO::IVolume::COUNTRY_JAPAN)
 			{
 				PanicAlertT("GCI save file was not loaded because it is the wrong region for this memory card:\n%s", fileName.c_str());
-				return false;
+				return NO_INDEX;
 			}
 			break;
 		case 'E':
 			if (region != DiscIO::IVolume::COUNTRY_USA)
 			{
 				PanicAlertT("GCI save file was not loaded because it is the wrong region for this memory card:\n%s", fileName.c_str());
-				return false;
+				return NO_INDEX;
 			}
 			break;
 		case 'C':
@@ -42,25 +43,49 @@ bool GCMemcardDirectory::LoadGCI(std::string fileName, int region)
 			if (region != DiscIO::IVolume::COUNTRY_EUROPE)
 			{
 				PanicAlertT("GCI save file was not loaded because it is the wrong region for this memory card:\n%s", fileName.c_str());
-				return false;
+				return NO_INDEX;
 			}
 			break;
 		}
-		u16 numBlocks = BE16(gci.m_gci_header.BlockCount);
-		u32 size = numBlocks*BLOCK_SIZE;
-		if (gcifile.GetSize() < size + DENTRY_SIZE)
+
+		std::string gci_filename = gci.m_gci_header.GCI_FileName();
+		for (int i = 0; i < m_loaded_saves.size(); ++i)
 		{
-			size = gcifile.GetSize()-DENTRY_SIZE;
-			WARN_LOG(EXPANSIONINTERFACE, "%s\n%x, %x", fileName.c_str(), gcifile.GetSize(), size-DENTRY_SIZE);
+			if (m_loaded_saves[i] == gci_filename)
+			{
+				PanicAlertT("%s\nwas not loaded because it has the same internal filename as previously loaded save\n%s",
+					gci.m_filename.c_str(), m_saves[i].m_filename.c_str());
+				return NO_INDEX;
+			}
 		}
-		gci.m_save_data.resize(numBlocks);
 		
+		u16 numBlocks = BE16(gci.m_gci_header.BlockCount);
+		// largest number of free blocks on a memory card
+		// in reality, there are not likely any valid gci files > 251 blocks
+		if (numBlocks > 2043)
+		{
+				PanicAlertT("%s\nwas not loaded because it is an invalid gci.\n Number of blocks claimed to be %d",
+					gci.m_filename.c_str(), numBlocks);
+			return NO_INDEX;
+		}
+		
+		u32 size = numBlocks*BLOCK_SIZE;
+		u64 file_size = gcifile.GetSize();
+		if (file_size != size + DENTRY_SIZE)
+		{
+			PanicAlertT("%s\nwas not loaded because it is an invalid gci.\n File size (%d) does not match the size recorded in the header (%d)",
+				gci.m_filename.c_str(), file_size, size+DENTRY_SIZE);
+			return NO_INDEX;
+		}
+
+		gci.m_save_data.resize(numBlocks);
+
 		if (!gcifile.ReadBytes((gci.m_save_data).data(), size))
 		{
 			PanicAlert("%s failed to read save data size:%x", fileName.c_str(), size);
 			ERROR_LOG(EXPANSIONINTERFACE, "%s failed to read save data", fileName.c_str());
 			m_saves.pop_back();
-			return false;
+			return NO_INDEX;
 		}
 		*(u16*)&gci.m_gci_header.FirstBlock = m_bat1.AssignBlocksContiguous(numBlocks);
 		GCMemcard::PSO_MakeSaveGameValid(m_hdr, gci.m_gci_header, gci.m_save_data);
@@ -82,12 +107,12 @@ bool GCMemcardDirectory::LoadGCI(std::string fileName, int region)
 */	
 		int idx = m_saves.size();
 		m_dir1.Replace(gci.m_gci_header, idx);
-		m_saves.push_back(gci);
+		m_saves.push_back(std::move(gci));
 		SetUsedBlocks(idx);
 
-		return true;
+		return idx;
 	}
-	return false;
+	return NO_INDEX;
 }
 GCMemcardDirectory::GCMemcardDirectory(std::string directory, int slot, u16 sizeMb, bool ascii, int region) : m_hdr(slot, sizeMb, ascii), m_saves(0), m_bat1(sizeMb), m_LastBlock(-1), m_SaveDirectory(directory)
 {
@@ -109,10 +134,16 @@ GCMemcardDirectory::GCMemcardDirectory(std::string directory, int slot, u16 size
 			if (m_saves.size() == DIRLEN)
 			{
 				PanicAlert("There are too many gci files in the folder\n%s\nOnly the first 127 will be available", m_SaveDirectory.c_str());
+				break;
 			}
-			LoadGCI(FST_Temp.children[j].physicalName, region);
+			int index = LoadGCI(FST_Temp.children[j].physicalName, region);
+			if (index != NO_INDEX)
+			{
+				m_loaded_saves.push_back(m_saves.at(index).m_gci_header.GCI_FileName());
+			}
 		}
 	}
+	m_loaded_saves.clear();
 	m_dir1.fixChecksums();
 	m_dir2=m_dir1;
 	m_bat2=m_bat1;
@@ -439,6 +470,8 @@ void GCMemcardDirectory::Flush()
 				std::string &oldname = m_saves[i].m_filename;
 				File::Rename(oldname, oldname + ".deleted");
 				m_saves[i].m_filename.clear();
+				m_saves[i].m_save_data.clear();
+				m_saves[i].m_used_blocks.clear();
 			}
 		}
 	}
