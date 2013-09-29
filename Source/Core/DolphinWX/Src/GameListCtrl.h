@@ -38,6 +38,8 @@ public:
 	const GameListItem *GetSelectedISO();
 	const GameListItem *GetISO(size_t index) const;
 
+	void SetFileMenu(wxMenu* fileMenu);
+
 	enum
 	{
 		COLUMN_DUMMY = 0,
@@ -71,6 +73,7 @@ private:
 	int last_sort;
 	wxSize lastpos;
 	wxEmuStateTip *toolTip;
+	wxMenu* m_FileMenu;
 	void InitBitmaps();
 	void InsertItemInReportView(long _Index);
 	void SetBackgroundColor();
@@ -85,6 +88,7 @@ private:
 	void OnColumnClick(wxListEvent& event);
 	void OnColBeginDrag(wxListEvent& event);
 	void OnKeyPress(wxListEvent& event);
+	void OnItemSelectedDeselected(wxListEvent& event);
 	void OnSize(wxSizeEvent& event);
 	void OnProperties(wxCommandEvent& event);
 	void OnWiki(wxCommandEvent& event);
@@ -99,9 +103,11 @@ private:
 	void OnInstallWAD(wxCommandEvent& event);
 	void OnDropFiles(wxDropFilesEvent& event);
 
+	void AppendContextMenuOptions(wxMenu* menu);
 	void CompressSelection(bool _compress);
 	void AutomaticColumnWidth();
 	void UnselectAll();
+	void UpdateFileMenu();
 
 	static size_t m_currentItem;
 	static std::string m_currentFilename;

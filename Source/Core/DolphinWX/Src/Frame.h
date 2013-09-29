@@ -137,8 +137,6 @@ public:
 	void UpdateWiiMenuChoice(wxMenuItem *WiiMenuItem=NULL);
 	static void ConnectWiimote(int wm_idx, bool connect);
 
-	const CGameListCtrl *GetGameListCtrl() const;
-
 #ifdef __WXGTK__
 	Common::Event panic_event;
 	bool bPanicResult;
@@ -165,6 +163,8 @@ public:
 	};
 	std::vector<SPerspectives> Perspectives;
 	u32 ActivePerspective;	
+
+	virtual bool ProcessEvent(wxEvent& event);
 
 private:
 	CGameListCtrl* m_GameListCtrl;

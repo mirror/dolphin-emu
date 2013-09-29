@@ -305,9 +305,6 @@ CFrame::CFrame(wxFrame* parent,
 	if (!SConfig::GetInstance().m_InterfaceStatusbar)
 		GetStatusBar()->Hide();
 
-	// Give it a menu bar
-	CreateMenu();
-
 	// ---------------
 	// Main panel
 	// This panel is the parent for rendering and it holds the gamelistctrl
@@ -321,6 +318,9 @@ CFrame::CFrame(wxFrame* parent,
 	sizerPanel->Add(m_GameListCtrl, 1, wxEXPAND | wxALL);
 	m_Panel->SetSizer(sizerPanel);
 	// ---------------
+
+	// Give it a menu bar (must be done after creating the GameListCtrl)
+	CreateMenu();
 
 	// Manager
 	m_Mgr = new wxAuiManager(this, wxAUI_MGR_DEFAULT | wxAUI_MGR_LIVE_RESIZE);
@@ -1067,7 +1067,17 @@ void CFrame::DoFullscreen(bool bF)
 	}
 }
 
-const CGameListCtrl *CFrame::GetGameListCtrl() const
+bool CFrame::ProcessEvent(wxEvent& event)
 {
-	return m_GameListCtrl;
+	// Try us first...
+	if (wxEvtHandler::ProcessEvent(event))
+		return true;
+	if (event.GetId() >= IDM_LOADSTATE && event.GetId() <= IDM_HOST_MESSAGE && 
+	    m_GameListCtrl)
+	{
+		// but it might be from the game list control's contextual menu added
+		// to File.
+		return m_GameListCtrl->ProcessWindowEventLocally(event);
+	}
+	return false;
 }

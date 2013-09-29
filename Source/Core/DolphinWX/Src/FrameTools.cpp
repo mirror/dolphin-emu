@@ -111,6 +111,8 @@ void CFrame::CreateMenu()
 	fileMenu->Append(IDM_BROWSE, _("&Browse for ISOs..."));
 	fileMenu->AppendSeparator();
 	fileMenu->Append(wxID_EXIT, _("E&xit") + wxString(wxT("\tAlt+F4")));
+	fileMenu->AppendSeparator();
+	m_GameListCtrl->SetFileMenu(fileMenu);
 	m_MenuBar->Append(fileMenu, _("&File"));
 
 	// Emulation menu
