@@ -19,7 +19,7 @@
 #include "../../Core/Src/ConfigManager.h"
 
 // This shouldn't be a global, at least not here.
-SoundStream *soundStream;
+SoundStream *soundStream = nullptr;
 
 namespace AudioCommon 
 {	
@@ -34,10 +34,13 @@ namespace AudioCommon
 			soundStream = new NullSound(mixer, hWnd);
 		else if (backend == BACKEND_DIRECTSOUND && DSound::isValid())
 			soundStream = new DSound(mixer, hWnd);
-		else if (backend == BACKEND_XAUDIO2_7   && XAudio2_7::isValid())
-			soundStream = new XAudio2_7(mixer);
-		else if (backend == BACKEND_XAUDIO2     && XAudio2::isValid())
-			soundStream = new XAudio2(mixer);
+		else if (backend == BACKEND_XAUDIO2)
+		{
+			if (XAudio2::isValid())
+				soundStream = new XAudio2(mixer);
+			else if (XAudio2_7::isValid())
+				soundStream = new XAudio2_7(mixer);
+		}
 		else if (backend == BACKEND_AOSOUND     && AOSound::isValid())
 			soundStream = new AOSound(mixer);
 		else if (backend == BACKEND_ALSA        && AlsaSound::isValid())
@@ -48,7 +51,15 @@ namespace AudioCommon
 			soundStream = new PulseAudio(mixer);
 		else if (backend == BACKEND_OPENSLES && OpenSLESStream::isValid())
 			soundStream = new OpenSLESStream(mixer);
-		if (soundStream != NULL)
+		
+		if (!soundStream && NullSound::isValid())
+		{
+			WARN_LOG(DSPHLE, "Could not initialize backend %s, using %s instead.",
+				backend.c_str(), BACKEND_NULLSOUND);
+			soundStream = new NullSound(mixer, hWnd);
+		}
+
+		if (soundStream)
 		{
 			UpdateSoundStream();
 			if (soundStream->Start())
@@ -64,11 +75,12 @@ namespace AudioCommon
 			}
 			PanicAlertT("Could not initialize backend %s.", backend.c_str());
 		}
+
 		PanicAlertT("Sound backend %s is not valid.", backend.c_str());
 
 		delete soundStream;
-		soundStream = NULL;
-		return NULL;
+		soundStream = nullptr;
+		return nullptr;
 	}
 
 	void ShutdownSoundStream() 
@@ -82,7 +94,7 @@ namespace AudioCommon
 				soundStream->GetMixer()->StopLogAudio();
 				//soundStream->StopLogAudio();
 			delete soundStream;
-			soundStream = NULL;
+			soundStream = nullptr;
 		}
 
 		INFO_LOG(DSPHLE, "Done shutting down sound stream");	
@@ -96,9 +108,7 @@ namespace AudioCommon
 			backends.push_back(BACKEND_NULLSOUND);
 		if (DSound::isValid())
 			backends.push_back(BACKEND_DIRECTSOUND);
-		if (XAudio2_7::isValid())
-			backends.push_back(BACKEND_XAUDIO2_7);
-		if (XAudio2::isValid())
+		if (XAudio2_7::isValid() || XAudio2::isValid())
 			backends.push_back(BACKEND_XAUDIO2);
 		if (AOSound::isValid())
 			backends.push_back(BACKEND_AOSOUND);

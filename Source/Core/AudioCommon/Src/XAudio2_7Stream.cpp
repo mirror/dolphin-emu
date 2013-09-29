@@ -123,6 +123,20 @@ void StreamingVoiceContext2_7::OnBufferEnd(void* context)
 	SubmitBuffer(static_cast<BYTE*>(context));
 }
 
+HMODULE XAudio2_7::hXAudio2 = nullptr;
+
+bool XAudio2_7::InitLibrary()
+{
+	if (hXAudio2)
+	{
+		return true;
+	}
+
+	hXAudio2 = ::LoadLibrary(TEXT("xaudio2_7.dll"));
+
+	return hXAudio2 != nullptr;
+}
+
 XAudio2_7::XAudio2_7(CMixer *mixer)
 	: SoundStream(mixer)
 	, m_mastering_voice(nullptr)
@@ -141,14 +155,6 @@ XAudio2_7::~XAudio2_7()
 bool XAudio2_7::Start()
 {
 	HRESULT hr;
-
-	HMODULE hXAudio2 = nullptr;
-	hXAudio2 = ::LoadLibrary(TEXT("xaudio2_7.dll"));
-	if (hXAudio2 == nullptr)
-	{
-		PanicAlertT("XAudio2_7 failed load library");
-		return false;
-	}
 
 	// callback doesn't seem to run on a specific cpu anyways
 	IXAudio2* xaudptr;
@@ -228,6 +234,12 @@ void XAudio2_7::Stop()
 	}
 
 	m_xaudio2.reset();	// release interface
+
+	if (hXAudio2)
+	{
+		::FreeLibrary(hXAudio2);
+		hXAudio2 = nullptr;
+	}
 }
 
 #endif

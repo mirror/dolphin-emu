@@ -119,6 +119,37 @@ void StreamingVoiceContext::OnBufferEnd(void* context)
 	SubmitBuffer(static_cast<BYTE*>(context));
 }
 
+HMODULE XAudio2::hXAudio2 = nullptr;
+typedef decltype(&XAudio2Create) XAudio2Create_t;
+void *XAudio2::PXAudio2Create = nullptr;
+
+bool XAudio2::InitLibrary()
+{
+	if (hXAudio2)
+	{
+		return true;
+	}
+
+	hXAudio2 = ::LoadLibrary(XAUDIO2_DLL);
+	if (!hXAudio2)
+	{
+		return false;
+	}
+
+	if (!PXAudio2Create)
+	{
+		PXAudio2Create = (XAudio2Create_t)::GetProcAddress(hXAudio2, "XAudio2Create");
+		if (!PXAudio2Create)
+		{
+			::FreeLibrary(hXAudio2);
+			hXAudio2 = nullptr;
+			return false;
+		}
+	}
+
+	return true;
+}
+
 XAudio2::XAudio2(CMixer *mixer)
 	: SoundStream(mixer)
 	, m_mastering_voice(nullptr)
@@ -138,25 +169,9 @@ bool XAudio2::Start()
 {
 	HRESULT hr;
 
-	HMODULE hXAudio2 = nullptr;
-	typedef decltype(&XAudio2Create) XAudio2Create_t;
-	XAudio2Create_t PXAudio2Create = nullptr;
-	hXAudio2 = ::LoadLibrary(XAUDIO2_DLL);
-	if (hXAudio2 == nullptr)
-	{
-		PanicAlertT("XAudio2 failed load library");
-		return false;
-	}
-	PXAudio2Create = (XAudio2Create_t)::GetProcAddress(hXAudio2, "XAudio2Create");
-	if (PXAudio2Create == nullptr)
-	{
-		PanicAlertT("XAudio2 failed to get XAudio2Create");
-		return false;
-	}
-
 	// callback doesn't seem to run on a specific cpu anyways
 	IXAudio2* xaudptr;
-	if (FAILED(hr = PXAudio2Create(&xaudptr, 0, XAUDIO2_DEFAULT_PROCESSOR)))
+	if (FAILED(hr = ((XAudio2Create_t)PXAudio2Create)(&xaudptr, 0, XAUDIO2_DEFAULT_PROCESSOR)))
 	{
 		PanicAlertT("XAudio2 init failed: %#X", hr);
 		Stop();
@@ -232,4 +247,11 @@ void XAudio2::Stop()
 	}
 
 	m_xaudio2.reset();	// release interface
+
+	if (hXAudio2)
+	{
+		::FreeLibrary(hXAudio2);
+		hXAudio2 = nullptr;
+		PXAudio2Create = nullptr;
+	}
 }

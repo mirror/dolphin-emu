@@ -50,6 +50,10 @@ private:
 
 	const bool m_cleanup_com;
 
+	static HMODULE hXAudio2;
+
+	static bool InitLibrary();
+
 public:
 	XAudio2_7(CMixer *mixer);
 	virtual ~XAudio2_7();
@@ -62,7 +66,7 @@ public:
 	virtual void SetVolume(int volume);
 	virtual bool usesMixer() const { return true; }
 
-	static bool isValid() { return true; }
+	static bool isValid() { return InitLibrary(); }
 
 #else
 
