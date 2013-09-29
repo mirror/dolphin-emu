@@ -48,11 +48,48 @@ static const char* const named_motors[] =
 	"Motor R"
 };
 
+static HMODULE hXInput = nullptr;
+
+typedef decltype(&XInputGetCapabilities) XInputGetCapabilities_t;
+typedef decltype(&XInputSetState) XInputSetState_t;
+typedef decltype(&XInputGetState) XInputGetState_t;
+
+static XInputGetCapabilities_t PXInputGetCapabilities = nullptr;
+static XInputSetState_t PXInputSetState = nullptr;
+static XInputGetState_t PXInputGetState = nullptr;
+
 void Init(std::vector<Core::Device*>& devices)
 {
+	if (!hXInput)
+	{
+		hXInput = ::LoadLibrary(XINPUT_DLL);
+		if (!hXInput)
+		{
+			hXInput = ::LoadLibrary(TEXT("xinput1_3.dll"));
+			if (!hXInput)
+			{
+				return;
+			}
+		}
+
+		PXInputGetCapabilities = (XInputGetCapabilities_t)::GetProcAddress(hXInput, "XInputGetCapabilities");
+		PXInputSetState = (XInputSetState_t)::GetProcAddress(hXInput, "XInputSetState");
+		PXInputGetState = (XInputGetState_t)::GetProcAddress(hXInput, "XInputGetState");
+		if (!PXInputGetCapabilities ||
+			!PXInputSetState ||
+			!PXInputGetState)
+		{
+			::FreeLibrary(hXInput);
+			hXInput = nullptr;
+			return;
+		}
+
+		ERROR_LOG(COMMON, "XInput loaded");
+	}
+	
 	XINPUT_CAPABILITIES caps;
 	for (int i = 0; i != 4; ++i)
-		if (ERROR_SUCCESS == XInputGetCapabilities(i, 0, &caps))
+		if (ERROR_SUCCESS == PXInputGetCapabilities(i, 0, &caps))
 			devices.push_back(new Device(caps, i));
 }
 
@@ -143,7 +180,7 @@ std::string Device::GetSource() const
 
 bool Device::UpdateInput()
 {
-	return (ERROR_SUCCESS == XInputGetState(m_index, &m_state_in));
+	return (ERROR_SUCCESS == PXInputGetState(m_index, &m_state_in));
 }
 
 bool Device::UpdateOutput()
@@ -153,7 +190,7 @@ bool Device::UpdateOutput()
 	if (memcmp(&m_state_out, &m_current_state_out, sizeof(m_state_out)))
 	{
 		m_current_state_out = m_state_out;
-		return (ERROR_SUCCESS == XInputSetState(m_index, &m_state_out));
+		return (ERROR_SUCCESS == PXInputSetState(m_index, &m_state_out));
 	}
 	else
 	{
