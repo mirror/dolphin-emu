@@ -2,11 +2,15 @@
 // Licensed under GPLv2
 // Refer to the license.txt file included.
 
-#include <xaudio2.h>
 #include "AudioCommon.h"
-#include "XAudio2Stream.h"
+#include "XAudio2_7Stream.h"
 
-struct StreamingVoiceContext : public IXAudio2VoiceCallback
+#ifdef HAVE_DXSDK_JUNE_2010
+
+#include <mmreg.h>
+#include <C:/Program Files (x86)/Microsoft DirectX SDK (June 2010)/Include/XAudio2.h>
+
+struct StreamingVoiceContext2_7 : public IXAudio2VoiceCallback
 {
 private:
 	CMixer* const m_mixer;
@@ -17,12 +21,12 @@ private:
 	void SubmitBuffer(PBYTE buf_data);
 
 public:
-	StreamingVoiceContext(IXAudio2 *pXAudio2, CMixer *pMixer, Common::Event& pSyncEvent);
+	StreamingVoiceContext2_7(IXAudio2 *pXAudio2, CMixer *pMixer, Common::Event& pSyncEvent);
 
-	~StreamingVoiceContext();
+	~StreamingVoiceContext2_7();
 
-	void StreamingVoiceContext::Stop();
-	void StreamingVoiceContext::Play();
+	void StreamingVoiceContext2_7::Stop();
+	void StreamingVoiceContext2_7::Play();
 
 	STDMETHOD_(void, OnVoiceError) (THIS_ void* pBufferContext, HRESULT Error) {}
 	STDMETHOD_(void, OnVoiceProcessingPassStart) (UINT32) {}
@@ -41,7 +45,7 @@ const int NUM_CHANNELS = 2;
 const int BUFFER_SIZE = SAMPLES_PER_BUFFER * NUM_CHANNELS;
 const int BUFFER_SIZE_BYTES = BUFFER_SIZE * sizeof(s16);
 
-void StreamingVoiceContext::SubmitBuffer(PBYTE buf_data)
+void StreamingVoiceContext2_7::SubmitBuffer(PBYTE buf_data)
 {
 	XAUDIO2_BUFFER buf = {};
 	buf.AudioBytes = BUFFER_SIZE_BYTES;
@@ -51,7 +55,7 @@ void StreamingVoiceContext::SubmitBuffer(PBYTE buf_data)
 	m_source_voice->SubmitSourceBuffer(&buf);
 }
 
-StreamingVoiceContext::StreamingVoiceContext(IXAudio2 *pXAudio2, CMixer *pMixer, Common::Event& pSyncEvent)
+StreamingVoiceContext2_7::StreamingVoiceContext2_7(IXAudio2 *pXAudio2, CMixer *pMixer, Common::Event& pSyncEvent)
 	: m_mixer(pMixer)
 	, m_sound_sync_event(pSyncEvent)
 	, xaudio_buffer(new BYTE[NUM_BUFFERS * BUFFER_SIZE_BYTES]())
@@ -73,7 +77,7 @@ StreamingVoiceContext::StreamingVoiceContext(IXAudio2 *pXAudio2, CMixer *pMixer,
 	HRESULT hr;
 	if (FAILED(hr = pXAudio2->CreateSourceVoice(&m_source_voice, &wfx.Format, XAUDIO2_VOICE_NOSRC, 1.0f, this)))
 	{
-		PanicAlertT("XAudio2 CreateSourceVoice failed: %#X", hr);
+		PanicAlertT("XAudio2_7 CreateSourceVoice failed: %#X", hr);
 		return;
 	}
 
@@ -84,7 +88,7 @@ StreamingVoiceContext::StreamingVoiceContext(IXAudio2 *pXAudio2, CMixer *pMixer,
 		SubmitBuffer(xaudio_buffer.get() + (i * BUFFER_SIZE_BYTES));
 }
 
-StreamingVoiceContext::~StreamingVoiceContext()
+StreamingVoiceContext2_7::~StreamingVoiceContext2_7()
 {
 	if (m_source_voice)
 	{
@@ -93,19 +97,19 @@ StreamingVoiceContext::~StreamingVoiceContext()
 	}
 }
 
-void StreamingVoiceContext::Stop()
+void StreamingVoiceContext2_7::Stop()
 {
 	if (m_source_voice)
 		m_source_voice->Stop();
 }
 
-void StreamingVoiceContext::Play()
+void StreamingVoiceContext2_7::Play()
 {
 	if (m_source_voice)
 		m_source_voice->Start();
 }
 
-void StreamingVoiceContext::OnBufferEnd(void* context)
+void StreamingVoiceContext2_7::OnBufferEnd(void* context)
 {
 	//  buffer end callback; gets SAMPLES_PER_BUFFER samples for a new buffer
 
@@ -119,7 +123,7 @@ void StreamingVoiceContext::OnBufferEnd(void* context)
 	SubmitBuffer(static_cast<BYTE*>(context));
 }
 
-XAudio2::XAudio2(CMixer *mixer)
+XAudio2_7::XAudio2_7(CMixer *mixer)
 	: SoundStream(mixer)
 	, m_mastering_voice(nullptr)
 	, m_volume(1.0f)
@@ -127,38 +131,30 @@ XAudio2::XAudio2(CMixer *mixer)
 {
 }
 
-XAudio2::~XAudio2()
+XAudio2_7::~XAudio2_7()
 {
 	Stop();
 	if (m_cleanup_com)
 		CoUninitialize();
 }
 
-bool XAudio2::Start()
+bool XAudio2_7::Start()
 {
 	HRESULT hr;
 
 	HMODULE hXAudio2 = nullptr;
-	typedef decltype(&XAudio2Create) XAudio2Create_t;
-	XAudio2Create_t PXAudio2Create = nullptr;
-	hXAudio2 = ::LoadLibrary(XAUDIO2_DLL);
+	hXAudio2 = ::LoadLibrary(TEXT("xaudio2_7.dll"));
 	if (hXAudio2 == nullptr)
 	{
-		PanicAlertT("XAudio2 failed load library");
-		return false;
-	}
-	PXAudio2Create = (XAudio2Create_t)::GetProcAddress(hXAudio2, "XAudio2Create");
-	if (PXAudio2Create == nullptr)
-	{
-		PanicAlertT("XAudio2 failed to get XAudio2Create");
+		PanicAlertT("XAudio2_7 failed load library");
 		return false;
 	}
 
 	// callback doesn't seem to run on a specific cpu anyways
 	IXAudio2* xaudptr;
-	if (FAILED(hr = PXAudio2Create(&xaudptr, 0, XAUDIO2_DEFAULT_PROCESSOR)))
+	if (FAILED(hr = XAudio2Create(&xaudptr, 0, XAUDIO2_DEFAULT_PROCESSOR)))
 	{
-		PanicAlertT("XAudio2 init failed: %#X", hr);
+		PanicAlertT("XAudio2_7 init failed: %#X", hr);
 		Stop();
 		return false;
 	}
@@ -168,7 +164,7 @@ bool XAudio2::Start()
 	// XAUDIO2_DEFAULT_CHANNELS instead of 2 for expansion?
 	if (FAILED(hr = m_xaudio2->CreateMasteringVoice(&m_mastering_voice, 2, m_mixer->GetSampleRate())))
 	{
-		PanicAlertT("XAudio2 master voice creation failed: %#X", hr);
+		PanicAlertT("XAudio2_7 master voice creation failed: %#X", hr);
 		Stop();
 		return false;
 	}
@@ -176,13 +172,13 @@ bool XAudio2::Start()
 	// Volume
 	m_mastering_voice->SetVolume(m_volume);
 
-	m_voice_context = std::unique_ptr<StreamingVoiceContext>
-		(new StreamingVoiceContext(m_xaudio2.get(), m_mixer, m_sound_sync_event));
+	m_voice_context = std::unique_ptr<StreamingVoiceContext2_7>
+		(new StreamingVoiceContext2_7(m_xaudio2.get(), m_mixer, m_sound_sync_event));
 
 	return true;
 }
 
-void XAudio2::SetVolume(int volume)
+void XAudio2_7::SetVolume(int volume)
 {
 	//linear 1- .01
 	m_volume = (float)volume / 100.f;
@@ -191,7 +187,7 @@ void XAudio2::SetVolume(int volume)
 		m_mastering_voice->SetVolume(m_volume);
 }
 
-void XAudio2::Update()
+void XAudio2_7::Update()
 {
 	//m_sound_sync_event.Set();
 
@@ -201,12 +197,12 @@ void XAudio2::Update()
 	//	xi = 0;
 	//	XAUDIO2_PERFORMANCE_DATA perfData;
 	//	pXAudio2->GetPerformanceData(&perfData);
-	//	NOTICE_LOG(DSPHLE, "XAudio2 latency (samples): %i", perfData.CurrentLatencyInSamples);
-	//	NOTICE_LOG(DSPHLE, "XAudio2	total glitches: %i", perfData.GlitchesSinceEngineStarted);
+	//	NOTICE_LOG(DSPHLE, "XAudio2_7 latency (samples): %i", perfData.CurrentLatencyInSamples);
+	//	NOTICE_LOG(DSPHLE, "XAudio2_7	total glitches: %i", perfData.GlitchesSinceEngineStarted);
 	//}
 }
 
-void XAudio2::Clear(bool mute)
+void XAudio2_7::Clear(bool mute)
 {
 	m_muted = mute;
 
@@ -219,7 +215,7 @@ void XAudio2::Clear(bool mute)
 	}
 }
 
-void XAudio2::Stop()
+void XAudio2_7::Stop()
 {
 	//m_sound_sync_event.Set();
 
@@ -233,3 +229,5 @@ void XAudio2::Stop()
 
 	m_xaudio2.reset();	// release interface
 }
+
+#endif

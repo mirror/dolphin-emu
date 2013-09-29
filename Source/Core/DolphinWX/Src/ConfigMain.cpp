@@ -1005,6 +1005,7 @@ bool CConfigMain::SupportsVolumeChanges(std::string backend)
 	return (backend == BACKEND_DIRECTSOUND ||
 			backend == BACKEND_COREAUDIO ||
 			backend == BACKEND_OPENAL ||
+			backend == BACKEND_XAUDIO2_7 ||
 			backend == BACKEND_XAUDIO2);
 }
 

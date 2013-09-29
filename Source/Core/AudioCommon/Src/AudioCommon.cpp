@@ -7,6 +7,7 @@
 #include "Mixer.h"
 #include "NullSoundStream.h"
 #include "DSoundStream.h"
+#include "XAudio2_7Stream.h"
 #include "XAudio2Stream.h"
 #include "AOSoundStream.h"
 #include "AlsaSoundStream.h"
@@ -27,19 +28,21 @@ namespace AudioCommon
 		// TODO: possible memleak with mixer
 
 		std::string backend = SConfig::GetInstance().sBackend;
-		if (backend == BACKEND_OPENAL           && OpenALStream::isValid()) 
+		if (backend == BACKEND_OPENAL           && OpenALStream::isValid())
 			soundStream = new OpenALStream(mixer);
-		else if (backend == BACKEND_NULLSOUND   && NullSound::isValid()) 
+		else if (backend == BACKEND_NULLSOUND   && NullSound::isValid())
 			soundStream = new NullSound(mixer, hWnd);
-		else if (backend == BACKEND_DIRECTSOUND && DSound::isValid()) 
+		else if (backend == BACKEND_DIRECTSOUND && DSound::isValid())
 			soundStream = new DSound(mixer, hWnd);
-		else if (backend == BACKEND_XAUDIO2     && XAudio2::isValid()) 
+		else if (backend == BACKEND_XAUDIO2_7   && XAudio2_7::isValid())
+			soundStream = new XAudio2_7(mixer);
+		else if (backend == BACKEND_XAUDIO2     && XAudio2::isValid())
 			soundStream = new XAudio2(mixer);
-		else if (backend == BACKEND_AOSOUND     && AOSound::isValid()) 
+		else if (backend == BACKEND_AOSOUND     && AOSound::isValid())
 			soundStream = new AOSound(mixer);
 		else if (backend == BACKEND_ALSA        && AlsaSound::isValid())
 			soundStream = new AlsaSound(mixer);
-		else if (backend == BACKEND_COREAUDIO   && CoreAudioSound::isValid()) 
+		else if (backend == BACKEND_COREAUDIO   && CoreAudioSound::isValid())
 			soundStream = new CoreAudioSound(mixer);
 		else if (backend == BACKEND_PULSEAUDIO  && PulseAudio::isValid())
 			soundStream = new PulseAudio(mixer);
@@ -93,6 +96,8 @@ namespace AudioCommon
 			backends.push_back(BACKEND_NULLSOUND);
 		if (DSound::isValid())
 			backends.push_back(BACKEND_DIRECTSOUND);
+		if (XAudio2_7::isValid())
+			backends.push_back(BACKEND_XAUDIO2_7);
 		if (XAudio2::isValid())
 			backends.push_back(BACKEND_XAUDIO2);
 		if (AOSound::isValid())

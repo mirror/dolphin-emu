@@ -2,9 +2,13 @@
 // Licensed under GPLv2
 // Refer to the license.txt file included.
 
-// This audio backend uses XAudio2 via XAUDIO2_DLL
-// It works on Windows 8+, where it is included as an OS component.
-// This backend is always compiled, but only available if running on Win8+
+// This audio backend uses XAudio2 via XAudio2_7.dll
+// This version of the library is included in the June 2010 DirectX SDK and
+// works on all versions of Windows, however the SDK and/or redist must be
+// seperately installed.
+// Therefore this backend is available iff:
+//  * SDK is available at compile-time
+//  * runtime dll is available at runtime
 
 #pragma once
 
@@ -12,17 +16,19 @@
 #include "Thread.h"
 #include "SoundStream.h"
 
-#ifdef _WIN32
+#ifdef HAVE_DXSDK_JUNE_2010
 
-struct StreamingVoiceContext;
+#include <objbase.h>
+
+struct StreamingVoiceContext2_7;
 struct IXAudio2;
 struct IXAudio2MasteringVoice;
 
 #endif
 
-class XAudio2 : public SoundStream
+class XAudio2_7 : public SoundStream
 {
-#ifdef _WIN32
+#ifdef HAVE_DXSDK_JUNE_2010
 
 	class Releaser
 	{
@@ -36,7 +42,7 @@ class XAudio2 : public SoundStream
 
 private:
 	std::unique_ptr<IXAudio2, Releaser> m_xaudio2;
-	std::unique_ptr<StreamingVoiceContext> m_voice_context;
+	std::unique_ptr<StreamingVoiceContext2_7> m_voice_context;
 	IXAudio2MasteringVoice *m_mastering_voice;
 
 	Common::Event m_sound_sync_event;
@@ -45,8 +51,8 @@ private:
 	const bool m_cleanup_com;
 
 public:
-	XAudio2(CMixer *mixer);
-	virtual ~XAudio2();
+	XAudio2_7(CMixer *mixer);
+	virtual ~XAudio2_7();
  
 	virtual bool Start();
 	virtual void Stop();
@@ -61,7 +67,7 @@ public:
 #else
 
 public:
-	XAudio2(CMixer *mixer, void *hWnd = NULL)
+	XAudio2_7(CMixer *mixer, void *hWnd = NULL)
 		: SoundStream(mixer)
 	{}
 
