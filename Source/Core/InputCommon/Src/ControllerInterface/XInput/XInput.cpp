@@ -62,9 +62,11 @@ void Init(std::vector<Core::Device*>& devices)
 {
 	if (!hXInput)
 	{
+		// Try for the most recent version we were compiled against (will only work if running on Win8+)
 		hXInput = ::LoadLibrary(XINPUT_DLL);
 		if (!hXInput)
 		{
+			// Drop back to DXSDK June 2010 version. Requires DX June 2010 redist.
 			hXInput = ::LoadLibrary(TEXT("xinput1_3.dll"));
 			if (!hXInput)
 			{
@@ -83,14 +85,21 @@ void Init(std::vector<Core::Device*>& devices)
 			hXInput = nullptr;
 			return;
 		}
-
-		ERROR_LOG(COMMON, "XInput loaded");
 	}
 	
 	XINPUT_CAPABILITIES caps;
 	for (int i = 0; i != 4; ++i)
 		if (ERROR_SUCCESS == PXInputGetCapabilities(i, 0, &caps))
 			devices.push_back(new Device(caps, i));
+}
+
+void DeInit()
+{
+	if (hXInput)
+	{
+		::FreeLibrary(hXInput);
+		hXInput = nullptr;
+	}
 }
 
 Device::Device(const XINPUT_CAPABILITIES& caps, u8 index)
@@ -149,20 +158,16 @@ void Device::ClearInputState()
 
 std::string Device::GetName() const
 {
-	// why aren't these defined
-	// subtype doesn't seem to work, I tested with 2 different arcade sticks, both were shown as gamepad
-	// I'll leave it in anyway, maybe m$ will fix it
-
 	switch (m_subtype)
 	{
-	case XINPUT_DEVSUBTYPE_GAMEPAD : return "Gamepad"; break;
-	case 0x02 /*XINPUT_DEVSUBTYPE_WHEEL*/ :	return "Wheel"; break;
-	case 0x03 /*XINPUT_DEVSUBTYPE_ARCADE_STICK*/ : return "Arcade Stick"; break;
-	case 0x04 /*XINPUT_DEVSUBTYPE_FLIGHT_STICK*/ : return "Flight Stick"; break;
-	case 0x05 /*XINPUT_DEVSUBTYPE_DANCE_PAD*/ : return "Dance Pad"; break;
-	case 0x06 /*XINPUT_DEVSUBTYPE_GUITAR*/ :	return "Guitar"; break;
-	case 0x08 /*XINPUT_DEVSUBTYPE_DRUM_KIT*/ : return "Drum Kit"; break;
-	default : return "Device"; break;
+	case XINPUT_DEVSUBTYPE_GAMEPAD: return "Gamepad"; break;
+	case XINPUT_DEVSUBTYPE_WHEEL: return "Wheel"; break;
+	case XINPUT_DEVSUBTYPE_ARCADE_STICK: return "Arcade Stick"; break;
+	case XINPUT_DEVSUBTYPE_FLIGHT_STICK: return "Flight Stick"; break;
+	case XINPUT_DEVSUBTYPE_DANCE_PAD: return "Dance Pad"; break;
+	case XINPUT_DEVSUBTYPE_GUITAR: return "Guitar"; break;
+	case XINPUT_DEVSUBTYPE_DRUM_KIT: return "Drum Kit"; break;
+	default: return "Device"; break;
 	}
 }
 
