@@ -8,6 +8,9 @@
 #ifdef HAVE_DXSDK_JUNE_2010
 
 #include <mmreg.h>
+// Note that this file *and this file only* must also have %DXSDK_DIR%/Include in
+// its include path in order to resolve dependencies of XAudio2.h
+// This may be accomplished by adding it to AdditionalIncludeDirectories via msbuild.
 #include <C:/Program Files (x86)/Microsoft DirectX SDK (June 2010)/Include/XAudio2.h>
 
 struct StreamingVoiceContext2_7 : public IXAudio2VoiceCallback
