@@ -11,9 +11,6 @@
     <ClCompile Include="Src\DPL2Decoder.cpp" />
     <ClCompile Include="Src\Mixer.cpp" />
     <ClCompile Include="Src\WaveFile.cpp" />
-    <ClCompile Include="Src\AOSoundStream.cpp">
-      <Filter>SoundStreams</Filter>
-    </ClCompile>
     <ClCompile Include="Src\DSoundStream.cpp">
       <Filter>SoundStreams</Filter>
     </ClCompile>
@@ -55,6 +52,18 @@
     </ClInclude>
     <ClInclude Include="Src\stdafx.h" />
     <ClInclude Include="Src\XAudio2_7Stream.h">
+      <Filter>SoundStreams</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\PulseAudioStream.h">
+      <Filter>SoundStreams</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\OpenSLESStream.h">
+      <Filter>SoundStreams</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\CoreAudioSoundStream.h">
+      <Filter>SoundStreams</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\AlsaSoundStream.h">
       <Filter>SoundStreams</Filter>
     </ClInclude>
   </ItemGroup>
