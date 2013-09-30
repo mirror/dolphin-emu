@@ -139,10 +139,16 @@ void CEXIMemoryCardFolder::Flush(bool exiting)
 	if (!Core::g_CoreStartupParameter.bEnableMemcardSaving)
 		return;
 	
-	memcarddir->Flush();
-
-	if(!exiting)
-		Core::DisplayMessage(StringFromFormat("Writing to memory card %c", card_index ? 'B' : 'A'), 1000);
+	
+	int errors = memcarddir->Flush(exiting);
+	if(!exiting && errors)
+	{
+		
+		PanicAlertT("Could not write gci card files in %s.\n\n"
+			"Are you running Dolphin from a CD/DVD, or is the save file maybe write protected?\n\n",
+			m_strDirectoryName.c_str());
+		return;
+	}
 
 	m_bDirty = false;
 }

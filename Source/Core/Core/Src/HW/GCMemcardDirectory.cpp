@@ -4,7 +4,10 @@
 
 #include "GCMemcard.h"
 #include "Volume.h"
+#include "../Core.h"
+
 const int NO_INDEX = -1;
+const char * MC_HDR = "MC_SYSTEM_AREA";
 int GCMemcardDirectory::LoadGCI(std::string fileName, int region)
 {
 	File::IOFile gcifile(fileName, "rb");
@@ -95,7 +98,7 @@ int GCMemcardDirectory::LoadGCI(std::string fileName, int region)
 			GCMemcard::PSO_MakeSaveGameValid(m_hdr, gci.m_gci_header, gci.m_save_data);
 			GCMemcard::FZEROGX_MakeSaveGameValid(m_hdr, gci.m_gci_header, gci.m_save_data);
 		}
-		int idx = m_saves.size();
+		int idx = (int)m_saves.size();
 		m_dir1.Replace(gci.m_gci_header, idx);
 		m_saves.push_back(std::move(gci));
 		SetUsedBlocks(idx);
@@ -113,9 +116,10 @@ GCMemcardDirectory::GCMemcardDirectory(std::string directory, int slot, u16 size
 	m_saves(0),
 	m_SaveDirectory(directory)
 {
-	if (File::Exists(m_SaveDirectory + "hdr"))
+	// Use existing header data if available
+	if (File::Exists(m_SaveDirectory + MC_HDR))
 	{
-		File::IOFile hdrfile((m_SaveDirectory + "hdr"), "rb");
+		File::IOFile hdrfile((m_SaveDirectory + MC_HDR), "rb");
 		hdrfile.ReadBytes(&m_hdr, BLOCK_SIZE);
 	}
 
@@ -151,108 +155,108 @@ s32 GCMemcardDirectory::Read(u32 address, s32 length, u8* destaddress)
 
 	u32 block = address / BLOCK_SIZE;
 	u32 offset = address % BLOCK_SIZE;
+	s32 extra = 0; // used for read calls that are across multiple blocks
 
 	if (offset + length > BLOCK_SIZE)
 	{
 		s32 extra = length + offset - BLOCK_SIZE;
 		length -= extra;
-		if ((address+length)%BLOCK_SIZE)
-			PanicAlert("error");
-		Read(address + length, extra, destaddress+length);
+
+		// verify that we haven't calculated a length beyond BLOCK_SIZE
+		_dbg_assert_msg_(EXPANSIONINTERFACE, (address+length)%BLOCK_SIZE == 0, "Memcard directory Read Logic Error");
 	}
 
-	if (m_LastBlock == block)
+	if (m_LastBlock != block)
 	{
-		memcpy(destaddress, m_LastBlockAddress+offset, length);
-		return length;
-	}
-
-	switch (block)
-	{
-	case 0:
-		m_LastBlock = block;
-		m_LastBlockAddress = (u8*)&m_hdr;
-		break;
-	case 1:
-		m_LastBlock = block;
-		m_LastBlockAddress = (u8*)&m_dir1;
-		break;
-	case 2:
-		m_LastBlock = block;
-		m_LastBlockAddress = (u8*)&m_dir2;
-		break;
-	case 3:
-		m_LastBlock = block;
-		m_LastBlockAddress = (u8*)&m_bat1;
-		break;
-	case 4:
-		m_LastBlock = block;
-		m_LastBlockAddress = (u8*)&m_bat2;
-		break;
-	default:
-		m_LastBlock = SaveAreaRW(block);
-		
-		if (m_LastBlock == -1)
+		switch (block)
 		{
-			memset(destaddress, 0xFF, length);
-			return 0;
+		case 0:
+			m_LastBlock = block;
+			m_LastBlockAddress = (u8*)&m_hdr;
+			break;
+		case 1:
+			m_LastBlock = block;
+			m_LastBlockAddress = (u8*)&m_dir1;
+			break;
+		case 2:
+			m_LastBlock = block;
+			m_LastBlockAddress = (u8*)&m_dir2;
+			break;
+		case 3:
+			m_LastBlock = block;
+			m_LastBlockAddress = (u8*)&m_bat1;
+			break;
+		case 4:
+			m_LastBlock = block;
+			m_LastBlockAddress = (u8*)&m_bat2;
+			break;
+		default:
+			m_LastBlock = SaveAreaRW(block);
+		
+			if (m_LastBlock == -1)
+			{
+				memset(destaddress, 0xFF, length);
+				return 0;
+			}
 		}
 	}
-	
+
 	memcpy(destaddress, m_LastBlockAddress+offset, length);
-	return 0;
+	if (extra)
+		extra = Read(address + length, extra, destaddress+length);
+	return length + extra;
 }
 
 s32 GCMemcardDirectory::Write(u32 destaddress, s32 length, u8* srcaddress)
 {
-
 	u32 block = destaddress / BLOCK_SIZE;
 	u32 offset = destaddress % BLOCK_SIZE;
+	s32 extra = 0; // used for write calls that are across multiple blocks
 
 	if (offset + length > BLOCK_SIZE)
 	{
 		s32 extra = length + offset - BLOCK_SIZE;
 		length -= extra;
-		if ((destaddress+length)%BLOCK_SIZE)
-			PanicAlert("error");
-		Write(destaddress + length, extra, srcaddress+length);
+
+		// verify that we haven't calculated a length beyond BLOCK_SIZE
+		_dbg_assert_msg_(EXPANSIONINTERFACE, (destaddress+length)%BLOCK_SIZE == 0, "Memcard directory Write Logic Error");
 	}
 
-	if (m_LastBlock == block)
+	if (m_LastBlock != block)
 	{
-		memcpy(m_LastBlockAddress+offset, srcaddress, length);
-		return length;
-	}
-
-	switch (block)
-	{
-	case 0:
-		m_LastBlock = block;
-		m_LastBlockAddress = (u8*)&m_hdr;
-		break;
-	case 1:
-	case 2:
-		m_LastBlock = -1;
-		return DirectoryWrite(destaddress, length, srcaddress);	
-	case 3:
-		m_LastBlock = block;
-		m_LastBlockAddress = (u8*)&m_bat1;
-		break;
-	case 4:
-		m_LastBlock = block;
-		m_LastBlockAddress = (u8*)&m_bat2;
-		break;
-	default:
-		m_LastBlock = SaveAreaRW(block, true);
-		if (m_LastBlock == -1)
+		switch (block)
 		{
-			PanicAlert("Writing to unallocated block");
-			return 0;
+		case 0:
+			m_LastBlock = block;
+			m_LastBlockAddress = (u8*)&m_hdr;
+			break;
+		case 1:
+		case 2:
+			m_LastBlock = -1;
+			return DirectoryWrite(destaddress, length, srcaddress);	
+		case 3:
+			m_LastBlock = block;
+			m_LastBlockAddress = (u8*)&m_bat1;
+			break;
+		case 4:
+			m_LastBlock = block;
+			m_LastBlockAddress = (u8*)&m_bat2;
+			break;
+		default:
+			m_LastBlock = SaveAreaRW(block, true);
+			if (m_LastBlock == -1)
+			{
+				PanicAlert("Writing to unallocated block");
+				return 0;
+			}
 		}
 	}
-	
+
 	memcpy(m_LastBlockAddress+offset, srcaddress, length);
-	return 0;
+	
+	if (extra)
+		extra = Write(destaddress + length, extra, srcaddress+length);
+	return length + extra;
 }
 
 void GCMemcardDirectory::clearBlock(u32 block)
@@ -369,8 +373,8 @@ s32 GCMemcardDirectory::DirectoryWrite(u32 destaddress, u32 length, u8* srcaddre
 			memcpy(((u8*)&(dest->Dir[Dnum]))+Doffset, srcaddress, length);
 		}
 	}
-	else
-	{
+	else // this probably could be optimized to ignore the 0xff dir entries
+	{	 // writes to the Directory are always BLOCK_SIZE
 		if (Dnum - m_saves.size() > 1)
 		{
 			PanicAlert("Gap left when adding directory entry???");
@@ -419,8 +423,10 @@ bool GCMemcardDirectory::SetUsedBlocks(int saveIndex)
 
 	return true;
 }
-void GCMemcardDirectory::Flush()
+
+int GCMemcardDirectory::Flush(bool exiting)
 {
+	int errors = 0;;
 	DEntry invalid;
 	for (int i = 0; i < m_saves.size(); ++i)
 	{
@@ -439,6 +445,24 @@ void GCMemcardDirectory::Flush()
 				{
 					GCI.WriteBytes(&m_saves[i].m_gci_header, DENTRY_SIZE);
 					GCI.WriteBytes(m_saves[i].m_save_data.data(), BLOCK_SIZE*m_saves[i].m_save_data.size());
+					
+
+					if (!exiting)
+					{
+						if (GCI.IsGood())
+						{
+							Core::DisplayMessage(StringFromFormat("Wrote save contents to %s", m_saves[i].m_filename.c_str()), 4000);
+						}
+						else
+						{
+							++errors;
+							Core::DisplayMessage(StringFromFormat("Failed to write save contents to %s", m_saves[i].m_filename.c_str()), 4000);
+							ERROR_LOG(EXPANSIONINTERFACE, "Failed to save data to %s", m_saves[i].m_filename.c_str());
+						}
+					}
+						
+						
+
 				}
 			}
 			else if (m_saves[i].m_filename.length() != 0)
@@ -468,9 +492,10 @@ void GCMemcardDirectory::Flush()
 #if _WRITE_MC_HEADER
 	u8 mc[BLOCK_SIZE*MC_FST_BLOCKS];
 	Read(0, BLOCK_SIZE*MC_FST_BLOCKS, mc);
-	File::IOFile hdrfile(m_SaveDirectory + "MC_SYSTEM_AREA", "wb");
+	File::IOFile hdrfile(m_SaveDirectory + MC_HDR, "wb");
 	hdrfile.WriteBytes(mc, BLOCK_SIZE*MC_FST_BLOCKS);
 #endif
+	return errors;
 }
 
 void GCMemcardDirectory::DoState(PointerWrap &p)
@@ -483,7 +508,7 @@ void GCMemcardDirectory::DoState(PointerWrap &p)
 	p.DoPOD<Directory>(m_dir2);
 	p.DoPOD<BlockAlloc>(m_bat1);
 	p.DoPOD<BlockAlloc>(m_bat2);
-	int numSaves = m_saves.size();
+	int numSaves = (int)m_saves.size();
 	p.Do(numSaves);
 	m_saves.resize(numSaves);
 	for (auto itr = m_saves.begin(); itr != m_saves.end(); ++itr)
@@ -532,7 +557,7 @@ void GCIFile::DoState(PointerWrap &p)
 	p.DoPOD<DEntry>(m_gci_header);
 	p.Do(m_dirty);
 	p.Do(m_filename);
-	int numBlocks = m_save_data.size();
+	int numBlocks = (int)m_save_data.size();
 	p.Do(numBlocks);
 	m_save_data.resize(numBlocks);
 	for (auto itr = m_save_data.begin(); itr != m_save_data.end(); ++itr)

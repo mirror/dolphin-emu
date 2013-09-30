@@ -363,8 +363,8 @@ class GCMemcardDirectory : NonCopyable
 {
 public:
 	GCMemcardDirectory(std::string directory, int slot = 0, u16 sizeMb = MemCard2043Mb, bool ascii=true, int region=0, int gameId=0);
-	~GCMemcardDirectory(){Flush();}
-	void Flush();
+	~GCMemcardDirectory(){Flush(true);}
+	int Flush(bool exiting=false);
 
 	s32 Read(u32 address, s32 length, u8* destaddress);
 	s32 Write(u32 destaddress, s32 length, u8* srcaddress);
