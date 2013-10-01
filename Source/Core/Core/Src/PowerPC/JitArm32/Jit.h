@@ -258,6 +258,4 @@ public:
 	void psq_st(UGeckoInstruction _inst);
 	void psq_stx(UGeckoInstruction _inst);
 };
-
-void gDestroyBlocksWithFlag(BlockFlag death_flag);
 #endif // _JIT64_H
