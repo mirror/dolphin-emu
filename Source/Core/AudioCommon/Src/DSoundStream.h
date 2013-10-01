@@ -9,6 +9,7 @@
 #include "Thread.h"
 
 #ifdef _WIN32
+#include <Windows.h>
 #include <mmsystem.h>
 #include <dsound.h>
 
