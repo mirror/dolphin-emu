@@ -70,7 +70,7 @@ public:
 
 #else
 public:
-	DSound(CMixer *mixer, void *hWnd = NULL)
+	DSound(CMixer *mixer)
 		: SoundStream(mixer)
 	{}
 #endif

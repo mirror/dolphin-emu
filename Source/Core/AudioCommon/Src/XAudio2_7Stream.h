@@ -16,9 +16,7 @@
 #include "Thread.h"
 #include "SoundStream.h"
 
-#ifdef HAVE_DXSDK_JUNE_2010
-
-#include <objbase.h>
+#ifdef _WIN32
 
 struct StreamingVoiceContext2_7;
 struct IXAudio2;
@@ -28,19 +26,21 @@ struct IXAudio2MasteringVoice;
 
 class XAudio2_7 : public SoundStream
 {
-#ifdef HAVE_DXSDK_JUNE_2010
+#ifdef _WIN32
+
+private:
+	static void ReleaseIXAudio2(IXAudio2 *ptr);
 
 	class Releaser
 	{
 	public:
 		template <typename R>
-		void operator()(R* ptr)
+		void operator()(R *ptr)
 		{
-			ptr->Release();
+			ReleaseIXAudio2(ptr);
 		}
 	};
 
-private:
 	std::unique_ptr<IXAudio2, Releaser> m_xaudio2;
 	std::unique_ptr<StreamingVoiceContext2_7> m_voice_context;
 	IXAudio2MasteringVoice *m_mastering_voice;
@@ -50,7 +50,7 @@ private:
 
 	const bool m_cleanup_com;
 
-	static HMODULE hXAudio2;
+	static HMODULE m_xaudio2_dll;
 
 	static bool InitLibrary();
 
@@ -64,14 +64,14 @@ public:
 	virtual void Update();
 	virtual void Clear(bool mute);
 	virtual void SetVolume(int volume);
-	virtual bool usesMixer() const { return true; }
+	virtual bool usesMixer() const;
 
 	static bool isValid() { return InitLibrary(); }
 
 #else
 
 public:
-	XAudio2_7(CMixer *mixer, void *hWnd = NULL)
+	XAudio2_7(CMixer *mixer)
 		: SoundStream(mixer)
 	{}
 

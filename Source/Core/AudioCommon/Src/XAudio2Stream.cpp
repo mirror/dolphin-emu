@@ -119,30 +119,30 @@ void StreamingVoiceContext::OnBufferEnd(void* context)
 	SubmitBuffer(static_cast<BYTE*>(context));
 }
 
-HMODULE XAudio2::hXAudio2 = nullptr;
+HMODULE XAudio2::m_xaudio2_dll = nullptr;
 typedef decltype(&XAudio2Create) XAudio2Create_t;
 void *XAudio2::PXAudio2Create = nullptr;
 
 bool XAudio2::InitLibrary()
 {
-	if (hXAudio2)
+	if (m_xaudio2_dll)
 	{
 		return true;
 	}
 
-	hXAudio2 = ::LoadLibrary(XAUDIO2_DLL);
-	if (!hXAudio2)
+	m_xaudio2_dll = ::LoadLibrary(XAUDIO2_DLL);
+	if (!m_xaudio2_dll)
 	{
 		return false;
 	}
 
 	if (!PXAudio2Create)
 	{
-		PXAudio2Create = (XAudio2Create_t)::GetProcAddress(hXAudio2, "XAudio2Create");
+		PXAudio2Create = (XAudio2Create_t)::GetProcAddress(m_xaudio2_dll, "XAudio2Create");
 		if (!PXAudio2Create)
 		{
-			::FreeLibrary(hXAudio2);
-			hXAudio2 = nullptr;
+			::FreeLibrary(m_xaudio2_dll);
+			m_xaudio2_dll = nullptr;
 			return false;
 		}
 	}
@@ -248,10 +248,10 @@ void XAudio2::Stop()
 
 	m_xaudio2.reset();	// release interface
 
-	if (hXAudio2)
+	if (m_xaudio2_dll)
 	{
-		::FreeLibrary(hXAudio2);
-		hXAudio2 = nullptr;
+		::FreeLibrary(m_xaudio2_dll);
+		m_xaudio2_dll = nullptr;
 		PXAudio2Create = nullptr;
 	}
 }

@@ -2,16 +2,26 @@
 // Licensed under GPLv2
 // Refer to the license.txt file included.
 
+// Note that this file *and this file only* must also have %DXSDK_DIR%/Include prepended
+// to its include path in order fetch dxsdkver.h and XAudio2.h from the DXSDK
+// instead of other possible places. This may be accomplished by adding the path to
+// the AdditionalIncludeDirectories for this file via msbuild.
+
 #include "AudioCommon.h"
 #include "XAudio2_7Stream.h"
 
+#ifdef HAVE_DXSDK
+#include <dxsdkver.h>
+#if (_DXSDK_PRODUCT_MAJOR == 9) && (_DXSDK_PRODUCT_MINOR == 29) && (_DXSDK_BUILD_MAJOR == 1962) && (_DXSDK_BUILD_MINOR == 0)
+#define HAVE_DXSDK_JUNE_2010
+#else
+#pragma message("You have DirectX SDK installed, but it is not the expected version (June 2010). Update it to build this module.")
+#endif
+#endif
+
 #ifdef HAVE_DXSDK_JUNE_2010
 
-#include <mmreg.h>
-// Note that this file *and this file only* must also have %DXSDK_DIR%/Include in
-// its include path in order to resolve dependencies of XAudio2.h
-// This may be accomplished by adding it to AdditionalIncludeDirectories via msbuild.
-#include <C:/Program Files (x86)/Microsoft DirectX SDK (June 2010)/Include/XAudio2.h>
+#include <XAudio2.h>
 
 struct StreamingVoiceContext2_7 : public IXAudio2VoiceCallback
 {
@@ -126,18 +136,23 @@ void StreamingVoiceContext2_7::OnBufferEnd(void* context)
 	SubmitBuffer(static_cast<BYTE*>(context));
 }
 
-HMODULE XAudio2_7::hXAudio2 = nullptr;
+HMODULE XAudio2_7::m_xaudio2_dll = nullptr;
+
+void XAudio2_7::ReleaseIXAudio2(IXAudio2* ptr)
+{
+	ptr->Release();
+}
 
 bool XAudio2_7::InitLibrary()
 {
-	if (hXAudio2)
+	if (m_xaudio2_dll)
 	{
 		return true;
 	}
 
-	hXAudio2 = ::LoadLibrary(TEXT("xaudio2_7.dll"));
+	m_xaudio2_dll = ::LoadLibrary(TEXT("xaudio2_7.dll"));
 
-	return hXAudio2 != nullptr;
+	return m_xaudio2_dll != nullptr;
 }
 
 XAudio2_7::XAudio2_7(CMixer *mixer)
@@ -238,11 +253,37 @@ void XAudio2_7::Stop()
 
 	m_xaudio2.reset();	// release interface
 
-	if (hXAudio2)
+	if (m_xaudio2_dll)
 	{
-		::FreeLibrary(hXAudio2);
-		hXAudio2 = nullptr;
+		::FreeLibrary(m_xaudio2_dll);
+		m_xaudio2_dll = nullptr;
 	}
 }
+
+bool XAudio2_7::usesMixer() const { return true; }
+
+#else
+
+struct StreamingVoiceContext2_7 {};
+struct IXAudio2 {};
+struct IXAudio2MasteringVoice {};
+void XAudio2_7::ReleaseIXAudio2(IXAudio2* ptr) {}
+
+XAudio2_7::XAudio2_7(CMixer *mixer)
+	: SoundStream(mixer)
+	, m_mastering_voice(nullptr)
+	, m_volume(1.0f)
+	, m_cleanup_com(false)
+{}
+
+XAudio2_7::~XAudio2_7() {}
+
+bool XAudio2_7::Start() { return SoundStream::Start(); }
+void XAudio2_7::Stop() {}
+void XAudio2_7::Update() {}
+void XAudio2_7::Clear(bool mute) {}
+void XAudio2_7::SetVolume(int volume) {}
+bool XAudio2_7::usesMixer() const { return false; }
+bool XAudio2_7::InitLibrary() { return false; }
 
 #endif

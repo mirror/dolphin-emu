@@ -24,6 +24,7 @@ class XAudio2 : public SoundStream
 {
 #ifdef _WIN32
 
+private:
 	class Releaser
 	{
 	public:
@@ -34,7 +35,6 @@ class XAudio2 : public SoundStream
 		}
 	};
 
-private:
 	std::unique_ptr<IXAudio2, Releaser> m_xaudio2;
 	std::unique_ptr<StreamingVoiceContext> m_voice_context;
 	IXAudio2MasteringVoice *m_mastering_voice;
@@ -44,7 +44,7 @@ private:
 
 	const bool m_cleanup_com;
 
-	static HMODULE hXAudio2;
+	static HMODULE m_xaudio2_dll;
 	static void *PXAudio2Create;
 
 	static bool InitLibrary();
@@ -66,7 +66,7 @@ public:
 #else
 
 public:
-	XAudio2(CMixer *mixer, void *hWnd = NULL)
+	XAudio2(CMixer *mixer)
 		: SoundStream(mixer)
 	{}
 
