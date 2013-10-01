@@ -55,10 +55,6 @@ private:
 
 	JitArmAsmRoutineManager asm_routines;
 
-	// TODO: Make arm specific versions of these, shouldn't be too hard to
-	// make it so we allocate some space at the start(?) of code generation
-	// and keep the registers in a cache. Will burn this bridge when we get to
-	// it.
 	ArmRegCache gpr;
 	ArmFPRCache fpr;
 
@@ -263,4 +259,5 @@ public:
 	void psq_stx(UGeckoInstruction _inst);
 };
 
+void gDestroyBlocksWithFlag(BlockFlag death_flag);
 #endif // _JIT64_H

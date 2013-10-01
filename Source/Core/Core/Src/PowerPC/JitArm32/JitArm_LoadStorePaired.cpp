@@ -9,6 +9,7 @@
 #include "../../CoreTiming.h"
 #include "../PPCTables.h"
 #include "ArmEmitter.h"
+#include "../../HW/Memmap.h"
 
 #include "Jit.h"
 #include "JitRegCache.h"
@@ -18,7 +19,7 @@ void JitArm::psq_l(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(bJITLoadStorePairedOff)
-
+	
 	bool update = inst.OPCD == 57;
 	s32 offset = inst.SIMM_12;
 
@@ -27,23 +28,30 @@ void JitArm::psq_l(UGeckoInstruction inst)
 	// R10 is the ADDR
 	if (js.memcheck || !Core::g_CoreStartupParameter.bFastmem) { Default(inst); return; }
 	
-	LDR(R11, R9, PPCSTATE_OFF(spr[SPR_GQR0 + inst.I]));
-	UBFX(R12, R11, 16, 3); // Type
-	LSL(R12, R12, 2);
-	UBFX(R11, R11, 24, 6); // Scale
-	LSL(R11, R11, 2);
+	js.block_flags &= BLOCK_USES_GQR0 << inst.I;
+
+	const UGQR gqr(rSPR(SPR_GQR0 + inst.I));
+
+	if (inst.W)
+	{
+		Default(inst);
+		return;
+	}
 
 	MOVI2R(R10, (u32)offset);
 	if (inst.RA || update) // Always uses the register on update
 		ADD(R10, R10, gpr.R(inst.RA));
 	if (update)
 		MOV(gpr.R(inst.RA), R10);
-	MOVI2R(R14, (u32)asm_routines.pairedLoadQuantized);
-	ADD(R14, R14, R12);
-	LDR(R14, R14, inst.W ? 8 * 4 : 0);
 
-	// Values returned in S0, S1
-	BL(R14); // Jump to the quantizer Load
+	Operand2 mask(3, 1); // ~(Memory::MEMVIEW32_MASK)
+
+	BIC(R10, R10, mask);
+	MOVI2R(R12, (u32)Memory::base);
+	ADD(R10, R10, R12);
+
+	JitArmAsmRoutineManager::GenPairedLoadStore ourLoad = asm_routines.ARMPairedLoadQuantized[gqr.LD_TYPE + (inst.W ? 8 : 0)];
+	(asm_routines.*ourLoad)(this, gqr.LD_SCALE);
 
 	ARMReg vD0 = fpr.R0(inst.RS, false);
 	ARMReg vD1 = fpr.R1(inst.RS, false);
@@ -65,28 +73,32 @@ void JitArm::psq_lx(UGeckoInstruction inst)
 	// R10 is the ADDR
 	if (js.memcheck || !Core::g_CoreStartupParameter.bFastmem) { Default(inst); return; }
 	
-	LDR(R11, R9, PPCSTATE_OFF(spr[SPR_GQR0 + inst.Ix]));
-	UBFX(R12, R11, 16, 3); // Type
-	LSL(R12, R12, 2);
-	UBFX(R11, R11, 24, 6); // Scale
-	LSL(R11, R11, 2);
+	js.block_flags &= BLOCK_USES_GQR0 << inst.Ix;
+
+	if (inst.W)
+	{
+		Default(inst);
+		return;
+	}
+
+	const UGQR gqr(rSPR(SPR_GQR0 + inst.Ix));
 
 	if (inst.RA || update) // Always uses the register on update
-	{
 		ADD(R10, gpr.R(inst.RB), gpr.R(inst.RA));
-	}
 	else
 		MOV(R10, gpr.R(inst.RB));
 
 	if (update)
 		MOV(gpr.R(inst.RA), R10);
 
-	MOVI2R(R14, (u32)asm_routines.pairedLoadQuantized);
-	ADD(R14, R14, R12);
-	LDR(R14, R14, inst.Wx ? 8 * 4 : 0);
+	Operand2 mask(3, 1); // ~(Memory::MEMVIEW32_MASK)
 
-	// Values returned in S0, S1
-	BL(R14); // Jump to the quantizer Load
+	BIC(R10, R10, mask);
+	MOVI2R(R12, (u32)Memory::base);
+	ADD(R10, R10, R12);
+
+	JitArmAsmRoutineManager::GenPairedLoadStore ourLoad = asm_routines.ARMPairedLoadQuantized[gqr.LD_TYPE + (inst.Wx ? 8 : 0)];
+	(asm_routines.*ourLoad)(this, gqr.LD_SCALE);
 
 	ARMReg vD0 = fpr.R0(inst.RS, false);
 	ARMReg vD1 = fpr.R1(inst.RS, false);
@@ -115,11 +127,9 @@ void JitArm::psq_st(UGeckoInstruction inst)
 	// R10 is the ADDR
 	if (js.memcheck || !Core::g_CoreStartupParameter.bFastmem) { Default(inst); return; }
 
-	LDR(R11, R9, PPCSTATE_OFF(spr[SPR_GQR0 + inst.I]));
-	UBFX(R12, R11, 0, 3); // Type
-	LSL(R12, R12, 2);
-	UBFX(R11, R11, 8, 6); // Scale
-	LSL(R11, R11, 2);
+	js.block_flags &= BLOCK_USES_GQR0 << inst.I;
+
+	const UGQR gqr(rSPR(SPR_GQR0 + inst.I));
 
 	if (inst.RA || update) // Always uses the register on update
 	{
@@ -131,9 +141,6 @@ void JitArm::psq_st(UGeckoInstruction inst)
 
 	if (update)
 		MOV(gpr.R(inst.RA), R10);
-	MOVI2R(R14, (u32)asm_routines.pairedStoreQuantized);
-	ADD(R14, R14, R12);
-	LDR(R14, R14, inst.W ? 8 * 4 : 0);
 
 	ARMReg vD0 = fpr.R0(inst.RS);
 	VCVT(S0, vD0, 0);
@@ -144,7 +151,8 @@ void JitArm::psq_st(UGeckoInstruction inst)
 		VCVT(S1, vD1, 0);
 	}
 	// floats passed through D0
-	BL(R14); // Jump to the quantizer Store
+	JitArmAsmRoutineManager::GenPairedLoadStore ourStore = asm_routines.ARMPairedStoreQuantized[gqr.ST_TYPE + (inst.W ? 8 : 0)];
+	(asm_routines.*ourStore)(this, gqr.ST_SCALE);
 }
 
 void JitArm::psq_stx(UGeckoInstruction inst)
@@ -159,34 +167,27 @@ void JitArm::psq_stx(UGeckoInstruction inst)
 	// R10 is the ADDR
 	if (js.memcheck || !Core::g_CoreStartupParameter.bFastmem) { Default(inst); return; }
 
-	LDR(R11, R9, PPCSTATE_OFF(spr[SPR_GQR0 + inst.I]));
-	UBFX(R12, R11, 0, 3); // Type
-	LSL(R12, R12, 2);
-	UBFX(R11, R11, 8, 6); // Scale
-	LSL(R11, R11, 2);
+	js.block_flags &= BLOCK_USES_GQR0 << inst.Ix;
+
+	const UGQR gqr(rSPR(SPR_GQR0 + inst.Ix));
 
 	if (inst.RA || update) // Always uses the register on update
-	{
 		ADD(R10, gpr.R(inst.RA), gpr.R(inst.RB));
-	}
 	else
 		MOV(R10, gpr.R(inst.RB));
 
 	if (update)
 		MOV(gpr.R(inst.RA), R10);
 
-	MOVI2R(R14, (u32)asm_routines.pairedStoreQuantized);
-	ADD(R14, R14, R12);
-	LDR(R14, R14, inst.W ? 8 * 4 : 0);
-
 	ARMReg vD0 = fpr.R0(inst.RS);
 	VCVT(S0, vD0, 0);
 
-	if (!inst.W)
+	if (!inst.Wx)
 	{
 		ARMReg vD1 = fpr.R1(inst.RS);
 		VCVT(S1, vD1, 0);
 	}
 	// floats passed through D0
-	BL(R14); // Jump to the quantizer Store
+	JitArmAsmRoutineManager::GenPairedLoadStore ourStore = asm_routines.ARMPairedStoreQuantized[gqr.ST_TYPE + (inst.Wx ? 8 : 0)];
+	(asm_routines.*ourStore)(this, gqr.ST_SCALE);
 }

@@ -147,7 +147,7 @@ bool JitBlock::ContainsAddress(u32 em_address)
 #endif
 	}
 
-	/*void JitBaseBlockCache::DestroyBlocksWithFlag(BlockFlag death_flag)
+	void JitBaseBlockCache::DestroyBlocksWithFlag(BlockFlag death_flag)
 	{
 		for (int i = 0; i < num_blocks; i++)
 		{
@@ -156,7 +156,7 @@ bool JitBlock::ContainsAddress(u32 em_address)
 				DestroyBlock(i, false);
 			}
 		}
-	}*/
+	}
 
 	void JitBaseBlockCache::Reset()
 	{

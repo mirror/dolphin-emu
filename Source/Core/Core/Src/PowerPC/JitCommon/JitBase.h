@@ -50,7 +50,7 @@ protected:
 		bool memcheck;
 		bool skipnext;
 		bool broken_block;
-		int block_flags;
+		u32 block_flags;
 
 		int fifoBytesThisBlock;
 
@@ -79,6 +79,8 @@ public:
 	virtual const CommonAsmRoutinesBase *GetAsmRoutines() = 0;
 
 	virtual bool IsInCodeSpace(u8 *ptr) = 0;
+
+	void DestroyBlocks(BlockFlag death_flag) { GetBlockCache()->DestroyBlocksWithFlag(death_flag); }
 };
 
 class Jitx86Base : public JitBase, public EmuCodeBlock
@@ -102,4 +104,5 @@ void Jit(u32 em_address);
 u32 Helper_Mask(u8 mb, u8 me);
 void LogGeneratedX86(int size, PPCAnalyst::CodeBuffer *code_buffer, const u8 *normalEntry, JitBlock *b);
 
+void DestroyBlocksWithFlag(BlockFlag death_flag);
 #endif

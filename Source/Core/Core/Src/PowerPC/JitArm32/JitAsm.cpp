@@ -41,6 +41,9 @@ using namespace ArmGen;
 
 JitArmAsmRoutineManager asm_routines;
 
+Operand2 arghmask(3, 3); // 0x0C000000 
+Operand2 mask(3, 1); // ~(Memory::MEMVIEW32_MASK)
+
 static const float GC_ALIGNED16(m_quantizeTableS[]) =
 {
 	(1 <<  0),	(1 <<  1),	(1 <<  2),	(1 <<  3),
@@ -201,426 +204,328 @@ void JitArmAsmRoutineManager::Generate()
 	FlushIcache();
 }
 
+void JitArmAsmRoutineManager::GenloadPairedFloatTwo(ARMXEmitter *emit, u32 level)
+{
+	NEONXEmitter nemit(emit);
+	nemit.VLD1(I_32, D0, R10);
+	nemit.VREV32(I_8, D0, D0);
+}
+void JitArmAsmRoutineManager::GenloadPairedFloatOne(ARMXEmitter *emit, u32 level)
+{
+	NEONXEmitter nemit(emit);
+	nemit.VLD1(I_32, D0, R10);
+	nemit.VREV32(I_8, D0, D0);
+}
+void JitArmAsmRoutineManager::GenloadPairedU8Two(ARMXEmitter *emit, u32 level)
+{
+	emit->LDRH(R12, R10);
+	emit->SXTB(R12, R12);
+	emit->VMOV(S0, R12);
+
+	emit->LDRH(R12, R10, 2);
+	emit->SXTB(R12, R12);
+	emit->VMOV(S1, R12);
+	
+	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
+	
+	emit->VCVT(S0, S0, TO_FLOAT);
+	emit->VCVT(S1, S1, TO_FLOAT);
+
+	emit->VMUL(S0, S0, S2);
+	emit->VMUL(S1, S1, S2);
+}
+void JitArmAsmRoutineManager::GenloadPairedU8One(ARMXEmitter *emit, u32 level)
+{
+	emit->LDRB(R12, R10);
+	emit->SXTB(R12, R12);
+	emit->VMOV(S0, R12);
+
+	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
+
+	emit->VCVT(S0, S0, TO_FLOAT);
+
+	emit->VMUL(S0, S0, S2);
+}
+void JitArmAsmRoutineManager::GenloadPairedS8Two(ARMXEmitter *emit, u32 level)
+{
+	emit->LDRH(R12, R10);
+	emit->SXTB(R12, R12);
+	emit->VMOV(S0, R12);
+
+	emit->LDRH(R12, R10, 2);
+	emit->SXTB(R12, R12);
+	emit->VMOV(S1, R12);
+
+	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
+	
+	emit->VCVT(S0, S0, TO_FLOAT | IS_SIGNED);
+	emit->VCVT(S1, S1, TO_FLOAT | IS_SIGNED);
+
+	emit->VMUL(S0, S0, S2);
+	emit->VMUL(S1, S1, S2);
+}
+void JitArmAsmRoutineManager::GenloadPairedS8One(ARMXEmitter *emit, u32 level)
+{
+	emit->LDRB(R12, R10);
+	emit->SXTB(R12, R12);
+	emit->VMOV(S0, R12);
+
+	emit->MOVI2R(S2, m_dequantizeTableS[level], R12);
+
+	emit->VCVT(S0, S0, TO_FLOAT | IS_SIGNED);
+
+	emit->VMUL(S0, S0, S2);
+}
+void JitArmAsmRoutineManager::GenloadPairedU16Two(ARMXEmitter *emit, u32 level)
+{
+	emit->LDRH(R12, R10);
+	emit->REV16(R12, R12);
+	emit->SXTH(R12, R12);
+	emit->VMOV(S0, R12);
+
+	emit->LDRH(R12, R10, 2);
+	emit->REV16(R12, R12);
+	emit->SXTH(R12, R12);
+	emit->VMOV(S1, R12);
+
+	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
+
+	emit->VCVT(S0, S0, TO_FLOAT);
+	emit->VCVT(S1, S1, TO_FLOAT);
+
+	emit->VMUL(S0, S0, S2);
+	emit->VMUL(S1, S1, S2);
+}
+void JitArmAsmRoutineManager::GenloadPairedU16One(ARMXEmitter *emit, u32 level)
+{
+	emit->LDRH(R12, R10);
+	emit->REV16(R12, R12);
+	emit->VMOV(S0, R12);
+
+	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
+
+	emit->VCVT(S0, S0, TO_FLOAT);
+
+	emit->VMUL(S0, S0, S2);
+}
+void JitArmAsmRoutineManager::GenloadPairedS16Two(ARMXEmitter *emit, u32 level)
+{
+	emit->LDRH(R12, R10);
+	emit->REV16(R12, R12);
+	emit->SXTH(R12, R12);
+	emit->VMOV(S0, R12);
+
+	emit->LDRH(R12, R10, 2);
+	emit->REV16(R12, R12);
+	emit->SXTH(R12, R12);
+	emit->VMOV(S1, R12);
+
+	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
+	
+	emit->VCVT(S0, S0, TO_FLOAT | IS_SIGNED);
+	emit->VCVT(S1, S1, TO_FLOAT | IS_SIGNED);
+
+	emit->VMUL(S0, S0, S2);
+	emit->VMUL(S1, S1, S2);
+}
+void JitArmAsmRoutineManager::GenloadPairedS16One(ARMXEmitter *emit, u32 level)
+{
+	emit->LDRH(R12, R10);
+	
+	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
+	
+	emit->REV16(R12, R12);
+	emit->SXTH(R12, R12);
+	emit->VMOV(S0, R12);
+	emit->VCVT(S0, S0, TO_FLOAT | IS_SIGNED);
+
+	emit->VMUL(S0, S0, S2);
+}
+void JitArmAsmRoutineManager::GenPairedIllegal(ARMXEmitter *emit, u32 level)
+{
+	emit->BKPT(0x10);
+}
+
+void JitArmAsmRoutineManager::GenstorePairedFloat(ARMXEmitter *emit, u32 level)
+{
+	NEONXEmitter nemit(emit);
+	emit->TST(R10, arghmask);
+	FixupBranch argh = emit->B_CC(CC_NEQ);
+	emit->BIC(R10, R10, mask);
+	emit->MOVI2R(R12, (u32)Memory::base);
+	emit->ADD(R10, R10, R12);
+
+	nemit.VREV32(I_8, D0, D0);
+	nemit.VST1(I_32, D0, R10);
+	FixupBranch done = emit->B();
+	emit->SetJumpTarget(argh);
+
+	emit->PUSH(4, R0, R1, R2, R3);
+	emit->VMOV(R0, S0);
+	emit->VMOV(R1, S1);
+	emit->MOV(R2, R10);
+	emit->MOVI2R(R12, (u32)&WriteDual32);
+	emit->BL(R12);
+	emit->POP(4, R0, R1, R2, R3);
+	emit->SetJumpTarget(done);
+}
+void JitArmAsmRoutineManager::GenstorePairedS8(ARMXEmitter *emit, u32 level)
+{
+	emit->PUSH(4, R0, R1, R2, R3);
+	
+	emit->MOVI2F(S2, m_quantizeTableS[level], R12);
+	emit->VMUL(S0, S0, S2);
+	emit->VMUL(S1, S1, S2);
+
+	emit->VCVT(S0, S0, TO_INT | ROUND_TO_ZERO); 
+	emit->VCVT(S1, S1, TO_INT | ROUND_TO_ZERO); 
+	
+	emit->VMOV(R0, S0);
+	emit->VMOV(R1, S1);
+	emit->MOV(R2, R10);
+	emit->MOVI2R(R12, (u32)&WriteDual8);
+	emit->BL(R12);
+	
+	emit->POP(4, R0, R1, R2, R3);
+}
+void JitArmAsmRoutineManager::GenstorePairedS16(ARMXEmitter *emit, u32 level)
+{
+	emit->PUSH(4, R0, R1, R2, R3);
+
+	emit->MOVI2F(S2, m_quantizeTableS[level], R12);
+	emit->VMUL(S0, S0, S2);
+	emit->VMUL(S1, S1, S2);
+
+	emit->VCVT(S0, S0, TO_INT | ROUND_TO_ZERO); 
+	emit->VCVT(S1, S1, TO_INT | ROUND_TO_ZERO); 
+	
+	emit->VMOV(R0, S0);
+	emit->VMOV(R1, S1);
+	emit->MOV(R2, R10);
+	emit->MOVI2R(R12, (u32)&WriteDual16);
+	emit->BL(R12);
+	
+	emit->POP(4, R0, R1, R2, R3);
+}
+void JitArmAsmRoutineManager::GenstoreSingleFloat(ARMXEmitter *emit, u32 level)
+{
+	emit->TST(R10, arghmask);
+	FixupBranch argh = emit->B_CC(CC_NEQ);
+	emit->BIC(R10, R10, mask);
+	emit->MOVI2R(R12, (u32)Memory::base);
+	emit->ADD(R10, R10, R12);
+
+	emit->VMOV(R12, S0);
+	emit->REV(R12, R12);
+	emit->STR(R12, R10); 
+	FixupBranch done = emit->B();
+	emit->SetJumpTarget(argh);
+
+	emit->PUSH(4, R0, R1, R2, R3);
+	emit->VMOV(R0, S0);
+	emit->MOV(R1, R10);
+	emit->MOVI2R(R10, (u32)&Memory::Write_U32);
+	emit->BL(R10);
+
+	emit->POP(4, R0, R1, R2, R3);
+	emit->SetJumpTarget(done);
+}
+void JitArmAsmRoutineManager::GenstoreSingleS8(ARMXEmitter *emit, u32 level)
+{
+	emit->MOVI2F(S2, m_quantizeTableS[level], R12);
+	emit->VMUL(S0, S0, S2);
+
+	emit->TST(R10, arghmask);
+	FixupBranch argh = emit->B_CC(CC_NEQ);
+	emit->BIC(R10, R10, mask);
+	emit->MOVI2R(R12, (u32)Memory::base);
+	emit->ADD(R10, R10, R12);
+	
+	emit->VCVT(S0, S0, TO_INT | ROUND_TO_ZERO);
+	emit->VMOV(R12, S0);
+	emit->STRB(R12, R10); 
+
+	FixupBranch done = emit->B();
+	emit->SetJumpTarget(argh);
+
+	emit->PUSH(4, R0, R1, R2, R3);
+	emit->VMOV(R0, S0);
+	emit->MOV(R1, R10);
+	emit->MOVI2R(R10, (u32)&Memory::Write_U8);
+	emit->BL(R10);
+	emit->POP(4, R0, R1, R2, R3);
+	emit->SetJumpTarget(done);
+}
+void JitArmAsmRoutineManager::GenstoreSingleS16(ARMXEmitter *emit, u32 level)
+{
+	emit->MOVI2F(S2, m_quantizeTableS[level], R12);
+	emit->VMUL(S0, S0, S2);
+
+	emit->TST(R10, arghmask);
+	FixupBranch argh = emit->B_CC(CC_NEQ);
+	emit->BIC(R10, R10, mask);
+	emit->MOVI2R(R12, (u32)Memory::base);
+	emit->ADD(R10, R10, R12);
+	
+	emit->VCVT(S0, S0, TO_INT | ROUND_TO_ZERO);
+	emit->VMOV(R12, S0);
+	emit->REV16(R12, R12);
+	emit->STRH(R12, R10); 
+
+	FixupBranch done = emit->B();
+	emit->SetJumpTarget(argh);
+
+	emit->PUSH(4, R0, R1, R2, R3);
+	emit->VMOV(R0, S0);
+	emit->MOV(R1, R10);
+	emit->MOVI2R(R10, (u32)&Memory::Write_U16);
+	emit->BL(R10);
+
+	emit->POP(4, R0, R1, R2, R3);
+	emit->SetJumpTarget(done);
+}
+
 void JitArmAsmRoutineManager::GenerateCommon()
 {
 	// R14 is LR
 	// R12 is scratch
 	// R11 is scale
 	// R10 is the address
-	Operand2 mask(3, 1); // ~(Memory::MEMVIEW32_MASK)
-	Operand2 arghmask(3, 3); // 0x0C000000 
-	NEONXEmitter nemit(this);
-
-	const u8* loadPairedIllegal = GetCodePtr();
-	BKPT(0x10);
-
-	const u8* loadPairedFloatTwo = GetCodePtr();
-	{
-		BIC(R10, R10, mask);
-		MOVI2R(R12, (u32)Memory::base);
-		ADD(R10, R10, R12);
-
-		nemit.VLD1(I_32, D0, R10);
-		nemit.VREV32(I_8, D0, D0);
-		
-		MOV(_PC, _LR);
-	}
-	const u8* loadPairedFloatOne = GetCodePtr();
-	{
-		BIC(R10, R10, mask);
-		MOVI2R(R12, (u32)Memory::base);
-		ADD(R10, R10, R12);
-
-		nemit.VLD1(I_32, D0, R10);
-		nemit.VREV32(I_8, D0, D0);
-		
-		MOV(_PC, _LR);
-	}
-	const u8* loadPairedU8Two = GetCodePtr();
-	{
-		BIC(R10, R10, mask);
-		MOVI2R(R12, (u32)Memory::base);
-		ADD(R10, R10, R12);
-
-		LDRH(R12, R10);
-		SXTB(R12, R12);
-		VMOV(S0, R12);
-
-		LDRH(R12, R10, 2);
-		SXTB(R12, R12);
-		VMOV(S1, R12);
-		
-		MOVI2R(R10, (u32)&m_dequantizeTableS);
-		ADD(R10, R10, R11);
-		VLDR(S2, R10, 0);
-		
-		VCVT(S0, S0, TO_FLOAT);
-		VCVT(S1, S1, TO_FLOAT);
-
-		VMUL(S0, S0, S2);
-		VMUL(S1, S1, S2);
-			
-		MOV(_PC, _LR);
-	}
-	const u8* loadPairedU8One = GetCodePtr();
-	{
-		BIC(R10, R10, mask);
-		MOVI2R(R12, (u32)Memory::base);
-		ADD(R10, R10, R12);
-		
-		LDRB(R12, R10);
-		SXTB(R12, R12);
-		VMOV(S0, R12);
-
-		MOVI2R(R10, (u32)&m_dequantizeTableS);
-		ADD(R10, R10, R11);
-		VLDR(S2, R10, 0);
 	
-		VCVT(S0, S0, TO_FLOAT);
+	ARMPairedLoadQuantized[0] = &JitArmAsmRoutineManager::GenloadPairedFloatTwo;
+	ARMPairedLoadQuantized[1] = &JitArmAsmRoutineManager::GenPairedIllegal;
+	ARMPairedLoadQuantized[2] = &JitArmAsmRoutineManager::GenPairedIllegal;
+	ARMPairedLoadQuantized[3] = &JitArmAsmRoutineManager::GenPairedIllegal;
+	ARMPairedLoadQuantized[4] = &JitArmAsmRoutineManager::GenloadPairedU8Two;
+	ARMPairedLoadQuantized[5] = &JitArmAsmRoutineManager::GenloadPairedU16Two;
+	ARMPairedLoadQuantized[6] = &JitArmAsmRoutineManager::GenloadPairedS8Two;
+	ARMPairedLoadQuantized[7] = &JitArmAsmRoutineManager::GenloadPairedS16Two;
 
-		VMUL(S0, S0, S2);
-
-		MOV(_PC, _LR);
-	}
-	const u8* loadPairedS8Two = GetCodePtr();
-	{
-		BIC(R10, R10, mask);
-		MOVI2R(R12, (u32)Memory::base);
-		ADD(R10, R10, R12);
-		
-		LDRH(R12, R10);
-		SXTB(R12, R12);
-		VMOV(S0, R12);
-
-		LDRH(R12, R10, 2);
-		SXTB(R12, R12);
-		VMOV(S1, R12);
-
-		MOVI2R(R10, (u32)&m_dequantizeTableS);
-		ADD(R10, R10, R11);
-		VLDR(S2, R10, 0);
-		
-		VCVT(S0, S0, TO_FLOAT | IS_SIGNED);
-		VCVT(S1, S1, TO_FLOAT | IS_SIGNED);
-
-		VMUL(S0, S0, S2);
-		VMUL(S1, S1, S2);
-		
-		MOV(_PC, _LR);
-	}
-	const u8* loadPairedS8One = GetCodePtr();
-	{
-		BIC(R10, R10, mask);
-		MOVI2R(R12, (u32)Memory::base);
-		ADD(R10, R10, R12);
-		
-		LDRB(R12, R10);
-		SXTB(R12, R12);
-		VMOV(S0, R12);
-
-		MOVI2R(R10, (u32)&m_dequantizeTableS);
-		ADD(R10, R10, R11);
-		VLDR(S2, R10, 0);
-		
-		VCVT(S0, S0, TO_FLOAT | IS_SIGNED);
-
-		VMUL(S0, S0, S2);
-
-		MOV(_PC, _LR);
-	}
-	const u8* loadPairedU16Two = GetCodePtr();
-	{
-		BIC(R10, R10, mask);
-		MOVI2R(R12, (u32)Memory::base);
-		ADD(R10, R10, R12);
-		
-		LDRH(R12, R10);
-		REV16(R12, R12);
-		SXTH(R12, R12);
-		VMOV(S0, R12);
-
-		LDRH(R12, R10, 2);
-		REV16(R12, R12);
-		SXTH(R12, R12);
-		VMOV(S1, R12);
-
-		MOVI2R(R10, (u32)&m_dequantizeTableS);
-		ADD(R10, R10, R11);
-		VLDR(S2, R10, 0);
-		
-		VCVT(S0, S0, TO_FLOAT);
-		VCVT(S1, S1, TO_FLOAT);
-
-		VMUL(S0, S0, S2);
-		VMUL(S1, S1, S2);
-
-		MOV(_PC, _LR);
-	}
-	const u8* loadPairedU16One = GetCodePtr();
-	{
-		BIC(R10, R10, mask);
-		MOVI2R(R12, (u32)Memory::base);
-		ADD(R10, R10, R12);
-		
-		LDRH(R12, R10);
-		REV16(R12, R12);
-		VMOV(S0, R12);
-
-		MOVI2R(R10, (u32)&m_dequantizeTableS);
-		ADD(R10, R10, R11);
-		VLDR(S2, R10, 0);
-		
-		VCVT(S0, S0, TO_FLOAT);
-
-		VMUL(S0, S0, S2);
-		MOV(_PC, _LR);
-	}
-	const u8* loadPairedS16Two = GetCodePtr();
-	{
-		BIC(R10, R10, mask);
-		MOVI2R(R12, (u32)Memory::base);
-		ADD(R10, R10, R12);
-		
-		LDRH(R12, R10);
-		REV16(R12, R12);
-		SXTH(R12, R12);
-		VMOV(S0, R12);
-
-		LDRH(R12, R10, 2);
-		REV16(R12, R12);
-		SXTH(R12, R12);
-		VMOV(S1, R12);
-
-		MOVI2R(R10, (u32)&m_dequantizeTableS);
-		ADD(R10, R10, R11);
-		VLDR(S2, R10, 0);
-		
-		VCVT(S0, S0, TO_FLOAT | IS_SIGNED);
-		VCVT(S1, S1, TO_FLOAT | IS_SIGNED);
-
-		VMUL(S0, S0, S2);
-		VMUL(S1, S1, S2);
-
-		MOV(_PC, _LR);
-	}
-	const u8* loadPairedS16One = GetCodePtr();
-	{
-		BIC(R10, R10, mask);
-		MOVI2R(R12, (u32)Memory::base);
-		ADD(R10, R10, R12);
-
-		LDRH(R12, R10);
-		
-		MOVI2R(R10, (u32)&m_dequantizeTableS);
-		ADD(R10, R10, R11);
-		VLDR(S2, R10, 0);
-		
-		REV16(R12, R12);
-		SXTH(R12, R12);
-		VMOV(S0, R12);
-		VCVT(S0, S0, TO_FLOAT | IS_SIGNED);
-
-		VMUL(S0, S0, S2);
-		MOV(_PC, _LR);
-	}
-
-	pairedLoadQuantized = reinterpret_cast<const u8**>(const_cast<u8*>(AlignCode16()));
-	ReserveCodeSpace(16 * sizeof(u8*));
-
-	pairedLoadQuantized[0] = loadPairedFloatTwo;
-	pairedLoadQuantized[1] = loadPairedIllegal;
-	pairedLoadQuantized[2] = loadPairedIllegal;
-	pairedLoadQuantized[3] = loadPairedIllegal;
-	pairedLoadQuantized[4] = loadPairedU8Two;
-	pairedLoadQuantized[5] = loadPairedU16Two;
-	pairedLoadQuantized[6] = loadPairedS8Two;
-	pairedLoadQuantized[7] = loadPairedS16Two;
-
-	pairedLoadQuantized[8] = loadPairedFloatOne;
-	pairedLoadQuantized[9] = loadPairedIllegal;
-	pairedLoadQuantized[10] = loadPairedIllegal;
-	pairedLoadQuantized[11] = loadPairedIllegal;
-	pairedLoadQuantized[12] = loadPairedU8One;
-	pairedLoadQuantized[13] = loadPairedU16One;
-	pairedLoadQuantized[14] = loadPairedS8One;
-	pairedLoadQuantized[15] = loadPairedS16One;
+	ARMPairedLoadQuantized[8] = &JitArmAsmRoutineManager::GenloadPairedFloatOne;
+	ARMPairedLoadQuantized[9] = &JitArmAsmRoutineManager::GenPairedIllegal;
+	ARMPairedLoadQuantized[10] = &JitArmAsmRoutineManager::GenPairedIllegal;
+	ARMPairedLoadQuantized[11] = &JitArmAsmRoutineManager::GenPairedIllegal;
+	ARMPairedLoadQuantized[12] = &JitArmAsmRoutineManager::GenloadPairedU8One;
+	ARMPairedLoadQuantized[13] = &JitArmAsmRoutineManager::GenloadPairedU16One;
+	ARMPairedLoadQuantized[14] = &JitArmAsmRoutineManager::GenloadPairedS8One;
+	ARMPairedLoadQuantized[15] = &JitArmAsmRoutineManager::GenloadPairedS16One;
 
 	// Stores
-	const u8* storePairedIllegal = GetCodePtr();
-		BKPT(0x21);
-	const u8* storePairedFloat = GetCodePtr();
-	{
-		TST(R10, arghmask);
-		FixupBranch argh = B_CC(CC_NEQ);
-		BIC(R10, R10, mask);
-		MOVI2R(R12, (u32)Memory::base);
-		ADD(R10, R10, R12);
+	ARMPairedStoreQuantized[0] = &JitArmAsmRoutineManager::GenstorePairedFloat;
+	ARMPairedStoreQuantized[1] = &JitArmAsmRoutineManager::GenPairedIllegal;
+	ARMPairedStoreQuantized[2] = &JitArmAsmRoutineManager::GenPairedIllegal;
+	ARMPairedStoreQuantized[3] = &JitArmAsmRoutineManager::GenPairedIllegal;
+	ARMPairedStoreQuantized[4] = &JitArmAsmRoutineManager::GenstorePairedS8;
+	ARMPairedStoreQuantized[5] = &JitArmAsmRoutineManager::GenstorePairedS16;
+	ARMPairedStoreQuantized[6] = &JitArmAsmRoutineManager::GenstorePairedS8;
+	ARMPairedStoreQuantized[7] = &JitArmAsmRoutineManager::GenstorePairedS16;
 
-		nemit.VREV32(I_8, D0, D0);
-		nemit.VST1(I_32, D0, R10);
-		MOV(_PC, _LR);
-
-		SetJumpTarget(argh);
-
-		PUSH(5, R0, R1, R2, R3, _LR);
-		VMOV(R0, S0);
-		VMOV(R1, S1);
-		MOV(R2, R10);
-		MOVI2R(R12, (u32)&WriteDual32);
-		BL(R12);
-		POP(5, R0, R1, R2, R3, _PC);
-	}
-	const u8* storePairedU8 = GetCodePtr();
-	const u8* storePairedS8 = GetCodePtr();
-	{
-		// R10 is the addr
-		// R11 is the scale
-		// R12 is scratch
-		// S0, S1 is the values
-		PUSH(5, R0, R1, R2, R3, _LR);
-		
-		MOVI2R(R12, (u32)&m_quantizeTableS);
-		ADD(R12, R12, R11);	
-		VLDR(S2, R12, 0);
-		VMUL(S0, S0, S2);
-		VMUL(S1, S1, S2);
-
-		VCVT(S0, S0, TO_INT | ROUND_TO_ZERO); 
-		VCVT(S1, S1, TO_INT | ROUND_TO_ZERO); 
-		
-		VMOV(R0, S0);
-		VMOV(R1, S1);
-		MOV(R2, R10);
-		MOVI2R(R12, (u32)&WriteDual8);
-		BL(R12);
-		
-		POP(5, R0, R1, R2, R3, _PC);
-	}
-	const u8* storePairedU16 = GetCodePtr();
-	const u8* storePairedS16 = GetCodePtr();
-	{
-		PUSH(5, R0, R1, R2, R3, _LR);
-
-		MOVI2R(R12, (u32)&m_quantizeTableS);
-		ADD(R12, R12, R11);	
-		VLDR(S2, R12, 0);
-		VMUL(S0, S0, S2);
-		VMUL(S1, S1, S2);
-
-		VCVT(S0, S0, TO_INT | ROUND_TO_ZERO); 
-		VCVT(S1, S1, TO_INT | ROUND_TO_ZERO); 
-		
-		VMOV(R0, S0);
-		VMOV(R1, S1);
-		MOV(R2, R10);
-		MOVI2R(R12, (u32)&WriteDual16);
-		BL(R12);
-		
-		POP(5, R0, R1, R2, R3, _PC);
-	}
-	const u8* storeSingleIllegal = GetCodePtr();
-	BKPT(0x27);
-	const u8* storeSingleFloat = GetCodePtr();
-	{
-		TST(R10, arghmask);
-		FixupBranch argh = B_CC(CC_NEQ);
-		BIC(R10, R10, mask);
-		MOVI2R(R12, (u32)Memory::base);
-		ADD(R10, R10, R12);
-	
-		VMOV(R12, S0);
-		REV(R12, R12);
-		STR(R12, R10); 
-		MOV(_PC, _LR);
-
-		SetJumpTarget(argh);
-
-		PUSH(5, R0, R1, R2, R3, _LR);
-		VMOV(R0, S0);
-		MOV(R1, R10);
-		MOVI2R(R10, (u32)&Memory::Write_U32);
-		BL(R10);
-
-		POP(5, R0, R1, R2, R3, _PC);
-	}
-	const u8* storeSingleU8 = GetCodePtr();  // Used by MKWii
-	const u8* storeSingleS8 = GetCodePtr();
-	{
-		MOVI2R(R12, (u32)&m_quantizeTableS);
-		ADD(R12, R12, R11);	
-		VLDR(S2, R12, 0);
-		VMUL(S0, S0, S2);
-
-		TST(R10, arghmask);
-		FixupBranch argh = B_CC(CC_NEQ);
-		BIC(R10, R10, mask);
-		MOVI2R(R12, (u32)Memory::base);
-		ADD(R10, R10, R12);
-			
-		VCVT(S0, S0, TO_INT | ROUND_TO_ZERO);
-		VMOV(R12, S0);
-		STRB(R12, R10); 
-		MOV(_PC, _LR);
-
-		SetJumpTarget(argh);
-
-		PUSH(5, R0, R1, R2, R3, _LR);
-		VMOV(R0, S0);
-		MOV(R1, R10);
-		MOVI2R(R10, (u32)&Memory::Write_U8);
-		BL(R10);
-		POP(5, R0, R1, R2, R3, _PC);
-	}
-	const u8* storeSingleU16 = GetCodePtr();  // Used by MKWii
-	const u8* storeSingleS16 = GetCodePtr();
-	{
-		MOVI2R(R12, (u32)&m_quantizeTableS);
-		ADD(R12, R12, R11);	
-		VLDR(S2, R12, 0);
-		VMUL(S0, S0, S2);
-
-		TST(R10, arghmask);
-		FixupBranch argh = B_CC(CC_NEQ);
-		BIC(R10, R10, mask);
-		MOVI2R(R12, (u32)Memory::base);
-		ADD(R10, R10, R12);
-		
-		VCVT(S0, S0, TO_INT | ROUND_TO_ZERO);
-		VMOV(R12, S0);
-		REV16(R12, R12);
-		STRH(R12, R10); 
-		MOV(_PC, _LR);
-
-		SetJumpTarget(argh);
-
-		PUSH(5, R0, R1, R2, R3, _LR);
-		VMOV(R0, S0);
-		MOV(R1, R10);
-		MOVI2R(R10, (u32)&Memory::Write_U16);
-		BL(R10);
-
-		POP(5, R0, R1, R2, R3, _PC);
-	}
-
-	pairedStoreQuantized = reinterpret_cast<const u8**>(const_cast<u8*>(AlignCode16()));
-	ReserveCodeSpace(16 * sizeof(u8*));
-
-	pairedStoreQuantized[0] = storePairedFloat;
-	pairedStoreQuantized[1] = storePairedIllegal;
-	pairedStoreQuantized[2] = storePairedIllegal;
-	pairedStoreQuantized[3] = storePairedIllegal;
-	pairedStoreQuantized[4] = storePairedU8;
-	pairedStoreQuantized[5] = storePairedU16;
-	pairedStoreQuantized[6] = storePairedS8;
-	pairedStoreQuantized[7] = storePairedS16;
-
-	pairedStoreQuantized[8] = storeSingleFloat;
-	pairedStoreQuantized[9] = storeSingleIllegal;
-	pairedStoreQuantized[10] = storeSingleIllegal;
-	pairedStoreQuantized[11] = storeSingleIllegal;
-	pairedStoreQuantized[12] = storeSingleU8;
-	pairedStoreQuantized[13] = storeSingleU16;
-	pairedStoreQuantized[14] = storeSingleS8;
-	pairedStoreQuantized[15] = storeSingleS16;
-
+	ARMPairedStoreQuantized[8] = &JitArmAsmRoutineManager::GenstoreSingleFloat;
+	ARMPairedStoreQuantized[9] = &JitArmAsmRoutineManager::GenPairedIllegal;
+	ARMPairedStoreQuantized[10] = &JitArmAsmRoutineManager::GenPairedIllegal;
+	ARMPairedStoreQuantized[11] = &JitArmAsmRoutineManager::GenPairedIllegal;
+	ARMPairedStoreQuantized[12] = &JitArmAsmRoutineManager::GenstoreSingleS8;
+	ARMPairedStoreQuantized[13] = &JitArmAsmRoutineManager::GenstoreSingleS16;
+	ARMPairedStoreQuantized[14] = &JitArmAsmRoutineManager::GenstoreSingleS8;
+	ARMPairedStoreQuantized[15] = &JitArmAsmRoutineManager::GenstoreSingleS16;
 }

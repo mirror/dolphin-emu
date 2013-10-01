@@ -30,6 +30,18 @@
 #define JIT_ICACHE_INVALID_BYTE 0x14
 #define JIT_ICACHE_INVALID_WORD 0x14141414
 
+enum BlockFlag
+{
+	BLOCK_USES_GQR0 = 1 << 0,
+	BLOCK_USES_GQR1 = 1 << 1,
+	BLOCK_USES_GQR2 = 1 << 2,
+	BLOCK_USES_GQR3 = 1 << 3,
+	BLOCK_USES_GQR4 = 1 << 4,
+	BLOCK_USES_GQR5 = 1 << 5,
+	BLOCK_USES_GQR6 = 1 << 6,
+	BLOCK_USES_GQR7 = 1 << 7,
+};
+
 struct JitBlock
 {
 	const u8 *checkedEntry;
@@ -44,7 +56,7 @@ struct JitBlock
 	u32 originalSize;
 	int runCount;  // for profiling.
 	int blockNum;
-	int flags;
+	u32 flags;
 
 	bool invalid;
 	bool linkStatus[2];
@@ -64,7 +76,6 @@ struct JitBlock
 };
 
 typedef void (*CompiledCode)();
-
 
 class JitBaseBlockCache
 {
@@ -134,8 +145,7 @@ public:
 	void InvalidateICache(u32 address, const u32 length);
 	void DestroyBlock(int block_num, bool invalidate);
 
-	// Not currently used
-	//void DestroyBlocksWithFlag(BlockFlag death_flag);
+	void DestroyBlocksWithFlag(BlockFlag death_flag);
 };
 
 // x86 BlockCache

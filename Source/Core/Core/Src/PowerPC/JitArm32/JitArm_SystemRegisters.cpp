@@ -36,7 +36,6 @@ void JitArm::mtspr(UGeckoInstruction inst)
 
 	switch (iIndex)
 	{
-
 	case SPR_DMAU:
 
 	case SPR_SPRG0:
@@ -46,31 +45,51 @@ void JitArm::mtspr(UGeckoInstruction inst)
 
 	case SPR_SRR0:
 	case SPR_SRR1:
-		// These are safe to do the easy way, see the bottom of this function.
-		break;
-
 	case SPR_LR:
 	case SPR_CTR:
 	case SPR_XER:
-	case SPR_GQR0:
-	case SPR_GQR0 + 1:
-	case SPR_GQR0 + 2:
-	case SPR_GQR0 + 3:
-	case SPR_GQR0 + 4:
-	case SPR_GQR0 + 5:
-	case SPR_GQR0 + 6:
-	case SPR_GQR0 + 7:
 		// These are safe to do the easy way, see the bottom of this function.
 		break;
+		case SPR_GQR0:
+		case SPR_GQR0 + 1:
+		case SPR_GQR0 + 2:
+		case SPR_GQR0 + 3:
+		case SPR_GQR0 + 4:
+		case SPR_GQR0 + 5:
+		case SPR_GQR0 + 6:
+		case SPR_GQR0 + 7:
+		// Prevent recompiler from compiling in old quantizer values.
+		// If the value changed, destroy all blocks using this quantizer
+		// This will create a little bit of block churn, but hopefully not too bad.
+		{
+			ARMReg rA = gpr.GetReg();
+			ARMReg RD = gpr.R(inst.RD);
+			gpr.Flush();
+			fpr.Flush();
 
-	default:
-		Default(inst);
-		return;
+			LDR(rA, R9, PPCSTATE_OFF(spr) + iIndex * 4);
+			STR(RD, R9, PPCSTATE_OFF(spr) + iIndex * 4);
+			CMP(rA, RD);
+			FixupBranch skip_destroy = B_CC(CC_EQ);
+				int gqr = iIndex - SPR_GQR0;
+				MOVI2R(R14, (u32)&DestroyBlocksWithFlag);
+				MOVI2R(R0, BLOCK_USES_GQR0 << gqr);
+				BL(R14);
+			SetJumpTarget(skip_destroy);
+			WriteExit(js.compilerPC + 4, 0);
+			gpr.Unlock(rA);
+			js.cancel = true;
+			return;
+		}
+		break;
+		default:
+			Default(inst);
+			return;
 	}
 
 	// OK, this is easy.
 	ARMReg RD = gpr.R(inst.RD);
-	STR(RD, R9,  PPCSTATE_OFF(spr) + iIndex * 4);
+	STR(RD, R9, PPCSTATE_OFF(spr) + iIndex * 4);
 }
 void JitArm::mftb(UGeckoInstruction inst)
 {

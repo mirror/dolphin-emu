@@ -20,13 +20,38 @@
 #include "ArmEmitter.h"
 #include "../JitCommon/JitAsmCommon.h"
 using namespace ArmGen;
+
 class JitArmAsmRoutineManager : public CommonAsmRoutinesBase, public ARMXCodeBlock 
 {
 private:
 	void Generate();
 	void GenerateCommon();
 
+	// Gens
+	void GenPairedIllegal(ARMXEmitter *emit, u32 level);
+	void GenloadPairedFloatTwo(ARMXEmitter *emit, u32 level);
+	void GenloadPairedFloatOne(ARMXEmitter *emit, u32 level);
+	void GenloadPairedU8Two(ARMXEmitter *emit, u32 level);
+	void GenloadPairedU8One(ARMXEmitter *emit, u32 level);
+	void GenloadPairedS8Two(ARMXEmitter *emit, u32 level);
+	void GenloadPairedS8One(ARMXEmitter *emit, u32 level);
+	void GenloadPairedU16Two(ARMXEmitter *emit, u32 level);
+	void GenloadPairedU16One(ARMXEmitter *emit, u32 level);
+	void GenloadPairedS16Two(ARMXEmitter *emit, u32 level);
+	void GenloadPairedS16One(ARMXEmitter *emit, u32 level);
+
+	void GenstorePairedFloat(ARMXEmitter *emit, u32 level);
+	void GenstoreSingleFloat(ARMXEmitter *emit, u32 level);
+	void GenstorePairedS8(ARMXEmitter *emit, u32 level);
+	void GenstoreSingleS8(ARMXEmitter *emit, u32 level);
+	void GenstorePairedS16(ARMXEmitter *emit, u32 level);
+	void GenstoreSingleS16(ARMXEmitter *emit, u32 level);
+
 public:
+	
+	typedef void (JitArmAsmRoutineManager::* GenPairedLoadStore)(ARMXEmitter*, u32);
+	GenPairedLoadStore ARMPairedLoadQuantized[16];
+	GenPairedLoadStore ARMPairedStoreQuantized[16];
 	void Init() {
 		AllocCodeSpace(8192);
 		Generate();

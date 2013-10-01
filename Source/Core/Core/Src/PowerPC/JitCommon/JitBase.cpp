@@ -67,3 +67,9 @@ void LogGeneratedX86(int size, PPCAnalyst::CodeBuffer *code_buffer, const u8 *no
 		DEBUG_LOG(DYNA_REC,"IR_X86 bin: %s\n\n\n", ss.str().c_str());
 	}
 }
+
+void DestroyBlocksWithFlag(BlockFlag death_flag)
+{
+	jit->DestroyBlocks(death_flag);
+}
+

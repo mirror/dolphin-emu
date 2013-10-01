@@ -490,6 +490,8 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 					BKPT(0x666);
 				}
 		}
+		if (js.cancel)
+			break;
 	}
 	if (memory_exception)
 		BKPT(0x500);
