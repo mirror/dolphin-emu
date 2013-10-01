@@ -20,26 +20,29 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0A18A071-125E-442F-AFF7-A3F68ABECF99}</ProjectGuid>
-    <RootNamespace>portaudio</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -67,167 +70,66 @@
     <Import Project="..\..\..\Source\VSProps\CodeGen_Release.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup>
-    <_ProjectFileVersion>12.0.20827.3</_ProjectFileVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LinkIncremental>false</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LinkIncremental>false</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>true</LinkIncremental>
-  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <Midl>
-      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <MkTypLibCompatible>true</MkTypLibCompatible>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <TargetEnvironment>Win32</TargetEnvironment>
-      <TypeLibraryName>.\Release_x86/portaudio.tlb</TypeLibraryName>
-      <HeaderFileName />
-    </Midl>
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\src\common;..\..\include;.\;..\..\src\os\win;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>PA_WDMKS_NO_KSGUID_LIB;PA_USE_ASIO=0;PA_USE_DS=0;PA_USE_WMME=1;PA_USE_WASAPI=1;PA_USE_WDMKS=0;PA_ENABLE_DEBUG_OUTPUT;_CRT_SECURE_NO_DEPRECATE;_LIB;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\src\common;..\include;.\;..\src\os\win;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>PA_WDMKS_NO_KSGUID_LIB;PA_USE_ASIO=0;PA_USE_DS=0;PA_USE_WMME=1;PA_USE_WASAPI=1;PA_USE_WDMKS=0;PA_ENABLE_DEBUG_OUTPUT;_CRT_SECURE_NO_DEPRECATE;_LIB;NDEBUG;_WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <ResourceCompile>
-      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <Culture>0x0409</Culture>
-    </ResourceCompile>
-    <Link>
-      <AdditionalDependencies>ksuser.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(Platform)\$(Configuration)\portaudio_x86.dll</OutputFile>
-      <ImportLibrary>$(Platform)\$(Configuration)\portaudio_x86.lib</ImportLibrary>
-      <TargetMachine>MachineX86</TargetMachine>
-    </Link>
-    <Bscmake>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>$(Platform)\$(Configuration)\portaudio.bsc</OutputFile>
-    </Bscmake>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Midl>
-      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <MkTypLibCompatible>true</MkTypLibCompatible>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <TargetEnvironment>X64</TargetEnvironment>
-      <TypeLibraryName>.\Release_x86/portaudio.tlb</TypeLibraryName>
-      <HeaderFileName />
-    </Midl>
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\src\common;..\..\include;.\;..\..\src\os\win;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src\common;..\include;.\;..\src\os\win;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>PA_WDMKS_NO_KSGUID_LIB;PA_USE_ASIO=0;PA_USE_DS=0;PA_USE_WMME=1;PA_USE_WASAPI=1;PA_USE_WDMKS=0;PA_ENABLE_DEBUG_OUTPUT;_CRT_SECURE_NO_DEPRECATE;_LIB;NDEBUG;_WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <ResourceCompile>
-      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <Culture>0x0409</Culture>
-    </ResourceCompile>
-    <Link>
-      <AdditionalDependencies>ksuser.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(Platform)\$(Configuration)\portaudio_x64.dll</OutputFile>
-      <ImportLibrary>$(Platform)\$(Configuration)/portaudio_x64.lib</ImportLibrary>
-      <TargetMachine>MachineX64</TargetMachine>
-    </Link>
-    <Bscmake>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>$(Platform)\$(Configuration)\portaudio_x64.bsc</OutputFile>
-    </Bscmake>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <Midl>
-      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <MkTypLibCompatible>true</MkTypLibCompatible>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <TargetEnvironment>Win32</TargetEnvironment>
-      <TypeLibraryName>.\Debug_x86/portaudio.tlb</TypeLibraryName>
-      <HeaderFileName />
-    </Midl>
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\src\common;..\..\include;.\;..\..\src\os\win;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>PA_WDMKS_NO_KSGUID_LIB;PA_USE_ASIO=0;PA_USE_DS=0;PA_USE_WMME=1;PA_USE_WASAPI=1;PA_USE_WDMKS=0;PA_ENABLE_DEBUG_OUTPUT;_CRT_SECURE_NO_DEPRECATE;_LIB;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\src\common;..\include;.\;..\src\os\win;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>PA_WDMKS_NO_KSGUID_LIB;PA_USE_ASIO=0;PA_USE_DS=0;PA_USE_WMME=1;PA_USE_WASAPI=1;PA_USE_WDMKS=0;PA_ENABLE_DEBUG_OUTPUT;_CRT_SECURE_NO_DEPRECATE;_LIB;_DEBUG;_WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <ResourceCompile>
-      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <Culture>0x0409</Culture>
-    </ResourceCompile>
-    <Link>
-      <OutputFile>$(Platform)\$(Configuration)\portaudio_x86.dll</OutputFile>
-      <ImportLibrary>$(Platform)\$(Configuration)\portaudio_x86.lib</ImportLibrary>
-      <TargetMachine>MachineX86</TargetMachine>
-    </Link>
-    <Bscmake>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>$(Platform)\$(Configuration)\portaudio.bsc</OutputFile>
-    </Bscmake>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Midl>
-      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <MkTypLibCompatible>true</MkTypLibCompatible>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <TargetEnvironment>X64</TargetEnvironment>
-      <TypeLibraryName>.\Debug_x86/portaudio.tlb</TypeLibraryName>
-      <HeaderFileName />
-    </Midl>
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\src\common;..\..\include;.\;..\..\src\os\win;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>PA_WDMKS_NO_KSGUID_LIB;PA_USE_ASIO=0;PA_USE_DS=0;PA_USE_WMME=1;PA_USE_WASAPI=1;PA_USE_WDMKS=0;PA_ENABLE_DEBUG_OUTPUT;_CRT_SECURE_NO_DEPRECATE;_LIB;_DEBUG;WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\src\common;..\include;.\;..\src\os\win;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>PA_WDMKS_NO_KSGUID_LIB;PA_USE_ASIO=0;PA_USE_DS=0;PA_USE_WMME=1;PA_USE_WASAPI=1;PA_USE_WDMKS=0;PA_ENABLE_DEBUG_OUTPUT;_CRT_SECURE_NO_DEPRECATE;_LIB;_DEBUG;_WIN64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <ResourceCompile>
-      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <Culture>0x0409</Culture>
-    </ResourceCompile>
-    <Link>
-      <OutputFile>$(Platform)\$(Configuration)\portaudio_x64.dll</OutputFile>
-      <ImportLibrary>$(Platform)\$(Configuration)\portaudio_x64.lib</ImportLibrary>
-      <TargetMachine>MachineX64</TargetMachine>
-    </Link>
-    <Bscmake>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>$(Platform)\$(Configuration)/portaudio_x64.bsc</OutputFile>
-    </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\common\pa_allocation.c" />
-    <ClCompile Include="..\..\src\common\pa_converters.c" />
-    <ClCompile Include="..\..\src\common\pa_cpuload.c" />
-    <ClCompile Include="..\..\src\common\pa_debugprint.c" />
-    <ClCompile Include="..\..\src\common\pa_dither.c" />
-    <ClCompile Include="..\..\src\common\pa_front.c" />
-    <ClCompile Include="..\..\src\hostapi\skeleton\pa_hostapi_skeleton.c" />
-    <ClCompile Include="..\..\src\common\pa_process.c" />
-    <ClCompile Include="..\..\src\common\pa_ringbuffer.c" />
-    <ClCompile Include="..\..\src\common\pa_stream.c" />
-    <ClCompile Include="..\..\src\common\pa_trace.c" />
-    <ClCompile Include="..\..\src\hostapi\dsound\pa_win_ds.c" />
-    <ClCompile Include="..\..\src\hostapi\dsound\pa_win_ds_dynlink.c" />
-    <ClCompile Include="..\..\src\hostapi\wmme\pa_win_wmme.c" />
-    <ClCompile Include="..\..\src\hostapi\wasapi\pa_win_wasapi.c" />
-    <ClCompile Include="..\..\src\hostapi\wdmks\pa_win_wdmks.c">
+    <ClCompile Include="..\src\common\pa_allocation.c" />
+    <ClCompile Include="..\src\common\pa_converters.c" />
+    <ClCompile Include="..\src\common\pa_cpuload.c" />
+    <ClCompile Include="..\src\common\pa_debugprint.c" />
+    <ClCompile Include="..\src\common\pa_dither.c" />
+    <ClCompile Include="..\src\common\pa_front.c" />
+    <ClCompile Include="..\src\hostapi\skeleton\pa_hostapi_skeleton.c" />
+    <ClCompile Include="..\src\common\pa_process.c" />
+    <ClCompile Include="..\src\common\pa_ringbuffer.c" />
+    <ClCompile Include="..\src\common\pa_stream.c" />
+    <ClCompile Include="..\src\common\pa_trace.c" />
+    <ClCompile Include="..\src\hostapi\dsound\pa_win_ds.c" />
+    <ClCompile Include="..\src\hostapi\dsound\pa_win_ds_dynlink.c" />
+    <ClCompile Include="..\src\hostapi\wmme\pa_win_wmme.c" />
+    <ClCompile Include="..\src\hostapi\wasapi\pa_win_wasapi.c" />
+    <ClCompile Include="..\src\hostapi\wdmks\pa_win_wdmks.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\src\os\win\pa_win_coinitialize.c" />
-    <ClCompile Include="..\..\src\os\win\pa_win_hostapis.c" />
-    <ClCompile Include="..\..\src\os\win\pa_win_util.c" />
-    <ClCompile Include="..\..\src\os\win\pa_win_waveformat.c" />
-    <ClCompile Include="..\..\src\os\win\pa_win_wdmks_utils.c" />
-    <ClCompile Include="..\..\src\os\win\pa_x86_plain_converters.c" />
+    <ClCompile Include="..\src\os\win\pa_win_coinitialize.c" />
+    <ClCompile Include="..\src\os\win\pa_win_hostapis.c" />
+    <ClCompile Include="..\src\os\win\pa_win_util.c" />
+    <ClCompile Include="..\src\os\win\pa_win_waveformat.c" />
+    <ClCompile Include="..\src\os\win\pa_win_wdmks_utils.c" />
+    <ClCompile Include="..\src\os\win\pa_x86_plain_converters.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\include\pa_asio.h" />
-    <ClInclude Include="..\..\include\pa_win_ds.h" />
-    <ClInclude Include="..\..\include\pa_win_wasapi.h" />
-    <ClInclude Include="..\..\include\pa_win_waveformat.h" />
-    <ClInclude Include="..\..\include\pa_win_wmme.h" />
-    <ClInclude Include="..\..\include\portaudio.h" />
+    <ClInclude Include="..\include\pa_asio.h" />
+    <ClInclude Include="..\include\pa_win_ds.h" />
+    <ClInclude Include="..\include\pa_win_wasapi.h" />
+    <ClInclude Include="..\include\pa_win_waveformat.h" />
+    <ClInclude Include="..\include\pa_win_wmme.h" />
+    <ClInclude Include="..\include\portaudio.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
