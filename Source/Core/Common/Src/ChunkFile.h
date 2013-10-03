@@ -25,10 +25,98 @@
 #include "Common.h"
 #include "FileUtil.h"
 
+#ifdef __GNUC__
+#define NO_WARN_UNINIT_POINTER(data) asm("" :: "X"(data));
+#else
+#define NO_WARN_UNINIT_POINTER(data)
+#endif
+
 template <class T>
 struct LinkedListItem : public T
 {
 	LinkedListItem<T> *next;
+};
+
+// Like std::vector<u8> but without initialization to 0 and some extra methods.
+class PWBuffer : public NonCopyable
+{
+public:
+	PWBuffer()
+	{
+		init();
+	}
+	PWBuffer(void* inData, size_t _size)
+	{
+		init();
+		append(inData, _size);
+	}
+	PWBuffer(size_t _size)
+	{
+		init();
+		resize(_size);
+	}
+	PWBuffer(PWBuffer&& buffer)
+	{
+		init();
+		swap(buffer);
+	}
+	void operator=(PWBuffer&& buffer)
+	{
+		swap(buffer);
+	}
+	~PWBuffer()
+	{
+		free(m_Data);
+	}
+	void swap(PWBuffer& other)
+	{
+		std::swap(m_Data, other.m_Data);
+		std::swap(m_Size, other.m_Size);
+		std::swap(m_Capacity, other.m_Capacity);
+	}
+	void resize(size_t newSize)
+	{
+		reserve(newSize);
+		m_Size = newSize;
+	}
+	void reserve(size_t newSize)
+	{
+		if (newSize > m_Capacity)
+		{
+			reallocMe(std::max(newSize, m_Capacity * 2));
+		}
+		else if (newSize * 4 < m_Capacity)
+		{
+			reallocMe(newSize);
+		}
+	}
+	void clear() { resize(0); }
+	void append(void* inData, size_t _size)
+	{
+		size_t old = m_Size;
+		resize(old + _size);
+		memcpy(&m_Data[old], inData, _size);
+	}
+	u8* data() { return m_Data; }
+	const u8* data() const { return m_Data; }
+	u8& operator[](size_t i) { return m_Data[i]; }
+	const u8& operator[](size_t i) const { return m_Data[i]; }
+	size_t size() const { return m_Size; }
+	bool empty() const { return m_Size == 0; }
+private:
+	void reallocMe(size_t newSize)
+	{
+		m_Data = (u8*) realloc(m_Data, newSize);
+		m_Capacity = newSize;
+	}
+	void init()
+	{
+		m_Data = NULL;
+		m_Size = m_Capacity = 0;
+	}
+	u8* m_Data;
+	size_t m_Size;
+	size_t m_Capacity;
 };
 
 // Wrapper class
@@ -39,19 +127,26 @@ public:
 	{
 		MODE_READ = 1, // load
 		MODE_WRITE, // save
-		MODE_MEASURE, // calculate size
 		MODE_VERIFY, // compare
 	};
 
-	u8 **ptr;
+	PWBuffer* vec;
+	size_t readOff;
+	bool failure;
 	Mode mode;
 
 public:
-	PointerWrap(u8 **ptr_, Mode mode_) : ptr(ptr_), mode(mode_) {}
+	PointerWrap(PWBuffer* vec_, Mode mode_) : vec(vec_) { SetMode(mode_); }
 
-	void SetMode(Mode mode_) { mode = mode_; }
+	void SetMode(Mode mode_)
+	{
+		mode = mode_;
+		readOff = 0;
+		failure = false;
+		if (mode_ == MODE_WRITE && vec)
+			vec->clear();
+	}
 	Mode GetMode() const { return mode; }
-	u8** GetPPtr() { return ptr; }
 
 	template <typename K, class V>
 	void Do(std::map<K, V>& x)
@@ -72,7 +167,6 @@ public:
 			break;
 
 		case MODE_WRITE:
-		case MODE_MEASURE:
 		case MODE_VERIFY:
 			for (auto itr = x.begin(); itr != x.end(); ++itr)
 			{
@@ -88,7 +182,8 @@ public:
 	{
 		u32 size = (u32)x.size();
 		Do(size);
-		x.resize(size);
+		if (mode == MODE_READ)
+			x.resize(size);
 
 		for (auto itr = x.begin(); itr != x.end(); ++itr)
 			Do(*itr);
@@ -97,7 +192,18 @@ public:
 	template <typename T>
 	void Do(std::vector<T>& x)
 	{
-		DoContainer(x);
+		if (std::is_pod<T>::value)
+		{
+			u32 size = (u32)x.size();
+			Do(size);
+			if (mode == MODE_READ)
+				x.resize(size);
+			DoArray(x.data(), size);
+		}
+		else
+		{
+			DoContainer(x);
+		}
 	}
 
 	template <typename T>
@@ -227,65 +333,40 @@ public:
 		{
 			PanicAlertT("Error: After \"%s\", found %d (0x%X) instead of save marker %d (0x%X). Aborting savestate load...",
 				prevName, cookie, cookie, arbitraryNumber, arbitraryNumber);
-			mode = PointerWrap::MODE_MEASURE;
+			failure = true;
 		}
 	}
 
 private:
-	__forceinline void DoByte(u8& x)
-	{
-		switch (mode)
-		{
-		case MODE_READ:
-			x = **ptr;
-			break;
-
-		case MODE_WRITE:
-			**ptr = x;
-			break;
-
-		case MODE_MEASURE:
-			break;
-
-		case MODE_VERIFY:
-			_dbg_assert_msg_(COMMON, (x == **ptr),
-				"Savestate verification failure: %d (0x%X) (at %p) != %d (0x%X) (at %p).\n",
-					x, x, &x, **ptr, **ptr, *ptr);
-			break;
-
-		default:
-			break;
-		}
-
-		++(*ptr);
-	}
-
 	void DoVoid(void *data, u32 size)
 	{
+		NO_WARN_UNINIT_POINTER(data);
 		switch (mode)
 		{
 		case MODE_READ:
-			memcpy(data, *ptr, size);
+			if (size > vec->size() - readOff)
+				failure = true;
+			else
+				memcpy(data, vec->data() + readOff, size);
 			break;
 
 		case MODE_WRITE:
-			memcpy(*ptr, data, size);
-			break;
-
-		case MODE_MEASURE:
+			vec->append(data, size);
 			break;
 
 		case MODE_VERIFY:
-			_dbg_assert_msg_(COMMON, !memcmp(data, *ptr, size),
-				"Savestate verification failure at %p\n",
-				*ptr);
+			if (size > vec->size() - readOff)
+				failure = true;
+			else
+				_dbg_assert_msg_(COMMON, !memcmp(data, vec->data() + readOff, size),
+					"Savestate verification failure at %u\n", (unsigned) readOff);
 			break;
 
 		default:
 			break;
 		}
 
-		*ptr += size;
+		readOff += size;
 	}
 };
 
@@ -343,15 +424,14 @@ public:
 		}
 
 		// read the state
-		std::vector<u8> buffer(sz);
-		if (!pFile.ReadArray(&buffer[0], sz))
+		PWBuffer buffer(sz);
+		if (!pFile.ReadBytes(buffer.data(), sz))
 		{
 			ERROR_LOG(COMMON,"ChunkReader: Error reading file");
 			return false;
 		}
 
-		u8* ptr = &buffer[0];
-		PointerWrap p(&ptr, PointerWrap::MODE_READ);
+		PointerWrap p(&buffer, PointerWrap::MODE_READ);
 		_class.DoState(p);
 		
 		INFO_LOG(COMMON, "ChunkReader: Done loading %s" , _rFilename.c_str());
@@ -370,20 +450,14 @@ public:
 			return false;
 		}
 
-		// Get data
-		u8 *ptr = 0;
-		PointerWrap p(&ptr, PointerWrap::MODE_MEASURE);
-		_class.DoState(p);
-		size_t const sz = (size_t)ptr;
-		std::vector<u8> buffer(sz);
-		ptr = &buffer[0];
-		p.SetMode(PointerWrap::MODE_WRITE);
+		PWBuffer buffer;
+		PointerWrap p(&buffer, PointerWrap::MODE_WRITE);
 		_class.DoState(p);
 
 		// Create header
 		SChunkHeader header;
 		header.Revision = _Revision;
-		header.ExpectedSize = (u32)sz;
+		header.ExpectedSize = (u32)buffer.size();
 
 		// Write to file
 		if (!pFile.WriteArray(&header, 1))
@@ -392,7 +466,7 @@ public:
 			return false;
 		}
 
-		if (!pFile.WriteArray(&buffer[0], sz))
+		if (!pFile.WriteBytes(buffer.data(), buffer.size()))
 		{
 			ERROR_LOG(COMMON,"ChunkReader: Failed writing data");
 			return false;
