@@ -370,6 +370,43 @@ private:
 	}
 };
 
+// Convenience methods for packets.
+class Packet : public PointerWrap
+{
+public:
+	Packet() : PointerWrap(NULL, MODE_WRITE)
+	{
+		vec = &store;
+	}
+
+	// c++
+	Packet(Packet&& other_) : PointerWrap(std::move(other_)), store(std::move(other_.store))
+	{
+		vec = &store;
+	}
+	void operator=(Packet&& other_)
+	{
+		PointerWrap::operator=(std::move(other_));
+		store = std::move(other_.store);
+		vec = &store;
+	}
+
+	Packet(PWBuffer&& vec_) : PointerWrap(NULL, MODE_READ), store(std::move(vec_))
+	{
+		vec = &store;
+	}
+
+	// Write an rvalue.
+	template <typename T>
+	void W(T t)
+	{
+		PointerWrap::Do(t);
+	}
+
+private:
+	PWBuffer store;
+};
+
 class CChunkFileReader
 {
 public:
