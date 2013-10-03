@@ -33,6 +33,10 @@
       <AdditionalOptions>/d2Zi+ /volatile:iso %(AdditionalOptions)</AdditionalOptions>
       <ProgramDataBaseFileName>$(IntDir)$(TargetName).pdb</ProgramDataBaseFileName>
     </ClCompile>
+    <!--ClCompile Base:StaticLibrary-->
+    <ClCompile Condition="'$(OutputType)'=='StaticLibrary'">
+      <PreprocessorDefinitions>_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <!--ClCompile Debug-->
     <ClCompile Condition="'$(Configuration)'=='Debug'">
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -65,14 +69,14 @@
     </Link>
     <!--Link for Executable output-->
     <Link Condition="'$(OutputType)'=='Exe'">
-        <!--following 3 settings only needed for dolphin itself (not dsptool, etc)-->
-        <BaseAddress>0x00400000</BaseAddress>
-        <RandomizedBaseAddress>false</RandomizedBaseAddress>
-        <FixedBaseAddress>true</FixedBaseAddress>
-        <!--Put libs we link against and do not build as part of the solution here-->
-        <AdditionalLibraryDirectories>..\..\..\Externals\SDL\$(PlatformName);..\..\..\Externals\OpenAL\$(PlatformName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-        <AdditionalDependencies>dsound.lib;iphlpapi.lib;winmm.lib;setupapi.lib;vfw32.lib;opengl32.lib;glu32.lib;rpcrt4.lib;comctl32.lib;OpenAL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      </Link>
+      <!--following 3 settings only needed for dolphin itself (not dsptool, etc)-->
+      <BaseAddress>0x00400000</BaseAddress>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <FixedBaseAddress>true</FixedBaseAddress>
+      <!--Put libs we link against and do not build as part of the solution here-->
+      <AdditionalLibraryDirectories>..\..\..\Externals\SDL\$(PlatformName);..\..\..\Externals\OpenAL\$(PlatformName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>dsound.lib;iphlpapi.lib;winmm.lib;setupapi.lib;vfw32.lib;opengl32.lib;glu32.lib;rpcrt4.lib;comctl32.lib;OpenAL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories>..\..\..\Externals\wxWidgets3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
