@@ -27,7 +27,7 @@ struct Rpt : public std::vector<u8>
 
 typedef std::vector<u8> NetWiimote;
 
-#define NETPLAY_VERSION		"Dolphin NetPlay 2013-09-22"
+#define NETPLAY_VERSION		"Dolphin NetPlay 2013-10-03"
 
 const int NETPLAY_INITIAL_GCTIME = 1272737767;
 
