@@ -28,38 +28,38 @@ void JitArm::psq_l(UGeckoInstruction inst)
 	// R10 is the ADDR
 	if (js.memcheck || !Core::g_CoreStartupParameter.bFastmem) { Default(inst); return; }
 	
-	js.block_flags &= BLOCK_USES_GQR0 << inst.I;
-
+	js.block_flags |= BLOCK_USES_GQR0 << inst.I;
+	
 	const UGQR gqr(rSPR(SPR_GQR0 + inst.I));
-
-	if (inst.W)
-	{
-		Default(inst);
-		return;
-	}
 
 	MOVI2R(R10, (u32)offset);
 	if (inst.RA || update) // Always uses the register on update
 		ADD(R10, R10, gpr.R(inst.RA));
+	
+	LDR(R14, R9, PPCSTATE_OFF(Exceptions));
+	CMP(R14, EXCEPTION_DSI);
+	FixupBranch exception = B_CC(CC_EQ);
+
 	if (update)
 		MOV(gpr.R(inst.RA), R10);
 
 	Operand2 mask(3, 1); // ~(Memory::MEMVIEW32_MASK)
-
 	BIC(R10, R10, mask);
 	MOVI2R(R12, (u32)Memory::base);
 	ADD(R10, R10, R12);
-
+	
 	JitArmAsmRoutineManager::GenPairedLoadStore ourLoad = asm_routines.ARMPairedLoadQuantized[gqr.LD_TYPE + (inst.W ? 8 : 0)];
 	(asm_routines.*ourLoad)(this, gqr.LD_SCALE);
 
 	ARMReg vD0 = fpr.R0(inst.RS, false);
 	ARMReg vD1 = fpr.R1(inst.RS, false);
+	
 	VCVT(vD0, S0, 0);
 	if (!inst.W)
 		VCVT(vD1, S1, 0);
 	else
 		MOVI2F(vD1, 1.0f, INVALID_REG); // No need for temp reg with 1.0f
+	SetJumpTarget(exception);
 }
 
 void JitArm::psq_lx(UGeckoInstruction inst)
@@ -73,13 +73,7 @@ void JitArm::psq_lx(UGeckoInstruction inst)
 	// R10 is the ADDR
 	if (js.memcheck || !Core::g_CoreStartupParameter.bFastmem) { Default(inst); return; }
 	
-	js.block_flags &= BLOCK_USES_GQR0 << inst.Ix;
-
-	if (inst.W)
-	{
-		Default(inst);
-		return;
-	}
+	js.block_flags |= BLOCK_USES_GQR0 << inst.Ix;
 
 	const UGQR gqr(rSPR(SPR_GQR0 + inst.Ix));
 
@@ -87,12 +81,15 @@ void JitArm::psq_lx(UGeckoInstruction inst)
 		ADD(R10, gpr.R(inst.RB), gpr.R(inst.RA));
 	else
 		MOV(R10, gpr.R(inst.RB));
+	
+	LDR(R14, R9, PPCSTATE_OFF(Exceptions));
+	CMP(R14, EXCEPTION_DSI);
+	FixupBranch exception = B_CC(CC_EQ);
 
 	if (update)
 		MOV(gpr.R(inst.RA), R10);
 
 	Operand2 mask(3, 1); // ~(Memory::MEMVIEW32_MASK)
-
 	BIC(R10, R10, mask);
 	MOVI2R(R12, (u32)Memory::base);
 	ADD(R10, R10, R12);
@@ -102,16 +99,13 @@ void JitArm::psq_lx(UGeckoInstruction inst)
 
 	ARMReg vD0 = fpr.R0(inst.RS, false);
 	ARMReg vD1 = fpr.R1(inst.RS, false);
-	LDR(R14, R9, PPCSTATE_OFF(Exceptions));
-	CMP(R14, EXCEPTION_DSI);
-	SetCC(CC_NEQ);	
 
 	VCVT(vD0, S0, 0);
 	if (!inst.Wx)
 		VCVT(vD1, S1, 0);
 	else
 		MOVI2F(vD1, 1.0f, INVALID_REG); // No need for temp reg with 1.0f
-	SetCC();
+	SetJumpTarget(exception);
 }
 
 void JitArm::psq_st(UGeckoInstruction inst)
@@ -127,7 +121,7 @@ void JitArm::psq_st(UGeckoInstruction inst)
 	// R10 is the ADDR
 	if (js.memcheck || !Core::g_CoreStartupParameter.bFastmem) { Default(inst); return; }
 
-	js.block_flags &= BLOCK_USES_GQR0 << inst.I;
+	js.block_flags |= BLOCK_USES_GQR0 << inst.I;
 
 	const UGQR gqr(rSPR(SPR_GQR0 + inst.I));
 
@@ -167,7 +161,7 @@ void JitArm::psq_stx(UGeckoInstruction inst)
 	// R10 is the ADDR
 	if (js.memcheck || !Core::g_CoreStartupParameter.bFastmem) { Default(inst); return; }
 
-	js.block_flags &= BLOCK_USES_GQR0 << inst.Ix;
+	js.block_flags |= BLOCK_USES_GQR0 << inst.Ix;
 
 	const UGQR gqr(rSPR(SPR_GQR0 + inst.Ix));
 

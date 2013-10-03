@@ -226,11 +226,10 @@ void JitArmAsmRoutineManager::GenloadPairedU8Two(ARMXEmitter *emit, u32 level)
 	emit->SXTB(R12, R12);
 	emit->VMOV(S1, R12);
 	
-	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
-	
 	emit->VCVT(S0, S0, TO_FLOAT);
 	emit->VCVT(S1, S1, TO_FLOAT);
 
+	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
 	emit->VMUL(S0, S0, S2);
 	emit->VMUL(S1, S1, S2);
 }
@@ -240,10 +239,9 @@ void JitArmAsmRoutineManager::GenloadPairedU8One(ARMXEmitter *emit, u32 level)
 	emit->SXTB(R12, R12);
 	emit->VMOV(S0, R12);
 
-	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
-
 	emit->VCVT(S0, S0, TO_FLOAT);
 
+	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
 	emit->VMUL(S0, S0, S2);
 }
 void JitArmAsmRoutineManager::GenloadPairedS8Two(ARMXEmitter *emit, u32 level)
@@ -256,24 +254,26 @@ void JitArmAsmRoutineManager::GenloadPairedS8Two(ARMXEmitter *emit, u32 level)
 	emit->SXTB(R12, R12);
 	emit->VMOV(S1, R12);
 
-	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
-	
 	emit->VCVT(S0, S0, TO_FLOAT | IS_SIGNED);
 	emit->VCVT(S1, S1, TO_FLOAT | IS_SIGNED);
 
+	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
 	emit->VMUL(S0, S0, S2);
 	emit->VMUL(S1, S1, S2);
 }
 void JitArmAsmRoutineManager::GenloadPairedS8One(ARMXEmitter *emit, u32 level)
 {
+	emit->BIC(R10, R10, mask);
+	emit->MOVI2R(R12, (u32)Memory::base);
+	emit->ADD(R10, R10, R12);
+
 	emit->LDRB(R12, R10);
 	emit->SXTB(R12, R12);
 	emit->VMOV(S0, R12);
 
-	emit->MOVI2R(S2, m_dequantizeTableS[level], R12);
-
 	emit->VCVT(S0, S0, TO_FLOAT | IS_SIGNED);
 
+	emit->MOVI2R(S2, m_dequantizeTableS[level], R12);
 	emit->VMUL(S0, S0, S2);
 }
 void JitArmAsmRoutineManager::GenloadPairedU16Two(ARMXEmitter *emit, u32 level)
@@ -288,11 +288,10 @@ void JitArmAsmRoutineManager::GenloadPairedU16Two(ARMXEmitter *emit, u32 level)
 	emit->SXTH(R12, R12);
 	emit->VMOV(S1, R12);
 
-	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
-
 	emit->VCVT(S0, S0, TO_FLOAT);
 	emit->VCVT(S1, S1, TO_FLOAT);
 
+	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
 	emit->VMUL(S0, S0, S2);
 	emit->VMUL(S1, S1, S2);
 }
@@ -302,10 +301,9 @@ void JitArmAsmRoutineManager::GenloadPairedU16One(ARMXEmitter *emit, u32 level)
 	emit->REV16(R12, R12);
 	emit->VMOV(S0, R12);
 
-	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
-
 	emit->VCVT(S0, S0, TO_FLOAT);
 
+	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
 	emit->VMUL(S0, S0, S2);
 }
 void JitArmAsmRoutineManager::GenloadPairedS16Two(ARMXEmitter *emit, u32 level)
@@ -320,25 +318,23 @@ void JitArmAsmRoutineManager::GenloadPairedS16Two(ARMXEmitter *emit, u32 level)
 	emit->SXTH(R12, R12);
 	emit->VMOV(S1, R12);
 
-	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
-	
 	emit->VCVT(S0, S0, TO_FLOAT | IS_SIGNED);
 	emit->VCVT(S1, S1, TO_FLOAT | IS_SIGNED);
 
+	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
 	emit->VMUL(S0, S0, S2);
 	emit->VMUL(S1, S1, S2);
 }
 void JitArmAsmRoutineManager::GenloadPairedS16One(ARMXEmitter *emit, u32 level)
 {
 	emit->LDRH(R12, R10);
-	
-	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
-	
 	emit->REV16(R12, R12);
 	emit->SXTH(R12, R12);
 	emit->VMOV(S0, R12);
+
 	emit->VCVT(S0, S0, TO_FLOAT | IS_SIGNED);
 
+	emit->MOVI2F(S2, m_dequantizeTableS[level], R12);
 	emit->VMUL(S0, S0, S2);
 }
 void JitArmAsmRoutineManager::GenPairedIllegal(ARMXEmitter *emit, u32 level)
