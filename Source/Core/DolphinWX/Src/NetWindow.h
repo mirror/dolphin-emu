@@ -32,33 +32,10 @@ enum
 	NP_GUI_EVT_STOP_GAME,
 };
 
-class NetPlaySetupDiag : public wxFrame
-{
-public:
-	NetPlaySetupDiag(wxWindow* const parent, const CGameListCtrl* const game_list);
-	~NetPlaySetupDiag();
-private:
-	void OnJoin(wxCommandEvent& event);
-	void OnHost(wxCommandEvent& event);
-	void OnQuit(wxCommandEvent& event);
-
-	void MakeNetPlayDiag(int port, const std::string &game, bool is_hosting);
-
-	wxTextCtrl		*m_nickname_text,
-		*m_host_port_text,
-		*m_connect_port_text,
-		*m_connect_ip_text;
-
-	wxListBox*		m_game_lbox;
-
-	const CGameListCtrl* const m_game_list;
-};
-
 class NetPlayDiag : public wxFrame, public NetPlayUI
 {
 public:
-	NetPlayDiag(wxWindow* const parent, const CGameListCtrl* const game_list
-		, const std::string& game, const bool is_hosting = false);
+	NetPlayDiag(wxWindow* const parent, const std::string& game, const bool is_hosting = false);
 	~NetPlayDiag();
 
 	Common::FifoQueue<std::string>	chat_msgs;
@@ -80,17 +57,18 @@ public:
 
 	bool IsRecording();
 
+	static const GameListItem* FindISO(const std::string& id);
+	void UpdateGameName();
+
 private:
     DECLARE_EVENT_TABLE()
 
 	void OnChat(wxCommandEvent& event);
 	void OnQuit(wxCommandEvent& event);
 	void OnThread(wxCommandEvent& event);
-	void OnChangeGame(wxCommandEvent& event);
 	void OnAdjustBuffer(wxCommandEvent& event);
 	void OnConfigPads(wxCommandEvent& event);
 	void GetNetSettings(NetSettings &settings);
-	std::string FindGame();
 
 	wxListBox*		m_player_lbox;
 	wxTextCtrl*		m_chat_text;
@@ -99,26 +77,28 @@ private:
 	wxCheckBox*		m_record_chkbox;
 
 	std::string		m_selected_game;
-	wxButton*		m_game_btn;
+	wxStaticText*	m_game_label;
 	wxButton*		m_start_btn;
 
 	std::vector<int>	m_playerids;
 
-	const CGameListCtrl* const m_game_list;
-
 	static NetPlayDiag* npd;
 };
 
-class ChangeGameDiag : public wxDialog
+class ConnectDiag : public wxDialog
 {
 public:
-	ChangeGameDiag(wxWindow* const parent, const CGameListCtrl* const game_list, wxString& game_name);
+	ConnectDiag(wxWindow* parent);
+	~ConnectDiag();
+	std::string GetHost();
+	bool Validate();
+	void OnThread(wxCommandEvent& event);
 
 private:
-	void OnPick(wxCommandEvent& event);
-
-	wxListBox*		m_game_lbox;
-	wxString&		m_game_name;
+	void OnChange(wxCommandEvent& event);
+	bool IsHostOk();
+	wxTextCtrl* m_HostCtrl;
+	wxButton* m_ConnectBtn;
 };
 
 class PadMapDiag : public wxDialog
@@ -138,6 +118,8 @@ private:
 namespace NetPlay
 {
 	void StopGame();
+	void ShowConnectDialog(wxWindow* parent);
+	void StartHosting(std::string id, wxWindow* parent);
 }
 
 #endif // _NETWINDOW_H_

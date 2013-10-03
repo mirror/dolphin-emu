@@ -42,7 +42,7 @@ public:
 
 	void AdjustPadBufferSize(unsigned int size);
 
-	bool is_connected;
+	bool m_IsConnected;
 
 private:
 	class Client

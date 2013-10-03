@@ -3,6 +3,7 @@
 // Refer to the license.txt file included.
 
 #include "Globals.h"
+#include "NetWindow.h"
 
 #include <wx/imaglist.h>
 #include <wx/fontmap.h>
@@ -44,6 +45,7 @@
 size_t CGameListCtrl::m_currentItem = 0;
 size_t CGameListCtrl::m_numberItem = 0;
 std::string CGameListCtrl::m_currentFilename;
+CGameListCtrl* CGameListCtrl::s_Instance;
 bool sorted = false;
 
 extern CFrame* main_frame;
@@ -59,30 +61,8 @@ static int CompareGameListItems(const GameListItem* iso1, const GameListItem* is
 		sortData = -sortData;
 	}
 
-	int indexOne = 0;
-	int indexOther = 0;
-
-	
-	// index only matters for WADS and PAL GC games, but invalid indicies for the others
-	// will return the (only) language in the list
-	if (iso1->GetPlatform() == GameListItem::WII_WAD)
-	{
-		indexOne = SConfig::GetInstance().m_SYSCONF->GetData<u8>("IPL.LNG");
-	}
-	else
-	{	// GC
-		indexOne = SConfig::GetInstance().m_LocalCoreStartupParameter.SelectedLanguage;
-	}
-
-	if (iso2->GetPlatform() == GameListItem::WII_WAD)
-	{
-		indexOther = SConfig::GetInstance().m_SYSCONF->GetData<u8>("IPL.LNG");
-	}
-	else
-	{	// GC
-		indexOther = SConfig::GetInstance().m_LocalCoreStartupParameter.SelectedLanguage;
-	}
-
+	int indexOne = iso1->GetLang();
+	int indexOther = iso2->GetLang();
 	switch(sortData)
 	{
 		case CGameListCtrl::COLUMN_TITLE:
@@ -164,6 +144,7 @@ BEGIN_EVENT_TABLE(CGameListCtrl, wxListCtrl)
 	EVT_LIST_ITEM_DESELECTED(LIST_CTRL, CGameListCtrl::OnItemSelectedDeselected)
 	EVT_MENU(IDM_PROPERTIES, CGameListCtrl::OnProperties)
 	EVT_MENU(IDM_GAMEWIKI, CGameListCtrl::OnWiki)
+	EVT_MENU(IDM_HOSTNETPLAY, CGameListCtrl::OnHostNetplay)
 	EVT_MENU(IDM_OPENCONTAININGFOLDER, CGameListCtrl::OnOpenContainingFolder)
 	EVT_MENU(IDM_OPENSAVEFOLDER, CGameListCtrl::OnOpenSaveFolder)
 	EVT_MENU(IDM_EXPORTSAVE, CGameListCtrl::OnExportSave)
@@ -180,6 +161,7 @@ CGameListCtrl::CGameListCtrl(wxWindow* parent, const wxWindowID id, const
 {
 	DragAcceptFiles(true);
 	Connect(wxEVT_DROP_FILES, wxDropFilesEventHandler(CGameListCtrl::OnDropFiles), NULL, this);
+	s_Instance = this;
 }
 
 CGameListCtrl::~CGameListCtrl()
@@ -188,6 +170,7 @@ CGameListCtrl::~CGameListCtrl()
 		delete m_imageListSmall;
 
 	ClearIsoFiles();
+	s_Instance = NULL;
 }
 
 void CGameListCtrl::InitBitmaps()
@@ -412,11 +395,7 @@ void CGameListCtrl::InsertItemInReportView(long _Index)
 
 	int SelectedLanguage = SConfig::GetInstance().m_LocalCoreStartupParameter.SelectedLanguage;
 	
-	// Is this sane?
-	if  (rISOFile.GetPlatform() == GameListItem::WII_WAD)
-	{
-		SelectedLanguage = SConfig::GetInstance().m_SYSCONF->GetData<u8>("IPL.LNG");
-	}
+	SelectedLanguage = rISOFile.GetLang();
 	
 	std::string const name = rISOFile.GetName(SelectedLanguage);
 	SetItem(_Index, COLUMN_TITLE, StrToWxStr(name), -1);
@@ -607,11 +586,7 @@ void CGameListCtrl::ScanForISOs()
 
 		for (std::vector<std::string>::const_iterator iter = drives.begin(); iter != drives.end(); ++iter)
 		{
-			#ifdef __APPLE__
-			std::auto_ptr<GameListItem> gli(new GameListItem(*iter));
-			#else
 			std::unique_ptr<GameListItem> gli(new GameListItem(*iter));
-			#endif
 
 			if (gli->IsValid())
 				m_ISOFiles.push_back(gli.release());
@@ -627,10 +602,10 @@ void CGameListCtrl::OnColBeginDrag(wxListEvent& event)
 		event.Veto();
 }
 
-const GameListItem *CGameListCtrl::GetISO(size_t index) const
+const GameListItem *CGameListCtrl::GetISO(size_t index)
 {
-	if (index < m_ISOFiles.size())
-		return m_ISOFiles[index];
+	if (s_Instance && index < s_Instance->m_ISOFiles.size())
+		return s_Instance->m_ISOFiles[index];
 	else
 		return NULL;
 }
@@ -894,7 +869,12 @@ void CGameListCtrl::AppendContextMenuOptions(wxMenu* menu)
 
 		menu->Append(IDM_PROPERTIES, _("&Properties"));
 		menu->Append(IDM_GAMEWIKI, _("&Wiki"));
+		if (NetPlayDiag::GetInstance() != NULL)
+			menu->Append(IDM_HOSTNETPLAY, _("Change &Netplay Game"));
+		else
+			menu->Append(IDM_HOSTNETPLAY, _("Host &Netplay Game"));
 		menu->AppendSeparator();
+
 
 		if (selected_iso && selected_iso->GetPlatform() != GameListItem::GAMECUBE_DISC)
 		{
@@ -1093,6 +1073,15 @@ void CGameListCtrl::OnWiki(wxCommandEvent& WXUNUSED (event))
 		wikiUrl = ReplaceAll(wikiUrl, "[GAME_NAME]", "");
 
 	WxUtils::Launch(wikiUrl.c_str());
+}
+
+void CGameListCtrl::OnHostNetplay(wxCommandEvent& WXUNUSED (event))
+{
+	const GameListItem *iso = GetSelectedISO();
+	if (iso)
+	{
+		NetPlay::StartHosting(iso->GetRevisionSpecificUniqueID(), this);
+	}
 }
 
 void CGameListCtrl::MultiCompressCB(const char* text, float percent, void* arg)

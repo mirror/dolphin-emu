@@ -36,7 +36,8 @@ public:
 
 	void BrowseForDirectory();
 	const GameListItem *GetSelectedISO();
-	const GameListItem *GetISO(size_t index) const;
+	// todo: put this functionality somewhere saner for god's sake
+	static const GameListItem *GetISO(size_t index);
 
 	void SetFileMenu(wxMenu* fileMenu);
 
@@ -59,6 +60,7 @@ private:
 	std::vector<int> m_PlatformImageIndex;
 	std::vector<int> m_EmuStateImageIndex;
 	std::vector<GameListItem*> m_ISOFiles;
+	static CGameListCtrl* s_Instance;
 
 	void ClearIsoFiles()
 	{
@@ -92,6 +94,7 @@ private:
 	void OnSize(wxSizeEvent& event);
 	void OnProperties(wxCommandEvent& event);
 	void OnWiki(wxCommandEvent& event);
+	void OnHostNetplay(wxCommandEvent& event);
 	void OnOpenContainingFolder(wxCommandEvent& event);
 	void OnOpenSaveFolder(wxCommandEvent& event);
 	void OnExportSave(wxCommandEvent& event);

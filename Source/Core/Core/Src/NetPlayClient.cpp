@@ -52,20 +52,22 @@ NetPlayClient::~NetPlayClient()
 	if (m_is_running)
 		StopGame();
 
-	if (is_connected)
+	if (m_IsConnected)
 	{
 		m_do_loop = false;
-		m_thread.join();
+		if (m_dialog)
+			m_thread.join();
 	}
 }
 
 // called from ---GUI--- thread
-NetPlayClient::NetPlayClient(const std::string& address, const u16 port, NetPlayUI* dialog, const std::string& name) : m_dialog(dialog), m_is_running(false), m_do_loop(true)
+NetPlayClient::NetPlayClient(const std::string& address, const u16 port, const std::string& name) : m_is_running(false), m_do_loop(true)
 {
 	m_target_buffer_size = 20;
 	ClearBuffers();
 
-	is_connected = false;
+	m_IsConnected = false;
+	m_dialog = NULL;
 
 	// why is false successful? documentation says true is
 	if (0 == m_socket.Connect(port, address, 5))
@@ -80,27 +82,11 @@ NetPlayClient::NetPlayClient(const std::string& address, const u16 port, NetPlay
 		sf::Packet rpac;
 		// TODO: make this not hang
 		m_socket.Receive(rpac);
-		MessageId error;
-		rpac >> error;
+		rpac >> m_ServerError;
 
 		// got error message
-		if (error)
+		if (m_ServerError)
 		{
-			switch (error)
-			{
-			case CON_ERR_SERVER_FULL :
-				PanicAlertT("The server is full!");
-				break;
-			case CON_ERR_VERSION_MISMATCH :
-				PanicAlertT("The server and client's NetPlay versions are incompatible!");
-				break;
-			case CON_ERR_GAME_RUNNING :
-				PanicAlertT("The server responded: the game is currently running!");
-				break;
-			default :
-				PanicAlertT("The server sent an unknown error message!");
-				break;
-			}
 			m_socket.Close();
 		}
 		else
@@ -116,18 +102,23 @@ NetPlayClient::NetPlayClient(const std::string& address, const u16 port, NetPlay
 			m_players[m_pid] = player;
 			m_local_player = &m_players[m_pid];
 
-			m_dialog->Update();
-
 			//PanicAlertT("Connection successful: assigned player id: %d", m_pid);
-			is_connected = true;
+			m_IsConnected = true;
 
 			m_selector.Add(m_socket);
-			m_thread = std::thread(std::mem_fun(&NetPlayClient::ThreadFunc), this);
 		}
 	}
-	else
-		PanicAlertT("Failed to Connect!");
+}
 
+void NetPlayClient::SetDialog(NetPlayUI* dialog)
+{
+	bool hadDialog = m_dialog;
+	m_dialog = dialog;
+	if (!hadDialog)
+	{
+		// don't start receive messages until we have a dialog
+		m_thread = std::thread(std::mem_fun(&NetPlayClient::ThreadFunc), this);
+	}
 }
 
 // called from ---NETPLAY--- thread

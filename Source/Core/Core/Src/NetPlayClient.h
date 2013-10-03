@@ -63,13 +63,14 @@ class NetPlayClient
 public:
 	void ThreadFunc();
 
-	NetPlayClient(const std::string& address, const u16 port, NetPlayUI* dialog, const std::string& name);
+	NetPlayClient(const std::string& address, const u16 port, const std::string& name);
 	~NetPlayClient();
 
 	void GetPlayerList(std::string& list, std::vector<int>& pid_list);
 	void GetPlayers(std::vector<const Player *>& player_list);
 
-	bool is_connected;
+	bool m_IsConnected;
+	MessageId m_ServerError;
 
 	bool StartGame(const std::string &path);
 	bool StopGame();
@@ -85,6 +86,8 @@ public:
 	u8 InGamePadToLocalPad(u8 localPad);
 
 	u8 LocalWiimoteToInGameWiimote(u8 local_pad);
+
+	void SetDialog(NetPlayUI* dialog);
 
 protected:
 	void ClearBuffers();

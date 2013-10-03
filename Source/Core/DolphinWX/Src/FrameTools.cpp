@@ -196,7 +196,7 @@ void CFrame::CreateMenu()
 	toolsMenu->Append(IDM_EXPORTALLSAVE, _("Export All Wii Saves"));
 	toolsMenu->Append(IDM_CHEATS, _("&Cheats Manager"));
 
-	toolsMenu->Append(IDM_NETPLAY, _("Start &NetPlay"));
+	toolsMenu->Append(IDM_NETPLAY, _("Connect to &Netplay"));
 
 	toolsMenu->Append(IDM_MENU_INSTALLWAD, _("Install WAD"));
 	UpdateWiiMenuChoice(toolsMenu->Append(IDM_LOAD_WII_MENU, wxT("Dummy string to keep wxw happy")));
@@ -1306,17 +1306,7 @@ void CFrame::StatusBarMessage(const char * Text, ...)
 // NetPlay stuff
 void CFrame::OnNetPlay(wxCommandEvent& WXUNUSED (event))
 {
-	if (!g_NetPlaySetupDiag)
-	{
-		if (NetPlayDiag::GetInstance() != NULL)
-			NetPlayDiag::GetInstance()->Raise();
-		else
-			g_NetPlaySetupDiag = new NetPlaySetupDiag(this, m_GameListCtrl);
-	}
-	else
-	{
-		g_NetPlaySetupDiag->Raise();
-	}
+	NetPlay::ShowConnectDialog(this);
 }
 
 void CFrame::OnMemcard(wxCommandEvent& WXUNUSED (event))

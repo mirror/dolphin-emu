@@ -42,7 +42,6 @@ class CGameListCtrl;
 class GameListItem;
 class CLogWindow;
 class FifoPlayerDlg;
-class NetPlaySetupDiag;
 class wxCheatsWindow;
 
 // The CPanel class to receive MSWWindowProc messages from the video backend.
@@ -110,7 +109,6 @@ public:
 
 	// These have to be public
 	CCodeWindow* g_pCodeWindow;
-	NetPlaySetupDiag* g_NetPlaySetupDiag;
 	wxCheatsWindow* g_CheatsWindow;
 	TASInputDlg* g_TASInputDlg[4];
 

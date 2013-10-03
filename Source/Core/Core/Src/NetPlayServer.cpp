@@ -6,7 +6,7 @@
 
 NetPlayServer::~NetPlayServer()
 {
-	if (is_connected)
+	if (m_IsConnected)
 	{
 		m_do_loop = false;
 		m_thread.join();
@@ -15,13 +15,13 @@ NetPlayServer::~NetPlayServer()
 }
 
 // called from ---GUI--- thread
-NetPlayServer::NetPlayServer(const u16 port) : is_connected(false), m_is_running(false)
+NetPlayServer::NetPlayServer(const u16 port) : m_IsConnected(false), m_is_running(false)
 {
 	memset(m_pad_map, -1, sizeof(m_pad_map));
 	memset(m_wiimote_map, -1, sizeof(m_wiimote_map));
 	if (m_socket.Listen(port))
 	{
-		is_connected = true;
+		m_IsConnected = true;
 		m_do_loop = true;
 		m_selector.Add(m_socket);
 		m_thread = std::thread(std::mem_fun(&NetPlayServer::ThreadFunc), this);

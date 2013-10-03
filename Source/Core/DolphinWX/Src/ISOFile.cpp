@@ -145,6 +145,20 @@ GameListItem::~GameListItem()
 {
 }
 
+int GameListItem::GetLang() const
+{
+	// index only matters for WADS and PAL GC games, but invalid indicies for the others
+	// will return the (only) language in the list
+	if (GetPlatform() == GameListItem::WII_WAD)
+	{
+		return SConfig::GetInstance().m_SYSCONF->GetData<u8>("IPL.LNG");
+	}
+	else
+	{	// GC
+		return SConfig::GetInstance().m_LocalCoreStartupParameter.SelectedLanguage;
+	}
+}
+
 bool GameListItem::LoadFromCache()
 {
 	return CChunkFileReader::Load<GameListItem>(CreateCacheFilename(), CACHE_REVISION, *this);
@@ -264,6 +278,18 @@ std::string GameListItem::GetName(int _index) const
 	}
 
 	return name;
+}
+
+std::string GameListItem::GetRevisionSpecificUniqueID() const
+{
+	std::string id = m_UniqueID;
+	if (m_Platform == GAMECUBE_DISC)
+	{
+		char rev[16];
+		sprintf(rev, "r%d", m_Revision);
+		id += rev;
+	}
+	return id;
 }
 
 const std::string GameListItem::GetWiiFSPath() const

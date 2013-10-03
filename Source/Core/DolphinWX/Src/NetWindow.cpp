@@ -23,275 +23,23 @@ BEGIN_EVENT_TABLE(NetPlayDiag, wxFrame)
 	EVT_COMMAND(wxID_ANY, wxEVT_THREAD, NetPlayDiag::OnThread)
 END_EVENT_TABLE()
 
-static NetPlayServer* netplay_server = NULL;
-static NetPlayClient* netplay_client = NULL;
+static std::unique_ptr<NetPlayServer> netplay_server;
+static std::unique_ptr<NetPlayClient> netplay_client;
 extern CFrame* main_frame;
 NetPlayDiag *NetPlayDiag::npd = NULL;
 
-std::string BuildGameName(const GameListItem& game)
-{
-	// Lang needs to be consistent
-	auto const lang = 0;
-	
-	std::string name(game.GetBannerName(lang));
-	if (name.empty())
-		name = game.GetVolumeName(lang);
-
-	if (game.GetRevision() != 0)
-		return name + " (" + game.GetUniqueID() + ", Revision " + std::to_string((long long)game.GetRevision()) + ")";
-	else
-		return name + " (" + game.GetUniqueID() + ")";
-}
-
-void FillWithGameNames(wxListBox* game_lbox, const CGameListCtrl& game_list)
-{
-	for (u32 i = 0 ; auto game = game_list.GetISO(i); ++i)
-		game_lbox->Append(StrToWxStr(BuildGameName(*game)));
-}
-
-NetPlaySetupDiag::NetPlaySetupDiag(wxWindow* const parent, const CGameListCtrl* const game_list)
-	: wxFrame(parent, wxID_ANY, wxT(NETPLAY_TITLEBAR), wxDefaultPosition, wxDefaultSize)
-	, m_game_list(game_list)
-{
-	IniFile inifile;
-	inifile.Load(File::GetUserPath(D_CONFIG_IDX) + "Dolphin.ini");
-	IniFile::Section& netplay_section = *inifile.GetOrCreateSection("NetPlay");
-
-	wxPanel* const panel = new wxPanel(this);
-
-	// top row
-	wxStaticText* const nick_lbl = new wxStaticText(panel, wxID_ANY, _("Nickname :"),
-			wxDefaultPosition, wxDefaultSize);
-	
-	std::string nickname;
-	netplay_section.Get("Nickname", &nickname, "Player");
-	m_nickname_text = new wxTextCtrl(panel, wxID_ANY, StrToWxStr(nickname));
-
-	wxBoxSizer* const nick_szr = new wxBoxSizer(wxHORIZONTAL);
-	nick_szr->Add(nick_lbl, 0, wxCENTER);
-	nick_szr->Add(m_nickname_text, 0, wxALL, 5);
-
-
-	// tabs
-	wxNotebook* const notebook = new wxNotebook(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize);
-	wxPanel* const connect_tab = new wxPanel(notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize);
-	notebook->AddPage(connect_tab, _("Connect"));
-	wxPanel* const host_tab = new wxPanel(notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize);
-	notebook->AddPage(host_tab, _("Host"));
-
-
-	// connect tab
-	{
-	wxStaticText* const ip_lbl = new wxStaticText(connect_tab, wxID_ANY, _("Address :"),
-			wxDefaultPosition, wxDefaultSize);
-	
-	std::string address;
-	netplay_section.Get("Address", &address, "localhost");
-	m_connect_ip_text = new wxTextCtrl(connect_tab, wxID_ANY, StrToWxStr(address));
-
-	wxStaticText* const port_lbl = new wxStaticText(connect_tab, wxID_ANY, _("Port :"),
-			wxDefaultPosition, wxDefaultSize);
-	
-	// string? w/e
-	std::string port;
-	netplay_section.Get("ConnectPort", &port, "2626");	
-	m_connect_port_text = new wxTextCtrl(connect_tab, wxID_ANY, StrToWxStr(port));
-
-	wxButton* const connect_btn = new wxButton(connect_tab, wxID_ANY, _("Connect"));
-	connect_btn->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &NetPlaySetupDiag::OnJoin, this);
-
-	wxStaticText* const alert_lbl = new wxStaticText(connect_tab, wxID_ANY,
-		_("ALERT:\n\n"
-		"Netplay will only work with the following settings:\n"
-		" - Enable Dual Core [OFF]\n"
-		" - DSP Emulator Engine Must be the same on all computers!\n"
-		" - DSP on Dedicated Thread [OFF]\n"
-		" - Framelimit NOT set to [Audio]\n"
-		" - Manually set the extensions for each wiimote\n"
-		"\n"
-		"All players should use the same Dolphin version and settings.\n"
-		"All memory cards must be identical between players or disabled.\n"
-		"Wiimote support is probably terrible. Don't use it.\n"
-		"\n"
-		"The host must have the chosen TCP port open/forwarded!\n"),
-		wxDefaultPosition, wxDefaultSize);
-
-	wxBoxSizer* const top_szr = new wxBoxSizer(wxHORIZONTAL);
-	top_szr->Add(ip_lbl, 0, wxCENTER | wxRIGHT, 5);
-	top_szr->Add(m_connect_ip_text, 3);
-	top_szr->Add(port_lbl, 0, wxCENTER | wxRIGHT | wxLEFT, 5);
-	top_szr->Add(m_connect_port_text, 1);
-
-	wxBoxSizer* const con_szr = new wxBoxSizer(wxVERTICAL);
-	con_szr->Add(top_szr, 0, wxALL | wxEXPAND, 5);
-	con_szr->AddStretchSpacer(1);
-	con_szr->Add(alert_lbl, 0, wxLEFT | wxRIGHT | wxEXPAND, 5);
-	con_szr->AddStretchSpacer(1);
-	con_szr->Add(connect_btn, 0, wxALL | wxALIGN_RIGHT, 5);
-
-	connect_tab->SetSizerAndFit(con_szr);
-	}
-
-	// host tab
-	{
-	wxStaticText* const port_lbl = new wxStaticText(host_tab, wxID_ANY, _("Port :"),
-			wxDefaultPosition, wxDefaultSize);
-	
-	// string? w/e
-	std::string port;
-	netplay_section.Get("HostPort", &port, "2626");	
-	m_host_port_text = new wxTextCtrl(host_tab, wxID_ANY, StrToWxStr(port));
-
-	wxButton* const host_btn = new wxButton(host_tab, wxID_ANY, _("Host"));
-	host_btn->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &NetPlaySetupDiag::OnHost, this);
-
-	m_game_lbox = new wxListBox(host_tab, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, nullptr, wxLB_SORT);
-	m_game_lbox->Bind(wxEVT_COMMAND_LISTBOX_DOUBLECLICKED, &NetPlaySetupDiag::OnHost, this);
-	
-	FillWithGameNames(m_game_lbox, *game_list);
-
-	wxBoxSizer* const top_szr = new wxBoxSizer(wxHORIZONTAL);
-	top_szr->Add(port_lbl, 0, wxCENTER | wxRIGHT, 5);
-	top_szr->Add(m_host_port_text, 0);
-
-	wxBoxSizer* const host_szr = new wxBoxSizer(wxVERTICAL);
-	host_szr->Add(top_szr, 0, wxALL | wxEXPAND, 5);
-	host_szr->Add(m_game_lbox, 1, wxLEFT | wxRIGHT | wxEXPAND, 5);
-	host_szr->Add(host_btn, 0, wxALL | wxALIGN_RIGHT, 5);
-
-	host_tab->SetSizerAndFit(host_szr);
-	}
-
-	// bottom row
-	wxButton* const quit_btn = new wxButton(panel, wxID_ANY, _("Quit"));
-	quit_btn->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &NetPlaySetupDiag::OnQuit, this);
-
-	// main sizer
-	wxBoxSizer* const main_szr = new wxBoxSizer(wxVERTICAL);
-	main_szr->Add(nick_szr, 0, wxALL | wxALIGN_RIGHT, 5);
-	main_szr->Add(notebook, 1, wxLEFT | wxRIGHT | wxEXPAND, 5);
-	main_szr->Add(quit_btn, 0, wxALL | wxALIGN_RIGHT, 5);
-
-	panel->SetSizerAndFit(main_szr);
-
-	//wxBoxSizer* const diag_szr = new wxBoxSizer(wxVERTICAL);
-	//diag_szr->Add(panel, 1, wxEXPAND);
-	//SetSizerAndFit(diag_szr);
-
-	main_szr->SetSizeHints(this);
-
-	Center();
-	Show();
-}
-
-NetPlaySetupDiag::~NetPlaySetupDiag()
-{
-	IniFile inifile;
-	const std::string dolphin_ini = File::GetUserPath(D_CONFIG_IDX) + "Dolphin.ini";
-	inifile.Load(dolphin_ini);
-	IniFile::Section& netplay_section = *inifile.GetOrCreateSection("NetPlay");
-
-	netplay_section.Set("Nickname", WxStrToStr(m_nickname_text->GetValue()));
-	netplay_section.Set("Address", WxStrToStr(m_connect_ip_text->GetValue()));
-	netplay_section.Set("ConnectPort", WxStrToStr(m_connect_port_text->GetValue()));
-	netplay_section.Set("HostPort", WxStrToStr(m_host_port_text->GetValue()));
-
-	inifile.Save(dolphin_ini);
-	main_frame->g_NetPlaySetupDiag = NULL;
-}
-
-void NetPlaySetupDiag::MakeNetPlayDiag(int port, const std::string &game, bool is_hosting)
-{
-	NetPlayDiag *&npd = NetPlayDiag::GetInstance();
-	std::string ip;
-	npd = new NetPlayDiag(m_parent, m_game_list, game, is_hosting);
-	if (is_hosting)
-		ip = "127.0.0.1";
-	else
-		ip = WxStrToStr(m_connect_ip_text->GetValue());
-
-	netplay_client = new NetPlayClient(ip, (u16)port, npd, WxStrToStr(m_nickname_text->GetValue()));
-	if (netplay_client->is_connected)
-	{
-		npd->Show();
-		Destroy();
-	}
-	else
-	{
-		npd->Destroy();
-	}
-}
-
-void NetPlaySetupDiag::OnHost(wxCommandEvent&)
-{
-	NetPlayDiag *&npd = NetPlayDiag::GetInstance();
-	if (npd)
-	{
-		PanicAlertT("A NetPlay window is already open!!");
-		return;
-	}
-
-	if (-1 == m_game_lbox->GetSelection())
-	{
-		PanicAlertT("You must choose a game!!");
-		return;
-	}
-
-	std::string game(WxStrToStr(m_game_lbox->GetStringSelection()));
-
-	unsigned long port = 0;
-	m_host_port_text->GetValue().ToULong(&port);
-	netplay_server = new NetPlayServer(u16(port));
-	netplay_server->ChangeGame(game);
-	netplay_server->AdjustPadBufferSize(INITIAL_PAD_BUFFER_SIZE);
-	if (netplay_server->is_connected)
-	{
-		MakeNetPlayDiag(port, game, true);
-	}
-	else
-	{
-		PanicAlertT("Failed to listen.  Is another instance of the NetPlay server running?");
-	}
-}
-
-void NetPlaySetupDiag::OnJoin(wxCommandEvent&)
-{
-	NetPlayDiag *&npd = NetPlayDiag::GetInstance();
-	if (npd)
-	{
-		PanicAlertT("A NetPlay window is already open!!");
-		return;
-	}
-
-	unsigned long port = 0;
-	m_connect_port_text->GetValue().ToULong(&port);
-	MakeNetPlayDiag(port, "", false);
-}
-
-void NetPlaySetupDiag::OnQuit(wxCommandEvent&)
-{
-	Destroy();
-}
-
-NetPlayDiag::NetPlayDiag(wxWindow* const parent, const CGameListCtrl* const game_list,
-		const std::string& game, const bool is_hosting)
-	: wxFrame(parent, wxID_ANY, wxT(NETPLAY_TITLEBAR), wxDefaultPosition, wxDefaultSize)
+NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const bool is_hosting)
+	: wxFrame(parent, wxID_ANY, wxT(NETPLAY_TITLEBAR), wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE | wxTAB_TRAVERSAL)
 	, m_selected_game(game)
 	, m_start_btn(NULL)
-	, m_game_list(game_list)
 {
+	npd = this;
 	wxPanel* const panel = new wxPanel(this);
 
 	// top crap
-	m_game_btn = new wxButton(panel, wxID_ANY,
-			StrToWxStr(m_selected_game).Prepend(_(" Game : ")),
-			wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
+	m_game_label = new wxStaticText(panel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
+	UpdateGameName();
 	
-	if (is_hosting)
-		m_game_btn->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &NetPlayDiag::OnChangeGame, this);
-	else
-		m_game_btn->Disable();
-
 	// middle crap
 
 	// chat
@@ -358,7 +106,7 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const CGameListCtrl* const game
 
 	// main sizer
 	wxBoxSizer* const main_szr = new wxBoxSizer(wxVERTICAL);
-	main_szr->Add(m_game_btn, 0, wxEXPAND | wxALL, 5);
+	main_szr->Add(m_game_label, 0, wxEXPAND | wxALL, 5);
 	main_szr->Add(mid_szr, 1, wxEXPAND | wxLEFT | wxRIGHT, 5);
 	main_szr->Add(bottom_szr, 0, wxEXPAND | wxALL, 5);
 
@@ -368,20 +116,46 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const CGameListCtrl* const game
 	SetSize(512, 512-128);
 
 	Center();
+	Show();
+}
+
+const GameListItem* NetPlayDiag::FindISO(const std::string& id)
+{
+	for (size_t i = 0; const GameListItem* item = CGameListCtrl::GetISO(i); i++)
+	{
+		if (item->GetRevisionSpecificUniqueID() == id)
+			return item;
+	}
+
+	return NULL;
+}
+
+void NetPlayDiag::UpdateGameName()
+{
+	auto item = FindISO(m_selected_game);
+	wxString name;
+	if (!item)
+	{
+		name = wxString::Format(_("Unknown (%s)"), m_selected_game);
+	}
+	else
+	{
+		std::string gameName = item->GetName(item->GetLang());
+		std::string uniqueId = item->GetUniqueID();
+		int rev = item->GetRevision();
+		if (rev)
+			name = wxString::Format(_("%s (%s, Revision %d)"), gameName, uniqueId, rev);
+		else
+			name = wxString::Format(_("%s (%s)"), gameName, uniqueId);
+	}
+	m_game_label->SetLabel(_(" Game : ") + name);
+
 }
 
 NetPlayDiag::~NetPlayDiag()
 {
-	if (netplay_client)
-	{
-		delete netplay_client;
-		netplay_client = NULL;
-	}
-	if (netplay_server)
-	{
-		delete netplay_server;
-		netplay_server = NULL;
-	}
+	netplay_client.reset();
+	netplay_server.reset();
 	npd = NULL;
 }
 
@@ -408,23 +182,12 @@ void NetPlayDiag::GetNetSettings(NetSettings &settings)
 	settings.m_EXIDevice[1] = instance.m_EXIDevice[1];
 }
 
-std::string NetPlayDiag::FindGame()
-{
-	// find path for selected game, sloppy..
-	for (u32 i = 0 ; auto game = m_game_list->GetISO(i); ++i)
-		if (m_selected_game == BuildGameName(*game))
-			return game->GetFileName();
-	
-	PanicAlertT("Game not found!");
-	return "";
-}
-
 void NetPlayDiag::OnStart(wxCommandEvent&)
 {
 	NetSettings settings;
 	GetNetSettings(settings);
 	netplay_server->SetNetSettings(settings);
-	netplay_server->StartGame(FindGame());
+	netplay_server->StartGame(FindISO(m_selected_game)->GetFileName());
 }
 
 void NetPlayDiag::BootGame(const std::string& filename)
@@ -514,13 +277,22 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 		// update selected game :/
 		{
 		m_selected_game.assign(WxStrToStr(event.GetString()));
-		m_game_btn->SetLabel(event.GetString().Prepend(_(" Game : ")));
+		UpdateGameName();
 		}
 		break;
 	case NP_GUI_EVT_START_GAME :
 		// client start game :/
 		{
-		netplay_client->StartGame(FindGame());
+		auto iso = FindISO(m_selected_game);
+		if (iso)
+		{
+			netplay_client->StartGame(iso->GetFileName());
+		}
+		else
+		{
+			PanicAlertT("The host chose a game that was not found locally.");
+			netplay_client.reset();
+		}
 		}
 		break;
 	case NP_GUI_EVT_STOP_GAME :
@@ -538,20 +310,6 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 		chat_msgs.Pop(s);
 		//PanicAlert("message: %s", s.c_str());
 		m_chat_text->AppendText(StrToWxStr(s).Append(wxT('\n')));
-	}
-}
-
-void NetPlayDiag::OnChangeGame(wxCommandEvent&)
-{
-	wxString game_name;
-	ChangeGameDiag* const cgd = new ChangeGameDiag(this, m_game_list, game_name);
-	cgd->ShowModal();
-
-	if (game_name.length())
-	{
-		m_selected_game = WxStrToStr(game_name);
-		netplay_server->ChangeGame(m_selected_game);
-		m_game_btn->SetLabel(game_name.Prepend(_(" Game : ")));
 	}
 }
 
@@ -574,31 +332,101 @@ bool NetPlayDiag::IsRecording()
 	return m_record_chkbox->GetValue();
 }
 
-ChangeGameDiag::ChangeGameDiag(wxWindow* const parent, const CGameListCtrl* const game_list, wxString& game_name)
-	: wxDialog(parent, wxID_ANY, _("Change Game"), wxDefaultPosition, wxDefaultSize)
-	, m_game_name(game_name)
+ConnectDiag::ConnectDiag(wxWindow* parent)
+	: wxDialog(parent, wxID_ANY, _("Connect to Netplay"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER)
 {
-	m_game_lbox = new wxListBox(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, nullptr, wxLB_SORT);
-	m_game_lbox->Bind(wxEVT_COMMAND_LISTBOX_DOUBLECLICKED, &ChangeGameDiag::OnPick, this);
-
-	FillWithGameNames(m_game_lbox, *game_list);
-
-	wxButton* const ok_btn = new wxButton(this, wxID_OK, _("Change"));
-	ok_btn->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &ChangeGameDiag::OnPick, this);
-
-	wxBoxSizer* const szr = new wxBoxSizer(wxVERTICAL);
-	szr->Add(m_game_lbox, 1, wxLEFT | wxRIGHT | wxTOP | wxEXPAND, 5);
-	szr->Add(ok_btn, 0, wxALL | wxALIGN_RIGHT, 5);
-
-	SetSizerAndFit(szr);
-	SetFocus();
+	wxBoxSizer* sizerTop = new wxBoxSizer(wxVERTICAL);
+	std::string host = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayHost;
+	wxStaticText* hostLabel = new wxStaticText(this, wxID_ANY, _("Host :"));
+	m_HostCtrl = new wxTextCtrl(this, wxID_ANY, StrToWxStr(host));
+	// focus and select all
+	m_HostCtrl->SetFocus();
+	m_HostCtrl->SetSelection(-1, -1);
+	m_HostCtrl->Bind(wxEVT_COMMAND_TEXT_UPDATED, &ConnectDiag::OnChange, this);
+	wxBoxSizer* sizerHost = new wxBoxSizer(wxHORIZONTAL);
+	sizerHost->Add(hostLabel, 0, wxLEFT, 5);
+	sizerHost->Add(m_HostCtrl, 1, wxEXPAND | wxLEFT | wxRIGHT, 5);
+	wxStdDialogButtonSizer* sizerButtons = CreateStdDialogButtonSizer(wxOK | wxCANCEL);
+	m_ConnectBtn = sizerButtons->GetAffirmativeButton();
+	m_ConnectBtn->SetLabel(_("Connect"));
+	m_ConnectBtn->Enable(IsHostOk());
+	sizerTop->Add(sizerHost, 0, wxTOP | wxBOTTOM | wxEXPAND, 5);
+	sizerTop->Add(sizerButtons, 0, wxEXPAND);
+	SetSizerAndFit(sizerTop);
+	SetMaxSize(wxSize(10000, GetBestSize().GetHeight()));
 }
 
-void ChangeGameDiag::OnPick(wxCommandEvent& event)
+
+bool ConnectDiag::Validate()
 {
-	// return the selected game name
-	m_game_name = m_game_lbox->GetStringSelection();
-	EndModal(wxID_OK);
+	if (netplay_client)
+	{
+		// shouldn't be possible, just in case
+		return false;
+	}
+	std::string hostSpec = GetHost();
+	size_t pos = hostSpec.find(':');
+	std::string host = hostSpec.substr(0, pos);
+	int port = std::stoi(hostSpec.substr(pos + 1).c_str());
+	std::string nickname = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayNickname;
+	netplay_client.reset(new NetPlayClient(host, (u16)port, nickname));
+	if (!netplay_client->m_IsConnected)
+	{
+		wxString err;
+		switch (netplay_client->m_ServerError)
+		{
+		case 0:
+			// there was no server error.
+			err = _("Failed to connect.");
+			break;
+		case CON_ERR_SERVER_FULL :
+			err = _("The server is full.");
+			break;
+		case CON_ERR_VERSION_MISMATCH :
+			err = _("The server and client's NetPlay versions are incompatible.");
+			break;
+		case CON_ERR_GAME_RUNNING :
+			err = _("The server responded: the game is currently running.");
+			break;
+		default :
+			err = _("The server sent an unknown error message.");
+			break;
+		}
+		netplay_client.reset();
+		// connection failure
+		auto complain = new wxMessageDialog(this, err);
+		complain->ShowWindowModal();
+		// We leak the message dialog because of a wx bug.
+		return false;
+	}
+	netplay_client->SetDialog(new NetPlayDiag(GetParent(), "", false));
+	EndModal(0);
+	return true;
+}
+
+void ConnectDiag::OnChange(wxCommandEvent& event)
+{
+	m_ConnectBtn->Enable(IsHostOk());
+}
+
+std::string ConnectDiag::GetHost()
+{
+	return WxStrToStr(m_HostCtrl->GetValue());
+}
+
+bool ConnectDiag::IsHostOk()
+{
+	std::string host = GetHost();
+	size_t pos = host.find(':');
+	return pos != std::string::npos &&
+		pos + 1 < host.size() &&
+		host.find_first_not_of("0123456789", pos + 1) == std::string::npos;
+}
+
+ConnectDiag::~ConnectDiag()
+{
+	SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayHost = WxStrToStr(m_HostCtrl->GetValue());
+	SConfig::GetInstance().SaveSettings();
 }
 
 PadMapDiag::PadMapDiag(wxWindow* const parent, PadMapping map[], PadMapping wiimotemap[], std::vector<const Player *>& player_list)
@@ -694,4 +522,46 @@ void NetPlay::StopGame()
 {
 	if (netplay_client != NULL)
 		netplay_client->Stop();
+}
+
+void NetPlay::ShowConnectDialog(wxWindow* parent)
+{
+	if (NetPlayDiag::GetInstance() != NULL)
+	{
+		NetPlayDiag::GetInstance()->Raise();
+		return;
+	}
+	ConnectDiag diag(parent);
+	// it'll open the window itself
+	diag.ShowModal();
+}
+
+void NetPlay::StartHosting(std::string id, wxWindow* parent)
+{
+	if (NetPlayDiag::GetInstance() != NULL)
+	{
+		NetPlayDiag::GetInstance()->Raise();
+		netplay_server->ChangeGame(id);
+		return;
+	}
+
+	netplay_server.reset(new NetPlayServer(2626));
+	netplay_server->ChangeGame(id);
+	netplay_server->AdjustPadBufferSize(INITIAL_PAD_BUFFER_SIZE);
+	if (!netplay_server->m_IsConnected)
+	{
+		wxMessageBox(_("Failed to host.  This shouldn't happen..."), _("Error"), wxOK, parent);
+		netplay_server.reset();
+		return;
+	}
+	std::string nickname = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayNickname;
+	netplay_client.reset(new NetPlayClient("127.0.0.1", 2626, nickname));
+	if (!netplay_client->m_IsConnected)
+	{
+		wxMessageBox(_("Failed to connect to localhost.  This shouldn't happen..."), _("Error"), wxOK, parent);
+		netplay_client.reset();
+		netplay_server.reset();
+		return;
+	}
+	netplay_client->SetDialog(new NetPlayDiag(parent, id, true));
 }
