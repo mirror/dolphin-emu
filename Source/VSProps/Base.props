@@ -1,7 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
-  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="UserMacros">
+    <TargetSuffix></TargetSuffix>
+    <TargetSuffix Condition="'$(Configuration)'=='Debug'">D</TargetSuffix>
+  </PropertyGroup>
   <PropertyGroup>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
@@ -10,6 +13,7 @@
     <When Condition="'$(OutputType)'=='Exe'">
       <PropertyGroup>
         <OutDir>..\..\..\Binary\$(PlatformName)\</OutDir>
+        <TargetName>$(ProjectName)$(TargetSuffix)</TargetName>
       </PropertyGroup>
     </When>
     <When Condition="'$(OutputType)'=='StaticLibrary'">
