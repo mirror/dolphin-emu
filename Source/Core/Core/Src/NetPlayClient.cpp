@@ -137,8 +137,8 @@ unsigned int NetPlayClient::OnData(sf::Packet& packet)
 			packet >> player.revision;
 
 			{
-			std::lock_guard<std::recursive_mutex> lkp(m_crit.players);
-			m_players[player.pid] = player;
+				std::lock_guard<std::recursive_mutex> lk(m_crit);
+				m_players[player.pid] = player;
 			}
 
 			m_dialog->Update();
@@ -151,8 +151,8 @@ unsigned int NetPlayClient::OnData(sf::Packet& packet)
 			packet >> pid;
 
 			{
-			std::lock_guard<std::recursive_mutex> lkp(m_crit.players);
-			m_players.erase(m_players.find(pid));
+				std::lock_guard<std::recursive_mutex> lk(m_crit);
+				m_players.erase(m_players.find(pid));
 			}
 
 			m_dialog->Update();
@@ -242,8 +242,8 @@ unsigned int NetPlayClient::OnData(sf::Packet& packet)
 	case NP_MSG_CHANGE_GAME :
 		{
 			{
-			std::lock_guard<std::recursive_mutex> lkg(m_crit.game);
-			packet >> m_selected_game;
+				std::lock_guard<std::recursive_mutex> lk(m_crit);
+				packet >> m_selected_game;
 			}
 
 			// update gui
@@ -254,17 +254,17 @@ unsigned int NetPlayClient::OnData(sf::Packet& packet)
 	case NP_MSG_START_GAME :
 		{
 			{
-			std::lock_guard<std::recursive_mutex> lkg(m_crit.game);
-			packet >> m_current_game;
-			packet >> g_NetPlaySettings.m_CPUthread;
-			packet >> g_NetPlaySettings.m_DSPEnableJIT;
-			packet >> g_NetPlaySettings.m_DSPHLE;
-			packet >> g_NetPlaySettings.m_WriteToMemcard;
-			int tmp;
-			packet >> tmp;
-			g_NetPlaySettings.m_EXIDevice[0] = (TEXIDevices) tmp;
-			packet >> tmp;
-			g_NetPlaySettings.m_EXIDevice[1] = (TEXIDevices) tmp;
+				std::lock_guard<std::recursive_mutex> lk(m_crit);
+				packet >> m_current_game;
+				packet >> g_NetPlaySettings.m_CPUthread;
+				packet >> g_NetPlaySettings.m_DSPEnableJIT;
+				packet >> g_NetPlaySettings.m_DSPHLE;
+				packet >> g_NetPlaySettings.m_WriteToMemcard;
+				int tmp;
+				packet >> tmp;
+				g_NetPlaySettings.m_EXIDevice[0] = (TEXIDevices) tmp;
+				packet >> tmp;
+				g_NetPlaySettings.m_EXIDevice[1] = (TEXIDevices) tmp;
 			}
 
 			m_dialog->OnMsgStartGame();
@@ -280,7 +280,7 @@ unsigned int NetPlayClient::OnData(sf::Packet& packet)
 	case NP_MSG_DISABLE_GAME :
 		{
 			PanicAlertT("Other client disconnected while game is running!! NetPlay is disabled. You manually stop the game.");
-			std::lock_guard<std::recursive_mutex> lkg(m_crit.game);
+			std::lock_guard<std::recursive_mutex> lk(m_crit);
 			m_is_running = false;
 			NetPlay_Disable();
 		}
@@ -295,7 +295,7 @@ unsigned int NetPlayClient::OnData(sf::Packet& packet)
 			spac << (MessageId)NP_MSG_PONG;
 			spac << ping_key;
 
-			std::lock_guard<std::recursive_mutex> lks(m_crit.send);
+			std::lock_guard<std::recursive_mutex> lk(m_crit);
 			m_socket.Send(spac);
 		}
 		break;
@@ -306,9 +306,9 @@ unsigned int NetPlayClient::OnData(sf::Packet& packet)
 			packet >> pid;
 
 			{
-			std::lock_guard<std::recursive_mutex> lkp(m_crit.players);
-			Player& player = m_players[pid];
-			packet >> player.ping;
+				std::lock_guard<std::recursive_mutex> lk(m_crit);
+				Player& player = m_players[pid];
+				packet >> player.ping;
 			}
 
 			m_dialog->Update();
@@ -358,7 +358,7 @@ void NetPlayClient::ThreadFunc()
 // called from ---GUI--- thread
 void NetPlayClient::GetPlayerList(std::string& list, std::vector<int>& pid_list)
 {
-	std::lock_guard<std::recursive_mutex> lkp(m_crit.players);
+	std::lock_guard<std::recursive_mutex> lk(m_crit);
 
 	std::ostringstream ss;
 
@@ -393,7 +393,7 @@ void NetPlayClient::GetPlayerList(std::string& list, std::vector<int>& pid_list)
 // called from ---GUI--- thread
 void NetPlayClient::GetPlayers(std::vector<const Player *> &player_list)
 {
-	std::lock_guard<std::recursive_mutex> lkp(m_crit.players);
+	std::lock_guard<std::recursive_mutex> lk(m_crit);
 	std::map<PlayerId, Player>::const_iterator
 		i = m_players.begin(),
 		e = m_players.end();
@@ -412,7 +412,7 @@ void NetPlayClient::SendChatMessage(const std::string& msg)
 	spac << (MessageId)NP_MSG_CHAT_MESSAGE;
 	spac << msg;
 
-	std::lock_guard<std::recursive_mutex> lks(m_crit.send);
+	std::lock_guard<std::recursive_mutex> lk(m_crit);
 	m_socket.Send(spac);
 }
 
@@ -425,7 +425,7 @@ void NetPlayClient::SendPadState(const PadMapping in_game_pad, const NetPad& np)
 	spac << in_game_pad;
 	spac << np.nHi << np.nLo;
 
-	std::lock_guard<std::recursive_mutex> lks(m_crit.send);
+	std::lock_guard<std::recursive_mutex> lk(m_crit);
 	m_socket.Send(spac);
 }
 
@@ -441,14 +441,14 @@ void NetPlayClient::SendWiimoteState(const PadMapping in_game_pad, const NetWiim
 	for (unsigned int i = 0; i < size; ++i)
 		spac << nw.data()[i];
 
-	std::lock_guard<std::recursive_mutex> lks(m_crit.send);
+	std::lock_guard<std::recursive_mutex> lk(m_crit);
 	m_socket.Send(spac);
 }
 
 // called from ---GUI--- thread
 bool NetPlayClient::StartGame(const std::string &path)
 {
-	std::lock_guard<std::recursive_mutex> lkg(m_crit.game);
+	std::lock_guard<std::recursive_mutex> lk(m_crit);
 
 	// tell server i started the game
 	sf::Packet spac;
@@ -456,7 +456,6 @@ bool NetPlayClient::StartGame(const std::string &path)
 	spac << m_current_game;
 	spac << (char *)&g_NetPlaySettings;
 
-	std::lock_guard<std::recursive_mutex> lks(m_crit.send);
 	m_socket.Send(spac);
 
 	if (m_is_running)
@@ -636,42 +635,42 @@ bool NetPlayClient::WiimoteUpdate(int _number, u8* data, const u8 size)
 	NetWiimote nw;
 	static u8 previousSize[4] = {4,4,4,4};
 	{
-	std::lock_guard<std::recursive_mutex> lkp(m_crit.players);
+		std::lock_guard<std::recursive_mutex> lk(m_crit);
 
-	// in game mapping for this local wiimote
-	unsigned int in_game_num = LocalWiimoteToInGameWiimote(_number);
-	// does this local wiimote map in game?
-	if (in_game_num < 4)
-	{
-		if (previousSize[in_game_num] == size)
+		// in game mapping for this local wiimote
+		unsigned int in_game_num = LocalWiimoteToInGameWiimote(_number);
+		// does this local wiimote map in game?
+		if (in_game_num < 4)
 		{
-			nw.assign(data, data + size);
-			do
+			if (previousSize[in_game_num] == size)
 			{
-				// add to buffer
-				m_wiimote_buffer[in_game_num].Push(nw);
+				nw.assign(data, data + size);
+				do
+				{
+					// add to buffer
+					m_wiimote_buffer[in_game_num].Push(nw);
 
-				SendWiimoteState(in_game_num, nw);
-			} while (m_wiimote_buffer[in_game_num].Size() <= m_target_buffer_size * 200 / 120); // TODO: add a seperate setting for wiimote buffer?
-		}
-		else
-		{
-			while (m_wiimote_buffer[in_game_num].Size() > 0)
-			{
-				// Reporting mode changed, so previous buffer is no good.
-				m_wiimote_buffer[in_game_num].Pop();
+					SendWiimoteState(in_game_num, nw);
+				} while (m_wiimote_buffer[in_game_num].Size() <= m_target_buffer_size * 200 / 120); // TODO: add a seperate setting for wiimote buffer?
 			}
-			nw.resize(size, 0);
+			else
+			{
+				while (m_wiimote_buffer[in_game_num].Size() > 0)
+				{
+					// Reporting mode changed, so previous buffer is no good.
+					m_wiimote_buffer[in_game_num].Pop();
+				}
+				nw.resize(size, 0);
 
-			m_wiimote_buffer[in_game_num].Push(nw);
-			m_wiimote_buffer[in_game_num].Push(nw);
-			m_wiimote_buffer[in_game_num].Push(nw);
-			m_wiimote_buffer[in_game_num].Push(nw);
-			m_wiimote_buffer[in_game_num].Push(nw);
-			m_wiimote_buffer[in_game_num].Push(nw);
-			previousSize[in_game_num] = size;
+				m_wiimote_buffer[in_game_num].Push(nw);
+				m_wiimote_buffer[in_game_num].Push(nw);
+				m_wiimote_buffer[in_game_num].Push(nw);
+				m_wiimote_buffer[in_game_num].Push(nw);
+				m_wiimote_buffer[in_game_num].Push(nw);
+				m_wiimote_buffer[in_game_num].Push(nw);
+				previousSize[in_game_num] = size;
+			}
 		}
-	}
 
 	} // unlock players
 
@@ -728,9 +727,9 @@ bool NetPlayClient::WiimoteUpdate(int _number, u8* data, const u8 size)
 // called from ---GUI--- thread and ---NETPLAY--- thread (client side)
 bool NetPlayClient::StopGame()
 {
-	std::lock_guard<std::recursive_mutex> lkg(m_crit.game);
+	std::lock_guard<std::recursive_mutex> lk(m_crit);
 
-	if (false == m_is_running)
+	if (!m_is_running)
 	{
 		PanicAlertT("Game isn't running!");
 		return false;

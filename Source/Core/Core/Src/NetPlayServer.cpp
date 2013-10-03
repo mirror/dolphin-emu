@@ -45,7 +45,6 @@ void NetPlayServer::ThreadFunc()
 			spac << (MessageId)NP_MSG_PING;
 			spac << m_ping_key;
 			
-			std::lock_guard<std::recursive_mutex> lks(m_crit.send);
 			m_ping_timer.Start();
 			SendToClients(spac);
 
@@ -66,7 +65,7 @@ void NetPlayServer::ThreadFunc()
 
 				unsigned int error;
 				{
-				std::lock_guard<std::recursive_mutex> lkg(m_crit.game);
+				std::lock_guard<std::recursive_mutex> lk(m_crit);
 				error = OnConnect(accept_socket);
 				}
 
@@ -95,7 +94,7 @@ void NetPlayServer::ThreadFunc()
 				//case sf::Socket::Disconnected :
 				default :
 					{
-					std::lock_guard<std::recursive_mutex> lkg(m_crit.game);
+					std::lock_guard<std::recursive_mutex> lk(m_crit);
 					OnDisconnect(ready_socket);
 					break;
 					}
@@ -158,8 +157,7 @@ unsigned int NetPlayServer::OnConnect(sf::SocketTCP& socket)
 		}
 	}
 
-	{
-	std::lock_guard<std::recursive_mutex> lks(m_crit.send);
+	std::lock_guard<std::recursive_mutex> lk(m_crit);
 
 	// send join message to already connected clients
 	sf::Packet spac;
@@ -200,17 +198,9 @@ unsigned int NetPlayServer::OnConnect(sf::SocketTCP& socket)
 		socket.Send(spac);
 	}
 
-	} // unlock send
-
-	// add client to the player list
-	{
-	std::lock_guard<std::recursive_mutex> lkp(m_crit.players);
 	m_players[socket] = player;
-	std::lock_guard<std::recursive_mutex> lks(m_crit.send);
 	UpdatePadMapping();	// sync pad mappings with everyone
 	UpdateWiimoteMapping();
-	}
-	
 
 	// add client to selector/ used for receiving
 	m_selector.Add(socket);
@@ -224,13 +214,12 @@ unsigned int NetPlayServer::OnDisconnect(sf::SocketTCP& socket)
 	if (m_is_running)
 	{
 		PanicAlertT("Client disconnect while game is running!! NetPlay is disabled. You must manually stop the game.");
-		std::lock_guard<std::recursive_mutex> lkg(m_crit.game);
+		std::lock_guard<std::recursive_mutex> lk(m_crit);
 		m_is_running = false;
 
 		sf::Packet spac;
 		spac << (MessageId)NP_MSG_DISABLE_GAME;
 		// this thread doesn't need players lock
-		std::lock_guard<std::recursive_mutex> lks(m_crit.send);
 		SendToClients(spac);
 	}
 
@@ -242,11 +231,10 @@ unsigned int NetPlayServer::OnDisconnect(sf::SocketTCP& socket)
 
 	m_selector.Remove(socket);
 	
-	std::lock_guard<std::recursive_mutex> lkp(m_crit.players);
+	std::lock_guard<std::recursive_mutex> lk(m_crit);
 	m_players.erase(m_players.find(socket));
 
 	// alert other players of disconnect
-	std::lock_guard<std::recursive_mutex> lks(m_crit.send);
 	SendToClients(spac);
 
 	for (int i = 0; i < 4; i++)
@@ -314,8 +302,6 @@ void NetPlayServer::UpdateWiimoteMapping()
 // called from ---GUI--- thread and ---NETPLAY--- thread
 void NetPlayServer::AdjustPadBufferSize(unsigned int size)
 {
-	std::lock_guard<std::recursive_mutex> lkg(m_crit.game);
-
 	m_target_buffer_size = size;
 
 	// tell clients to change buffer size
@@ -323,8 +309,6 @@ void NetPlayServer::AdjustPadBufferSize(unsigned int size)
 	spac << (MessageId)NP_MSG_PAD_BUFFER;
 	spac << (u32)m_target_buffer_size;
 
-	std::lock_guard<std::recursive_mutex> lkp(m_crit.players);
-	std::lock_guard<std::recursive_mutex> lks(m_crit.send);
 	SendToClients(spac);
 }
 
@@ -352,8 +336,7 @@ unsigned int NetPlayServer::OnData(sf::Packet& packet, sf::SocketTCP& socket)
 			spac << msg;
 
 			{
-			std::lock_guard<std::recursive_mutex> lks(m_crit.send);
-			SendToClients(spac, player.pid);
+				SendToClients(spac, player.pid);
 			}
 		}
 		break;
@@ -378,7 +361,6 @@ unsigned int NetPlayServer::OnData(sf::Packet& packet, sf::SocketTCP& socket)
 			spac << (MessageId)NP_MSG_PAD_DATA;
 			spac << map << hi << lo;
 
-			std::lock_guard<std::recursive_mutex> lks(m_crit.send);
 			SendToClients(spac, player.pid);
 		}
 		break;
@@ -414,7 +396,6 @@ unsigned int NetPlayServer::OnData(sf::Packet& packet, sf::SocketTCP& socket)
 
 			delete[] data;
 
-			std::lock_guard<std::recursive_mutex> lks(m_crit.send);
 			SendToClients(spac, player.pid);
 		}
 		break;
@@ -433,7 +414,6 @@ unsigned int NetPlayServer::OnData(sf::Packet& packet, sf::SocketTCP& socket)
 			spac << player.pid;
 			spac << player.ping;
 
-			std::lock_guard<std::recursive_mutex> lks(m_crit.send);
 			SendToClients(spac);
 		}
 		break;
@@ -450,8 +430,6 @@ unsigned int NetPlayServer::OnData(sf::Packet& packet, sf::SocketTCP& socket)
 			sf::Packet spac;
 			spac << (MessageId)NP_MSG_STOP_GAME;
 
-			std::lock_guard<std::recursive_mutex> lkp(m_crit.players);
-			std::lock_guard<std::recursive_mutex> lks(m_crit.send);
 			SendToClients(spac);
 
 			m_is_running = false;
@@ -476,15 +454,13 @@ void NetPlayServer::SendChatMessage(const std::string& msg)
 	spac << (PlayerId)0;	// server id always 0
 	spac << msg;
 
-	std::lock_guard<std::recursive_mutex> lkp(m_crit.players);
-	std::lock_guard<std::recursive_mutex> lks(m_crit.send);
 	SendToClients(spac);
 }
 
 // called from ---GUI--- thread
 bool NetPlayServer::ChangeGame(const std::string &game)
 {
-	std::lock_guard<std::recursive_mutex> lkg(m_crit.game);
+	std::lock_guard<std::recursive_mutex> lk(m_crit);
 
 	m_selected_game = game;
 
@@ -493,8 +469,6 @@ bool NetPlayServer::ChangeGame(const std::string &game)
 	spac << (MessageId)NP_MSG_CHANGE_GAME;
 	spac << game;
 
-	std::lock_guard<std::recursive_mutex> lkp(m_crit.players);
-	std::lock_guard<std::recursive_mutex> lks(m_crit.send);
 	SendToClients(spac);
 
 	return true;
@@ -509,7 +483,7 @@ void NetPlayServer::SetNetSettings(const NetSettings &settings)
 // called from ---GUI--- thread
 bool NetPlayServer::StartGame(const std::string &path)
 {
-	std::lock_guard<std::recursive_mutex> lkg(m_crit.game);
+	std::lock_guard<std::recursive_mutex> lk(m_crit);
 	m_current_game = Common::Timer::GetTimeMs();
 
 	// no change, just update with clients
@@ -526,8 +500,6 @@ bool NetPlayServer::StartGame(const std::string &path)
 	spac << m_settings.m_EXIDevice[0];
 	spac << m_settings.m_EXIDevice[1];
 
-	std::lock_guard<std::recursive_mutex> lkp(m_crit.players);
-	std::lock_guard<std::recursive_mutex> lks(m_crit.send);
 	SendToClients(spac);
 
 	m_is_running = true;
@@ -538,6 +510,7 @@ bool NetPlayServer::StartGame(const std::string &path)
 // called from multiple threads
 void NetPlayServer::SendToClients(sf::Packet& packet, const PlayerId skip_pid)
 {
+	std::lock_guard<std::recursive_mutex> lk(m_crit);
 	std::map<sf::SocketTCP, Client>::iterator
 		i = m_players.begin(),
 		e = m_players.end();

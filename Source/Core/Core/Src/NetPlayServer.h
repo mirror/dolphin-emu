@@ -78,12 +78,7 @@ private:
 
 	std::map<sf::SocketTCP, Client>	m_players;
 
-	struct
-	{
-		std::recursive_mutex game;
-		// lock order
-		std::recursive_mutex players, send;
-	} m_crit;
+	std::recursive_mutex m_crit;
 
 	std::string m_selected_game;
 

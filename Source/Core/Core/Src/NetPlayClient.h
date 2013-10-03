@@ -92,12 +92,7 @@ public:
 protected:
 	void ClearBuffers();
 
-	struct
-	{
-		std::recursive_mutex game;
-		// lock order
-		std::recursive_mutex players, send;
-	} m_crit;
+	std::recursive_mutex m_crit;
 
 	Common::FifoQueue<NetPad>		m_pad_buffer[4];
 	Common::FifoQueue<NetWiimote>	m_wiimote_buffer[4];
