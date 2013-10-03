@@ -1,13 +1,26 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
-    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
+  <!--Set the output path based on whether we're making an exe or lib-->
+  <Choose>
+    <When Condition="'$(OutputType)'=='Exe'">
+      <PropertyGroup>
+        <OutDir>..\..\..\Binary\$(PlatformName)\</OutDir>
+      </PropertyGroup>
+    </When>
+    <When Condition="'$(OutputType)'=='Library'">
+      <PropertyGroup>
+        <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+      </PropertyGroup>
+    </When>
+  </Choose>
   <ItemDefinitionGroup>
     <ClCompile>
+      <!--Allow compile-time testing of whether DXSDK (aka DX before integration into VS) is present-->
       <PreprocessorDefinitions Condition="Exists('$(DXSDK_DIR)')">HAVE_DXSDK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;USE_UPNP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
@@ -21,10 +34,15 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <BaseAddress>0x00400000</BaseAddress>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-      <FixedBaseAddress>true</FixedBaseAddress>
     </Link>
+    <Link Condition="'$(OutputType)'=='Exe'">
+        <!--following 3 settings only needed for dolphin itself (not dsptool, etc)-->
+        <BaseAddress>0x00400000</BaseAddress>
+        <RandomizedBaseAddress>false</RandomizedBaseAddress>
+        <FixedBaseAddress>true</FixedBaseAddress>
+        <AdditionalLibraryDirectories>..\..\..\Externals\SDL\$(PlatformName);..\..\..\Externals\OpenAL\$(PlatformName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+        <AdditionalDependencies>dsound.lib;iphlpapi.lib;winmm.lib;setupapi.lib;vfw32.lib;opengl32.lib;glu32.lib;rpcrt4.lib;comctl32.lib;OpenAL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories>..\..\..\Externals\wxWidgets3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
