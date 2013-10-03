@@ -121,8 +121,15 @@ public:
 	template <typename T>
 	void DoArray(T* x, u32 count)
 	{
-		for (u32 i = 0; i != count; ++i)
-			Do(x[i]);
+		if (std::is_pod<T>::value)
+		{
+			DoVoid(x, count * sizeof(T));
+		}
+		else
+		{
+			for (u32 i = 0; i != count; ++i)
+				Do(x[i]);
+		}
 	}
 
 	template <typename T>
