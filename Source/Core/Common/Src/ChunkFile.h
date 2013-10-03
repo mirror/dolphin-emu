@@ -255,8 +255,30 @@ private:
 
 	void DoVoid(void *data, u32 size)
 	{
-		for(u32 i = 0; i != size; ++i)
-			DoByte(reinterpret_cast<u8*>(data)[i]);
+		switch (mode)
+		{
+		case MODE_READ:
+			memcpy(data, *ptr, size);
+			break;
+
+		case MODE_WRITE:
+			memcpy(*ptr, data, size);
+			break;
+
+		case MODE_MEASURE:
+			break;
+
+		case MODE_VERIFY:
+			_dbg_assert_msg_(COMMON, !memcmp(data, *ptr, size),
+				"Savestate verification failure at %p\n",
+				*ptr);
+			break;
+
+		default:
+			break;
+		}
+
+		*ptr += size;
 	}
 };
 
