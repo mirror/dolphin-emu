@@ -3,30 +3,51 @@
 // Refer to the license.txt file included.
 
 #include "NetPlayServer.h"
+// for ENetUtils
+#include "NetPlayClient.h"
+
+#define MAX_CLIENTS 200
 
 NetPlayServer::~NetPlayServer()
 {
-	if (m_IsConnected)
+	if (m_host)
 	{
 		m_do_loop = false;
+		ENetUtil::Wakeup(m_host);
 		m_thread.join();
-		m_socket.Close();
+		enet_host_destroy(m_host);
 	}
 }
 
 // called from ---GUI--- thread
-NetPlayServer::NetPlayServer(const u16 port) : m_IsConnected(false), m_is_running(false)
+NetPlayServer::NetPlayServer()
 {
+	m_IsConnected = false;
+	m_is_running = false;
+	m_num_players = 0;
 	memset(m_pad_map, -1, sizeof(m_pad_map));
 	memset(m_wiimote_map, -1, sizeof(m_wiimote_map));
-	if (m_socket.Listen(port))
-	{
-		m_IsConnected = true;
-		m_do_loop = true;
-		m_selector.Add(m_socket);
-		m_thread = std::thread(std::mem_fun(&NetPlayServer::ThreadFunc), this);
-		m_target_buffer_size = 20;
-	}
+
+	ENetAddress address;
+	address.host = ENET_HOST_ANY;
+	address.port = ENET_PORT_ANY;
+	// leave some spaces free for server full notification
+	m_host = enet_host_create(
+		&address, // address
+		MAX_CLIENTS + 16, // peerCount
+		1, // channelLimit
+		0, // incomingBandwidth
+		0); // outgoingBandwidth
+
+	if (m_host == NULL)
+		return;
+
+	m_host->intercept = ENetUtil::InterceptCallback;
+
+	m_do_loop = true;
+	m_target_buffer_size = 20;
+	m_thread = std::thread(std::mem_fun(&NetPlayServer::ThreadFunc), this);
+	m_IsConnected = true;
 }
 
 // called from ---NETPLAY--- thread
@@ -41,91 +62,63 @@ void NetPlayServer::ThreadFunc()
 
 			m_ping_key = Common::Timer::GetTimeMs();
 
-			sf::Packet spac;
-			spac << (MessageId)NP_MSG_PING;
-			spac << m_ping_key;
-			
+			Packet ping;
+			ping.W((MessageId)NP_MSG_PING);
+			ping.W(m_ping_key);
+
 			m_ping_timer.Start();
-			SendToClients(spac);
+			SendToClientsOnThread(ping);
 
 			m_update_pings = false;
 		}
 
-		// check which sockets need attention
-		const unsigned int num = m_selector.Wait(0.01f);
-		for (unsigned int i=0; i<num; ++i)
+		// handle pending messages
+		while (!m_queue.Empty())
 		{
-			sf::SocketTCP ready_socket = m_selector.GetSocketReady(i);
+			auto& out = m_queue.Front();
+			SendToClientsOnThread(out.first, out.second);
+			m_queue.Pop();
+		}
 
-			// listening socket
-			if (ready_socket == m_socket)
-			{
-				sf::SocketTCP accept_socket;
-				m_socket.Accept(accept_socket);
+		ENetEvent event;
+		int count = enet_host_service(m_host, &event, 10000);
+		if (count < 0)
+		{
+			PanicAlert("Wait failed... do something about this.");
+			continue;
+		}
 
-				unsigned int error;
-				{
-				std::lock_guard<std::recursive_mutex> lk(m_crit);
-				error = OnConnect(accept_socket);
-				}
+		if (count == 0)
+			continue;
 
-				if (error)
-				{
-					sf::Packet spac;
-					spac << (MessageId)error;
-					// don't need to lock, this client isn't in the client map
-					accept_socket.Send(spac);
-
-					// TODO: not sure if client gets the message if i close right away
-					accept_socket.Close();
-				}
-			}
-			// client socket
-			else
-			{
-				sf::Packet rpac;
-				switch (ready_socket.Receive(rpac))
-				{
-				case sf::Socket::Done :
-					// if a bad packet is received, disconnect the client
-					if (0 == OnData(rpac, ready_socket))
-						break;
-
-				//case sf::Socket::Disconnected :
-				default :
-					{
-					std::lock_guard<std::recursive_mutex> lk(m_crit);
-					OnDisconnect(ready_socket);
-					break;
-					}
-				}
-			}
+		PlayerId pid = event.peer - m_host->peers;
+		switch (event.type)
+		{
+		case ENET_EVENT_TYPE_DISCONNECT:
+			OnDisconnect(pid);
+			break;
+		case ENET_EVENT_TYPE_RECEIVE:
+			OnData(pid, ENetUtil::MakePacket(event.packet));
+			break;
+		default:
+			// notably, ignore connects until we get a hello message
+			break;
 		}
 	}
-
-	// close listening socket and client sockets
-	{
-	std::map<sf::SocketTCP, Client>::reverse_iterator
-		i = m_players.rbegin(),
-		e = m_players.rend();
-	for ( ; i!=e; ++i)
-		i->second.socket.Close();
-	}
-
-	return;
 }
 
 // called from ---NETPLAY--- thread
-unsigned int NetPlayServer::OnConnect(sf::SocketTCP& socket)
+MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 {
-	sf::Packet rpac;
-	// TODO: make this not hang / check if good packet
-	socket.Receive(rpac);
+	Client& player = m_players[pid];
+	ENetPeer* peer = &m_host->peers[pid];
 
 	std::string npver;
-	rpac >> npver;
+	hello.Do(npver);
+	hello.Do(player.revision);
+	hello.Do(player.name);
 	// dolphin netplay version
-	if (npver != NETPLAY_VERSION)
+	if (hello.failure || npver != NETPLAY_VERSION)
 		return CON_ERR_VERSION_MISMATCH;
 
 	// game is currently running
@@ -133,109 +126,107 @@ unsigned int NetPlayServer::OnConnect(sf::SocketTCP& socket)
 		return CON_ERR_GAME_RUNNING;
 
 	// too many players
-	if (m_players.size() >= 255)
+	if (m_num_players >= MAX_CLIENTS)
 		return CON_ERR_SERVER_FULL;
 
 	// cause pings to be updated
 	m_update_pings = true;
-
-	Client player;
-	player.socket = socket;
-	rpac >> player.revision;
-	rpac >> player.name;
-
-	// give new client first available id
-	player.pid = m_players.size() + 1;
 
 	// try to automatically assign new user a pad
 	for (unsigned int m = 0; m < 4; ++m)
 	{
 		if (m_pad_map[m] == -1)
 		{
-			m_pad_map[m] = player.pid;
+			m_pad_map[m] = pid;
 			break;
 		}
 	}
 
-	std::lock_guard<std::recursive_mutex> lk(m_crit);
-
 	// send join message to already connected clients
-	sf::Packet spac;
-	spac << (MessageId)NP_MSG_PLAYER_JOIN;
-	spac << player.pid << player.name << player.revision;
-	SendToClients(spac);
+	{
+		Packet opacket;
+		opacket.W((MessageId)NP_MSG_PLAYER_JOIN);
+		opacket.W(pid);
+		opacket.W(player.name);
+		opacket.W(player.revision);
+		SendToClientsOnThread(opacket);
+	}
 
 	// send new client success message with their id
-	spac.Clear();
-	spac << (MessageId)0;
-	spac << player.pid;
-	socket.Send(spac);
+	{
+		Packet opacket;
+		opacket.W((MessageId)0);
+		opacket.W(pid);
+		ENetUtil::SendPacket(peer, opacket);
+	}
 
 	// send new client the selected game
-	if (m_selected_game != "")
 	{
-		spac.Clear();
-		spac << (MessageId)NP_MSG_CHANGE_GAME;
-		spac << m_selected_game;
-		socket.Send(spac);
+		std::lock_guard<std::recursive_mutex> lk(m_crit);
+		if (m_selected_game != "")
+		{
+			Packet opacket;
+			opacket.W((MessageId)NP_MSG_CHANGE_GAME);
+			opacket.W(m_selected_game);
+			ENetUtil::SendPacket(peer, opacket);
+		}
 	}
 
-	// send the pad buffer value
-	spac.Clear();
-	spac << (MessageId)NP_MSG_PAD_BUFFER;
-	spac << (u32)m_target_buffer_size;
-	socket.Send(spac);
-
-	// sync values with new client
-	std::map<sf::SocketTCP, Client>::const_iterator
-		i,
-		e = m_players.end();
-	for (i = m_players.begin(); i!=e; ++i)
 	{
-		spac.Clear();
-		spac << (MessageId)NP_MSG_PLAYER_JOIN;
-		spac << i->second.pid << i->second.name << i->second.revision;
-		socket.Send(spac);
+		// send the pad buffer value
+		Packet opacket;
+		opacket.W((MessageId)NP_MSG_PAD_BUFFER);
+		opacket.W((u32)m_target_buffer_size);
+		ENetUtil::SendPacket(peer, opacket);
 	}
 
-	m_players[socket] = player;
+	// send players
+	for (auto it = m_players.begin(); it != m_players.end(); ++it)
+	{
+		Client& oplayer = *it;
+		if (oplayer.connected)
+		{
+			Packet opacket;
+			opacket.W((MessageId)NP_MSG_PLAYER_JOIN);
+			opacket.W(pid);
+			opacket.W(oplayer.name);
+			opacket.W(oplayer.revision);
+			ENetUtil::SendPacket(peer, opacket);
+		}
+	}
+
 	UpdatePadMapping();	// sync pad mappings with everyone
 	UpdateWiimoteMapping();
-
-	// add client to selector/ used for receiving
-	m_selector.Add(socket);
 
 	return 0;
 }
 
 // called from ---NETPLAY--- thread
-unsigned int NetPlayServer::OnDisconnect(sf::SocketTCP& socket)
+void NetPlayServer::OnDisconnect(PlayerId pid)
 {
+	Client& player = m_players[pid];
+
+	if (!player.connected)
+		return;
+
 	if (m_is_running)
 	{
-		PanicAlertT("Client disconnect while game is running!! NetPlay is disabled. You must manually stop the game.");
-		std::lock_guard<std::recursive_mutex> lk(m_crit);
+		PanicAlertT("A client disconnected while game is running.  NetPlay is disabled.  You must manually stop the game.");
 		m_is_running = false;
 
-		sf::Packet spac;
-		spac << (MessageId)NP_MSG_DISABLE_GAME;
-		// this thread doesn't need players lock
-		SendToClients(spac);
+		Packet opacket;
+		opacket.W((MessageId)NP_MSG_DISABLE_GAME);
+		SendToClientsOnThread(opacket);
 	}
 
-	PlayerId pid = m_players[socket].pid;
+	player.connected = false;
 
-	sf::Packet spac;
-	spac << (MessageId)NP_MSG_PLAYER_LEAVE;
-	spac << pid;
-
-	m_selector.Remove(socket);
-	
-	std::lock_guard<std::recursive_mutex> lk(m_crit);
-	m_players.erase(m_players.find(socket));
+	Packet opacket;
+	opacket.W((MessageId)NP_MSG_PLAYER_LEAVE);
+	opacket.W(pid);
 
 	// alert other players of disconnect
-	SendToClients(spac);
+	SendToClientsOnThread(opacket);
 
 	for (int i = 0; i < 4; i++)
 		if (m_pad_map[i] == pid)
@@ -246,8 +237,6 @@ unsigned int NetPlayServer::OnDisconnect(sf::SocketTCP& socket)
 		if (m_wiimote_map[i] == pid)
 			m_wiimote_map[i] = -1;
 	UpdateWiimoteMapping();
-
-	return 0;
 }
 
 // called from ---GUI--- thread
@@ -282,21 +271,19 @@ void NetPlayServer::SetWiimoteMapping(const PadMapping map[4])
 // called from ---GUI--- thread and ---NETPLAY--- thread
 void NetPlayServer::UpdatePadMapping()
 {
-	sf::Packet spac;
-	spac << (MessageId)NP_MSG_PAD_MAPPING;
-	for (int i = 0; i < 4; i++)
-		spac << m_pad_map[i];
-	SendToClients(spac);
+	Packet opacket;
+	opacket.W((MessageId)NP_MSG_PAD_MAPPING);
+	opacket.DoArray(m_pad_map, 4);
+	SendToClients(opacket);
 }
 
-// called from ---NETPLAY--- thread
+// called from ---GUI--- thread and ---NETPLAY--- thread
 void NetPlayServer::UpdateWiimoteMapping()
 {
-	sf::Packet spac;
-	spac << (MessageId)NP_MSG_WIIMOTE_MAPPING;
-	for (int i = 0; i < 4; i++)
-		spac << m_wiimote_map[i];
-	SendToClients(spac);
+	Packet opacket;
+	opacket.W((MessageId)NP_MSG_WIIMOTE_MAPPING);
+	opacket.DoArray(m_wiimote_map, 4);
+	SendToClients(opacket);
 }
 
 // called from ---GUI--- thread and ---NETPLAY--- thread
@@ -305,39 +292,60 @@ void NetPlayServer::AdjustPadBufferSize(unsigned int size)
 	m_target_buffer_size = size;
 
 	// tell clients to change buffer size
-	sf::Packet spac;
-	spac << (MessageId)NP_MSG_PAD_BUFFER;
-	spac << (u32)m_target_buffer_size;
-
-	SendToClients(spac);
+	Packet opacket;
+	opacket.W((MessageId)NP_MSG_PAD_BUFFER);
+	opacket.W(m_target_buffer_size);
+	SendToClients(opacket);
 }
 
 // called from ---NETPLAY--- thread
-unsigned int NetPlayServer::OnData(sf::Packet& packet, sf::SocketTCP& socket)
+void NetPlayServer::OnData(PlayerId pid, Packet&& packet)
 {
-	MessageId mid;
-	packet >> mid;
+	ENetPeer* peer = &m_host->peers[pid];
+	if (pid >= m_players.size())
+		m_players.resize(pid + 1);
+	Client& player = m_players[pid];
+	if (!player.connected)
+	{
+		// new client
+		MessageId error = OnConnect(pid, packet);
+		if (error)
+		{
+			Packet opacket;
+			opacket.W(error);
+			opacket.W((PlayerId)0);
+			ENetUtil::SendPacket(peer, opacket);
+			enet_peer_disconnect_later(peer, 0);
+		}
+		else
+		{
+			player.connected = true;
+			m_num_players++;
+		}
+		return;
+	}
 
-	// don't need lock because this is the only thread that modifies the players
-	// only need locks for writes to m_players in this thread
-	Client& player = m_players[socket];
+	MessageId mid;
+	packet.Do(mid);
+	if (packet.failure)
+		return OnDisconnect(pid);
 
 	switch (mid)
 	{
 	case NP_MSG_CHAT_MESSAGE :
 		{
 			std::string msg;
-			packet >> msg;
+			packet.Do(msg);
+			if (packet.failure)
+				return OnDisconnect(pid);
 
 			// send msg to other clients
-			sf::Packet spac;
-			spac << (MessageId)NP_MSG_CHAT_MESSAGE;
-			spac << player.pid;
-			spac << msg;
+			Packet opacket;
+			opacket.W((MessageId)NP_MSG_CHAT_MESSAGE);
+			opacket.W(pid);
+			opacket.W(msg);
 
-			{
-				SendToClients(spac, player.pid);
-			}
+			SendToClientsOnThread(opacket, pid);
 		}
 		break;
 
@@ -347,21 +355,21 @@ unsigned int NetPlayServer::OnData(sf::Packet& packet, sf::SocketTCP& socket)
 			if (player.current_game != m_current_game)
 				break;
 
-			PadMapping map = 0;
-			int hi, lo;
-			packet >> map >> hi >> lo;
+			PadMapping map;
+			u32 hi, lo;
+			packet.Do(map);
+			packet.Do(hi);
+			packet.Do(lo);
+			if (packet.failure)
+				return OnDisconnect(pid);
 
 			// If the data is not from the correct player,
 			// then disconnect them.
-			if (m_pad_map[map] != player.pid)
-				return 1;
-				
-			// Relay to clients
-			sf::Packet spac;
-			spac << (MessageId)NP_MSG_PAD_DATA;
-			spac << map << hi << lo;
+			if (m_pad_map[map] != pid)
+				return OnDisconnect(pid);
 
-			SendToClients(spac, player.pid);
+			// Relay to clients
+			SendToClients(packet, pid);
 		}
 		break;
 
@@ -371,32 +379,17 @@ unsigned int NetPlayServer::OnData(sf::Packet& packet, sf::SocketTCP& socket)
 			if (player.current_game != m_current_game)
 				break;
 
-			PadMapping map = 0;
-			u8 size;
-			packet >> map >> size;
-			u8* data = new u8[size];
-			for (unsigned int i = 0; i < size; ++i)
-				packet >> data[i];
-
+			PadMapping map;
+			NetWiimote nw;
+			packet.Do(map);
+			packet.Do(nw);
 			// If the data is not from the correct player,
 			// then disconnect them.
-			if (m_wiimote_map[map] != player.pid)
-			{
-				delete[] data;
-				return 1;
-			}
+			if (packet.failure || m_wiimote_map[map] != pid)
+				return OnDisconnect(pid);
 
 			// relay to clients
-			sf::Packet spac;
-			spac << (MessageId)NP_MSG_WIIMOTE_DATA;
-			spac << map;
-			spac << size;
-			for (unsigned int i = 0; i < size; ++i)
-				spac << data[i];
-
-			delete[] data;
-
-			SendToClients(spac, player.pid);
+			SendToClients(packet, pid);
 		}
 		break;
 
@@ -404,57 +397,47 @@ unsigned int NetPlayServer::OnData(sf::Packet& packet, sf::SocketTCP& socket)
 		{
 			const u32 ping = m_ping_timer.GetTimeElapsed();
 			u32 ping_key = 0;
-			packet >> ping_key;
+			packet.Do(ping_key);
+			if (packet.failure)
+				return OnDisconnect(pid);
 
 			if (m_ping_key == ping_key)
 				player.ping = ping;
 
-			sf::Packet spac;
-			spac << (MessageId)NP_MSG_PLAYER_PING_DATA;
-			spac << player.pid;
-			spac << player.ping;
+			Packet opacket;
+			opacket.W((MessageId)NP_MSG_PLAYER_PING_DATA);
+			opacket.W(pid);
+			opacket.W(player.ping);
 
-			SendToClients(spac);
+			SendToClientsOnThread(opacket);
 		}
 		break;
 
 	case NP_MSG_START_GAME :
 		{
-			packet >> player.current_game;
+			packet.Do(player.current_game);
+			if (packet.failure)
+				return OnDisconnect(pid);
 		}
 		break;
 
 	case NP_MSG_STOP_GAME:
 		{
 			// tell clients to stop game
-			sf::Packet spac;
-			spac << (MessageId)NP_MSG_STOP_GAME;
+			Packet opacket;
+			opacket.W((MessageId)NP_MSG_STOP_GAME);
 
-			SendToClients(spac);
+			SendToClientsOnThread(opacket);
 
 			m_is_running = false;
 		}
 		break;
 
 	default :
-		PanicAlertT("Unknown message with id:%d received from player:%d Kicking player!", mid, player.pid);
+		PanicAlertT("Unknown message with id:%d received from player:%d Kicking player!", mid, pid);
 		// unknown message, kick the client
-		return 1;
-		break;
+		return OnDisconnect(pid);
 	}
-
-	return 0;
-}
-
-// called from ---GUI--- thread / and ---NETPLAY--- thread
-void NetPlayServer::SendChatMessage(const std::string& msg)
-{
-	sf::Packet spac;
-	spac << (MessageId)NP_MSG_CHAT_MESSAGE;
-	spac << (PlayerId)0;	// server id always 0
-	spac << msg;
-
-	SendToClients(spac);
 }
 
 // called from ---GUI--- thread
@@ -465,11 +448,10 @@ bool NetPlayServer::ChangeGame(const std::string &game)
 	m_selected_game = game;
 
 	// send changed game to clients
-	sf::Packet spac;
-	spac << (MessageId)NP_MSG_CHANGE_GAME;
-	spac << game;
-
-	SendToClients(spac);
+	Packet opacket;
+	opacket.W((MessageId)NP_MSG_CHANGE_GAME);
+	opacket.W(game);
+	SendToClients(opacket);
 
 	return true;
 }
@@ -483,24 +465,23 @@ void NetPlayServer::SetNetSettings(const NetSettings &settings)
 // called from ---GUI--- thread
 bool NetPlayServer::StartGame(const std::string &path)
 {
-	std::lock_guard<std::recursive_mutex> lk(m_crit);
 	m_current_game = Common::Timer::GetTimeMs();
 
 	// no change, just update with clients
 	AdjustPadBufferSize(m_target_buffer_size);
 
 	// tell clients to start game
-	sf::Packet spac;
-	spac << (MessageId)NP_MSG_START_GAME;
-	spac << m_current_game;
-	spac << m_settings.m_CPUthread;
-	spac << m_settings.m_DSPEnableJIT;
-	spac << m_settings.m_DSPHLE;
-	spac << m_settings.m_WriteToMemcard;
-	spac << m_settings.m_EXIDevice[0];
-	spac << m_settings.m_EXIDevice[1];
+	Packet opacket;
+	opacket.W((MessageId)NP_MSG_START_GAME);
+	opacket.W(m_current_game);
+	opacket.W(m_settings.m_CPUthread);
+	opacket.W(m_settings.m_DSPEnableJIT);
+	opacket.W(m_settings.m_DSPHLE);
+	opacket.W(m_settings.m_WriteToMemcard);
+	opacket.W((int) m_settings.m_EXIDevice[0]);
+	opacket.W((int) m_settings.m_EXIDevice[1]);
 
-	SendToClients(spac);
+	SendToClients(opacket);
 
 	m_is_running = true;
 
@@ -508,13 +489,30 @@ bool NetPlayServer::StartGame(const std::string &path)
 }
 
 // called from multiple threads
-void NetPlayServer::SendToClients(sf::Packet& packet, const PlayerId skip_pid)
+void NetPlayServer::SendToClients(Packet& packet, const PlayerId skip_pid)
 {
-	std::lock_guard<std::recursive_mutex> lk(m_crit);
-	std::map<sf::SocketTCP, Client>::iterator
-		i = m_players.begin(),
-		e = m_players.end();
-	for ( ; i!=e; ++i)
-		if (i->second.pid && (i->second.pid != skip_pid))
-			i->second.socket.Send(packet);
+	m_queue.Push(std::make_pair(std::move(packet), skip_pid));
+	ENetUtil::Wakeup(m_host);
+}
+
+
+// called from ---NETPLAY--- thread
+void NetPlayServer::SendToClientsOnThread(const Packet& packet, const PlayerId skip_pid)
+{
+	ENetPacket* epacket = NULL;
+	for (size_t pid = 0; pid < m_players.size(); pid++)
+	{
+		if (pid != skip_pid &&
+		    m_players[pid].connected)
+		{
+			if (!epacket)
+				epacket = enet_packet_create((u8*) packet.vec->data(), packet.vec->size(), ENET_PACKET_FLAG_RELIABLE);
+			enet_peer_send(&m_host->peers[pid], 0, epacket);
+		}
+	}
+}
+
+u16 NetPlayServer::GetPort()
+{
+	return m_host->address.port;
 }

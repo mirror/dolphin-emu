@@ -545,7 +545,7 @@ void NetPlay::StartHosting(std::string id, wxWindow* parent)
 		return;
 	}
 
-	netplay_server.reset(new NetPlayServer(2626));
+	netplay_server.reset(new NetPlayServer());
 	netplay_server->ChangeGame(id);
 	netplay_server->AdjustPadBufferSize(INITIAL_PAD_BUFFER_SIZE);
 	if (!netplay_server->m_IsConnected)
@@ -555,7 +555,7 @@ void NetPlay::StartHosting(std::string id, wxWindow* parent)
 		return;
 	}
 	std::string nickname = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayNickname;
-	netplay_client.reset(new NetPlayClient("127.0.0.1", 2626, nickname));
+	netplay_client.reset(new NetPlayClient("127.0.0.1", netplay_server->GetPort(), nickname));
 	if (!netplay_client->m_IsConnected)
 	{
 		wxMessageBox(_("Failed to connect to localhost.  This shouldn't happen..."), _("Error"), wxOK, parent);

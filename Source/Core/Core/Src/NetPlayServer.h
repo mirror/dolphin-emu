@@ -10,25 +10,21 @@
 #include "Thread.h"
 #include "Timer.h"
 
-#include <SFML/Network.hpp>
-
 #include "NetPlayProto.h"
+#include "enet/enet.h"
+#include "FifoQueue.h"
 
 #include <functional>
-#include <map>
-#include <queue>
-#include <sstream>
 
 class NetPlayServer
 {
 public:
 	void ThreadFunc();
 
-	NetPlayServer(const u16 port);
+	NetPlayServer();
 	~NetPlayServer();
 
 	bool ChangeGame(const std::string& game);
-	void SendChatMessage(const std::string& msg);
 
 	void SetNetSettings(const NetSettings &settings);
 
@@ -44,23 +40,25 @@ public:
 
 	bool m_IsConnected;
 
+	u16 GetPort();
 private:
 	class Client
 	{
 	public:
-		PlayerId		pid;
+		Client() { connected = false; }
 		std::string		name;
 		std::string		revision;
 
-		sf::SocketTCP	socket;
 		u32 ping;
 		u32 current_game;
+		bool connected;
 	};
 
-	void SendToClients(sf::Packet& packet, const PlayerId skip_pid = 0);
-	unsigned int OnConnect(sf::SocketTCP& socket);
-	unsigned int OnDisconnect(sf::SocketTCP& socket);
-	unsigned int OnData(sf::Packet& packet, sf::SocketTCP& socket);
+	void SendToClients(Packet& packet, const PlayerId skip_pid = -1);
+	void SendToClientsOnThread(const Packet& packet, const PlayerId skip_pid = -1);
+	MessageId OnConnect(PlayerId pid, Packet& hello);
+	void OnDisconnect(PlayerId pid);
+	void OnData(PlayerId pid, Packet&& packet);
 	void UpdatePadMapping();
 	void UpdateWiimoteMapping();
 
@@ -72,19 +70,21 @@ private:
 	u32		m_ping_key;
 	bool            m_update_pings;
 	u32		m_current_game;
-	unsigned int	m_target_buffer_size;
+	u32				m_target_buffer_size;
 	PadMapping      m_pad_map[4];
 	PadMapping      m_wiimote_map[4];
 
-	std::map<sf::SocketTCP, Client>	m_players;
+	std::vector<Client>	m_players;
+	unsigned m_num_players;
 
+	// only protects m_selected_game
 	std::recursive_mutex m_crit;
 
 	std::string m_selected_game;
 
-	sf::SocketTCP m_socket;
-	std::thread m_thread;
-	sf::Selector<sf::SocketTCP> m_selector;
+	ENetHost*		m_host;
+	std::thread		m_thread;
+	Common::FifoQueue<std::pair<Packet, PlayerId /*skip_pid*/>, false> m_queue;
 };
 
 #endif
