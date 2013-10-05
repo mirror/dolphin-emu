@@ -494,7 +494,7 @@ void NetPlayClient::GetPlayerList(std::string& list, std::vector<int>& pid_list)
 	for ( ; i!=e; ++i)
 	{
 		const Player *player = &(i->second);
-		ss << player->name << "[" << (int)player->pid << "] : " << player->revision << " | ";
+		ss << player->name << "[" << (int)player->pid << "] : " << player->revision << "\n   | ";
 		for (unsigned int j = 0; j < 4; j++)
 		{
 			if (m_pad_map[j] == player->pid)
