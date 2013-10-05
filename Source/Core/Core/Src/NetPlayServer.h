@@ -13,8 +13,11 @@
 #include "NetPlayProto.h"
 #include "enet/enet.h"
 #include "FifoQueue.h"
+#include "STUNClient.h"
 
 #include <functional>
+
+class NetPlayUI;
 
 class NetPlayServer
 {
@@ -41,6 +44,18 @@ public:
 	bool m_IsConnected;
 
 	u16 GetPort();
+
+	void SetDialog(NetPlayUI* dialog);
+
+	enum STUNState
+	{
+		STILL_RUNNING,
+		STUN_OK,
+		STUN_FAILED
+	};
+	std::pair<STUNState, std::string> GetHost();
+	void RetrySTUN();
+
 private:
 	class Client
 	{
@@ -61,6 +76,9 @@ private:
 	void OnData(PlayerId pid, Packet&& packet);
 	void UpdatePadMapping();
 	void UpdateWiimoteMapping();
+
+	static int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event);
+	int Intercept(ENetEvent* event);
 
 	NetSettings     m_settings;
 
@@ -85,6 +103,13 @@ private:
 	ENetHost*		m_host;
 	std::thread		m_thread;
 	Common::FifoQueue<std::pair<Packet, PlayerId /*skip_pid*/>, false> m_queue;
+	volatile STUNState m_stun_state;
+	std::string		m_address_str;
+	STUNClient		m_stun_client;
+	NetPlayUI*		m_dialog;
+
+	// this is for the InterceptCallback; replace with a map if you care
+	static NetPlayServer*	s_instance;
 };
 
 #endif

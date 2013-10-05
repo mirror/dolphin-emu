@@ -69,6 +69,7 @@ private:
 	void OnAdjustBuffer(wxCommandEvent& event);
 	void OnConfigPads(wxCommandEvent& event);
     void OnDefocusName(wxFocusEvent& event);
+    void OnCopyIP(wxCommandEvent& event);
 	void GetNetSettings(NetSettings &settings);
 
 	wxTextCtrl*		m_name_text;
@@ -77,11 +78,14 @@ private:
 	wxTextCtrl*		m_chat_msg_text;
 	wxCheckBox*		m_memcard_write;
 	wxCheckBox*		m_record_chkbox;
-    wxStaticText*   m_ip_label;
+    wxStaticText*   m_host_label;
+    wxButton*       m_host_copy_btn;
+    bool            m_host_copy_btn_is_retry;
 
 	std::string		m_selected_game;
 	wxStaticText*	m_game_label;
 	wxButton*		m_start_btn;
+    bool            m_is_hosting;
 
 	std::vector<int>	m_playerids;
 

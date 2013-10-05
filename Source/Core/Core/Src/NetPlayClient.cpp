@@ -177,7 +177,6 @@ NetPlayClient::NetPlayClient(const std::string& address, const u16 port, const s
 		m_local_player = &m_players[m_pid];
 
 		//PanicAlertT("Connection successful: assigned player id: %d", m_pid);
-		printf("Connected!\n");
 		m_IsConnected = true;
 	}
 }

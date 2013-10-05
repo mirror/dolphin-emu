@@ -8,6 +8,8 @@
 
 #define MAX_CLIENTS 200
 
+NetPlayServer*	NetPlayServer::s_instance;
+
 NetPlayServer::~NetPlayServer()
 {
 	if (m_host)
@@ -25,6 +27,8 @@ NetPlayServer::NetPlayServer()
 	m_IsConnected = false;
 	m_is_running = false;
 	m_num_players = 0;
+	m_dialog = NULL;
+	s_instance = this;
 	memset(m_pad_map, -1, sizeof(m_pad_map));
 	memset(m_wiimote_map, -1, sizeof(m_wiimote_map));
 
@@ -42,7 +46,9 @@ NetPlayServer::NetPlayServer()
 	if (m_host == NULL)
 		return;
 
-	m_host->intercept = ENetUtil::InterceptCallback;
+	RetrySTUN();
+
+	m_host->intercept = InterceptCallback;
 
 	m_do_loop = true;
 	m_target_buffer_size = 20;
@@ -530,7 +536,73 @@ void NetPlayServer::SendToClientsOnThread(const Packet& packet, const PlayerId s
 	}
 }
 
+// called from ---GUI--- thread
 u16 NetPlayServer::GetPort()
 {
 	return m_host->address.port;
+}
+
+// called from ---GUI--- thread
+std::pair<NetPlayServer::STUNState, std::string> NetPlayServer::GetHost()
+{
+	auto state = Common::AtomicLoadAcquire(m_stun_state);
+	return std::make_pair(state, m_address_str);
+}
+
+void NetPlayServer::RetrySTUN()
+{
+	// no std::to_string on Android
+	char buf[64];
+	sprintf(buf, "%d", (int) GetPort());
+	m_address_str = buf;
+	m_stun_state = STILL_RUNNING;
+	std::vector<std::string> servers;
+	//servers.push_back("dolphin-emu.org");
+	servers.push_back("stunserver.org");
+	m_stun_client = STUNClient(m_host->socket, std::move(servers));
+}
+
+// called from ---NETPLAY--- thread
+int NetPlayServer::InterceptCallback(ENetHost* host, ENetEvent* event)
+{
+	return s_instance->Intercept(event);
+}
+
+int NetPlayServer::Intercept(ENetEvent* event)
+{
+	if (m_stun_client.m_Status == STUNClient::Waiting)
+	{
+		bool result = m_stun_client.ReceivedPacket(m_host->receivedData, m_host->receivedDataLength, &m_host->receivedAddress);
+		m_stun_client.Ping();
+		if (m_stun_client.m_Status == STUNClient::Error ||
+		    m_stun_client.m_Status == STUNClient::Timeout)
+		{
+			Common::AtomicStoreRelease(m_stun_state, STUN_FAILED);
+			if (m_dialog)
+				m_dialog->Update();
+		}
+		else if (m_stun_client.m_Status == STUNClient::Ok)
+		{
+			const ENetAddress* addr = &m_stun_client.m_MyAddress;
+			char buf[64];
+			if (enet_address_get_host_ip(addr, buf, sizeof(buf)) < 0)
+				strcpy(buf, "???");
+			sprintf(buf + strlen(buf), ":%d", (int) addr->port);
+			m_address_str = buf;
+			Common::AtomicStoreRelease(m_stun_state, STUN_OK);
+			if (m_dialog)
+				m_dialog->Update();
+		}
+		if (result)
+		{
+			event->type = (ENetEventType) 42;
+			return 1;
+		}
+	}
+	return ENetUtil::InterceptCallback(m_host, event);
+}
+
+void NetPlayServer::SetDialog(NetPlayUI* dialog)
+{
+	m_dialog = dialog;
 }

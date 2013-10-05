@@ -16,6 +16,8 @@
 #include <sstream>
 #include <string>
 
+#include <wx/clipbrd.h>
+
 #define NETPLAY_TITLEBAR	"Dolphin NetPlay"
 #define INITIAL_PAD_BUFFER_SIZE 20
 
@@ -32,6 +34,7 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const 
 	: wxFrame(parent, wxID_ANY, wxT(NETPLAY_TITLEBAR), wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE | wxTAB_TRAVERSAL)
 	, m_selected_game(game)
 	, m_start_btn(NULL)
+	, m_is_hosting(is_hosting)
 {
 	npd = this;
 	wxPanel* const panel = new wxPanel(this);
@@ -71,6 +74,22 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const 
 	m_player_lbox = new wxListBox(panel, wxID_ANY, wxDefaultPosition, wxSize(256, -1));
 
 	wxStaticBoxSizer* const player_szr = new wxStaticBoxSizer(wxVERTICAL, panel, _("Players"));
+
+	if (is_hosting)
+	{
+		wxBoxSizer* const host_szr = new wxBoxSizer(wxHORIZONTAL);
+		host_szr->Add(new wxStaticText(panel, wxID_ANY, _("Host:")), 0, wxCENTER);
+		// The initial label is for sizing...
+		m_host_label = new wxStaticText(panel, wxID_ANY, "555.555.555.555:5555", wxDefaultPosition, wxDefaultSize, wxST_NO_AUTORESIZE | wxALIGN_LEFT);
+		// Update() should fix this immediately.
+		m_host_label->SetLabel(_(""));
+		host_szr->Add(m_host_label, 1, wxCENTER);
+		m_host_copy_btn = new wxButton(panel, wxID_ANY, _("Copy"));
+		m_host_copy_btn->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &NetPlayDiag::OnCopyIP, this);
+		m_host_copy_btn->Disable();
+		host_szr->Add(m_host_copy_btn, 0, wxLEFT | wxCENTER, 5);
+		player_szr->Add(host_szr, 0, wxEXPAND | wxBOTTOM, 5);
+	}
 
 	player_szr->Add(m_player_lbox, 1, wxEXPAND);
 	// player list
@@ -265,6 +284,34 @@ void NetPlayDiag::OnQuit(wxCommandEvent&)
 // update gui
 void NetPlayDiag::OnThread(wxCommandEvent& event)
 {
+	if (m_is_hosting)
+	{
+		auto info = netplay_server->GetHost();
+		switch (info.first)
+		{
+		case NetPlayServer::STILL_RUNNING:
+			m_host_label->SetForegroundColour(*wxLIGHT_GREY);
+			m_host_label->SetLabel(wxString::Format(_("(local ip):%s"), StrToWxStr(info.second)));
+			m_host_copy_btn->SetLabel(_("Copy"));
+			m_host_copy_btn->Disable();
+			break;
+		case NetPlayServer::STUN_OK:
+			m_host_label->SetForegroundColour(*wxBLACK);
+			m_host_label->SetLabel(StrToWxStr(info.second));
+			m_host_copy_btn->SetLabel(_("Copy"));
+			m_host_copy_btn->Enable();
+			m_host_copy_btn_is_retry = false;
+			break;
+		case NetPlayServer::STUN_FAILED:
+			m_host_label->SetForegroundColour(*wxBLACK);
+			m_host_label->SetLabel(wxString::Format(_("(local ip):%s"), StrToWxStr(info.second)));
+			m_host_copy_btn->SetLabel(_("Retry"));
+			m_host_copy_btn->Enable();
+			m_host_copy_btn_is_retry = true;
+			break;
+		}
+	}
+
 	// player list
 	m_playerids.clear();
 	std::string tmps;
@@ -345,6 +392,24 @@ void NetPlayDiag::OnDefocusName(wxFocusEvent&)
 		SConfig::GetInstance().SaveSettings();
 		netplay_client->ChangeName(name);
 		Update();
+	}
+}
+
+void NetPlayDiag::OnCopyIP(wxCommandEvent&)
+{
+	if (m_host_copy_btn_is_retry)
+	{
+		// nevermind.
+		netplay_server->RetrySTUN();
+		Update();
+	}
+	else
+	{
+		if (wxTheClipboard->Open())
+		{
+			wxTheClipboard->SetData(new wxTextDataObject(m_host_label->GetLabel()));
+			wxTheClipboard->Close();
+		}
 	}
 }
 
@@ -584,5 +649,8 @@ void NetPlay::StartHosting(std::string id, wxWindow* parent)
 		netplay_server.reset();
 		return;
 	}
-	netplay_client->SetDialog(new NetPlayDiag(parent, id, true));
+	auto diag = new NetPlayDiag(parent, id, true);
+	netplay_client->SetDialog(diag);
+	netplay_server->SetDialog(diag);
+	diag->Update();
 }
