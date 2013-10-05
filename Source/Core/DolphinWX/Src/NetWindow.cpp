@@ -140,7 +140,7 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const 
 	panel->SetSizerAndFit(main_szr);
 
 	main_szr->SetSizeHints(this);
-	SetSize(512, 512-128);
+	SetSize(650, 512-128);
 
 	Center();
 	Show();
