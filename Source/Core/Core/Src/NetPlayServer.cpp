@@ -349,6 +349,24 @@ void NetPlayServer::OnData(PlayerId pid, Packet&& packet)
 		}
 		break;
 
+	case NP_MSG_CHANGE_NAME:
+		{
+			std::string name;
+			packet.Do(name);
+			if (packet.failure)
+				return OnDisconnect(pid);
+
+			player.name = name;
+			Packet opacket;
+
+			opacket.W((MessageId)NP_MSG_CHANGE_NAME);
+			opacket.W(pid);
+			opacket.W(name);
+
+			SendToClientsOnThread(opacket, pid);
+		}
+		break;
+
 	case NP_MSG_PAD_DATA :
 		{
 			// if this is pad data from the last game still being received, ignore it

@@ -68,13 +68,16 @@ private:
 	void OnThread(wxCommandEvent& event);
 	void OnAdjustBuffer(wxCommandEvent& event);
 	void OnConfigPads(wxCommandEvent& event);
+    void OnDefocusName(wxFocusEvent& event);
 	void GetNetSettings(NetSettings &settings);
 
+	wxTextCtrl*		m_name_text;
 	wxListBox*		m_player_lbox;
 	wxTextCtrl*		m_chat_text;
 	wxTextCtrl*		m_chat_msg_text;
 	wxCheckBox*		m_memcard_write;
 	wxCheckBox*		m_record_chkbox;
+    wxStaticText*   m_ip_label;
 
 	std::string		m_selected_game;
 	wxStaticText*	m_game_label;

@@ -264,6 +264,25 @@ void NetPlayClient::OnData(Packet&& packet)
 		}
 		break;
 
+	case NP_MSG_CHANGE_NAME :
+		{
+			PlayerId pid;
+			std::string name;
+			packet.Do(pid);
+			packet.Do(name);
+			if (packet.failure)
+				return OnDisconnect();
+
+			{
+				std::lock_guard<std::recursive_mutex> lk(m_crit);
+				Player& player = m_players[pid];
+				player.name = name;
+			}
+
+			m_dialog->Update();
+		}
+		break;
+
 	case NP_MSG_PAD_MAPPING :
 		{
 			packet.DoArray(m_pad_map, 4);
@@ -519,6 +538,20 @@ void NetPlayClient::SendChatMessage(const std::string& msg)
 	Packet packet;
 	packet.W((MessageId)NP_MSG_CHAT_MESSAGE);
 	packet.W(msg);
+
+	SendPacket(packet);
+}
+
+// called from ---GUI--- thread
+void NetPlayClient::ChangeName(const std::string& name)
+{
+	{
+		std::lock_guard<std::recursive_mutex> lk(m_crit);
+		m_local_player->name = name;
+	}
+	Packet packet;
+	packet.W((MessageId)NP_MSG_CHANGE_NAME);
+	packet.W(name);
 
 	SendPacket(packet);
 }

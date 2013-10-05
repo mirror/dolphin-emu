@@ -86,6 +86,7 @@ public:
 	void Stop();
 	bool ChangeGame(const std::string& game);
 	void SendChatMessage(const std::string& msg);
+	void ChangeName(const std::string& name);
 
 	// Send and receive pads values
 	bool WiimoteUpdate(int _number, u8* data, const u8 size);

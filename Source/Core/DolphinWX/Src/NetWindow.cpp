@@ -37,12 +37,18 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const 
 	wxPanel* const panel = new wxPanel(this);
 
 	// top crap
-	m_game_label = new wxStaticText(panel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxBU_LEFT);
+	m_game_label = new wxStaticText(panel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize);
 	UpdateGameName();
-	
+
 	// middle crap
 
 	// chat
+	wxBoxSizer* const nickname_szr = new wxBoxSizer(wxHORIZONTAL);
+	nickname_szr->Add(new wxStaticText(panel, wxID_ANY, _("Nickname: ")), 0, wxCENTER);
+	m_name_text = new wxTextCtrl(panel, wxID_ANY, StrToWxStr(SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayNickname));
+	m_name_text->Bind(wxEVT_KILL_FOCUS, &NetPlayDiag::OnDefocusName, this);
+	nickname_szr->Add(m_name_text, 1, wxCENTER);
+
 	m_chat_text = new wxTextCtrl(panel, wxID_ANY, wxEmptyString
 		, wxDefaultPosition, wxDefaultSize, wxTE_READONLY | wxTE_MULTILINE);
 
@@ -58,12 +64,14 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const 
 	chat_msg_szr->Add(chat_msg_btn, 0);
 
 	wxStaticBoxSizer* const chat_szr = new wxStaticBoxSizer(wxVERTICAL, panel, _("Chat"));
+	chat_szr->Add(nickname_szr, 0, wxEXPAND | wxBOTTOM, 5);
 	chat_szr->Add(m_chat_text, 1, wxEXPAND);
 	chat_szr->Add(chat_msg_szr, 0, wxEXPAND | wxTOP, 5);
 
 	m_player_lbox = new wxListBox(panel, wxID_ANY, wxDefaultPosition, wxSize(256, -1));
 
 	wxStaticBoxSizer* const player_szr = new wxStaticBoxSizer(wxVERTICAL, panel, _("Players"));
+
 	player_szr->Add(m_player_lbox, 1, wxEXPAND);
 	// player list
 	if (is_hosting)
@@ -327,6 +335,19 @@ void NetPlayDiag::OnConfigPads(wxCommandEvent&)
 	netplay_server->SetWiimoteMapping(wiimotemapping);
 }
 
+void NetPlayDiag::OnDefocusName(wxFocusEvent&)
+{
+	std::string name = StripSpaces(WxStrToStr(m_name_text->GetValue()));
+	std::string* cur = &SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayNickname;
+	if (*cur != name)
+	{
+		*cur = name;
+		SConfig::GetInstance().SaveSettings();
+		netplay_client->ChangeName(name);
+		Update();
+	}
+}
+
 bool NetPlayDiag::IsRecording()
 {
 	return m_record_chkbox->GetValue();
@@ -342,7 +363,7 @@ ConnectDiag::ConnectDiag(wxWindow* parent)
 	// focus and select all
 	m_HostCtrl->SetFocus();
 	m_HostCtrl->SetSelection(-1, -1);
-	m_HostCtrl->Bind(wxEVT_COMMAND_TEXT_UPDATED, &ConnectDiag::OnChange, this);
+	m_HostCtrl->Bind(wxEVT_TEXT, &ConnectDiag::OnChange, this);
 	wxBoxSizer* sizerHost = new wxBoxSizer(wxHORIZONTAL);
 	sizerHost->Add(hostLabel, 0, wxLEFT, 5);
 	sizerHost->Add(m_HostCtrl, 1, wxEXPAND | wxLEFT | wxRIGHT, 5);
@@ -425,7 +446,7 @@ bool ConnectDiag::IsHostOk()
 
 ConnectDiag::~ConnectDiag()
 {
-	SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayHost = WxStrToStr(m_HostCtrl->GetValue());
+	SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayHost = StripSpaces(WxStrToStr(m_HostCtrl->GetValue()));
 	SConfig::GetInstance().SaveSettings();
 }
 
