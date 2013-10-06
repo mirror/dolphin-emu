@@ -572,6 +572,7 @@ void ProgramShaderCache::CreateHeader ( void )
 
 		// Precision defines for GLSLES3
 		"%s\n"
+		"%s\n"
 
 		"\n"// A few required defines and ones that will make our lives a lot easier
 		"#define ATTRIN in\n"
@@ -600,6 +601,7 @@ void ProgramShaderCache::CreateHeader ( void )
 		, g_ActiveConfig.backend_info.bSupportShadingLanguage420pack ? "#extension GL_ARB_shading_language_420pack : enable" : ""
 
 		, v==GLSLES3 ? "precision highp float;" : ""
+		, v==GLSLES3 ? "precision highp int;" : ""
 
 		, DriverDetails::HasBug(DriverDetails::BUG_BROKENCENTROID) ? "in" : "centroid in"
 		, DriverDetails::HasBug(DriverDetails::BUG_BROKENCENTROID) ? "out" : "centroid out"
