@@ -110,7 +110,7 @@ public final class GameListActivity extends Activity
 	 * Switches to the {@link Fragment} represented
 	 * by the given ID number.
 	 * 
-	 * @param toPage the number representing the {@link Fragment} to switch to.l
+	 * @param toPage the number representing the {@link Fragment} to switch to.
 	 */
 	public void SwitchPage(int toPage)
 	{
@@ -121,6 +121,11 @@ public final class GameListActivity extends Activity
 		{
 			case 0: // Game list
 			{
+				// We use the title section as the browser directory tracker in the folder browser.
+				// Make sure we flip the title back if we're coming from that fragment.
+				if (mCurFragmentNum == 1)
+					setTitle(R.string.app_name);
+
 				mCurFragmentNum = 0;
 				mCurFragment = new GameListFragment();
 				FragmentManager fragmentManager = getFragmentManager();
@@ -179,6 +184,7 @@ public final class GameListActivity extends Activity
 	protected void onPostCreate(Bundle savedInstanceState)
 	{
 		super.onPostCreate(savedInstanceState);
+
 		// Sync the toggle state after onRestoreInstanceState has occurred.
 		mDrawerToggle.syncState();
 	}
@@ -187,22 +193,16 @@ public final class GameListActivity extends Activity
 	public void onConfigurationChanged(Configuration newConfig)
 	{
 		super.onConfigurationChanged(newConfig);
+
 		// Pass any configuration change to the drawer toggle
 		mDrawerToggle.onConfigurationChanged(newConfig);
 	}
 
-	/* Called whenever we call invalidateOptionsMenu() */
-	@Override
-	public boolean onPrepareOptionsMenu(Menu menu)
-	{
-		return super.onPrepareOptionsMenu(menu);
-	}
-	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu)
 	{
 		// Only show this in the game list.
-		if (this.mCurFragmentNum == 0)
+		if (mCurFragmentNum == 0)
 		{
 			MenuInflater inflater = getMenuInflater();
 			inflater.inflate(R.menu.gamelist_menu, menu);
