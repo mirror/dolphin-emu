@@ -280,12 +280,5 @@ xcopy "$(SolutionDir)..\Externals\SDL\$(PlatformName)\*.dll" "$(BinaryOutputDir)
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-  <!--Copy the .exe and .pdb to binary output folder-->
-  <ItemGroup>
-    <SourceFiles Include="$(TargetPath);$(TargetDir)$(TargetName).pdb" />
-  </ItemGroup>
-  <Target Name="AfterBuild" Inputs="@(SourceFiles)" Outputs="@(SourceFiles -> '$(BinaryOutputDir)%(Filename)%(Extension)')">
-    <Message Text="Copy: @(SourceFiles) -> $(BinaryOutputDir)" Importance="High"/>
-    <Copy SourceFiles="@(SourceFiles)" DestinationFolder="$(BinaryOutputDir)" />
-  </Target>
+  <Import Project="$(SolutionDir)VSProps\CopyExePdbToBinaryDir.targets" />
 </Project>
