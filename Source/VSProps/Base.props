@@ -4,21 +4,41 @@
   <PropertyGroup Label="UserMacros">
     <TargetSuffix></TargetSuffix>
     <TargetSuffix Condition="'$(Configuration)'=='Debug'">D</TargetSuffix>
+    <BuildRootDir>$(SolutionDir)..\Build\</BuildRootDir>
+    <BinaryRootDir>$(SolutionDir)..\Binary\</BinaryRootDir>
   </PropertyGroup>
   <PropertyGroup>
-    <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <!--Opt-in to x64 compiler and tools. The environment will default back to x86 if x64 is not usable-->
+    <!--Unfortunately this only seems to work if given on commandline
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+    -->
+    <IntDir>$(BuildRootDir)$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <!--Set the output path based on whether we're making an exe or lib-->
   <Choose>
-    <When Condition="'$(OutputType)'=='Exe'">
+    <When Condition="'$(ConfigurationType)'=='Application'">
       <PropertyGroup>
-        <OutDir>..\..\..\Binary\$(PlatformName)\</OutDir>
+        <OutDir>$(BinaryRootDir)$(PlatformName)\</OutDir>
         <TargetName>$(ProjectName)$(TargetSuffix)</TargetName>
       </PropertyGroup>
     </When>
-    <When Condition="'$(OutputType)'=='StaticLibrary'">
+    <When Condition="'$(ConfigurationType)'=='StaticLibrary'">
       <PropertyGroup>
-        <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+        <OutDir>$(IntDir)\bin\</OutDir>
+      </PropertyGroup>
+    </When>
+    <!--
+    OutDir is always created, which is annoying for SCMRevGen as it doesn't really have an outdir.
+    Here it's redirected to some other place to hide the annoyance.
+    -->
+    <When Condition="'$(ProjectName)'=='SCMRevGen'">
+      <PropertyGroup>
+        <OutDir>$(BuildRootDir)</OutDir>
+      </PropertyGroup>
+    </When>
+    <When Condition="'$(ProjectName)'=='Languages'">
+      <PropertyGroup>
+        <OutDir>$(BinaryRootDir)$(Platform)\</OutDir>
       </PropertyGroup>
     </When>
   </Choose>
@@ -27,7 +47,8 @@
     <ClCompile>
       <!--Allow compile-time testing of whether DXSDK (aka DX before integration into VS) is present-->
       <PreprocessorDefinitions Condition="Exists('$(DXSDK_DIR)')">HAVE_DXSDK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;USE_UPNP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>USE_UPNP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <StructMemberAlignment>16Bytes</StructMemberAlignment>
@@ -35,10 +56,10 @@
       <MinimalRebuild>false</MinimalRebuild>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalOptions>/d2Zi+ /volatile:iso %(AdditionalOptions)</AdditionalOptions>
-      <ProgramDataBaseFileName>$(IntDir)$(TargetName).pdb</ProgramDataBaseFileName>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <!--ClCompile Base:StaticLibrary-->
-    <ClCompile Condition="'$(OutputType)'=='StaticLibrary'">
+    <ClCompile Condition="'$(ConfigurationType)'=='StaticLibrary'">
       <PreprocessorDefinitions>_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <!--ClCompile Debug-->
@@ -65,19 +86,18 @@
     <!--Link Base-->
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <!--Link Release-->
     <Link Condition="'$(Configuration)'=='Release'">
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
     </Link>
-    <!--Link for Executable output-->
-    <Link Condition="'$(OutputType)'=='Exe'">
-      <!--following 3 settings only needed for dolphin itself (not dsptool, etc)-->
+    <!--Link Application:Dolphin-->
+    <Link Condition="'$(ConfigurationType)'=='Application' and '$(ProjectName)'=='DolphinWX'">
       <BaseAddress>0x00400000</BaseAddress>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <FixedBaseAddress>true</FixedBaseAddress>
-      <!--Put libs we link against and do not build as part of the solution here-->
       <AdditionalLibraryDirectories>..\..\..\Externals\SDL\$(PlatformName);..\..\..\Externals\OpenAL\$(PlatformName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>dsound.lib;iphlpapi.lib;winmm.lib;setupapi.lib;vfw32.lib;opengl32.lib;glu32.lib;rpcrt4.lib;comctl32.lib;OpenAL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
