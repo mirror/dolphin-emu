@@ -23,7 +23,7 @@ SoundStream *soundStream = nullptr;
 
 namespace AudioCommon 
 {	
-	SoundStream *InitSoundStream(CMixer *mixer, void *hWnd) 
+	SoundStream *InitSoundStream(CMixer *mixer) 
 	{
 		// TODO: possible memleak with mixer
 
@@ -31,9 +31,9 @@ namespace AudioCommon
 		if (backend == BACKEND_OPENAL           && OpenALStream::isValid())
 			soundStream = new OpenALStream(mixer);
 		else if (backend == BACKEND_NULLSOUND   && NullSound::isValid())
-			soundStream = new NullSound(mixer, hWnd);
+			soundStream = new NullSound(mixer);
 		else if (backend == BACKEND_DIRECTSOUND && DSound::isValid())
-			soundStream = new DSound(mixer, hWnd);
+			soundStream = new DSound(mixer);
 		else if (backend == BACKEND_XAUDIO2)
 		{
 			if (XAudio2::isValid())
@@ -56,7 +56,7 @@ namespace AudioCommon
 		{
 			WARN_LOG(DSPHLE, "Could not initialize backend %s, using %s instead.",
 				backend.c_str(), BACKEND_NULLSOUND);
-			soundStream = new NullSound(mixer, hWnd);
+			soundStream = new NullSound(mixer);
 		}
 
 		if (soundStream)
