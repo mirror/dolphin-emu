@@ -2,10 +2,12 @@
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
+    <DolphinRelease Condition="'$(DolphinRelease)'!='true' or '$(Configuration)'!='Release'">false</DolphinRelease>
     <TargetSuffix></TargetSuffix>
     <TargetSuffix Condition="'$(Configuration)'=='Debug'">D</TargetSuffix>
     <BuildRootDir>$(SolutionDir)..\Build\</BuildRootDir>
     <BinaryRootDir>$(SolutionDir)..\Binary\</BinaryRootDir>
+    <BinaryOutputDir>$(BinaryRootDir)$(Platform)\</BinaryOutputDir>
   </PropertyGroup>
   <PropertyGroup>
     <!--Opt-in to x64 compiler and tools. The environment will default back to x86 if x64 is not usable-->
@@ -13,20 +15,10 @@
     <PreferredToolArchitecture>x64</PreferredToolArchitecture>
     -->
     <IntDir>$(BuildRootDir)$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <OutDir>$(IntDir)bin\</OutDir>
+    <TargetName Condition="'$(ConfigurationType)'=='Application'">$(ProjectName)$(TargetSuffix)</TargetName>
   </PropertyGroup>
-  <!--Set the output path based on whether we're making an exe or lib-->
   <Choose>
-    <When Condition="'$(ConfigurationType)'=='Application'">
-      <PropertyGroup>
-        <OutDir>$(BinaryRootDir)$(PlatformName)\</OutDir>
-        <TargetName>$(ProjectName)$(TargetSuffix)</TargetName>
-      </PropertyGroup>
-    </When>
-    <When Condition="'$(ConfigurationType)'=='StaticLibrary'">
-      <PropertyGroup>
-        <OutDir>$(IntDir)\bin\</OutDir>
-      </PropertyGroup>
-    </When>
     <!--
     OutDir is always created, which is annoying for SCMRevGen as it doesn't really have an outdir.
     Here it's redirected to some other place to hide the annoyance.
@@ -38,7 +30,7 @@
     </When>
     <When Condition="'$(ProjectName)'=='Languages'">
       <PropertyGroup>
-        <OutDir>$(BinaryRootDir)$(Platform)\</OutDir>
+        <OutDir>$(BinaryOutputDir)</OutDir>
       </PropertyGroup>
     </When>
   </Choose>
@@ -57,6 +49,12 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalOptions>/d2Zi+ /volatile:iso %(AdditionalOptions)</AdditionalOptions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <!--
+      This is for GetVersionEx being marked as depreciated - which is idiotic and there's
+      not much else we can do since many externals use it. The bad part is that there doesn't
+      seem to be a way to only ignore the specific instance we don't care about...
+      -->
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <!--ClCompile Base:StaticLibrary-->
     <ClCompile Condition="'$(ConfigurationType)'=='StaticLibrary'">
@@ -71,6 +69,7 @@
     </ClCompile>
     <!--ClCompile Release-->
     <ClCompile Condition="'$(Configuration)'=='Release'">
+      <WholeProgramOptimization Condition="'$(DolphinRelease)'=='true'">true</WholeProgramOptimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
@@ -90,6 +89,7 @@
     </Link>
     <!--Link Release-->
     <Link Condition="'$(Configuration)'=='Release'">
+      <LinkTimeCodeGeneration Condition="'$(DolphinRelease)'=='true'">UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
     </Link>
@@ -106,6 +106,7 @@
     </ResourceCompile>
     <Lib>
       <TreatLibWarningAsErrors>true</TreatLibWarningAsErrors>
+      <LinkTimeCodeGeneration Condition="'$(DolphinRelease)'=='true'">true</LinkTimeCodeGeneration>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup />
