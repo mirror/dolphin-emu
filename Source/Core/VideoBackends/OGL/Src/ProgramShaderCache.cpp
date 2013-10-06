@@ -573,6 +573,7 @@ void ProgramShaderCache::CreateHeader ( void )
 
 		// Precision defines for GLSLES2/3
 		"%s\n"
+		"%s\n"
 
 		"\n"// A few required defines and ones that will make our lives a lot easier
 		"#define ATTRIN %s\n"
@@ -610,6 +611,7 @@ void ProgramShaderCache::CreateHeader ( void )
 		, g_ActiveConfig.backend_info.bSupportsEarlyZ ? "#extension GL_ARB_shader_image_load_store : enable" : ""
 
 		, (v==GLSLES3 || v==GLSLES2) ? "precision highp float;" : ""
+		, (v==GLSLES3 || v==GLSLES2) ? "precision highp int;" : ""
 
 		, v==GLSLES2 ? "attribute" : "in"
 		, v==GLSLES2 ? "attribute" : "out"
