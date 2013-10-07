@@ -12,6 +12,10 @@
 #include <Windows.h>
 #include <XInput.h>
 
+#ifndef XINPUT_DEVSUBTYPE_FLIGHT_STICK
+#error You are building this module against the wrong version of DirectX. You probably need to remove DXSDK_DIR from your include path and/or _WIN32_WINNT is wrong.
+#endif
+
 namespace ciface
 {
 namespace XInput
