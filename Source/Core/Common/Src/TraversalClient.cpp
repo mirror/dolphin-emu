@@ -62,7 +62,7 @@ static void GetRandomishBytes(u8* buf, size_t size)
 ENetHostClient::ENetHostClient(size_t peerCount, bool isTraversalClient)
 {
 	m_isTraversalClient = isTraversalClient;
-	ENetAddress addr { ENET_HOST_ANY, ENET_PORT_ANY };
+	ENetAddress addr = { ENET_HOST_ANY, ENET_PORT_ANY };
 	m_Host = enet_host_create(
 		&addr, // address
 		peerCount, // peerCount
