@@ -192,6 +192,7 @@ void SConfig::SaveSettings()
 	ini.Set("Interface", "ThemeName40",			m_LocalCoreStartupParameter.theme_name);
 	ini.Set("NetPlay", "LastHost", m_LocalCoreStartupParameter.strNetplayHost);
 	ini.Set("NetPlay", "Nickname", m_LocalCoreStartupParameter.strNetplayNickname);
+	ini.Set("NetPlay", "CentralServer", m_LocalCoreStartupParameter.strNetplayCentralServer);
 
 	// Hotkeys
 	for (int i = 0; i < NUM_HOTKEYS; i++)
@@ -347,6 +348,7 @@ void SConfig::LoadSettings()
 		ini.Get("Interface", "ThemeName40",			&m_LocalCoreStartupParameter.theme_name,		"Clean");
 		ini.Get("NetPlay", "LastHost", &m_LocalCoreStartupParameter.strNetplayHost, "8.8.8.8:1234");
 		ini.Get("NetPlay", "Nickname", &m_LocalCoreStartupParameter.strNetplayNickname, "");
+		ini.Get("NetPlay", "CentralServer", &m_LocalCoreStartupParameter.strNetplayCentralServer, "dolphin-emu.org");
 
 		// Hotkeys
 		for (int i = 0; i < NUM_HOTKEYS; i++)

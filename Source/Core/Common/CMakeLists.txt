@@ -16,7 +16,7 @@ set(SRCS	Src/BreakPoints.cpp
 			Src/SettingsHandler.cpp
 			Src/SDCardUtil.cpp
 			Src/StringUtil.cpp
-			Src/STUNClient.cpp
+			Src/TraversalClient.cpp
 			Src/SymbolDB.cpp
 			Src/SysConf.cpp
 			Src/Thread.cpp
@@ -53,4 +53,5 @@ endif(WIN32)
 enable_precompiled_headers(Src/stdafx.h Src/stdafx.cpp SRCS)
 
 add_library(common STATIC ${SRCS})
+add_executable(traversal_server Src/TraversalServer.cpp)
 target_link_libraries(common ${CMAKE_THREAD_LIBS_INIT})

@@ -25,6 +25,10 @@ BEGIN_EVENT_TABLE(NetPlayDiag, wxFrame)
 	EVT_COMMAND(wxID_ANY, wxEVT_THREAD, NetPlayDiag::OnThread)
 END_EVENT_TABLE()
 
+BEGIN_EVENT_TABLE(ConnectDiag, wxDialog)
+	EVT_COMMAND(wxID_ANY, wxEVT_THREAD, ConnectDiag::OnThread)
+END_EVENT_TABLE()
+
 static std::unique_ptr<NetPlayServer> netplay_server;
 static std::unique_ptr<NetPlayClient> netplay_client;
 extern CFrame* main_frame;
@@ -286,28 +290,30 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 {
 	if (m_is_hosting)
 	{
-		auto info = netplay_server->GetHost();
-		switch (info.first)
+		switch (g_TraversalClient->m_State)
 		{
-		case NetPlayServer::STILL_RUNNING:
+		case TraversalClient::Connecting:
 			m_host_label->SetForegroundColour(*wxLIGHT_GREY);
-			m_host_label->SetLabel(wxString::Format(_("(local ip):%s"), StrToWxStr(info.second)));
+			m_host_label->SetLabel("...");
 			m_host_copy_btn->SetLabel(_("Copy"));
 			m_host_copy_btn->Disable();
 			break;
-		case NetPlayServer::STUN_OK:
+		case TraversalClient::Connected:
 			m_host_label->SetForegroundColour(*wxBLACK);
-			m_host_label->SetLabel(StrToWxStr(info.second));
+			m_host_label->SetLabel(wxString(g_TraversalClient->m_HostId.data(), g_TraversalClient->m_HostId.size()));
 			m_host_copy_btn->SetLabel(_("Copy"));
 			m_host_copy_btn->Enable();
 			m_host_copy_btn_is_retry = false;
 			break;
-		case NetPlayServer::STUN_FAILED:
+		case TraversalClient::ConnectFailure:
 			m_host_label->SetForegroundColour(*wxBLACK);
-			m_host_label->SetLabel(wxString::Format(_("(local ip):%s"), StrToWxStr(info.second)));
+			m_host_label->SetLabel(_("failure xxx"));
 			m_host_copy_btn->SetLabel(_("Retry"));
 			m_host_copy_btn->Enable();
 			m_host_copy_btn_is_retry = true;
+			break;
+		case TraversalClient::InitFailure:
+			// can't happen
 			break;
 		}
 	}
@@ -400,7 +406,7 @@ void NetPlayDiag::OnCopyIP(wxCommandEvent&)
 	if (m_host_copy_btn_is_retry)
 	{
 		// nevermind.
-		netplay_server->RetrySTUN();
+		//netplay_server->RetrySTUN();
 		Update();
 	}
 	else
@@ -442,24 +448,41 @@ ConnectDiag::ConnectDiag(wxWindow* parent)
 	SetMaxSize(wxSize(10000, GetBestSize().GetHeight()));
 }
 
-
 bool ConnectDiag::Validate()
 {
 	if (netplay_client)
 	{
 		// shouldn't be possible, just in case
+		printf("already a NPC???\n");
 		return false;
 	}
 	std::string hostSpec = GetHost();
-	size_t pos = hostSpec.find(':');
-	std::string host = hostSpec.substr(0, pos);
-	int port = std::stoi(hostSpec.substr(pos + 1).c_str());
 	std::string nickname = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayNickname;
-	netplay_client.reset(new NetPlayClient(host, (u16)port, nickname));
-	if (!netplay_client->m_IsConnected)
+	netplay_client.reset(new NetPlayClient(GetHost(), nickname, [=](NetPlayClient* npc) {
+		auto state = npc->m_state;
+		if (state == NetPlayClient::Connected || state == NetPlayClient::Failure)
+		{
+			wxCommandEvent evt(wxEVT_THREAD, 1);
+			GetEventHandler()->AddPendingEvent(evt);
+		}
+	}));
+	// disable the GUI
+	m_HostCtrl->Disable();
+	m_ConnectBtn->Disable();
+	return false;
+}
+
+void ConnectDiag::OnThread(wxCommandEvent& event)
+{
+	if (netplay_client->m_state == NetPlayClient::Connected)
+	{
+		netplay_client->SetDialog(new NetPlayDiag(GetParent(), "", false));
+		EndModal(0);
+	}
+	else
 	{
 		wxString err;
-		switch (netplay_client->m_ServerError)
+		switch (netplay_client->m_server_error)
 		{
 		case 0:
 			// there was no server error.
@@ -483,11 +506,10 @@ bool ConnectDiag::Validate()
 		auto complain = new wxMessageDialog(this, err);
 		complain->ShowWindowModal();
 		// We leak the message dialog because of a wx bug.
-		return false;
+		// bring the UI back
+		m_HostCtrl->Enable();
+		m_ConnectBtn->Enable();
 	}
-	netplay_client->SetDialog(new NetPlayDiag(GetParent(), "", false));
-	EndModal(0);
-	return true;
 }
 
 void ConnectDiag::OnChange(wxCommandEvent& event)
@@ -504,13 +526,23 @@ bool ConnectDiag::IsHostOk()
 {
 	std::string host = GetHost();
 	size_t pos = host.find(':');
-	return pos != std::string::npos &&
-		pos + 1 < host.size() &&
-		host.find_first_not_of("0123456789", pos + 1) == std::string::npos;
+	if (pos != std::string::npos)
+	{
+		// ip:port
+		return pos + 1 < host.size() &&
+		       host.find_first_not_of("0123456789", pos + 1) == std::string::npos;
+	}
+	else
+	{
+		// traversal host id
+		return host.size() == sizeof(TraversalHostId);
+	}
 }
 
 ConnectDiag::~ConnectDiag()
 {
+	if (GetReturnCode() != 0)
+		netplay_client.reset();
 	SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayHost = StripSpaces(WxStrToStr(m_HostCtrl->GetValue()));
 	SConfig::GetInstance().SaveSettings();
 }
@@ -631,19 +663,37 @@ void NetPlay::StartHosting(std::string id, wxWindow* parent)
 		return;
 	}
 
+	EnsureTraversalClient();
+	if (!g_TraversalClient)
+	{
+		wxMessageBox(_("Failed to init traversal client.  This shouldn't happen..."), _("Error"), wxOK, parent);
+		return;
+	}
+
 	netplay_server.reset(new NetPlayServer());
 	netplay_server->ChangeGame(id);
 	netplay_server->AdjustPadBufferSize(INITIAL_PAD_BUFFER_SIZE);
-	if (!netplay_server->m_IsConnected)
+	std::string nickname = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayNickname;
+	Common::Event ev;
+	char buf[64];
+	sprintf(buf, "127.0.0.1:%d", g_TraversalClient->GetPort());
+	netplay_client.reset(new NetPlayClient(buf, nickname, [&](NetPlayClient* npc) {
+		if (npc->m_state == NetPlayClient::Connected ||
+		    npc->m_state == NetPlayClient::Failure)
+			ev.Set();
+	}));
+	if (netplay_client->m_state == NetPlayClient::Failure)
 	{
-		wxMessageBox(_("Failed to host.  This shouldn't happen..."), _("Error"), wxOK, parent);
+		PanicAlert("Failed to init netplay client.  This shouldn't happen...");
+		netplay_client.reset();
 		netplay_server.reset();
 		return;
 	}
-	std::string nickname = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayNickname;
-	netplay_client.reset(new NetPlayClient("127.0.0.1", netplay_server->GetPort(), nickname));
-	if (!netplay_client->m_IsConnected)
+	ev.Wait();
+
+	if (netplay_client->m_state != NetPlayClient::Connected)
 	{
+		printf("state=%d\n", netplay_client->m_state);
 		wxMessageBox(_("Failed to connect to localhost.  This shouldn't happen..."), _("Error"), wxOK, parent);
 		netplay_client.reset();
 		netplay_server.reset();

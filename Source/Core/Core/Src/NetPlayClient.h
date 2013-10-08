@@ -21,15 +21,7 @@
 #include <sstream>
 
 #include "FifoQueue.h"
-
-namespace ENetUtil
-{
-	void BroadcastPacket(ENetHost* host, const Packet& pac);
-	void SendPacket(ENetPeer* peer, const Packet& pac);
-	Packet MakePacket(ENetPacket* epacket);
-	void Wakeup(ENetHost* host);
-	int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event);
-}
+#include "TraversalClient.h"
 
 class NetPad
 {
@@ -67,19 +59,25 @@ class Player
 	u32                     ping;
 };
 
-class NetPlayClient
+class NetPlayClient : public TraversalClientClient
 {
 public:
-	void ThreadFunc();
-
-	NetPlayClient(const std::string& address, const u16 port, const std::string& name);
+	NetPlayClient(const std::string& hostSpec, const std::string& name, std::function<void(NetPlayClient*)> stateCallback);
 	~NetPlayClient();
 
 	void GetPlayerList(std::string& list, std::vector<int>& pid_list);
 	void GetPlayers(std::vector<const Player *>& player_list);
 
-	bool m_IsConnected;
-	MessageId m_ServerError;
+	enum State
+	{
+		WaitingForTraversalClientConnection,
+		WaitingForTraversalClientConnectReady,
+		Connecting,
+		WaitingForHelloResponse,
+		Connected,
+		Failure
+	} m_state;
+	MessageId m_server_error;
 
 	bool StartGame(const std::string &path);
 	bool StopGame();
@@ -99,6 +97,11 @@ public:
 
 	void SetDialog(NetPlayUI* dialog);
 
+	virtual void OnENetEvent(ENetEvent*) override;
+	virtual void OnTraversalStateChanged() override;
+	virtual void OnConnectReady(ENetAddress addr) override;
+
+	std::function<void(NetPlayClient*)> m_state_callback;
 protected:
 	void ClearBuffers();
 
@@ -109,6 +112,8 @@ protected:
 
 	NetPlayUI*		m_dialog;
 	ENetHost*		m_host;
+	std::string		m_host_spec;
+	bool			m_direct_connection;
 	std::thread		m_thread;
 
 	std::string		m_selected_game;
@@ -133,10 +138,12 @@ private:
 	void OnData(Packet&& packet);
 	void OnDisconnect();
 	void SendPacket(Packet& packet);
+	void DoDirectConnect(const ENetAddress& addr);
 
 	PlayerId		m_pid;
 	std::map<PlayerId, Player>	m_players;
-	Common::FifoQueue<Packet, false> m_queue;
+	std::unique_ptr<ENetHostClient> m_host_client;
+	Common::Event m_have_dialog_event;
 };
 
 void NetPlay_Enable(NetPlayClient* const np);

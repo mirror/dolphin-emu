@@ -99,10 +99,12 @@ public:
 	~ConnectDiag();
 	std::string GetHost();
 	bool Validate();
-	void OnThread(wxCommandEvent& event);
 
 private:
+    DECLARE_EVENT_TABLE()
+
 	void OnChange(wxCommandEvent& event);
+	void OnThread(wxCommandEvent& event);
 	bool IsHostOk();
 	wxTextCtrl* m_HostCtrl;
 	wxButton* m_ConnectBtn;

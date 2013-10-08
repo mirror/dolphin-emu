@@ -10,20 +10,18 @@
 #include "Thread.h"
 #include "Timer.h"
 
-#include "NetPlayProto.h"
 #include "enet/enet.h"
+#include "NetPlayProto.h"
 #include "FifoQueue.h"
-#include "STUNClient.h"
+#include "TraversalClient.h"
 
 #include <functional>
 
 class NetPlayUI;
 
-class NetPlayServer
+class NetPlayServer : public TraversalClientClient
 {
 public:
-	void ThreadFunc();
-
 	NetPlayServer();
 	~NetPlayServer();
 
@@ -41,21 +39,11 @@ public:
 
 	void AdjustPadBufferSize(unsigned int size);
 
-	bool m_IsConnected;
-
-	u16 GetPort();
-
 	void SetDialog(NetPlayUI* dialog);
 
-	enum STUNState
-	{
-		STILL_RUNNING,
-		STUN_OK,
-		STUN_FAILED
-	};
-	std::pair<STUNState, std::string> GetHost();
-	void RetrySTUN();
-
+	virtual void OnENetEvent(ENetEvent*) override;
+	virtual void OnTraversalStateChanged() override;
+	virtual void OnConnectReady(ENetAddress addr) override {}
 private:
 	class Client
 	{
@@ -76,14 +64,11 @@ private:
 	void OnData(PlayerId pid, Packet&& packet);
 	void UpdatePadMapping();
 	void UpdateWiimoteMapping();
-
-	static int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event);
-	int Intercept(ENetEvent* event);
+	void UpdatePings();
 
 	NetSettings     m_settings;
 
 	bool            m_is_running;
-	bool            m_do_loop;
 	Common::Timer	m_ping_timer;
 	u32		m_ping_key;
 	bool            m_update_pings;
@@ -101,15 +86,7 @@ private:
 	std::string m_selected_game;
 
 	ENetHost*		m_host;
-	std::thread		m_thread;
-	Common::FifoQueue<std::pair<Packet, PlayerId /*skip_pid*/>, false> m_queue;
-	volatile STUNState m_stun_state;
-	std::string		m_address_str;
-	STUNClient		m_stun_client;
 	NetPlayUI*		m_dialog;
-
-	// this is for the InterceptCallback; replace with a map if you care
-	static NetPlayServer*	s_instance;
 };
 
 #endif

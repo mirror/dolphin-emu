@@ -27,52 +27,6 @@ NetSettings g_NetPlaySettings;
 
 #define RPT_SIZE_HACK	(1 << 16)
 
-void ENetUtil::BroadcastPacket(ENetHost* host, const Packet& pac)
-{
-	enet_host_broadcast(host, 0, enet_packet_create((u8*) pac.vec->data(), pac.vec->size(), ENET_PACKET_FLAG_RELIABLE));
-}
-
-void ENetUtil::SendPacket(ENetPeer* peer, const Packet& pac)
-{
-	enet_peer_send(peer, 0, enet_packet_create((u8*) pac.vec->data(), pac.vec->size(), ENET_PACKET_FLAG_RELIABLE));
-}
-
-Packet ENetUtil::MakePacket(ENetPacket* epacket)
-{
-	Packet pac(PWBuffer(epacket->data, epacket->dataLength));
-	enet_packet_destroy(epacket);
-	return pac;
-}
-
-void ENetUtil::Wakeup(ENetHost* host)
-{
-	// Send ourselves a spurious message.  This is hackier than it should be.
-	// I reported this as https://github.com/lsalzman/enet/issues/23, so
-	// hopefully there will be a better way to do it soon.
-	ENetAddress address;
-	if (host->address.port != 0)
-		address.port = host->address.port;
-	else
-		enet_socket_get_address(host->socket, &address);
-	address.host = 0x0100007f; // localhost
-
-	u8 byte = 0;
-	ENetBuffer buf;
-	buf.data = &byte;
-	buf.dataLength = 1;
-	enet_socket_send(host->socket, &address, &buf, 1);
-}
-
-int ENET_CALLBACK ENetUtil::InterceptCallback(ENetHost* host, ENetEvent* event)
-{
-	if (host->receivedDataLength == 1)
-	{
-		event->type = (ENetEventType) 42;
-		return 1;
-	}
-	return 0;
-}
-
 NetPad::NetPad()
 {
 	nHi = 0x00808080;
@@ -98,110 +52,112 @@ NetPlayClient::~NetPlayClient()
 	if (m_is_running)
 		StopGame();
 
-	if (m_IsConnected)
-	{
-		m_do_loop = false;
-		ENetUtil::Wakeup(m_host);
-		if (m_dialog)
-			m_thread.join();
-	}
-
-	if (m_host)
-		enet_host_destroy(m_host);
+	if (!m_direct_connection && g_TraversalClient)
+		g_TraversalClient->Reset();
 }
 
 // called from ---GUI--- thread
-NetPlayClient::NetPlayClient(const std::string& address, const u16 port, const std::string& name)
+NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& name, std::function<void(NetPlayClient*)> stateCallback)
 {
 	m_is_running = false;
 	m_do_loop = true;
 	m_target_buffer_size = 20;
-	m_IsConnected = false;
+	m_state = Failure;
 	m_dialog = NULL;
 	m_host = NULL;
-	m_ServerError = 0;
+	m_server_error = 0;
+	m_state_callback = stateCallback;
 
 	ClearBuffers();
 
-	ENetAddress addr;
+	Player player;
+	player.name = name;
+	player.pid = m_pid;
+	player.revision = netplay_dolphin_ver;
 
-	if (enet_address_set_host(&addr, address.c_str()))
-		return;
-	addr.port = port;
+	// add self to player list
+	m_players[m_pid] = player;
+	m_local_player = &m_players[m_pid];
 
-	m_host = enet_host_create(
-		NULL, // address
-		1, // peerCount
-		1, // channelLimit
-		0, // incomingBandwidth
-		0); // outgoingBandwidth
+	size_t pos = hostSpec.find(':');
+	if (pos != std::string::npos)
+	{
+		// Direct or local connection.  Don't use TraversalClient.
+		m_direct_connection = true;
+		m_host_client.reset(new ENetHostClient(1));
+		if (!m_host_client->m_Host)
+			return;
+		m_host_client->m_Client = this;
 
-	m_host->intercept = ENetUtil::InterceptCallback;
+		m_host = m_host_client->m_Host;
 
-	ENetEvent event;
+		std::string host = hostSpec.substr(0, pos);
+		int port = std::stoi(hostSpec.substr(pos + 1).c_str());
+		ENetAddress addr;
+		if (enet_address_set_host(&addr, host.c_str()))
+			return;
+		addr.port = port;
+		DoDirectConnect(addr);
+	}
+	else
+	{
+		m_direct_connection = false;
+		EnsureTraversalClient();
+		if (!g_TraversalClient)
+			return;
+		if (g_TraversalClient->m_State == TraversalClient::InitFailure)
+			return;
+		g_TraversalClient->m_Client = this;
+		m_host_spec = hostSpec;
+		m_host = g_TraversalClient->m_Host;
+		m_state = WaitingForTraversalClientConnection;
+		OnTraversalStateChanged();
+	}
+}
+
+void NetPlayClient::DoDirectConnect(const ENetAddress& addr)
+{
+	m_state = Connecting;
 	enet_host_connect(m_host, &addr, /*channelCount=*/0, /*data=*/0);
-	int count = enet_host_service(m_host, &event, 1500);
-	if (count <= 0)
-	{
-		// The connection failed or timed out.
-		return;
-	}
-
-	// send connect message
-	Packet hello;
-	hello.W(std::string(NETPLAY_VERSION));
-	hello.W(std::string(netplay_dolphin_ver));
-	hello.W(name);
-	ENetUtil::BroadcastPacket(m_host, hello);
-
-	count = enet_host_service(m_host, &event, 1000);
-	if (count <= 0 ||
-	    event.type != ENET_EVENT_TYPE_RECEIVE)
-	{
-		// They disconnected or timed out.  TODO: better error reporting.
-		return;
-	}
-
-	Packet resp = ENetUtil::MakePacket(event.packet);
-	resp.Do(m_ServerError);
-	resp.Do(m_pid);
-	if (!resp.failure && !m_ServerError)
-	{
-		Player player;
-		player.name = name;
-		player.pid = m_pid;
-		player.revision = netplay_dolphin_ver;
-
-		// add self to player list
-		m_players[m_pid] = player;
-		m_local_player = &m_players[m_pid];
-
-		//PanicAlertT("Connection successful: assigned player id: %d", m_pid);
-		m_IsConnected = true;
-	}
 }
 
 void NetPlayClient::SetDialog(NetPlayUI* dialog)
 {
-	bool hadDialog = m_dialog;
 	m_dialog = dialog;
-	if (!hadDialog)
-	{
-		// don't start receive messages until we have a dialog
-		m_thread = std::thread(std::mem_fun(&NetPlayClient::ThreadFunc), this);
-	}
+	m_have_dialog_event.Set();
 }
 
 // called from multiple threads
 void NetPlayClient::SendPacket(Packet& packet)
 {
-	m_queue.Push(std::move(packet));
-	ENetUtil::Wakeup(m_host);
+	CopyAsMove<Packet> tmp(std::move(packet));
+	g_TraversalClient->RunOnThread([=]() mutable {
+		ENetUtil::BroadcastPacket(m_host, *tmp);
+	});
 }
 
 // called from ---NETPLAY--- thread
 void NetPlayClient::OnData(Packet&& packet)
 {
+	if (m_state == WaitingForHelloResponse)
+	{
+		packet.Do(m_server_error);
+		packet.Do(m_pid);
+		if (packet.failure || m_server_error)
+			return OnDisconnect();
+
+		m_local_player->pid = m_pid;
+
+		//PanicAlertT("Connection successful: assigned player id: %d", m_pid);
+		m_state = Connected;
+		if (m_state_callback)
+			m_state_callback(this);
+		m_have_dialog_event.Wait();
+		return;
+	}
+	else if(m_state != Connected)
+		return;
+
 	MessageId mid;
 	packet.Do(mid);
 	if (packet.failure)
@@ -441,43 +397,78 @@ void NetPlayClient::OnData(Packet&& packet)
 // called from ---NETPLAY--- thread
 void NetPlayClient::OnDisconnect()
 {
+	if (m_state == Connected)
+	{
+		NetPlay_Disable();
+		m_dialog->AppendChat("< LOST CONNECTION TO SERVER >");
+		PanicAlertT("Lost connection to server.");
+	}
 	m_is_running = false;
-	NetPlay_Disable();
-	m_dialog->AppendChat("< LOST CONNECTION TO SERVER >");
-	PanicAlertT("Lost connection to server.");
-	m_do_loop = false;
+	m_state = Failure;
+	if (m_state_callback)
+		m_state_callback(this);
 }
 
 // called from ---NETPLAY--- thread
-void NetPlayClient::ThreadFunc()
+void NetPlayClient::OnENetEvent(ENetEvent* event)
 {
-	while (m_do_loop)
+	switch (event->type)
 	{
-		while (!m_queue.Empty())
+	case ENET_EVENT_TYPE_CONNECT:
 		{
-			Packet& opacket = m_queue.Front();
-			ENetUtil::BroadcastPacket(m_host, opacket);
-			m_queue.Pop();
+		if (m_state != Connecting)
+			break;
+		// send connect message
+		Packet hello;
+		hello.W(std::string(NETPLAY_VERSION));
+		hello.W(std::string(netplay_dolphin_ver));
+		hello.W(m_local_player->name);
+		ENetUtil::BroadcastPacket(m_host, hello);
+		m_state = WaitingForHelloResponse;
+		if (m_state_callback)
+			m_state_callback(this);
+		break;
 		}
+	case ENET_EVENT_TYPE_DISCONNECT:
+		OnDisconnect();
+		break;
+	case ENET_EVENT_TYPE_RECEIVE:
+		OnData(ENetUtil::MakePacket(event->packet));
+		break;
+	default:
+		break;
+	}
+}
 
-		ENetEvent event;
-		int count = enet_host_service(m_host, &event, 10000);
-		if (count < 0)
-			return OnDisconnect();
-		if (count > 0)
-		{
-			switch (event.type)
-			{
-			case ENET_EVENT_TYPE_DISCONNECT:
-				OnDisconnect();
-				break;
-			case ENET_EVENT_TYPE_RECEIVE:
-				OnData(ENetUtil::MakePacket(event.packet));
-				break;
-			default:
-				break;
-			}
-		}
+// called from ---NETPLAY--- thread
+void NetPlayClient::OnTraversalStateChanged()
+{
+	if (m_state == WaitingForTraversalClientConnection &&
+	    g_TraversalClient->m_State == TraversalClient::Connected)
+	{
+		m_state = WaitingForTraversalClientConnectReady;
+		if (m_state_callback)
+			m_state_callback(this);
+		g_TraversalClient->Connect(m_host_spec);
+	}
+	else if (m_state != Failure &&
+	         g_TraversalClient->m_State == TraversalClient::ConnectFailure)
+	{
+		OnDisconnect();
+	}
+}
+
+// called from ---NETPLAY--- thread
+void NetPlayClient::OnConnectReady(ENetAddress addr)
+{
+	if (m_state == WaitingForTraversalClientConnectReady)
+	{
+		if (addr.port != 0)
+			DoDirectConnect(addr);
+		else
+			m_state = Failure;
+		if (m_state_callback)
+			m_state_callback(this);
 	}
 }
 

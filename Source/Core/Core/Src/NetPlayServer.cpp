@@ -3,114 +3,69 @@
 // Refer to the license.txt file included.
 
 #include "NetPlayServer.h"
-// for ENetUtils
-#include "NetPlayClient.h"
-
-#define MAX_CLIENTS 200
-
-NetPlayServer*	NetPlayServer::s_instance;
+#include "NetPlayClient.h" // for NetPlayUI
 
 NetPlayServer::~NetPlayServer()
 {
-	if (m_host)
-	{
-		m_do_loop = false;
-		ENetUtil::Wakeup(m_host);
-		m_thread.join();
-		enet_host_destroy(m_host);
-	}
+	// leave the host open for future use
+	g_TraversalClient->Reset();
 }
 
 // called from ---GUI--- thread
 NetPlayServer::NetPlayServer()
 {
-	m_IsConnected = false;
 	m_is_running = false;
 	m_num_players = 0;
 	m_dialog = NULL;
-	s_instance = this;
 	memset(m_pad_map, -1, sizeof(m_pad_map));
 	memset(m_wiimote_map, -1, sizeof(m_wiimote_map));
-
-	ENetAddress address;
-	address.host = ENET_HOST_ANY;
-	address.port = ENET_PORT_ANY;
-	// leave some spaces free for server full notification
-	m_host = enet_host_create(
-		&address, // address
-		MAX_CLIENTS + 16, // peerCount
-		1, // channelLimit
-		0, // incomingBandwidth
-		0); // outgoingBandwidth
-
-	if (m_host == NULL)
-		return;
-
-	RetrySTUN();
-
-	m_host->intercept = InterceptCallback;
-
-	m_do_loop = true;
 	m_target_buffer_size = 20;
-	m_thread = std::thread(std::mem_fun(&NetPlayServer::ThreadFunc), this);
-	m_IsConnected = true;
+
+	g_TraversalClient->m_Client = this;
+	m_host = g_TraversalClient->m_Host;
 }
 
 // called from ---NETPLAY--- thread
-void NetPlayServer::ThreadFunc()
+void NetPlayServer::UpdatePings()
 {
-	while (m_do_loop)
+	m_ping_key = Common::Timer::GetTimeMs();
+
+	Packet ping;
+	ping.W((MessageId)NP_MSG_PING);
+	ping.W(m_ping_key);
+
+	m_ping_timer.Start();
+	SendToClientsOnThread(ping);
+
+	m_update_pings = false;
+}
+
+// called from ---NETPLAY--- thread
+void NetPlayServer::OnENetEvent(ENetEvent* event)
+{
+	// update pings every so many seconds
+	if (m_ping_timer.GetTimeElapsed() > (10 * 1000))
+		UpdatePings();
+
+	PlayerId pid = event->peer - m_host->peers;
+	switch (event->type)
 	{
-		// update pings every so many seconds
-		if ((m_ping_timer.GetTimeElapsed() > (10 * 1000)) || m_update_pings)
-		{
-			//PanicAlertT("Sending pings");
-
-			m_ping_key = Common::Timer::GetTimeMs();
-
-			Packet ping;
-			ping.W((MessageId)NP_MSG_PING);
-			ping.W(m_ping_key);
-
-			m_ping_timer.Start();
-			SendToClientsOnThread(ping);
-
-			m_update_pings = false;
-		}
-
-		// handle pending messages
-		while (!m_queue.Empty())
-		{
-			auto& out = m_queue.Front();
-			SendToClientsOnThread(out.first, out.second);
-			m_queue.Pop();
-		}
-
-		ENetEvent event;
-		int count = enet_host_service(m_host, &event, 10000);
-		if (count < 0)
-		{
-			PanicAlert("Wait failed... do something about this.");
-			continue;
-		}
-
-		if (count == 0)
-			continue;
-
-		PlayerId pid = event.peer - m_host->peers;
-		switch (event.type)
-		{
-		case ENET_EVENT_TYPE_DISCONNECT:
-			OnDisconnect(pid);
-			break;
-		case ENET_EVENT_TYPE_RECEIVE:
-			OnData(pid, ENetUtil::MakePacket(event.packet));
-			break;
-		default:
-			// notably, ignore connects until we get a hello message
-			break;
-		}
+	case ENET_EVENT_TYPE_DISCONNECT:
+		OnDisconnect(pid);
+		break;
+	case ENET_EVENT_TYPE_RECEIVE:
+		OnData(pid, ENetUtil::MakePacket(event->packet));
+		break;
+	default:
+		// notably, ignore connects until we get a hello message
+		break;
 	}
+}
+
+void NetPlayServer::OnTraversalStateChanged()
+{
+	if (m_dialog)
+		m_dialog->Update();
 }
 
 // called from ---NETPLAY--- thread
@@ -135,8 +90,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 	if (m_num_players >= MAX_CLIENTS)
 		return CON_ERR_SERVER_FULL;
 
-	// cause pings to be updated
-	m_update_pings = true;
+	UpdatePings();
 
 	// try to automatically assign new user a pad
 	for (unsigned int m = 0; m < 4; ++m)
@@ -515,8 +469,10 @@ bool NetPlayServer::StartGame(const std::string &path)
 // called from multiple threads
 void NetPlayServer::SendToClients(Packet& packet, const PlayerId skip_pid)
 {
-	m_queue.Push(std::make_pair(std::move(packet), skip_pid));
-	ENetUtil::Wakeup(m_host);
+	CopyAsMove<Packet> tmp(std::move(packet));
+	g_TraversalClient->RunOnThread([=]() mutable {
+		SendToClientsOnThread(*tmp, skip_pid);
+	});
 }
 
 
@@ -530,76 +486,10 @@ void NetPlayServer::SendToClientsOnThread(const Packet& packet, const PlayerId s
 		    m_players[pid].connected)
 		{
 			if (!epacket)
-				epacket = enet_packet_create((u8*) packet.vec->data(), packet.vec->size(), ENET_PACKET_FLAG_RELIABLE);
+				epacket = enet_packet_create(packet.vec->data(), packet.vec->size(), ENET_PACKET_FLAG_RELIABLE);
 			enet_peer_send(&m_host->peers[pid], 0, epacket);
 		}
 	}
-}
-
-// called from ---GUI--- thread
-u16 NetPlayServer::GetPort()
-{
-	return m_host->address.port;
-}
-
-// called from ---GUI--- thread
-std::pair<NetPlayServer::STUNState, std::string> NetPlayServer::GetHost()
-{
-	auto state = Common::AtomicLoadAcquire(m_stun_state);
-	return std::make_pair(state, m_address_str);
-}
-
-void NetPlayServer::RetrySTUN()
-{
-	// no std::to_string on Android
-	char buf[64];
-	sprintf(buf, "%d", (int) GetPort());
-	m_address_str = buf;
-	m_stun_state = STILL_RUNNING;
-	std::vector<std::string> servers;
-	//servers.push_back("dolphin-emu.org");
-	servers.push_back("stunserver.org");
-	m_stun_client = STUNClient(m_host->socket, std::move(servers));
-}
-
-// called from ---NETPLAY--- thread
-int NetPlayServer::InterceptCallback(ENetHost* host, ENetEvent* event)
-{
-	return s_instance->Intercept(event);
-}
-
-int NetPlayServer::Intercept(ENetEvent* event)
-{
-	if (m_stun_client.m_Status == STUNClient::Waiting)
-	{
-		bool result = m_stun_client.ReceivedPacket(m_host->receivedData, m_host->receivedDataLength, &m_host->receivedAddress);
-		m_stun_client.Ping();
-		if (m_stun_client.m_Status == STUNClient::Error ||
-		    m_stun_client.m_Status == STUNClient::Timeout)
-		{
-			Common::AtomicStoreRelease(m_stun_state, STUN_FAILED);
-			if (m_dialog)
-				m_dialog->Update();
-		}
-		else if (m_stun_client.m_Status == STUNClient::Ok)
-		{
-			const ENetAddress* addr = &m_stun_client.m_MyAddress;
-			char buf[64];
-			if (enet_address_get_host_ip(addr, buf, sizeof(buf)) < 0)
-				strcpy(buf, "???");
-			sprintf(buf + strlen(buf), ":%d", (int) addr->port);
-			m_address_str = buf;
-			Common::AtomicStoreRelease(m_stun_state, STUN_OK);
-			if (m_dialog)
-				m_dialog->Update();
-		}
-		if (result)
-		{
-			event->type = (ENetEventType) 42;
-			return 1;
-		}
-	}
-	return ENetUtil::InterceptCallback(m_host, event);
 }
 
 void NetPlayServer::SetDialog(NetPlayUI* dialog)

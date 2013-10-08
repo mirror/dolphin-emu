@@ -206,7 +206,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='DebugFast|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Src\STUNClient.cpp" />
+    <ClCompile Include="Src\TraversalClient.cpp" />
     <ClCompile Include="Src\StringUtil.cpp" />
     <ClCompile Include="Src\SymbolDB.cpp" />
     <ClCompile Include="Src\SysConf.cpp" />
@@ -259,7 +259,8 @@
     <ClInclude Include="Src\StdConditionVariable.h" />
     <ClInclude Include="Src\StdMutex.h" />
     <ClInclude Include="Src\StdThread.h" />
-    <ClInclude Include="Src\STUNClient.h" />
+    <ClInclude Include="Src\TraversalClient.h" />
+    <ClInclude Include="Src\TraversalProto.h" />
     <ClInclude Include="Src\StringUtil.h" />
     <ClInclude Include="Src\SymbolDB.h" />
     <ClInclude Include="Src\SysConf.h" />
