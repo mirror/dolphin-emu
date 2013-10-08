@@ -164,7 +164,7 @@ TraversalClient::TraversalClient()
 void TraversalClient::ReconnectToServer()
 {
 	std::string server = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayCentralServer;
-	server = "192.168.1.216"; // XXX
+	server = "vps.qoid.us"; // XXX
 	if (enet_address_set_host(&m_ServerAddress, server.c_str()))
 		return;
 	m_ServerAddress.port = 6262;
@@ -291,6 +291,7 @@ void TraversalClient::HandleServerPacket(TraversalPacket* packet)
 	case TraversalPacketConnectReady:
 	case TraversalPacketConnectFailed:
 		{
+
 		if (!m_PendingConnect || packet->connectReady.requestId != m_ConnectRequestId)
 			break;
 

@@ -117,6 +117,7 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 
 void NetPlayClient::DoDirectConnect(const ENetAddress& addr)
 {
+	printf("DDC to %x:%d\n", addr.host, addr.port);
 	m_state = Connecting;
 	enet_host_connect(m_host, &addr, /*channelCount=*/0, /*data=*/0);
 }

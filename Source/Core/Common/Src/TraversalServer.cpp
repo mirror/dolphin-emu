@@ -30,59 +30,83 @@ struct OutgoingPacketInfo
 	u64 sendTime;
 };
 
-template <typename K>
-struct EvictingKey
-{
-	// 30 seconds
-	const u64 EvictTimeout = 30 * 1000000;
-	template <typename T>
-	EvictingKey(T&& k) : m_K(std::forward<T>(k))
-	{
-		m_CreateTime = currentTime;
-	}
-	bool operator==(const EvictingKey<K>& other) const
-	{
-		return currentTime - m_CreateTime > EvictTimeout ||
-		       currentTime - other.m_CreateTime > EvictTimeout ||
-			   m_K == other.m_K;
-	}
-	K m_K;
-	u32 m_CreateTime;
-};
-
 template <typename T>
-struct std::hash<EvictingKey<T>>
+struct EvictEntry
 {
-	size_t operator()(const EvictingKey<T>& key) const
-	{
-		return std::hash<T>()(key.m_K);
-	}
+	u64 updateTime;
+	T value;
 };
 
-template <>
-struct std::hash<TraversalHostId>
+template <typename V>
+struct EvictFindResult
 {
-	size_t operator()(const TraversalHostId& id) const
-	{
-		auto p = (u32*) id.data();
-		return p[0] ^ ((p[1] << 13) | (p[1] >> 19));
-	}
+	bool found;
+	V* value;
 };
+
+template <typename K, typename V>
+EvictFindResult<V> EvictFind(typename std::unordered_map<K, EvictEntry<V>>& map, const K& key, bool refresh = false)
+{
+	retry:
+	const u64 expiryTime = 30 * 1000000; // 30s
+	EvictFindResult<V> result;
+	if (map.bucket_count())
+	{
+		auto bucket = map.bucket(key);
+		auto it = map.begin(bucket);
+		for (; it != map.end(bucket); ++it)
+		{
+			if (currentTime - it->second.updateTime > expiryTime)
+			{
+				map.erase(it->first);
+				goto retry;
+			}
+			if (it->first == key)
+			{
+				if (refresh)
+					it->second.updateTime = currentTime;
+				result.found = true;
+				result.value = &it->second.value;
+				return result;
+			}
+		}
+	}
+	result.found = false;
+	return result;
+}
+
+template <typename K, typename V>
+V* EvictSet(typename std::unordered_map<K, EvictEntry<V>>& map, const K& key)
+{
+	// can't use a local_iterator to emplace...
+	auto& result = map[key];
+	result.updateTime = currentTime;
+	return &result.value;
+}
+
+namespace std
+{
+	template <>
+	struct hash<TraversalHostId>
+	{
+		size_t operator()(const TraversalHostId& id) const
+		{
+			auto p = (u32*) id.data();
+			return p[0] ^ ((p[1] << 13) | (p[1] >> 19));
+		}
+	};
+}
 
 static int sock;
 static int urandomFd;
 static std::unordered_map<
-TraversalRequestId,
+	TraversalRequestId,
 	OutgoingPacketInfo
-	> outgoingPackets;
-	static std::unordered_map<
-	EvictingKey<TraversalRequestId>,
-	std::pair<TraversalInetAddress, TraversalRequestId>
-	> didSendInfo;
-	static std::unordered_map<
-	EvictingKey<TraversalHostId>,
-	TraversalInetAddress
-	> connectedClients;
+> outgoingPackets;
+static std::unordered_map<
+	TraversalHostId,
+	EvictEntry<TraversalInetAddress>
+> connectedClients;
 
 static TraversalInetAddress MakeInetAddress(const struct sockaddr_in6& addr)
 {
@@ -269,7 +293,8 @@ static void HandlePacket(TraversalPacket* packet, struct sockaddr_in6* addr)
 		}
 	case TraversalPacketPing:
 		{
-		packetOk = connectedClients.find(packet->ping.hostId) != connectedClients.end();
+		auto r = EvictFind(connectedClients, packet->ping.hostId, true);
+		packetOk = r.found;
 		break;
 		}
 	case TraversalPacketHelloFromClient:
@@ -284,11 +309,17 @@ static void HandlePacket(TraversalPacket* packet, struct sockaddr_in6* addr)
 			TraversalInetAddress* iaddr;
 			// not that there is any significant change of
 			// duplication, but...
-			do
+			GetRandomHostId(&hostId);
+			while (1)
 			{
-				GetRandomHostId(&hostId);
-				iaddr = &connectedClients[hostId];
-			} while (iaddr->port);
+				auto r = EvictFind(connectedClients, hostId);
+				if (!r.found)
+				{
+					iaddr = EvictSet(connectedClients, hostId);
+					break;
+				}
+			}
+
 			*iaddr = MakeInetAddress(*addr);
 
 			reply->helloFromServer.yourAddress = *iaddr;
@@ -299,8 +330,8 @@ static void HandlePacket(TraversalPacket* packet, struct sockaddr_in6* addr)
 	case TraversalPacketConnectPlease:
 		{
 		TraversalHostId& hostId = packet->connectPlease.hostId;
-		auto it = connectedClients.find(hostId);
-		if (it == connectedClients.end())
+		auto r = EvictFind(connectedClients, hostId);
+		if (!r.found)
 		{
 			TraversalPacket* reply = AllocPacket(*addr);
 			reply->type = TraversalPacketConnectFailed;
@@ -308,7 +339,7 @@ static void HandlePacket(TraversalPacket* packet, struct sockaddr_in6* addr)
 		}
 		else
 		{
-			TraversalPacket* please = AllocPacket(MakeSinAddr(it->second), packet->requestId);
+			TraversalPacket* please = AllocPacket(MakeSinAddr(*r.value), packet->requestId);
 			please->type = TraversalPacketPleaseSendPacket;
 			please->pleaseSendPacket.address = MakeInetAddress(*addr);
 		}
