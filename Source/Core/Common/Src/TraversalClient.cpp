@@ -2,8 +2,6 @@
 
 #include "TraversalClient.h"
 #include "enet/enet.h"
-#include "NetPlayClient.h" // for ENetUtil
-#include "ConfigManager.h"
 
 void ENetUtil::BroadcastPacket(ENetHost* host, const Packet& pac)
 {
@@ -146,8 +144,9 @@ void ENetHostClient::ThreadFunc()
 	}
 }
 
-TraversalClient::TraversalClient()
-: ENetHostClient(MAX_CLIENTS + 16, true) // leave some spaces free for server full notification
+TraversalClient::TraversalClient(const std::string& server)
+: ENetHostClient(MAX_CLIENTS + 16, true), // leave some spaces free for server full notification
+m_Server(server)
 {
 	if (!m_Host)
 		return;
@@ -163,9 +162,8 @@ TraversalClient::TraversalClient()
 
 void TraversalClient::ReconnectToServer()
 {
-	std::string server = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayCentralServer;
-	server = "vps.qoid.us"; // XXX
-	if (enet_address_set_host(&m_ServerAddress, server.c_str()))
+	m_Server = "vps.qoid.us"; // XXX
+	if (enet_address_set_host(&m_ServerAddress, m_Server.c_str()))
 		return;
 	m_ServerAddress.port = 6262;
 
@@ -406,11 +404,11 @@ void TraversalClient::Reset()
 
 std::unique_ptr<TraversalClient> g_TraversalClient;
 
-void EnsureTraversalClient()
+void EnsureTraversalClient(const std::string& server)
 {
 	if (!g_TraversalClient)
 	{
-		g_TraversalClient.reset(new TraversalClient);
+		g_TraversalClient.reset(new TraversalClient(server));
 		if (g_TraversalClient->m_State == TraversalClient::InitFailure)
 		{
 			g_TraversalClient.reset();

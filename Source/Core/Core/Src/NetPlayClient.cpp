@@ -102,7 +102,8 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 	else
 	{
 		m_direct_connection = false;
-		EnsureTraversalClient();
+		std::string server = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayCentralServer;
+		EnsureTraversalClient(server);
 		if (!g_TraversalClient)
 			return;
 		if (g_TraversalClient->m_State == TraversalClient::InitFailure)

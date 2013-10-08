@@ -662,7 +662,8 @@ void NetPlay::StartHosting(std::string id, wxWindow* parent)
 		return;
 	}
 
-	EnsureTraversalClient();
+	std::string server = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayCentralServer;
+	EnsureTraversalClient(server);
 	if (!g_TraversalClient)
 	{
 		wxMessageBox(_("Failed to init traversal client.  This shouldn't happen..."), _("Error"), wxOK, parent);

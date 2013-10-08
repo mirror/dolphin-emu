@@ -80,7 +80,7 @@ public:
 		Connected
 	};
 
-	TraversalClient();
+	TraversalClient(const std::string& server);
 	void Reset();
 	void Connect(const std::string& host);
 	void ReconnectToServer();
@@ -111,7 +111,8 @@ private:
 	std::list<OutgoingPacketInfo> m_OutgoingPackets;
 	ENetAddress m_ServerAddress;
 	enet_uint32 m_PingTime;
+	std::string m_Server;
 };
 
 extern std::unique_ptr<TraversalClient> g_TraversalClient;
-void EnsureTraversalClient();
+void EnsureTraversalClient(const std::string& server);
