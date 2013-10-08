@@ -134,7 +134,9 @@ static TraversalInetAddress MakeInetAddress(const struct sockaddr_in6& addr)
 static struct sockaddr_in6 MakeSinAddr(const TraversalInetAddress& addr)
 {
 	struct sockaddr_in6 result;
+#ifdef SIN6_LEN
 	result.sin6_len = sizeof(result);
+#endif
 	result.sin6_family = AF_INET6;
 	result.sin6_port = addr.port;
 	result.sin6_flowinfo = 0;
@@ -384,7 +386,9 @@ int main()
 	}
 	struct in6_addr any = IN6ADDR_ANY_INIT;
 	struct sockaddr_in6 addr;
+#ifdef SIN6_LEN
 	addr.sin6_len = sizeof(addr);
+#endif
 	addr.sin6_family = AF_INET6;
 	addr.sin6_port = htons(6262);
 	addr.sin6_flowinfo = 0;
