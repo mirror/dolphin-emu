@@ -405,8 +405,7 @@ void NetPlayDiag::OnCopyIP(wxCommandEvent&)
 {
 	if (m_host_copy_btn_is_retry)
 	{
-		// nevermind.
-		//netplay_server->RetrySTUN();
+		g_TraversalClient->ReconnectToServer();
 		Update();
 	}
 	else

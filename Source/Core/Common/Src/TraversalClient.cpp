@@ -176,6 +176,8 @@ void TraversalClient::ReconnectToServer()
 		SendPacket(hello);
 	});
 	m_State = Connecting;
+	if (m_Client)
+		m_Client->OnTraversalStateChanged();
 }
 
 u16 TraversalClient::GetPort()
