@@ -241,6 +241,13 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 	uid_data.genMode_numtevstages = bpmem.genMode.numtevstages;
 	uid_data.genMode_numtexgens = bpmem.genMode.numtexgens;
 
+	// dot product for integer vectors
+	out.Write("int idot(int3 x, int3 y)\n");
+	out.Write("{\n");
+	out.Write("\tint3 tmp = x * y;\n");
+	out.Write("\treturn tmp.x + tmp.y + tmp.z;\n");
+	out.Write("}\n");
+
 	if (ApiType == API_OPENGL)
 	{
 		// Fmod implementation gleaned from Nvidia
@@ -605,10 +612,10 @@ static const char *TEVCMPColorOPTable[16] =
 	"float3(0.0, 0.0, 0.0)",//7
 	"   (%s&255) + (((%s.r&255) > %s.r) ? (%s&255): int3(0,0,0))",//#define TEVCMP_R8_GT 8
 	"   (%s&255) + (((%s.r&255) == %s.r) ? (%s&255): int3(0,0,0))",//#define TEVCMP_R8_EQ 9
-	"   (%s&255) + ((dot((%s.rgb&255), comp16) >  dot((%s.rgb&255), comp16)) ? (%s&255): int3(0,0,0))",//#define TEVCMP_GR16_GT 10
-	"   (%s&255) + ((dot((%s.rgb&255), comp16) == dot((%s.rgb&255), comp16)) ? (%s&255): int3(0,0,0))",//#define TEVCMP_GR16_EQ 11
-	"   (%s&255) + ((dot((%s.rgb&255), comp24) >  dot((%s.rgb&255), comp24)) ? (%s&255): int3(0,0,0))",//#define TEVCMP_BGR24_GT 12
-	"   (%s&255) + ((dot((%s.rgb&255), comp24) == dot((%s.rgb&255), comp24)) ? (%s&255): int3(0,0,0))",//#define TEVCMP_BGR24_EQ 13
+	"   (%s&255) + ((idot((%s.rgb&255), comp16) >  idot((%s.rgb&255), comp16)) ? (%s&255): int3(0,0,0))",//#define TEVCMP_GR16_GT 10
+	"   (%s&255) + ((idot((%s.rgb&255), comp16) == idot((%s.rgb&255), comp16)) ? (%s&255): int3(0,0,0))",//#define TEVCMP_GR16_EQ 11
+	"   (%s&255) + ((idot((%s.rgb&255), comp24) >  idot((%s.rgb&255), comp24)) ? (%s&255): int3(0,0,0))",//#define TEVCMP_BGR24_GT 12
+	"   (%s&255) + ((idot((%s.rgb&255), comp24) == idot((%s.rgb&255), comp24)) ? (%s&255): int3(0,0,0))",//#define TEVCMP_BGR24_EQ 13
 	"   (%s&255) + int3(max(sign(int3((%s.rgb&255)) - int3((%s.rgb&255))), int3(0,0,0)) * (%s&255))",//#define TEVCMP_RGB8_GT  14
 	"   (%s&255) + int3((int3(255,255,255) - max(sign(abs(int3((%s.rgb&255)) - int3((%s.rgb&255)))), int3(0,0,0))) * (%s&255))"//#define TEVCMP_RGB8_EQ  15
 };
@@ -626,10 +633,10 @@ static const char *TEVCMPAlphaOPTable[16] =
 	"0.0",//7
 	"   (%s.a&255) + (((%s.r&255) > (%s.r&255)) ? (%s.a&255) : 0)",//#define TEVCMP_R8_GT 8
 	"   (%s.a&255) + (((%s.r&255) == (%s.r&255)) ? (%s.a&255) : 0)",//#define TEVCMP_R8_EQ 9
-	"   (%s.a&255) + ((dot((%s.rgb&255), comp16) >  dot((%s.rgb&255), comp16)) ? (%s.a&255) : 0)",//#define TEVCMP_GR16_GT 10
-	"   (%s.a&255) + ((dot((%s.rgb&255), comp16) == dot((%s.rgb&255), comp16)) ? (%s.a&255) : 0)",//#define TEVCMP_GR16_EQ 11
-	"   (%s.a&255) + ((dot((%s.rgb&255), comp24) >  dot((%s.rgb&255), comp24)) ? (%s.a&255) : 0)",//#define TEVCMP_BGR24_GT 12
-	"   (%s.a&255) + ((dot((%s.rgb&255), comp24) == dot((%s.rgb&255), comp24)) ? (%s.a&255) : 0)",//#define TEVCMP_BGR24_EQ 13
+	"   (%s.a&255) + ((idot((%s.rgb&255), comp16) >  idot((%s.rgb&255), comp16)) ? (%s.a&255) : 0)",//#define TEVCMP_GR16_GT 10
+	"   (%s.a&255) + ((idot((%s.rgb&255), comp16) == idot((%s.rgb&255), comp16)) ? (%s.a&255) : 0)",//#define TEVCMP_GR16_EQ 11
+	"   (%s.a&255) + ((idot((%s.rgb&255), comp24) >  idot((%s.rgb&255), comp24)) ? (%s.a&255) : 0)",//#define TEVCMP_BGR24_GT 12
+	"   (%s.a&255) + ((idot((%s.rgb&255), comp24) == idot((%s.rgb&255), comp24)) ? (%s.a&255) : 0)",//#define TEVCMP_BGR24_EQ 13
 	"   (%s.a&255) + (((%s.a&255) >  (%s.a&255)) ? (%s.a&255) : 0)",//#define TEVCMP_A8_GT 14
 	"   (%s.a&255) + (((%s.a&255) == (%s.a&255)) ? (%s.a&255) : 0)" //#define TEVCMP_A8_EQ 15
 };
