@@ -1,3 +1,7 @@
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
+
 #include "Attachment.h"
 
 namespace WiimoteEmu
@@ -6,7 +10,7 @@ namespace WiimoteEmu
 class Guitar : public Attachment
 {
 public:
-	Guitar();
+	Guitar(WiimoteEmu::ExtensionReg& _reg);
 	void GetState( u8* const data, const bool focus );
 
 	enum

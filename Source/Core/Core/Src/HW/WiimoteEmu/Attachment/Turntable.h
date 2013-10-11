@@ -1,3 +1,7 @@
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
+
 #include "Attachment.h"
 
 namespace WiimoteEmu
@@ -6,7 +10,7 @@ namespace WiimoteEmu
 class Turntable : public Attachment
 {
 public:
-	Turntable();
+	Turntable(WiimoteEmu::ExtensionReg& _reg);
 	void GetState(u8* const data, const bool focus);
 
 	enum
@@ -27,7 +31,6 @@ public:
 
 private:
 	Buttons*		m_buttons;
-	MixedTriggers*	m_triggers;
 	AnalogStick*	m_stick;
 	Triggers	*m_effect_dial;
 	Slider		*m_left_table, *m_right_table, *m_crossfade;

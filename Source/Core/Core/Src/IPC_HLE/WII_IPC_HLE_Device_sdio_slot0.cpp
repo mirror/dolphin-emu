@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "Common.h"
 #include "../ConfigManager.h"
@@ -35,6 +22,19 @@ CWII_IPC_HLE_Device_sdio_slot0::CWII_IPC_HLE_Device_sdio_slot0(u32 _DeviceID, co
 	, m_Card(NULL)
 {}
 
+void CWII_IPC_HLE_Device_sdio_slot0::DoState(PointerWrap& p)
+{
+	DoStateShared(p);
+	if (p.GetMode() == PointerWrap::MODE_READ)
+	{
+		OpenInternal();
+	}
+	p.Do(m_Status);
+	p.Do(m_BlockLength);
+	p.Do(m_BusWidth);
+	p.Do(m_Registers);
+}
+
 void CWII_IPC_HLE_Device_sdio_slot0::EventNotify()
 {
 	if ((SConfig::GetInstance().m_WiiSDCard && m_event.type == EVENT_INSERT) ||
@@ -47,10 +47,8 @@ void CWII_IPC_HLE_Device_sdio_slot0::EventNotify()
 	}
 }
 
-bool CWII_IPC_HLE_Device_sdio_slot0::Open(u32 _CommandAddress, u32 _Mode)
+void CWII_IPC_HLE_Device_sdio_slot0::OpenInternal()
 {
-	INFO_LOG(WII_IPC_SD, "Open");
-
 	const std::string filename = File::GetUserPath(D_WIIUSER_IDX) + "sd.raw";
 	m_Card.Open(filename, "r+b");
 	if (!m_Card)
@@ -66,8 +64,16 @@ bool CWII_IPC_HLE_Device_sdio_slot0::Open(u32 _CommandAddress, u32 _Mode)
 			ERROR_LOG(WII_IPC_SD, "Could not open SD Card image or create a new one, are you running from a read-only directory?");
 		}
 	}
+}
+
+bool CWII_IPC_HLE_Device_sdio_slot0::Open(u32 _CommandAddress, u32 _Mode)
+{
+	INFO_LOG(WII_IPC_SD, "Open");
+
+	OpenInternal();
 
 	Memory::Write_U32(GetDeviceID(), _CommandAddress + 0x4);
+	memset(m_Registers, 0, sizeof(m_Registers));
 	m_Active = true;
 	return true;
 }
@@ -109,20 +115,26 @@ bool CWII_IPC_HLE_Device_sdio_slot0::IOCtl(u32 _CommandAddress)
 
 		DEBUG_LOG(WII_IPC_SD, "IOCTL_WRITEHCR 0x%08x - 0x%08x", reg, val);
 
+		if (reg >= 0x200)
+		{
+			DEBUG_LOG(WII_IPC_SD, "IOCTL_WRITEHCR out of range");
+			break;
+		}
+
 		if ((reg == HCR_CLOCKCONTROL) && (val & 1))
 		{
 			// Clock is set to oscillate, enable bit 1 to say it's stable
-			Memory::Write_U32(val | 2, SDIO_BASE + reg);
+			m_Registers[reg] = val | 2;
 		}
 		else if ((reg == HCR_SOFTWARERESET) && val)
 		{
 			// When a reset is specified, the register gets cleared
-			Memory::Write_U32(0, SDIO_BASE + reg);
+			m_Registers[reg] = 0;
 		}
 		else
 		{
 			// Default to just storing the new value
-			Memory::Write_U32(val, SDIO_BASE + reg);
+			m_Registers[reg] = val;
 		}
 		}
 		break;
@@ -130,9 +142,16 @@ bool CWII_IPC_HLE_Device_sdio_slot0::IOCtl(u32 _CommandAddress)
 	case IOCTL_READHCR:
 		{
 		u32 reg = Memory::Read_U32(BufferIn);
-		u32 val = Memory::Read_U32(SDIO_BASE + reg);
 
+		if (reg >= 0x200)
+		{
+			DEBUG_LOG(WII_IPC_SD, "IOCTL_READHCR out of range");
+			break;
+		}
+
+		u32 val = m_Registers[reg];
 		DEBUG_LOG(WII_IPC_SD, "IOCTL_READHCR 0x%08x - 0x%08x", reg, val);
+
 		// Just reading the register
 		Memory::Write_U32(val, BufferOut);
 		}
@@ -158,7 +177,7 @@ bool CWII_IPC_HLE_Device_sdio_slot0::IOCtl(u32 _CommandAddress)
 		break;
 
 	case IOCTL_SENDCMD:
-		INFO_LOG(WII_IPC_SD, "IOCTL_SENDCMD %x ipc:%08x",
+		INFO_LOG(WII_IPC_SD, "IOCTL_SENDCMD %x IPC:%08x",
 			Memory::Read_U32(BufferIn), _CommandAddress);
 		ReturnValue = ExecuteCommand(BufferIn, BufferInSize, 0, 0, BufferOut, BufferOutSize);
 		break;
@@ -242,7 +261,7 @@ bool CWII_IPC_HLE_Device_sdio_slot0::IOCtlV(u32 _CommandAddress)
 		break;
 
 	default:
-		ERROR_LOG(WII_IPC_SD, "unknown SD IOCtlV command 0x%08x", CommandBuffer.Parameter);
+		ERROR_LOG(WII_IPC_SD, "Unknown SD IOCtlV command 0x%08x", CommandBuffer.Parameter);
 		break;
 	}
 
@@ -376,7 +395,7 @@ u32 CWII_IPC_HLE_Device_sdio_slot0::ExecuteCommand(u32 _BufferIn, u32 _BufferInS
 				{
 					Memory::Write_U8((u8)buffer[i], req.addr++);
 				}
-				DEBUG_LOG(WII_IPC_SD, "outbuffer size %i got %i", _rwBufferSize, i);
+				DEBUG_LOG(WII_IPC_SD, "Outbuffer size %i got %i", _rwBufferSize, i);
 			}
 			else
 			{

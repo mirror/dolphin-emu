@@ -1,19 +1,7 @@
-// Copyright (C) 2003 Dolphin Project.
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
 
 #ifndef _FILEUTIL_H_
 #define _FILEUTIL_H_
@@ -25,6 +13,7 @@
 #include <string.h>
 
 #include "Common.h"
+#include "StringUtil.h"
 
 // User directory indices for GetUserPath
 enum {
@@ -32,8 +21,8 @@ enum {
 	D_GCUSER_IDX,
 	D_WIIROOT_IDX,
 	D_WIIUSER_IDX,
-	D_CONFIG_IDX,
-	D_GAMECONFIG_IDX,
+	D_CONFIG_IDX, // global settings
+	D_GAMESETTINGS_IDX, // user-specified settings which override both the global and the default settings (per game)
 	D_MAPS_IDX,
 	D_CACHE_IDX,
 	D_SHADERCACHE_IDX,
@@ -50,8 +39,9 @@ enum {
 	D_LOGS_IDX,
 	D_MAILLOGS_IDX,
 	D_WIISYSCONF_IDX,
+	D_WIIWC24_IDX,
+	D_THEMES_IDX,
 	F_DOLPHINCONFIG_IDX,
-	F_DSPCONFIG_IDX,
 	F_DEBUGGERCONFIG_IDX,
 	F_LOGGERCONFIG_IDX,
 	F_MAINLOG_IDX,
@@ -131,7 +121,10 @@ bool SetCurrentDir(const std::string &directory);
 
 // Returns a pointer to a string with a Dolphin data dir in the user's home
 // directory. To be used in "multi-user" mode (that is, installed).
-std::string &GetUserPath(const unsigned int DirIDX, const std::string &newPath="");
+const std::string& GetUserPath(const unsigned int DirIDX, const std::string &newPath="");
+
+// probably doesn't belong here
+std::string GetThemeDir(const std::string& theme_name);
 
 // Returns the path to where the sys file are
 std::string GetSysDirectory();
@@ -150,7 +143,7 @@ bool ReadFileToString(bool text_file, const char *filename, std::string &str);
 // simple wrapper for cstdlib file functions to
 // hopefully will make error checking easier
 // and make forgetting an fclose() harder
-class IOFile : NonCopyable
+class IOFile : public NonCopyable
 {
 public:
 	IOFile();
@@ -158,15 +151,24 @@ public:
 	IOFile(const std::string& filename, const char openmode[]);
 
 	~IOFile();
+	
+	IOFile(IOFile&& other);
+	IOFile& operator=(IOFile&& other);
+	
+	void Swap(IOFile& other);
 
 	bool Open(const std::string& filename, const char openmode[]);
 	bool Close();
 
 	template <typename T>
-	bool ReadArray(T* data, size_t length)
+	bool ReadArray(T* data, size_t length, size_t* pReadBytes = NULL)
 	{
-		if (!IsOpen() || length != std::fread(data, sizeof(T), length, m_file))
+		size_t read_bytes = 0;
+		if (!IsOpen() || length != (read_bytes = std::fread(data, sizeof(T), length, m_file)))
 			m_good = false;
+
+		if (pReadBytes)
+			*pReadBytes = read_bytes;
 
 		return m_good;
 	}
@@ -211,13 +213,24 @@ public:
 	// clear error state
 	void Clear() { m_good = true; std::clearerr(m_file); }
 
-private:
-	IOFile& operator=(const IOFile&) /*= delete*/;
-
 	std::FILE* m_file;
 	bool m_good;
+private:
+	IOFile(IOFile&);
+	IOFile& operator=(IOFile& other);
 };
 
 }  // namespace
+
+// To deal with Windows being dumb at unicode:
+template <typename T>
+void OpenFStream(T& fstream, const std::string& filename, std::ios_base::openmode openmode)
+{
+#ifdef _WIN32
+	fstream.open(UTF8ToTStr(filename).c_str(), openmode);
+#else
+	fstream.open(filename.c_str(), openmode);
+#endif
+}
 
 #endif

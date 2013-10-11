@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #ifndef _WII_SAVE_CRYPTED
 #define _WII_SAVE_CRYPTED
@@ -21,15 +8,19 @@
 #include "StringUtil.h"
 #include "Crypto/aes.h"
 #include "Crypto/tools.h"
-#include "Crypto/md5.h"
+#include "polarssl/md5.h"
 
 // --- this is used for encrypted Wii save files
 
 
-	
 class CWiiSaveCrypted
 {
 public:
+	bool static ImportWiiSave(const char* FileName);
+	bool static ExportWiiSave(u64 TitleID);
+	void static ExportAllSaves();
+
+private:
 	CWiiSaveCrypted(const char* FileName, u64 TitleID = 0);
 	~CWiiSaveCrypted();
 	void ReadHDR();
@@ -40,38 +31,29 @@ public:
 	void ImportWiiSaveFiles();
 	void ExportWiiSaveFiles(); // To data.bin
 	void do_sig();
-	void make_ec_cert(u8 *cert, u8 *sig, char *signer, char *name, u8 *priv,
-                         u32 key_id);
+	void make_ec_cert(u8 *cert, u8 *sig, char *signer, char *name, u8 *priv, u32 key_id);
 	bool getPaths(bool forExport = false);
 	void ScanForFiles(std::string savDir, std::vector<std::string>&FilesList, u32 *_numFiles, u32 *_sizeFiles);
 
-private:
+
 	AES_KEY m_AES_KEY;
 	u8 SD_IV[0x10];
 	std::vector<std::string> FilesList;
-		 
-	char pathData_bin[2048];
 
-	std::string BannerFilePath,
-				WiiTitlePath;
+	std::string encryptedSavePath;
 
-	u8  IV[0x10],
-		*_encryptedData,
-		*_data,
-		md5_file[16],
-		md5_calc[16];
+	std::string WiiTitlePath;
 
-	u32 _bannerSize,
+	u8  IV[0x10];
+	
+	u32 //_bannerSize,
 		_numberOfFiles,
 		_sizeOfFiles,
-		_totalSize,
-		_fileSize,
-		_roundedfileSize;
+		_totalSize;
 
 	u64 m_TitleID;
 
-	bool b_valid,
-		b_tryAgain;
+	bool b_valid;
 
 	enum
 	{
@@ -85,13 +67,12 @@ private:
 		BK_LISTED_SZ = 0x70,	// Size before rounding to nearest block
 		BK_SZ  = 0x80,
 		FILE_HDR_SZ = 0x80,
-		
+
 		SIG_SZ = 0x40,
 		NG_CERT_SZ = 0x180,
 		AP_CERT_SZ = 0x180,
 		FULL_CERT_SZ =  0x3C0,	// SIG_SZ +	NG_CERT_SZ + AP_CERT_SZ + 0x80?
-	
-	
+
 		BK_HDR_MAGIC   = 0x426B0001,
 		FILE_HDR_MAGIC = 0x03adf17e
 	};
@@ -107,7 +88,7 @@ private:
 		u8 Md5[0x10]; // md5 of plaintext header with md5 blanker applied
 		u16 unk2;
 	};
-	
+
 	struct HEADER
 	{
 		Data_Bin_HDR hdr;

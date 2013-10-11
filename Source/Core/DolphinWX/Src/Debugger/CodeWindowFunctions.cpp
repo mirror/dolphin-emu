@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "Common.h"
 #include "CommonPaths.h"
@@ -25,6 +12,7 @@
 
 #include "DebuggerUIUtil.h"
 
+#include "../WxUtils.h"
 #include "RegisterWindow.h"
 #include "BreakpointWindow.h"
 #include "MemoryWindow.h"
@@ -54,15 +42,6 @@
 
 #include "ConfigManager.h"
 
-extern "C"  // Bitmaps
-{
-	#include "../../resources/toolbar_play.c"
-	#include "../../resources/toolbar_pause.c"
-	#include "../../resources/toolbar_add_memorycheck.c"
-	#include "../../resources/toolbar_debugger_delete.c"
-	#include "../../resources/toolbar_add_breakpoint.c"
-}
-
 // Save and load settings
 // -----------------------------
 void CCodeWindow::Load()
@@ -74,7 +53,7 @@ void CCodeWindow::Load()
 	std::string fontDesc;
 	ini.Get("General", "DebuggerFont", &fontDesc);
 	if (!fontDesc.empty())
-		DebuggerFont.SetNativeFontInfoUserDesc(wxString::FromAscii(fontDesc.c_str()));
+		DebuggerFont.SetNativeFontInfoUserDesc(StrToWxStr(fontDesc));
 
 	// Boot to pause or not
 	ini.Get("General", "AutomaticStart", &bAutomaticStart, false);
@@ -116,7 +95,7 @@ void CCodeWindow::Save()
 	ini.Load(File::GetUserPath(F_DEBUGGERCONFIG_IDX));
 
 	ini.Set("General", "DebuggerFont",
-		   	std::string(DebuggerFont.GetNativeFontInfoUserDesc().mb_str()));
+		   	WxStrToStr(DebuggerFont.GetNativeFontInfoUserDesc()));
 
 	// Boot to pause or not
 	ini.Set("General", "AutomaticStart", GetMenuBar()->IsChecked(IDM_AUTOMATICSTART));
@@ -163,7 +142,7 @@ void CCodeWindow::CreateMenuSymbols(wxMenuBar *pMenuBar)
 	pSymbolsMenu->Append(IDM_SAVEMAPFILE, _("&Save symbol map"));
 	pSymbolsMenu->AppendSeparator();
 	pSymbolsMenu->Append(IDM_SAVEMAPFILEWITHCODES, _("Save code"),
-		wxString::FromAscii("Save the entire disassembled code. This may take a several seconds"
+		StrToWxStr("Save the entire disassembled code. This may take a several seconds"
 		" and may require between 50 and 100 MB of hard drive space. It will only save code"
 		" that are in the first 4 MB of memory, if you are debugging a game that load .rel"
 		" files with code to memory you may want to increase that to perhaps 8 MB, you can do"
@@ -217,7 +196,7 @@ void CCodeWindow::OnProfilerMenu(wxCommandEvent& event)
 						break;
 				}
 				wxString OpenCommand;
-				OpenCommand = filetype->GetOpenCommand(wxString::From8BitData(filename.c_str()));
+				OpenCommand = filetype->GetOpenCommand(StrToWxStr(filename));
 				if(!OpenCommand.IsEmpty())
 					wxExecute(OpenCommand, wxEXEC_SYNC);
 			}
@@ -232,7 +211,9 @@ void CCodeWindow::OnSymbolsMenu(wxCommandEvent& event)
 
 	if (Core::GetState() == Core::CORE_UNINITIALIZED) return;
 
-	std::string mapfile = CBoot::GenerateMapFilename();
+	std::string existing_map_file, writable_map_file;
+	bool map_exists = CBoot::FindMapFile(&existing_map_file,
+	                                     &writable_map_file);
 	switch (event.GetId())
 	{
 	case IDM_CLEARSYMBOLS:
@@ -259,28 +240,28 @@ void CCodeWindow::OnSymbolsMenu(wxCommandEvent& event)
 		break;
 		}
 	case IDM_LOADMAPFILE:
-		if (!File::Exists(mapfile))
+		if (!map_exists)
 		{
 			g_symbolDB.Clear();
 			PPCAnalyst::FindFunctions(0x81300000, 0x81800000, &g_symbolDB);
 			SignatureDB db;
 			if (db.Load((File::GetSysDirectory() + TOTALDB).c_str()))
 				db.Apply(&g_symbolDB);
-			Parent->StatusBarMessage("'%s' not found, scanning for common functions instead", mapfile.c_str());
+			Parent->StatusBarMessage("'%s' not found, scanning for common functions instead", writable_map_file.c_str());
 		}
 		else
 		{
-			g_symbolDB.LoadMap(mapfile.c_str());
-			Parent->StatusBarMessage("Loaded symbols from '%s'", mapfile.c_str());
+			g_symbolDB.LoadMap(existing_map_file.c_str());
+			Parent->StatusBarMessage("Loaded symbols from '%s'", existing_map_file.c_str());
 		}
 		HLE::PatchFunctions();
 		NotifyMapLoaded();
 		break;
 	case IDM_SAVEMAPFILE:
-		g_symbolDB.SaveMap(mapfile.c_str());
+		g_symbolDB.SaveMap(writable_map_file.c_str());
 		break;
 	case IDM_SAVEMAPFILEWITHCODES:
-		g_symbolDB.SaveMap(mapfile.c_str(), true);
+		g_symbolDB.SaveMap(writable_map_file.c_str(), true);
 		break;
 
 	case IDM_RENAME_SYMBOLS:
@@ -293,7 +274,8 @@ void CCodeWindow::OnSymbolsMenu(wxCommandEvent& event)
 
 			if (!path.IsEmpty())
 			{
-				std::ifstream f(path.mb_str());
+				std::ifstream f;
+				OpenFStream(f, WxStrToStr(path), std::ios_base::in);
 
 				std::string line;
 				while (std::getline(f, line))
@@ -321,13 +303,13 @@ void CCodeWindow::OnSymbolsMenu(wxCommandEvent& event)
 		{
 			wxTextEntryDialog input_prefix(
 				this,
-				wxString::FromAscii("Only export symbols with prefix:\n(Blank for all symbols)"),
+				StrToWxStr("Only export symbols with prefix:\n(Blank for all symbols)"),
 				wxGetTextFromUserPromptStr,
 				wxEmptyString);
 
 			if (input_prefix.ShowModal() == wxID_OK)
 			{
-				std::string prefix(input_prefix.GetValue().mb_str());
+				std::string prefix(WxStrToStr(input_prefix.GetValue()));
 
 				wxString path = wxFileSelector(
 					_T("Save signature as"), wxEmptyString, wxEmptyString, wxEmptyString,
@@ -337,8 +319,7 @@ void CCodeWindow::OnSymbolsMenu(wxCommandEvent& event)
 				{
 					SignatureDB db;
 					db.Initialize(&g_symbolDB, prefix.c_str());
-					std::string filename(path.mb_str());
-					db.Save(path.mb_str());
+					db.Save(WxStrToStr(path).c_str());
 				}
 			}
 		}
@@ -352,7 +333,7 @@ void CCodeWindow::OnSymbolsMenu(wxCommandEvent& event)
 			if (!path.IsEmpty())
 			{
 				SignatureDB db;
-				db.Load(path.mb_str());
+				db.Load(WxStrToStr(path).c_str());
 				db.Apply(&g_symbolDB);
 			}
 		}
@@ -375,7 +356,7 @@ void CCodeWindow::NotifyMapLoaded()
 	symbols->Clear();
 	for (PPCSymbolDB::XFuncMap::iterator iter = g_symbolDB.GetIterator(); iter != g_symbolDB.End(); ++iter)
 	{
-		int idx = symbols->Append(wxString::FromAscii(iter->second.name.c_str()));
+		int idx = symbols->Append(StrToWxStr(iter->second.name));
 		symbols->SetClientData(idx, (void*)&iter->second);
 	}
 	symbols->Thaw();
@@ -418,7 +399,7 @@ void CCodeWindow::OnChangeFont(wxCommandEvent& event)
 		DebuggerFont = dialog.GetFontData().GetChosenFont();
 }
 
-// Toogle windows
+// Toggle windows
 
 void CCodeWindow::OpenPages()
 {

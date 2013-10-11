@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "Common.h"
 #include "CommonPaths.h"
@@ -33,6 +20,7 @@
 
 SCoreStartupParameter::SCoreStartupParameter()
 : hInstance(0),
+  bEnableDebugging(false), bAutomaticStart(false), bBootToPause(false),
   bJITNoBlockCache(false), bJITBlockLinking(true),
   bJITOff(false),
   bJITLoadStoreOff(false), bJITLoadStorelXzOff(false),
@@ -40,27 +28,27 @@ SCoreStartupParameter::SCoreStartupParameter()
   bJITLoadStoreFloatingOff(false), bJITLoadStorePairedOff(false),
   bJITFloatingPointOff(false), bJITIntegerOff(false),
   bJITPairedOff(false), bJITSystemRegistersOff(false),
-  bJITBranchOff(false), bJITProfiledReJIT(false),
+  bJITBranchOff(false),
   bJITILTimeProfiling(false), bJITILOutputIR(false),
-  bEnableFPRF(false), 
+  bEnableFPRF(false),
   bCPUThread(true), bDSPThread(false), bDSPHLE(true),
   bSkipIdle(true), bNTSC(false), bForceNTSCJ(false),
-  bHLE_BS2(true), bLockThreads(false),
-  bEnableCheats(false),
-  bMergeBlocks(false),
+  bHLE_BS2(true), bEnableCheats(false),
+  bMergeBlocks(false), bEnableMemcardSaving(true),
+  bDPL2Decoder(false), iLatency(14),
   bRunCompareServer(false), bRunCompareClient(false),
-  bMMU(false), bMMUBAT(false), iTLBHack(0), bVBeam(false),
-  bFastDiscSpeed(false),
-  SelectedLanguage(0), bWii(false), bDisableWiimoteSpeaker(false),
-  bConfirmStop(false), bHideCursor(false), 
-  bAutoHideCursor(false), bUsePanicHandlers(true),
+  bMMU(false), bDCBZOFF(false), bTLBHack(false), iBBDumpPort(0), bVBeamSpeedHack(false),
+  bSyncGPU(false), bFastDiscSpeed(false),
+  SelectedLanguage(0), bWii(false),
+  bConfirmStop(false), bHideCursor(false),
+  bAutoHideCursor(false), bUsePanicHandlers(true), bOnScreenDisplayMessages(true),
   iRenderWindowXPos(-1), iRenderWindowYPos(-1),
   iRenderWindowWidth(640), iRenderWindowHeight(480),
   bRenderWindowAutoSize(false), bKeepWindowOnTop(false),
   bFullscreen(false), bRenderToMain(false),
   bProgressive(false), bDisableScreenSaver(false),
-  iTheme(0),
-  iPosX(100), iPosY(100), iWidth(800), iHeight(600)
+  iPosX(100), iPosY(100), iWidth(800), iHeight(600),
+  bLoopFifoReplay(true)
 {
 	LoadDefaults();
 }
@@ -68,27 +56,41 @@ SCoreStartupParameter::SCoreStartupParameter()
 void SCoreStartupParameter::LoadDefaults()
 {
 	bEnableDebugging = false;
+	bAutomaticStart = false;
+	bBootToPause = false;
+
+	#ifdef USE_GDBSTUB
+	iGDBPort = -1;
+	#endif
+
 	iCPUCore = 1;
 	bCPUThread = false;
 	bSkipIdle = false;
 	bRunCompareServer = false;
 	bDSPHLE = true;
 	bDSPThread = true;
-	bLockThreads = true;
+	bFastmem = true;
 	bEnableFPRF = false;
 	bMMU = false;
-	bMMUBAT = false;
-	iTLBHack = 0;
-	bVBeam = false;
+	bDCBZOFF = false;
+	bTLBHack = false;
+	iBBDumpPort = -1;
+	bVBeamSpeedHack = false;
+	bSyncGPU = false;
 	bFastDiscSpeed = false;
 	bMergeBlocks = false;
+	bEnableMemcardSaving = true;
 	SelectedLanguage = 0;
 	bWii = false;
+	bDPL2Decoder = false;
+	iLatency = 14;
 
 	iPosX = 100;
 	iPosY = 100;
 	iWidth = 800;
 	iHeight = 600;
+
+	bLoopFifoReplay = true;
 
 	bJITOff = false; // debugger only settings
 	bJITLoadStoreOff = false;
@@ -99,32 +101,30 @@ void SCoreStartupParameter::LoadDefaults()
 	bJITPairedOff = false;
 	bJITSystemRegistersOff = false;
 
-	bDisableWiimoteSpeaker = false;
-
 	m_strName = "NONE";
 	m_strUniqueID = "00000000";
 }
 
-bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2) 
+bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2)
 {
 	std::string Region(EUR_DIR);
-	
+
 	switch (_BootBS2)
 	{
 	case BOOT_DEFAULT:
 		{
 			bool bootDrive = cdio_is_cdrom(m_strFilename);
 			// Check if the file exist, we may have gotten it from a --elf command line
-			// that gave an incorrect file name 
+			// that gave an incorrect file name
 			if (!bootDrive && !File::Exists(m_strFilename))
 			{
 				PanicAlertT("The specified file \"%s\" does not exist", m_strFilename.c_str());
 				return false;
 			}
-			
+
 			std::string Extension;
 			SplitPath(m_strFilename, NULL, NULL, &Extension);
-			if (!strcasecmp(Extension.c_str(), ".gcm") || 
+			if (!strcasecmp(Extension.c_str(), ".gcm") ||
 				!strcasecmp(Extension.c_str(), ".iso") ||
 				!strcasecmp(Extension.c_str(), ".wbfs") ||
 				!strcasecmp(Extension.c_str(), ".ciso") ||
@@ -147,48 +147,49 @@ bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2)
 				}
 				m_strName = pVolume->GetName();
 				m_strUniqueID = pVolume->GetUniqueID();
-				
+				m_strRevisionSpecificUniqueID = pVolume->GetRevisionSpecificUniqueID();
+
 				// Check if we have a Wii disc
 				bWii = DiscIO::IsVolumeWiiDisc(pVolume);
 				switch (pVolume->GetCountry())
 				{
 				case DiscIO::IVolume::COUNTRY_USA:
 					bNTSC = true;
-					Region = USA_DIR; 
+					Region = USA_DIR;
 					break;
-				
+
 				case DiscIO::IVolume::COUNTRY_TAIWAN:
 				case DiscIO::IVolume::COUNTRY_KOREA:
 					// TODO: Should these have their own Region Dir?
 				case DiscIO::IVolume::COUNTRY_JAPAN:
 					bNTSC = true;
-					Region = JAP_DIR; 
+					Region = JAP_DIR;
 					break;
-				
+
 				case DiscIO::IVolume::COUNTRY_EUROPE:
 				case DiscIO::IVolume::COUNTRY_FRANCE:
 				case DiscIO::IVolume::COUNTRY_ITALY:
 				case DiscIO::IVolume::COUNTRY_RUSSIA:
 					bNTSC = false;
-					Region = EUR_DIR; 
+					Region = EUR_DIR;
 					break;
-				
+
 				default:
 					if (PanicYesNoT("Your GCM/ISO file seems to be invalid (invalid country)."
 								   "\nContinue with PAL region?"))
 					{
 						bNTSC = false;
-						Region = EUR_DIR; 
+						Region = EUR_DIR;
 						break;
 					}else return false;
 				}
-				
+
 				delete pVolume;
 			}
 			else if (!strcasecmp(Extension.c_str(), ".elf"))
 			{
 				bWii = CBoot::IsElfWii(m_strFilename.c_str());
-				Region = USA_DIR; 
+				Region = USA_DIR;
 				m_BootType = BOOT_ELF;
 				bNTSC = true;
 			}
@@ -196,7 +197,7 @@ bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2)
 			{
 				CDolLoader dolfile(m_strFilename.c_str());
 				bWii = dolfile.IsWii();
-				Region = USA_DIR; 
+				Region = USA_DIR;
 				m_BootType = BOOT_DOL;
 				bNTSC = true;
 			}
@@ -219,7 +220,7 @@ bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2)
 			{
 				const DiscIO::IVolume* pVolume = DiscIO::CreateVolumeFromFilename(m_strFilename.c_str());
 				const DiscIO::INANDContentLoader& ContentLoader = DiscIO::CNANDContentManager::Access().GetNANDLoader(m_strFilename);
-		
+
 				if (ContentLoader.GetContentByIndex(ContentLoader.GetBootIndex()) == NULL)
 				{
 					//WAD is valid yet cannot be booted. Install instead.
@@ -233,9 +234,9 @@ bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2)
 				{
 				case DiscIO::IVolume::COUNTRY_USA:
 					bNTSC = true;
-					Region = USA_DIR; 
+					Region = USA_DIR;
 					break;
-				
+
 				case DiscIO::IVolume::COUNTRY_TAIWAN:
 				case DiscIO::IVolume::COUNTRY_KOREA:
 					// TODO: Should these have their own Region Dir?
@@ -243,15 +244,15 @@ bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2)
 					bNTSC = true;
 					Region = JAP_DIR;
 					break;
-				
+
 				case DiscIO::IVolume::COUNTRY_EUROPE:
 				case DiscIO::IVolume::COUNTRY_FRANCE:
 				case DiscIO::IVolume::COUNTRY_ITALY:
 				case DiscIO::IVolume::COUNTRY_RUSSIA:
 					bNTSC = false;
-					Region = EUR_DIR; 
+					Region = EUR_DIR;
 					break;
-				
+
 				default:
 					bNTSC = false;
 					Region = EUR_DIR;
@@ -278,7 +279,7 @@ bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2)
 				// or if it is not ascii characters (specifically sysmenu could potentially apply to other things)
 				char titleidstr[17];
 				snprintf(titleidstr, 17, "%016llx", ContentLoader.GetTitleID());
-					
+
 				if (!m_strName.length())
 				{
 					m_strName = titleidstr;
@@ -309,7 +310,7 @@ bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2)
 		bNTSC = true;
 		break;
 
-	case BOOT_BS2_EUR:  
+	case BOOT_BS2_EUR:
 		Region = EUR_DIR;
 		m_strFilename.clear();
 		bNTSC = false;
@@ -322,12 +323,15 @@ bool SCoreStartupParameter::AutoSetup(EBootBS2 _BootBS2)
 	m_strSRAM = File::GetUserPath(F_GCSRAM_IDX);
 	if (!bWii)
 	{
-		m_strBootROM = File::GetSysDirectory() + GC_SYS_DIR + DIR_SEP + Region + DIR_SEP GC_IPL;
+		m_strBootROM = File::GetUserPath(D_GCUSER_IDX) + DIR_SEP + Region + DIR_SEP GC_IPL;
+		if (!File::Exists(m_strBootROM))
+			m_strBootROM = File::GetSysDirectory() + GC_SYS_DIR + DIR_SEP + Region + DIR_SEP GC_IPL;
+
 		if (!bHLE_BS2)
 		{
 			if (!File::Exists(m_strBootROM))
 			{
-				WARN_LOG(BOOT, "bootrom file %s not found - using HLE.", m_strBootROM.c_str());
+				WARN_LOG(BOOT, "Bootrom file %s not found - using HLE.", m_strBootROM.c_str());
 				bHLE_BS2 = true;
 			}
 		}
@@ -386,4 +390,30 @@ void SCoreStartupParameter::CheckMemcardPath(std::string& memcardPath, std::stri
 			memcardPath = filename.replace(filename.size()-ext.size(), ext.size(), ext);;
 		}
 	}
+}
+
+IniFile SCoreStartupParameter::LoadGameIni() const
+{
+	IniFile game_ini;
+	game_ini.Load(m_strGameIniDefault);
+	if (m_strGameIniDefaultRevisionSpecific != "")
+		game_ini.Load(m_strGameIniDefaultRevisionSpecific, true);
+	game_ini.Load(m_strGameIniLocal, true);
+	return game_ini;
+}
+
+IniFile SCoreStartupParameter::LoadDefaultGameIni() const
+{
+	IniFile game_ini;
+	game_ini.Load(m_strGameIniDefault);
+	if (m_strGameIniDefaultRevisionSpecific != "")
+		game_ini.Load(m_strGameIniDefaultRevisionSpecific, true);
+	return game_ini;
+}
+
+IniFile SCoreStartupParameter::LoadLocalGameIni() const
+{
+	IniFile game_ini;
+	game_ini.Load(m_strGameIniLocal);
+	return game_ini;
 }

@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include <map>
 
@@ -24,8 +11,7 @@
 
 #include "Common.h"
 #include "x64Emitter.h"
-#include "ABI.h"
-#include "Thunk.h"
+#include "x64ABI.h"
 #include "../../HLE/HLE.h"
 #include "../../Core.h"
 #include "../../PatchEngine.h"
@@ -252,8 +238,6 @@ void Jit64::HLEFunction(UGeckoInstruction _inst)
 	gpr.Flush(FLUSH_ALL);
 	fpr.Flush(FLUSH_ALL);
 	ABI_CallFunctionCC((void*)&HLE::Execute, js.compilerPC, _inst.hex);
-	MOV(32, R(EAX), M(&NPC));
-	WriteExitDestInEAX();
 }
 
 void Jit64::DoNothing(UGeckoInstruction _inst)
@@ -293,7 +277,9 @@ static void ImHere()
 void Jit64::Cleanup()
 {
 	if (jo.optimizeGatherPipe && js.fifoBytesThisBlock > 0)
+	{
 		ABI_CallFunction((void *)&GPFifo::CheckGatherPipe);
+	}
 
 	// SPEED HACK: MMCR0/MMCR1 should be checked at run-time, not at compile time.
 	if (MMCR0.Hex || MMCR1.Hex)
@@ -303,7 +289,8 @@ void Jit64::Cleanup()
 void Jit64::WriteExit(u32 destination, int exit_num)
 {
 	Cleanup();
-	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount)); 
+
+	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount));
 
 	//If nobody has taken care of this yet (this can be removed when all branches are done)
 	JitBlock *b = js.curBlock;
@@ -311,18 +298,19 @@ void Jit64::WriteExit(u32 destination, int exit_num)
 	b->exitPtrs[exit_num] = GetWritableCodePtr();
 	
 	// Link opportunity!
-	int block = blocks.GetBlockNumberFromStartAddress(destination);
-	if (block >= 0 && jo.enableBlocklink) 
+	if (jo.enableBlocklink)
 	{
-		// It exists! Joy of joy!
-		JMP(blocks.GetBlock(block)->checkedEntry, true);
-		b->linkStatus[exit_num] = true;
+		int block = blocks.GetBlockNumberFromStartAddress(destination);
+		if (block >= 0)
+		{
+			// It exists! Joy of joy!
+			JMP(blocks.GetBlock(block)->checkedEntry, true);
+			b->linkStatus[exit_num] = true;
+			return;
+		}
 	}
-	else 
-	{
-		MOV(32, M(&PC), Imm32(destination));
-		JMP(asm_routines.dispatcher, true);
-	}
+	MOV(32, M(&PC), Imm32(destination));
+	JMP(asm_routines.dispatcher, true);
 }
 
 void Jit64::WriteExitDestInEAX() 
@@ -359,7 +347,7 @@ void Jit64::WriteExternalExceptionExit()
 	MOV(32, R(EAX), M(&PC));
 	MOV(32, M(&NPC), R(EAX));
 	ABI_CallFunction(reinterpret_cast<void *>(&PowerPC::CheckExternalExceptions));
-	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount));
+	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount)); 
 	JMP(asm_routines.dispatcher, true);
 }
 
@@ -563,7 +551,32 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 		if (jo.optimizeGatherPipe && js.fifoBytesThisBlock >= 32)
 		{
 			js.fifoBytesThisBlock -= 32;
-			ABI_CallFunction(thunks.ProtectFunction((void *)&GPFifo::CheckGatherPipe, 0));
+			MOV(32, M(&PC), Imm32(jit->js.compilerPC)); // Helps external systems know which instruction triggered the write
+			u32 registersInUse = RegistersInUse();
+			ABI_PushRegistersAndAdjustStack(registersInUse, false);
+			ABI_CallFunction((void *)&GPFifo::CheckGatherPipe);
+			ABI_PopRegistersAndAdjustStack(registersInUse, false);
+		}
+
+		u32 function = HLE::GetFunctionIndex(ops[i].address);
+		if (function != 0)
+		{
+			int type = HLE::GetFunctionTypeByIndex(function);
+			if (type == HLE::HLE_HOOK_START || type == HLE::HLE_HOOK_REPLACE)
+			{
+				int flags = HLE::GetFunctionFlagsByIndex(function);
+				if (HLE::IsEnabled(flags))
+				{
+					HLEFunction(function);
+					if (type == HLE::HLE_HOOK_REPLACE)
+					{
+						MOV(32, R(EAX), M(&NPC));
+						js.downcountAmount += js.st.numCycles;
+						WriteExitDestInEAX();
+						break;
+					}
+				}
+			}
 		}
 
 		if (!ops[i].skip)
@@ -656,7 +669,7 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 		{
 			char ppcInst[256];
 			DisassembleGekko(ops[i].inst.hex, em_address, ppcInst, 256);
-			NOTICE_LOG(DYNA_REC, "Unflushed reg: %s", ppcInst);
+			//NOTICE_LOG(DYNA_REC, "Unflushed register: %s", ppcInst);
 		}
 #endif
 		if (js.skipnext) {
@@ -668,6 +681,20 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 			break;
 	}
 
+	u32 function = HLE::GetFunctionIndex(js.blockStart);
+	if (function != 0)
+	{
+		int type = HLE::GetFunctionTypeByIndex(function);
+		if (type == HLE::HLE_HOOK_END)
+		{
+			int flags = HLE::GetFunctionFlagsByIndex(function);
+			if (HLE::IsEnabled(flags))
+			{
+				HLEFunction(function);
+			}
+		}
+	}
+
 	if (memory_exception)
 	{
 		// Address of instruction could not be translated
@@ -677,19 +704,9 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 
 		// Remove the invalid instruction from the icache, forcing a recompile
 #ifdef _M_IX86
-		if (js.compilerPC & JIT_ICACHE_VMEM_BIT)
-			MOV(32, M((jit->GetBlockCache()->GetICacheVMEM() + (js.compilerPC & JIT_ICACHE_MASK))), Imm32(JIT_ICACHE_INVALID_WORD));
-		else if (js.compilerPC & JIT_ICACHE_EXRAM_BIT)
-			MOV(32, M((jit->GetBlockCache()->GetICacheEx() + (js.compilerPC & JIT_ICACHEEX_MASK))), Imm32(JIT_ICACHE_INVALID_WORD));
-		else
-			MOV(32, M((jit->GetBlockCache()->GetICache() + (js.compilerPC & JIT_ICACHE_MASK))), Imm32(JIT_ICACHE_INVALID_WORD));
+		MOV(32, M(jit->GetBlockCache()->GetICachePtr(js.compilerPC)), Imm32(JIT_ICACHE_INVALID_WORD));
 #else
-		if (js.compilerPC & JIT_ICACHE_VMEM_BIT)
-			MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICacheVMEM() + (js.compilerPC & JIT_ICACHE_MASK)));
-		else if (js.compilerPC & JIT_ICACHE_EXRAM_BIT)
-			MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICacheEx() + (js.compilerPC & JIT_ICACHEEX_MASK)));
-		else
-			MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICache() + (js.compilerPC & JIT_ICACHE_MASK)));
+		MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICachePtr(js.compilerPC)));
 		MOV(32,MatR(RAX),Imm32(JIT_ICACHE_INVALID_WORD));
 #endif
 
@@ -712,4 +729,22 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 #endif
 
 	return normalEntry;
+}
+
+u32 Jit64::RegistersInUse()
+{
+#ifdef _M_X64
+	u32 result = 0;
+	for (int i = 0; i < NUMXREGS; i++)
+	{
+		if (!gpr.IsFreeX(i))
+			result |= (1 << i);
+		if (!fpr.IsFreeX(i))
+			result |= (1 << (16 + i));
+	}
+	return result;
+#else
+	// not needed
+	return 0;
+#endif
 }

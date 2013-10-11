@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #ifndef _MIXER_H_
 #define _MIXER_H_
@@ -36,7 +23,6 @@ public:
 		, m_channels(2)
 		, m_HLEready(false)
 		, m_logAudio(0)
-		, m_numSamples(0)
 		, m_indexW(0)
 		, m_indexR(0)
 		, m_AIplaying(true)
@@ -76,7 +62,7 @@ public:
 			g_wave_writer.SetSkipSilence(false);
 			NOTICE_LOG(DSPHLE, "Starting Audio logging");
 		} else {
-			WARN_LOG(DSPHLE, "Audio logging already started");
+			WARN_LOG(DSPHLE, "Audio logging has already been started");
 		}
 	}
 
@@ -86,11 +72,14 @@ public:
 			g_wave_writer.Stop();
 			NOTICE_LOG(DSPHLE, "Stopping Audio logging");
 		} else {
-			WARN_LOG(DSPHLE, "Audio logging already stopped");
+			WARN_LOG(DSPHLE, "Audio logging has already been stopped");
 		}
 	}
 
 	std::mutex& MixerCritical() { return m_csMixing; }
+
+	float GetCurrentSpeed() const { return m_speed; }
+	void UpdateSpeed(volatile float val) { m_speed = val; }
 
 protected:
 	unsigned int m_sampleRate;
@@ -107,12 +96,13 @@ protected:
 	bool m_throttle;
 
 	short m_buffer[MAX_SAMPLES * 2];
-	volatile u32 m_numSamples;
-	u32 m_indexW;
-	u32 m_indexR;
+	volatile u32 m_indexW;
+	volatile u32 m_indexR;
 
 	bool m_AIplaying;
 	std::mutex m_csMixing;
+
+	volatile float m_speed; // Current rate of the emulation (1.0 = 100% speed)
 private:
 
 };

@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include <vector>
 
@@ -23,6 +10,7 @@
 #include "Core.h"
 #include "StringUtil.h"
 #include "VideoBackendBase.h"
+#include "FifoQueue.h"
 
 #define MAX_SLICE_LENGTH 20000
 
@@ -42,20 +30,17 @@ struct BaseEvent
 	s64 time;
 	u64 userdata;
 	int type;
-//	Event *next;
 };
 
 typedef LinkedListItem<BaseEvent> Event;
 
 // STATE_TO_SAVE
-Event *first;
-Event *tsFirst;
-Event *tsLast;
+static Event *first;
+static std::mutex tsWriteLock;
+Common::FifoQueue<BaseEvent, false> tsQueue;
 
 // event pools
 Event *eventPool = 0;
-Event *eventTsPool = 0;
-int allocatedTsEvents = 0;
 
 int downcount, slicelength;
 int maxSliceLength = MAX_SLICE_LENGTH;
@@ -70,43 +55,23 @@ u64 fakeTBStartTicks;
 
 int ev_lost;
 
-static std::recursive_mutex externalEventSection;
 
 void (*advanceCallback)(int cyclesExecuted) = NULL;
 
 Event* GetNewEvent()
 {
-    if(!eventPool)
-        return new Event;
+	if(!eventPool)
+		return new Event;
 
-    Event* ev = eventPool;
-    eventPool = ev->next;
-    return ev;
-}
-
-Event* GetNewTsEvent()
-{
-    allocatedTsEvents++;
-
-    if(!eventTsPool)
-        return new Event;
-
-    Event* ev = eventTsPool;
-    eventTsPool = ev->next;
-    return ev;
+	Event* ev = eventPool;
+	eventPool = ev->next;
+	return ev;
 }
 
 void FreeEvent(Event* ev)
 {
-    ev->next = eventPool;
-    eventPool = ev;
-}
-
-void FreeTsEvent(Event* ev)
-{
-    ev->next = eventTsPool;
-    eventTsPool = ev;
-	allocatedTsEvents--;
+	ev->next = eventPool;
+	eventPool = ev;
 }
 
 static void EmptyTimedCallback(u64 userdata, int cyclesLate) {}
@@ -119,7 +84,7 @@ int RegisterEvent(const char *name, TimedCallback callback)
 
 	// check for existing type with same name.
 	// we want event type names to remain unique so that we can use them for serialization.
-	for (int i = 0; i < event_types.size(); ++i)
+	for (unsigned int i = 0; i < event_types.size(); ++i)
 	{
 		if (!strcmp(name, event_types[i].name))
 		{
@@ -154,24 +119,17 @@ void Init()
 
 void Shutdown()
 {
+	std::lock_guard<std::mutex> lk(tsWriteLock);
 	MoveEvents();
 	ClearPendingEvents();
 	UnregisterAllEvents();
 
-    while(eventPool)
-    {
-        Event *ev = eventPool;
-        eventPool = ev->next;
-        delete ev;
-    }
-
-    std::lock_guard<std::recursive_mutex> lk(externalEventSection);
-    while(eventTsPool)
-    {
-        Event *ev = eventTsPool;
-        eventTsPool = ev->next;
-        delete ev;
-    }
+	while(eventPool)
+	{
+		Event *ev = eventPool;
+		eventPool = ev->next;
+		delete ev;
+	}
 }
 
 void EventDoState(PointerWrap &p, BaseEvent* ev)
@@ -183,12 +141,15 @@ void EventDoState(PointerWrap &p, BaseEvent* ev)
 
 	// we can't savestate ev->type directly because events might not get registered in the same order (or at all) every time.
 	// so, we savestate the event's type's name, and derive ev->type from that when loading.
-	std::string name = event_types[ev->type].name;
+	std::string name;
+	if (p.GetMode() != PointerWrap::MODE_READ)
+		name = event_types[ev->type].name;
+
 	p.Do(name);
 	if (p.GetMode() == PointerWrap::MODE_READ)
 	{
 		bool foundMatch = false;
-		for (int i = 0; i < event_types.size(); ++i)
+		for (unsigned int i = 0; i < event_types.size(); ++i)
 		{
 			if (!strcmp(name.c_str(), event_types[i].name))
 			{
@@ -207,7 +168,7 @@ void EventDoState(PointerWrap &p, BaseEvent* ev)
 
 void DoState(PointerWrap &p)
 {
-	std::lock_guard<std::recursive_mutex> lk(externalEventSection);
+	std::lock_guard<std::mutex> lk(tsWriteLock);
 	p.Do(downcount);
 	p.Do(slicelength);
 	p.Do(globalTimer);
@@ -218,16 +179,15 @@ void DoState(PointerWrap &p)
 	p.Do(fakeTBStartTicks);
 	p.DoMarker("CoreTimingData");
 
+	MoveEvents();
+
 	p.DoLinkedList<BaseEvent, GetNewEvent, FreeEvent, EventDoState>(first);
 	p.DoMarker("CoreTimingEvents");
-
-	p.DoLinkedList<BaseEvent, GetNewTsEvent, FreeTsEvent, EventDoState>(tsFirst, &tsLast);
-	p.DoMarker("CoreTimingTsEvents");
 }
 
 u64 GetTicks()
 {
-    return (u64)globalTimer; 
+	return (u64)globalTimer; 
 }
 
 u64 GetIdleTicks()
@@ -239,17 +199,12 @@ u64 GetIdleTicks()
 // schedule things to be executed on the main thread.
 void ScheduleEvent_Threadsafe(int cyclesIntoFuture, int event_type, u64 userdata)
 {
-	std::lock_guard<std::recursive_mutex> lk(externalEventSection);
-	Event *ne = GetNewTsEvent();
-	ne->time = globalTimer + cyclesIntoFuture;
-	ne->type = event_type;
-	ne->next = 0;
-	ne->userdata = userdata;
-	if(!tsFirst)
-		tsFirst = ne;
-	if(tsLast)
-		tsLast->next = ne;
-	tsLast = ne;
+	std::lock_guard<std::mutex> lk(tsWriteLock);
+	Event ne;
+	ne.time = globalTimer + cyclesIntoFuture;
+	ne.type = event_type;
+	ne.userdata = userdata;
+	tsQueue.Push(ne);
 }
 
 // Same as ScheduleEvent_Threadsafe(0, ...) EXCEPT if we are already on the CPU thread
@@ -258,11 +213,12 @@ void ScheduleEvent_Threadsafe_Immediate(int event_type, u64 userdata)
 {
 	if(Core::IsCPUThread())
 	{
-		std::lock_guard<std::recursive_mutex> lk(externalEventSection);
 		event_types[event_type].callback(userdata, 0);
 	}
 	else
+	{
 		ScheduleEvent_Threadsafe(0, event_type, userdata);
+	}
 }
 
 void ClearPendingEvents()
@@ -327,6 +283,7 @@ void RemoveEvent(int event_type)
 {
 	if (!first)
 		return;
+
 	while(first)
 	{
 		if (first->type == event_type)
@@ -340,8 +297,10 @@ void RemoveEvent(int event_type)
 			break;
 		}
 	}
+	
 	if (!first)
 		return;
+
 	Event *prev = first;
 	Event *ptr = prev->next;
 	while (ptr)
@@ -360,57 +319,24 @@ void RemoveEvent(int event_type)
 	}
 }
 
-void RemoveThreadsafeEvent(int event_type)
-{
-	std::lock_guard<std::recursive_mutex> lk(externalEventSection);
-	if (!tsFirst)
-	{
-		return;
-	}
-	while(tsFirst)
-	{
-		if (tsFirst->type == event_type)
-		{
-			Event *next = tsFirst->next;
-			FreeTsEvent(tsFirst);
-			tsFirst = next;
-		}
-		else
-		{
-			break;
-		}
-	}
-	if (!tsFirst)
-	{
-		return;
-	}
-	Event *prev = tsFirst;
-	Event *ptr = prev->next;
-	while (ptr)
-	{
-		if (ptr->type == event_type)
-		{	
-			prev->next = ptr->next;
-			FreeTsEvent(ptr);
-			ptr = prev->next;
-		}
-		else
-		{
-			prev = ptr;
-			ptr = ptr->next;
-		}
-	}
-}
-
 void RemoveAllEvents(int event_type)
-{	
-	RemoveThreadsafeEvent(event_type);
+{
+	MoveEvents();
 	RemoveEvent(event_type);
 }
 
 void SetMaximumSlice(int maximumSliceLength)
 {
 	maxSliceLength = maximumSliceLength;
+}
+
+void ForceExceptionCheck(int cycles)
+{
+	if (downcount > cycles)
+	{
+		slicelength -= (downcount - cycles); // Account for cycles already executed by adjusting the slicelength
+		downcount = cycles;
+	}
 }
 
 void ResetSliceLength()
@@ -440,36 +366,25 @@ void ProcessFifoWaitEvents()
 		{
 			break;
 		}
-	}	
+	}
 }
 
 void MoveEvents()
 {
-	std::lock_guard<std::recursive_mutex> lk(externalEventSection);
-    // Move events from async queue into main queue
-	while (tsFirst)
+	BaseEvent sevt;
+	while (tsQueue.Pop(sevt))
 	{
-		Event *next = tsFirst->next;
-		AddEventToQueue(tsFirst);
-		tsFirst = next;
+		Event *evt = GetNewEvent();
+		evt->time = sevt.time;
+		evt->userdata = sevt.userdata;
+		evt->type = sevt.type;
+		AddEventToQueue(evt);
 	}
-	tsLast = NULL;
-
-    // Move free events to threadsafe pool
-    while(allocatedTsEvents > 0 && eventPool)
-    {        
-        Event *ev = eventPool;
-        eventPool = ev->next;
-        ev->next = eventTsPool;
-        eventTsPool = ev;
-        allocatedTsEvents--;
-    }
 }
 
 void Advance()
-{	
-
-	MoveEvents();		
+{
+	MoveEvents();
 
 	int cyclesExecuted = slicelength - downcount;
 	globalTimer += cyclesExecuted;
@@ -491,6 +406,7 @@ void Advance()
 			break;
 		}
 	}
+
 	if (!first) 
 	{
 		WARN_LOG(POWERPC, "WARNING - no events in queue. Setting downcount to 10000");
@@ -503,6 +419,7 @@ void Advance()
 			slicelength = maxSliceLength;
 		downcount = slicelength;
 	}
+
 	if (advanceCallback)
 		advanceCallback(cyclesExecuted);
 }
@@ -526,7 +443,7 @@ void Idle()
 	//while we process only the events required by the FIFO.
 	while (g_video_backend->Video_IsPossibleWaitingSetDrawDone())
 	{
-		ProcessFifoWaitEvents();		
+		ProcessFifoWaitEvents();
 		Common::YieldCPU();
 	}
 
@@ -546,9 +463,11 @@ std::string GetScheduledEventsSummary()
 		unsigned int t = ptr->type;
 		if (t >= event_types.size())
 			PanicAlertT("Invalid event type %i", t);
+		
 		const char *name = event_types[ptr->type].name;
 		if (!name)
 			name = "[unknown]";
+		
 		text += StringFromFormat("%s : %i %08x%08x\n", event_types[ptr->type].name, ptr->time, ptr->userdata >> 32, ptr->userdata);
 		ptr = ptr->next;
 	}
@@ -596,3 +515,4 @@ void SetFakeTBStartTicks(u64 val)
 }
 
 }  // namespace
+

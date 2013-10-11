@@ -1,25 +1,11 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #ifndef __MOVIE_H
 #define __MOVIE_H
 
 #include "Common.h"
-#include "FileUtil.h"
 #include "../../InputCommon/Src/GCPadStatus.h"
 
 #include <string>
@@ -61,8 +47,9 @@ static_assert(sizeof(ControllerState) == 8, "ControllerState should be 8 bytes")
 #pragma pack(pop)
 
 // Global declarations
-extern bool g_bFrameStep, g_bPolled, g_bReadOnly, g_bDiscChange;
+extern bool g_bFrameStep, g_bPolled, g_bReadOnly, g_bDiscChange, g_bClearSave;
 extern PlayMode g_playMode;
+extern u64 g_titleID;
 
 extern u32 g_framesToSkip, g_frameSkipCounter;
 
@@ -86,19 +73,19 @@ struct DTMHeader {
 	u8 gameID[6];			// The Game ID
 	bool bWii;				// Wii game
 
-    u8  numControllers;		// The number of connected controllers (1-4)
+	u8  numControllers;		// The number of connected controllers (1-4)
 
-    bool bFromSaveState;	// false indicates that the recording started from bootup, true for savestate
-    u64 frameCount;			// Number of frames in the recording
+	bool bFromSaveState;	// false indicates that the recording started from bootup, true for savestate
+	u64 frameCount;			// Number of frames in the recording
 	u64 inputCount;			// Number of input frames in recording
-    u64 lagCount;			// Number of lag frames in the recording
-    u64 uniqueID;			// (not implemented) A Unique ID comprised of: md5(time + Game ID)
-    u32 numRerecords;		// Number of rerecords/'cuts' of this TAS
-    u8  author[32];			// Author's name (encoded in UTF-8)
+	u64 lagCount;			// Number of lag frames in the recording
+	u64 uniqueID;			// (not implemented) A Unique ID comprised of: md5(time + Game ID)
+	u32 numRerecords;		// Number of rerecords/'cuts' of this TAS
+	u8  author[32];			// Author's name (encoded in UTF-8)
 
-    u8  videoBackend[16];	// UTF-8 representation of the video backend
-    u8  audioEmulator[16];	// UTF-8 representation of the audio emulator
-    u8  padBackend[16];		// UTF-8 representation of the input backend
+	u8  videoBackend[16];	// UTF-8 representation of the video backend
+	u8  audioEmulator[16];	// UTF-8 representation of the audio emulator
+	unsigned char  md5[16];	// MD5 of game iso
 
 	u64 recordingStartTime; // seconds since 1970 that recording started (used for RTC)
 
@@ -117,10 +104,14 @@ struct DTMHeader {
 	bool bUseXFB;
 	bool bUseRealXFB;
 	bool bMemcard;
-	bool bBlankMC;			// Create a new memory card when playing back a movie if true
-	u8 reserved[16];		// Padding for any new config options
+	bool bClearSave;		// Create a new memory card when playing back a movie if true
+	u8 bongos;
+	bool bSyncGPU;
+	bool bNetPlay;
+	u8 reserved[13];		// Padding for any new config options
 	u8 discChange[40];		// Name of iso file to switch to, for two disc games.
-	u8 reserved2[47];		// Make heading 256 bytes, just because we can
+	u8 revision[20];		// Git hash
+	u8 reserved2[27];		// Make heading 256 bytes, just because we can
 };
 static_assert(sizeof(DTMHeader) == 256, "DTMHeader should be 256 bytes");
 
@@ -132,7 +123,6 @@ void Init();
 
 void SetPolledDevice();
 
-bool IsAutoFiring();
 bool IsRecordingInput();
 bool IsRecordingInputFromSaveState();
 bool IsJustStartingRecordingInputFromSaveState();
@@ -148,12 +138,16 @@ bool IsSkipIdle();
 bool IsDSPHLE();
 bool IsFastDiscSpeed();
 int GetCPUMode();
-bool IsBlankMemcard();
+bool IsStartingFromClearSave();
 bool IsUsingMemcard();
+bool IsSyncGPU();
 void SetGraphicsConfig();
+void GetSettings();
+bool IsNetPlayRecording();
 
 bool IsUsingPad(int controller);
 bool IsUsingWiimote(int wiimote);
+bool IsUsingBongo(int controller);
 void ChangePads(bool instantly = false);
 void ChangeWiiPads(bool instantly = false);
 
@@ -166,7 +160,7 @@ void FrameSkipping();
 
 bool BeginRecordingInput(int controllers);
 void RecordInput(SPADStatus *PadStatus, int controllerID);
-void RecordWiimote(int wiimote, u8* data, const struct WiimoteEmu::ReportFeatures& rptf, int irMode);
+void RecordWiimote(int wiimote, u8 *data, u8 size);
 
 bool PlayInput(const char *filename);
 void LoadInput(const char *filename);
@@ -176,6 +170,11 @@ bool PlayWiimote(int wiimote, u8* data, const struct WiimoteEmu::ReportFeatures&
 void EndPlayInput(bool cont);
 void SaveRecording(const char *filename);
 void DoState(PointerWrap &p);
+void CheckMD5();
+void GetMD5();
+void Shutdown();
+void CheckPadStatus(SPADStatus *PadStatus, int controllerID);
+void CheckWiimoteStatus(int wiimote, u8* data, const struct WiimoteEmu::ReportFeatures& rptf, int irMode);
 
 std::string GetInputDisplay();
 
@@ -186,4 +185,4 @@ void SetInputManip(ManipFunction);
 void CallInputManip(SPADStatus *PadStatus, int controllerID);
 };
 
-#endif // __FRAME_H
+#endif // __MOVIE_H

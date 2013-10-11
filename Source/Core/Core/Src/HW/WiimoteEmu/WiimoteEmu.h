@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #ifndef _CONEMU_WIIMOTE_H_
 #define _CONEMU_WIIMOTE_H_
@@ -30,21 +17,24 @@
 #include <vector>
 #include <queue>
 
-#define PI	3.14159265358979323846
-
-// Registry sizes 
+// Registry sizes
 #define WIIMOTE_EEPROM_SIZE			(16*1024)
 #define WIIMOTE_EEPROM_FREE_SIZE	0x1700
 #define WIIMOTE_REG_SPEAKER_SIZE	10
 #define WIIMOTE_REG_EXT_SIZE		0x100
 #define WIIMOTE_REG_IR_SIZE			0x34
 
+namespace WiimoteReal
+{
+class Wiimote;
+}
+
 namespace WiimoteEmu
 {
 
 struct ReportFeatures
 {
-	u8		core, accel, ir, ext, size;
+	u8 core, accel, ir, ext, size;
 };
 
 struct AccelData
@@ -57,9 +47,34 @@ struct ADPCMState
 	s32 predictor, step;
 };
 
+struct ExtensionReg
+{
+	u8	unknown1[0x08];
+
+	// address 0x08
+	u8	controller_data[0x06];
+	u8	unknown2[0x12];
+
+	// address 0x20
+	u8	calibration[0x10];
+	u8	unknown3[0x10];
+
+	// address 0x40
+	u8	encryption_key[0x10];
+	u8	unknown4[0xA0];
+
+	// address 0xF0
+	u8	encryption;
+	u8	unknown5[0x9];
+
+	// address 0xFA
+	u8	constant_id[6];
+};
+
 extern const ReportFeatures reporting_mode_features[];
 
 void EmulateShake(AccelData* const accel_data
+	  , accel_cal* const calib
 	  , ControllerEmu::Buttons* const buttons_group
 	  , u8* const shake_step);
 
@@ -80,6 +95,8 @@ inline double trim(double a)
 
 class Wiimote : public ControllerEmu
 {
+friend class WiimoteReal::Wiimote;
+friend void Spy(Wiimote* wm_, const void* data_, int size_);
 public:
 
 	enum
@@ -106,6 +123,7 @@ public:
 	void ControlChannel(const u16 _channelID, const void* _pData, u32 _Size);
 
 	void DoState(PointerWrap& p);
+	void RealState();
 
 	void LoadDefaults(const ControllerInterface& ciface);
 
@@ -140,6 +158,7 @@ private:
 	void WriteData(const wm_write_data* const wd);
 	void SendReadDataReply(ReadRequest& _request);
 	void SpeakerData(wm_speaker_data* sd);
+	bool NetPlay_GetWiimoteData(int wiimote, u8* data, u8 size);
 
 	// control groups
 	Buttons		*m_buttons, *m_dpad, *m_shake;
@@ -149,7 +168,7 @@ private:
 	ControlGroup*	m_rumble;
 	Extension*		m_extension;
 	ControlGroup*	m_options;
-	
+
 	// WiiMote accel data
 	AccelData		m_accel;
 
@@ -157,7 +176,7 @@ private:
 	const u8	m_index;
 
 	double		ir_sin, ir_cos; //for the low pass filter
-	
+
 	UDPWrapper* m_udp;
 
 	bool	m_rumble_on;
@@ -178,7 +197,7 @@ private:
 	ADPCMState m_adpcm_state;
 
 	// read data request queue
-	// maybe it isn't actualy a queue
+	// maybe it isn't actually a queue
 	// maybe read requests cancel any current requests
 	std::queue< ReadRequest >	m_read_requests;
 
@@ -207,30 +226,7 @@ private:
 
 	}	m_reg_ir;
 
-	struct ExtensionReg
-	{
-		u8	unknown1[0x08];
-
-		// address 0x08
-		u8	controller_data[0x06];
-		u8	unknown2[0x12];
-
-		// address 0x20
-		u8	calibration[0x10];
-		u8	unknown3[0x10];
-
-		// address 0x40
-		u8	encryption_key[0x10];
-		u8	unknown4[0xA0];
-
-		// address 0xF0
-		u8	encryption;
-		u8	unknown5[0x9];
-
-		// address 0xFA
-		u8	constant_id[6];
-
-	}	m_reg_ext;
+	ExtensionReg m_reg_ext;
 
 	struct SpeakerReg
 	{
@@ -248,6 +244,8 @@ private:
 
 	}	m_reg_speaker;
 };
+
+void Spy(Wiimote* wm_, const void* data_, int size_);
 
 }
 

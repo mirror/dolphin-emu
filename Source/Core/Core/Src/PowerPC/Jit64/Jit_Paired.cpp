@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "Common.h"
 
@@ -42,7 +29,7 @@ const double GC_ALIGNED16(psZeroZero[2]) = {0.0, 0.0};
 void Jit64::ps_mr(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -57,7 +44,7 @@ void Jit64::ps_mr(UGeckoInstruction inst)
 void Jit64::ps_sel(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 
 	Default(inst); return;
 
@@ -89,7 +76,7 @@ void Jit64::ps_sel(UGeckoInstruction inst)
 void Jit64::ps_sign(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -126,7 +113,7 @@ void Jit64::ps_sign(UGeckoInstruction inst)
 void Jit64::ps_rsqrte(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -199,7 +186,7 @@ void Jit64::tri_op(int d, int a, int b, bool reversible, void (XEmitter::*op)(X6
 void Jit64::ps_arith(UGeckoInstruction inst)
 {		
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -219,7 +206,7 @@ void Jit64::ps_arith(UGeckoInstruction inst)
 void Jit64::ps_sum(UGeckoInstruction inst)
 {	
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	// TODO: (inst.SUBOP5 == 10) breaks Sonic Colours (black screen) 
 	if (inst.Rc || (inst.SUBOP5 == 10)) {
 		Default(inst); return;
@@ -261,7 +248,7 @@ void Jit64::ps_sum(UGeckoInstruction inst)
 void Jit64::ps_muls(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -300,7 +287,7 @@ void Jit64::ps_muls(UGeckoInstruction inst)
 void Jit64::ps_mergeXX(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -337,7 +324,7 @@ void Jit64::ps_mergeXX(UGeckoInstruction inst)
 void Jit64::ps_maddXX(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}

@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 
 #include "Common.h"
@@ -26,8 +13,10 @@
 #include "IniFile.h"
 #include "ConfigManager.h"
 #include "CPUDetect.h"
+#include "Core.h"
 
 #include "DSPLLEGlobals.h" // Local
+#include "DSP/DSPHost.h"
 #include "DSP/DSPInterpreter.h"
 #include "DSP/DSPHWInterface.h"
 #include "DSP/disassemble.h"
@@ -56,6 +45,14 @@ Common::Event ppcEvent;
 
 void DSPLLE::DoState(PointerWrap &p)
 {
+	bool isHLE = false;
+	p.Do(isHLE);
+	if (isHLE != false && p.GetMode() == PointerWrap::MODE_READ)
+	{
+		Core::DisplayMessage("State is incompatible with current DSP engine. Aborting load state.", 3000);
+		p.SetMode(PointerWrap::MODE_VERIFY);
+		return;
+	}
 	p.Do(g_dsp.r);
 	p.Do(g_dsp.pc);
 #if PROFILE
@@ -65,10 +62,12 @@ void DSPLLE::DoState(PointerWrap &p)
 	p.Do(g_dsp.reg_stack_ptr);
 	p.Do(g_dsp.exceptions);
 	p.Do(g_dsp.external_interrupt_waiting);
-	for (int i = 0; i < 4; i++) {
+
+	for (int i = 0; i < 4; i++)
+	{
 		p.Do(g_dsp.reg_stack[i]);
 	}
-	p.Do(g_dsp.iram_crc);
+
 	p.Do(g_dsp.step_counter);
 	p.Do(g_dsp.ifx_regs);
 	p.Do(g_dsp.mbox[0]);
@@ -76,8 +75,11 @@ void DSPLLE::DoState(PointerWrap &p)
 	UnWriteProtectMemory(g_dsp.iram, DSP_IRAM_BYTE_SIZE, false);
 	p.DoArray(g_dsp.iram, DSP_IRAM_SIZE);
 	WriteProtectMemory(g_dsp.iram, DSP_IRAM_BYTE_SIZE, false);
+	if (p.GetMode() == PointerWrap::MODE_READ)
+		DSPHost_CodeLoaded((const u8*)g_dsp.iram, DSP_IRAM_BYTE_SIZE);
 	p.DoArray(g_dsp.dram, DSP_DRAM_SIZE);
 	p.Do(cyclesLeft);
+	p.Do(init_hax);
 	p.Do(m_cycle_count);
 
 	bool prevInitMixer = m_InitMixer;
@@ -103,27 +105,6 @@ void DSPLLE::DoState(PointerWrap &p)
 void DSPLLE::dsp_thread(DSPLLE *dsp_lle)
 {
 	Common::SetCurrentThreadName("DSP thread");
-
-	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bLockThreads)
-	{
-		if (cpu_info.num_cores > 3)
-		{
-			// HACK (delroth): there is no way to know where hyperthreads are in
-			// the current Dolphin version.
-			bool windows = false;
-#ifdef _WIN32
-			windows = true;
-#endif
-
-			u8 core_id;
-			if (windows && cpu_info.num_cores > 4) // Probably HT
-				core_id = 5; // 3rd non HT core
-			else
-				core_id = 3; // 3rd core
-
-			Common::SetCurrentThreadAffinity(1 << (core_id - 1));
-		}
-	}
 
 	while (dsp_lle->m_bIsRunning)
 	{
@@ -156,13 +137,13 @@ bool DSPLLE::Initialize(void *hWnd, bool bWii, bool bDSPThread)
 	m_bDSPThread = bDSPThread;
 	m_InitMixer = false;
 
-	std::string irom_file = File::GetSysDirectory() + GC_SYS_DIR DIR_SEP DSP_IROM;
-	std::string coef_file = File::GetSysDirectory() + GC_SYS_DIR DIR_SEP DSP_COEF;
+	std::string irom_file = File::GetUserPath(D_GCUSER_IDX) + DSP_IROM;
+	std::string coef_file = File::GetUserPath(D_GCUSER_IDX) + DSP_COEF;
 
 	if (!File::Exists(irom_file))
-		irom_file = File::GetUserPath(D_GCUSER_IDX) + DSP_IROM;
+		irom_file = File::GetSysDirectory() + GC_SYS_DIR DIR_SEP DSP_IROM;
 	if (!File::Exists(coef_file))
-		coef_file = File::GetUserPath(D_GCUSER_IDX) + DSP_COEF;
+		coef_file = File::GetSysDirectory() + GC_SYS_DIR DIR_SEP DSP_COEF;
 	if (!DSPCore_Init(irom_file.c_str(), coef_file.c_str(), AudioCommon::UseJIT()))
 		return false;
 
@@ -204,7 +185,7 @@ void DSPLLE::InitMixer()
 	unsigned int AISampleRate, DACSampleRate;
 	AudioInterface::Callback_GetSampleRate(AISampleRate, DACSampleRate);
 	delete soundStream;
-	soundStream = AudioCommon::InitSoundStream(new CMixer(AISampleRate, DACSampleRate, ac_Config.iFrequency), m_hWnd); 
+	soundStream = AudioCommon::InitSoundStream(new CMixer(AISampleRate, DACSampleRate, 48000), m_hWnd); 
 	if(!soundStream) PanicAlert("Error starting up sound stream");
 	// Mixer is initialized
 	m_InitMixer = true;
@@ -282,7 +263,7 @@ void DSPLLE::DSP_WriteMailBoxHigh(bool _CPUMailbox, u16 _uHighMail)
 	}
 	else
 	{
-		ERROR_LOG(DSPLLE, "CPU cant write to DSP mailbox");
+		ERROR_LOG(DSPLLE, "CPU can't write to DSP mailbox");
 	}
 }
 
@@ -294,7 +275,7 @@ void DSPLLE::DSP_WriteMailBoxLow(bool _CPUMailbox, u16 _uLowMail)
 	}
 	else
 	{
-		ERROR_LOG(DSPLLE, "CPU cant write to DSP mailbox");
+		ERROR_LOG(DSPLLE, "CPU can't write to DSP mailbox");
 	}
 }
 
@@ -336,6 +317,11 @@ void DSPLLE::DSP_Update(int cycles)
 		dspEvent.Set();
 
 	}
+}
+
+u32 DSPLLE::DSP_UpdateRate()
+{
+	return 12600; // TO BE TWEAKED
 }
 
 void DSPLLE::DSP_SendAIBuffer(unsigned int address, unsigned int num_samples)

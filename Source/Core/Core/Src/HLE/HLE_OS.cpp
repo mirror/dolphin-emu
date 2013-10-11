@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "StringUtil.h"
 #include <string>
@@ -45,11 +32,44 @@ void HLE_OSPanic()
 void HLE_GeneralDebugPrint()
 {
 	std::string ReportMessage;
-	GetStringVA(ReportMessage);
+	if(*(u32*)Memory::GetPointer(GPR(3)) > 0x80000000){
+		GetStringVA(ReportMessage, 4);
+	}else{
+		GetStringVA(ReportMessage);
+	}
 	NPC = LR;
 
 	//PanicAlert("(%08x->%08x) %s", LR, PC, ReportMessage.c_str());
-	NOTICE_LOG(OSREPORT, "%08x->%08x| %s", LR, PC, ReportMessage.c_str());	
+	NOTICE_LOG(OSREPORT, "%08x->%08x| %s", LR, PC, ReportMessage.c_str());
+}
+
+void HLE_VPrintf()
+{
+	std::string ReportMessage;
+	u32 r4 = GPR(4);
+	u32 offset = Memory::Read_U32(r4+8);
+	u32 check = Memory::Read_U32(r4);
+	//NOTICE_LOG(OSREPORT, "Offset: %08X, Check %08X", offset, check);
+	for(int i = 4; i<= 10; i++){
+		GPR(i) = Memory::Read_U32(offset+(i-(check == 0x01000000? 3 : 2))*4);
+		//NOTICE_LOG(OSREPORT, "r%d: %08X",i, GPR(i));
+	}
+
+	GetStringVA(ReportMessage);
+
+	NPC = LR;
+
+	NOTICE_LOG(OSREPORT, "%08x->%08x| %s", LR, PC, ReportMessage.c_str());
+}
+// Generalized func for just printing string pointed to by r3.
+void HLE_GeneralDebugPrintWithInt()
+{
+	std::string ReportMessage;
+	GetStringVA(ReportMessage, 5);
+	NPC = LR;
+
+	//PanicAlert("(%08x->%08x) %s", LR, PC, ReportMessage.c_str());
+	NOTICE_LOG(OSREPORT, "%08x->%08x| %s", LR, PC, ReportMessage.c_str());
 }
 
 // __write_console is slightly abnormal
@@ -60,14 +80,14 @@ void HLE_write_console()
 	NPC = LR;
 
 	//PanicAlert("(%08x->%08x) %s", LR, PC, ReportMessage.c_str());
-	NOTICE_LOG(OSREPORT, "%08x->%08x| %s", LR, PC, ReportMessage.c_str());	
+	NOTICE_LOG(OSREPORT, "%08x->%08x| %s", LR, PC, ReportMessage.c_str());
 }
 
 void GetStringVA(std::string& _rOutBuffer, u32 strReg)
 {
 	_rOutBuffer = "";
 	char ArgumentBuffer[256];
-	u32 ParameterCounter = 4;    
+	u32 ParameterCounter = strReg+1;
 	u32 FloatingParameterCounter = 1;
 	char *pString = (char*)Memory::GetPointer(GPR(strReg));
 	if (!pString)
@@ -123,10 +143,10 @@ void GetStringVA(std::string& _rOutBuffer, u32 strReg)
 				_rOutBuffer += StringFromFormat(ArgumentBuffer, Parameter);
 				break;
 			}
-			
+
 			case 'f':
 			{
-				_rOutBuffer += StringFromFormat(ArgumentBuffer, 
+				_rOutBuffer += StringFromFormat(ArgumentBuffer,
 												rPS0(FloatingParameterCounter));
 				FloatingParameterCounter++;
 				ParameterCounter--;
@@ -146,7 +166,7 @@ void GetStringVA(std::string& _rOutBuffer, u32 strReg)
 		}
 		else
 		{
-			_rOutBuffer += StringFromFormat("%c", *pString); 
+			_rOutBuffer += StringFromFormat("%c", *pString);
 			pString++;
 		}
 	}

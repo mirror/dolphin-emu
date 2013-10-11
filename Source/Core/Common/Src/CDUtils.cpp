@@ -3,8 +3,10 @@
 #include "CDUtils.h"
 #include "Common.h"
 
+#include <memory> // for std::unique_ptr
 #ifdef _WIN32
 #include <windows.h>
+#include "StringUtil.h"
 #elif __APPLE__
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOBSD.h>
@@ -24,7 +26,7 @@
 
 #ifdef _WIN32
 // takes a root drive path, returns true if it is a cdrom drive
-bool is_cdrom(const char drive[])
+bool is_cdrom(const TCHAR* drive)
 {
 	return (DRIVE_CDROM == GetDriveType(drive));
 }
@@ -35,15 +37,15 @@ std::vector<std::string> cdio_get_devices()
 	std::vector<std::string> drives;
 
 	const DWORD buffsize = GetLogicalDriveStrings(0, NULL);
-	std::unique_ptr<char[]> buff(new char[buffsize]);
-	if (GetLogicalDriveStrings(buffsize, buff.get()) == buffsize - 1)
+	std::vector<TCHAR> buff(buffsize);
+	if (GetLogicalDriveStrings(buffsize, buff.data()) == buffsize - 1)
 	{
-		const char* drive = buff.get();
+		auto drive = buff.data();
 		while (*drive)
 		{
 			if (is_cdrom(drive))
 			{
-				std::string str(drive);
+				std::string str(TStrToUTF8(drive));
 				str.pop_back();	// we don't want the final backslash
 				drives.push_back(std::move(str));
 			}
@@ -212,7 +214,8 @@ bool cdio_is_cdrom(std::string device)
 #ifdef __linux__
 	// Resolve symbolic links. This allows symbolic links to valid
 	// drives to be passed from the command line with the -e flag.
-	char *devname = realpath(device.c_str(), NULL);
+	char resolved_path[MAX_PATH];
+	char *devname = realpath(device.c_str(), resolved_path);
 	if (!devname)
 		return false;
 #endif
@@ -231,11 +234,6 @@ bool cdio_is_cdrom(std::string device)
 			break;
 		}
 	}
-
-#ifdef __linux__
-	if (devname)
-		free(devname);
-#endif
 
 	devices.clear();
 	return res;

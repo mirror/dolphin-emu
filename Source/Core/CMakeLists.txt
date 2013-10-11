@@ -4,6 +4,7 @@ add_subdirectory(Core)
 add_subdirectory(DiscIO)
 add_subdirectory(InputCommon)
 add_subdirectory(VideoCommon)
+add_subdirectory(VideoBackends)
 
 if(DISABLE_QT4)
 	add_subdirectory(DolphinWX)

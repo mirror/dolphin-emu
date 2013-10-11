@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #ifndef _CORETIMING_H
 #define _CORETIMING_H
@@ -62,7 +49,6 @@ void ScheduleEvent_Threadsafe_Immediate(int event_type, u64 userdata=0);
 
 // We only permit one event of each type in the queue at a time.
 void RemoveEvent(int event_type);
-void RemoveThreadsafeEvent(int event_type);
 void RemoveAllEvents(int event_type);
 bool IsScheduled(int event_type);
 void Advance();
@@ -91,6 +77,8 @@ u64 GetFakeTBStartValue();
 void SetFakeTBStartValue(u64 val);
 u64 GetFakeTBStartTicks();
 void SetFakeTBStartTicks(u64 val);
+
+void ForceExceptionCheck(int cycles);
 
 extern int downcount;
 extern int slicelength;

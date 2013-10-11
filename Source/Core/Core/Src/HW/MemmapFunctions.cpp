@@ -12,7 +12,7 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official SVN repository and contact information can be found at
+// Official Git repository and contact information can be found at
 // http://code.google.com/p/dolphin-emu/
 
 #include "Common.h"
@@ -24,6 +24,10 @@
 #include "../Core.h"
 #include "../PowerPC/PowerPC.h"
 #include "VideoBackendBase.h"
+
+#ifdef USE_GDBSTUB
+#include "../PowerPC/GDBStub.h"
+#endif
 
 namespace Memory
 {
@@ -227,11 +231,15 @@ inline void WriteToHardware(u32 em_address, const T data, u32 effective_address,
 		{
 			int x = (em_address & 0xfff) >> 2;
 			int y = (em_address >> 12) & 0x3ff;
+
 			// TODO figure out a way to send data without falling into the template trap
-			if (em_address & 0x00400000) {
+			if (em_address & 0x00400000)
+			{
 				g_video_backend->Video_AccessEFB(POKE_Z, x, y, (u32)data);
 				DEBUG_LOG(MEMMAP, "EFB Z Write %08x @ %i, %i", (u32)data, x, y);
-			} else {
+			}
+			else
+			{
 				g_video_backend->Video_AccessEFB(POKE_COLOR, x, y,(u32)data);
 				DEBUG_LOG(MEMMAP, "EFB Color Write %08x @ %i, %i", (u32)data, x, y);
 			}
@@ -320,7 +328,7 @@ u32 Read_Opcode(u32 _Address)
 	}
 
 	if (Core::g_CoreStartupParameter.bMMU && 
-		!Core::g_CoreStartupParameter.iTLBHack && 
+		!Core::g_CoreStartupParameter.bTLBHack &&
 		(_Address & ADDR_MASK_MEM1))
 	{
 		// TODO: Check for MSR instruction address translation flag before translating
@@ -331,18 +339,20 @@ u32 Read_Opcode(u32 _Address)
 			return 0;
 		}
 		else
+		{
 			_Address = tlb_addr;
+		}
 	}
 
 	return PowerPC::ppcState.iCache.ReadInstruction(_Address);
 }
 
 u8 Read_U8(const u32 _Address)
-{    
+{
 	u8 _var = 0;
 	ReadFromHardware<u8>(_var, _Address, _Address, FLAG_READ);
 #ifdef ENABLE_MEM_CHECK
-    TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address);
+	TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address);
 	if (mc)
 	{
 		mc->numHits++;
@@ -369,7 +379,7 @@ u16 Read_U16(const u32 _Address)
 
 u32 Read_U32(const u32 _Address)
 {
-	u32 _var = 0;	
+	u32 _var = 0;
 	ReadFromHardware<u32>(_var, _Address, _Address, FLAG_READ);
 #ifdef ENABLE_MEM_CHECK
 	TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address);
@@ -395,6 +405,30 @@ u64 Read_U64(const u32 _Address)
 	}
 #endif
 	return _var;
+}
+
+double Read_F64(const u32 _Address)
+{
+	union
+	{
+		u64 i;
+		double d;
+	} cvt;
+	
+	cvt.i = Read_U64(_Address);
+	return cvt.d;
+}
+
+float Read_F32(const u32 _Address)
+{
+	union
+	{
+		u32 i;
+		float d;
+	} cvt;
+
+	cvt.i = Read_U32(_Address);
+	return cvt.d;
 }
 
 u32 Read_U8_ZX(const u32 _Address)
@@ -451,14 +485,15 @@ void Write_U32(const u32 _Data, const u32 _Address)
 #endif
 	WriteToHardware<u32>(_Address, _Data, _Address, FLAG_WRITE);
 }
-void Write_U32_Swap(const u32 _Data, const u32 _Address) {
+void Write_U32_Swap(const u32 _Data, const u32 _Address)
+{
 	Write_U32(Common::swap32(_Data), _Address);
 }
 
 void Write_U64(const u64 _Data, const u32 _Address)
 {
 #ifdef ENABLE_MEM_CHECK
-    TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address);
+	TMemCheck *mc = PowerPC::memchecks.GetMemCheck(_Address);
 	if (mc)
 	{
 		mc->numHits++;
@@ -472,6 +507,16 @@ void Write_U64_Swap(const u64 _Data, const u32 _Address) {
 	Write_U64(Common::swap64(_Data), _Address);
 }
 
+void Write_F64(const double _Data, const u32 _Address)
+{
+	union
+	{
+		u64 i;
+		double d;
+	} cvt;
+	cvt.d = _Data;
+	Write_U64(cvt.i, _Address);
+}
 u8 ReadUnchecked_U8(const u32 _Address)
 {    
 	u8 _var = 0;
@@ -491,7 +536,7 @@ void WriteUnchecked_U8(const u8 _iValue, const u32 _Address)
 {
 	WriteToHardware<u8>(_Address, _iValue, _Address, FLAG_NO_EXCEPTION);
 }
- 
+
 
 void WriteUnchecked_U32(const u32 _iValue, const u32 _Address)
 {
@@ -571,7 +616,7 @@ union UPTE1
 		u32 API    : 6;
 		u32 H      : 1;
 		u32 VSID   : 24;
-		u32 V      : 1;        
+		u32 V      : 1;
 	};
 	u32 Hex;
 };
@@ -590,9 +635,6 @@ union UPTE2
 	};
 	u32 Hex;
 };
-
-u32 pagetable_base = 0;
-u32 pagetable_hashmask = 0;
 
 void GenerateDSIException(u32 _EffectiveAddress, bool _bWrite)
 {
@@ -637,8 +679,8 @@ void SDRUpdated()
 	{
 		return;
 	}
-	pagetable_base = htaborg<<16;
-	pagetable_hashmask = ((xx<<10)|0x3ff);
+	PowerPC::ppcState.pagetable_base = htaborg<<16;
+	PowerPC::ppcState.pagetable_hashmask = ((xx<<10)|0x3ff);
 } 
 
 
@@ -649,10 +691,10 @@ void SDRUpdated()
 #define TLB_WAYS 2
 #define NUM_TLBS 2
 
-#define PAGE_SIZE 4096
-#define PAGE_INDEX_SHIFT 12
-#define PAGE_INDEX_MASK 0x3f
-#define PAGE_TAG_SHIFT 18
+#define HW_PAGE_SIZE 4096
+#define HW_PAGE_INDEX_SHIFT 12
+#define HW_PAGE_INDEX_MASK 0x3f
+#define HW_PAGE_TAG_SHIFT 18
 
 #define TLB_FLAG_MOST_RECENT 0x01
 #define TLB_FLAG_INVALID 0x02
@@ -672,7 +714,7 @@ static tlb_entry tlb[NUM_TLBS][TLB_SIZE/TLB_WAYS][TLB_WAYS];
 u32 LookupTLBPageAddress(const XCheckTLBFlag _Flag, const u32 vpa, u32 *paddr)
 {
 #ifdef FAST_TLB_CACHE
-	tlb_entry *tlbe = tlb[_Flag == FLAG_OPCODE][(vpa>>PAGE_INDEX_SHIFT)&PAGE_INDEX_MASK];
+	tlb_entry *tlbe = tlb[_Flag == FLAG_OPCODE][(vpa>>HW_PAGE_INDEX_SHIFT)&HW_PAGE_INDEX_MASK];
 	if(tlbe[0].tag == (vpa & ~0xfff) && !(tlbe[0].flags & TLB_FLAG_INVALID))
 	{
 		tlbe[0].flags |= TLB_FLAG_MOST_RECENT;
@@ -721,19 +763,19 @@ u32 LookupTLBPageAddress(const XCheckTLBFlag _Flag, const u32 vpa, u32 *paddr)
 void UpdateTLBEntry(const XCheckTLBFlag _Flag, UPTE2 PTE2, const u32 vpa)
 {
 #ifdef FAST_TLB_CACHE
-	tlb_entry *tlbe = tlb[_Flag == FLAG_OPCODE][(vpa>>PAGE_INDEX_SHIFT)&PAGE_INDEX_MASK];
+	tlb_entry *tlbe = tlb[_Flag == FLAG_OPCODE][(vpa>>HW_PAGE_INDEX_SHIFT)&HW_PAGE_INDEX_MASK];
 	if((tlbe[0].flags & TLB_FLAG_MOST_RECENT) == 0)
 	{
 		tlbe[0].flags = TLB_FLAG_MOST_RECENT;
 		tlbe[1].flags &= ~TLB_FLAG_MOST_RECENT;
-		tlbe[0].paddr = PTE2.RPN << PAGE_INDEX_SHIFT;
+		tlbe[0].paddr = PTE2.RPN << HW_PAGE_INDEX_SHIFT;
 		tlbe[0].tag = vpa & ~0xfff;
 	}
 	else
 	{
 		tlbe[1].flags = TLB_FLAG_MOST_RECENT;
 		tlbe[0].flags &= ~TLB_FLAG_MOST_RECENT;
-		tlbe[1].paddr = PTE2.RPN << PAGE_INDEX_SHIFT;
+		tlbe[1].paddr = PTE2.RPN << HW_PAGE_INDEX_SHIFT;
 		tlbe[1].tag = vpa & ~0xfff;
 	}
 #else
@@ -742,7 +784,7 @@ void UpdateTLBEntry(const XCheckTLBFlag _Flag, UPTE2 PTE2, const u32 vpa)
 		// ITLB cache
 		PowerPC::ppcState.itlb_last++;
 		PowerPC::ppcState.itlb_last &= 127;
-		PowerPC::ppcState.itlb_pa[PowerPC::ppcState.itlb_last] = PTE2.RPN << PAGE_INDEX_SHIFT;
+		PowerPC::ppcState.itlb_pa[PowerPC::ppcState.itlb_last] = PTE2.RPN << HW_PAGE_INDEX_SHIFT;
 		PowerPC::ppcState.itlb_va[PowerPC::ppcState.itlb_last] = vpa & ~0xfff;	
 	}
 	else
@@ -750,7 +792,7 @@ void UpdateTLBEntry(const XCheckTLBFlag _Flag, UPTE2 PTE2, const u32 vpa)
 		// DTLB cache
 		PowerPC::ppcState.dtlb_last++;
 		PowerPC::ppcState.dtlb_last &= 127;
-		PowerPC::ppcState.dtlb_pa[PowerPC::ppcState.dtlb_last] = PTE2.RPN << PAGE_INDEX_SHIFT;
+		PowerPC::ppcState.dtlb_pa[PowerPC::ppcState.dtlb_last] = PTE2.RPN << HW_PAGE_INDEX_SHIFT;
 		PowerPC::ppcState.dtlb_va[PowerPC::ppcState.dtlb_last] = vpa & ~0xfff;	
 	}
 #endif
@@ -759,7 +801,7 @@ void UpdateTLBEntry(const XCheckTLBFlag _Flag, UPTE2 PTE2, const u32 vpa)
 void InvalidateTLBEntry(u32 vpa)
 {
 #ifdef FAST_TLB_CACHE
-	tlb_entry *tlbe = tlb[0][(vpa>>PAGE_INDEX_SHIFT)&PAGE_INDEX_MASK];
+	tlb_entry *tlbe = tlb[0][(vpa>>HW_PAGE_INDEX_SHIFT)&HW_PAGE_INDEX_MASK];
 	if(tlbe[0].tag == (vpa & ~0xfff))
 	{
 		tlbe[0].flags |= TLB_FLAG_INVALID;
@@ -768,7 +810,7 @@ void InvalidateTLBEntry(u32 vpa)
 	{
 		tlbe[1].flags |= TLB_FLAG_INVALID;
 	}
-	tlb_entry *tlbe_i = tlb[1][(vpa>>PAGE_INDEX_SHIFT)&PAGE_INDEX_MASK];
+	tlb_entry *tlbe_i = tlb[1][(vpa>>HW_PAGE_INDEX_SHIFT)&HW_PAGE_INDEX_MASK];
 	if(tlbe_i[0].tag == (vpa & ~0xfff))
 	{
 		tlbe_i[0].flags |= TLB_FLAG_INVALID;
@@ -814,11 +856,11 @@ u32 TranslatePageAddress(const u32 _Address, const XCheckTLBFlag _Flag)
 
 	// hash function no 1 "xor" .360
 	u32 hash1 = (VSID ^ page_index);
-	u32 pteg_addr = ((hash1 & pagetable_hashmask) << 6) | pagetable_base;
+	u32 pteg_addr = ((hash1 & PowerPC::ppcState.pagetable_hashmask) << 6) | PowerPC::ppcState.pagetable_base;
 
 	// hash1
-	for (int i = 0; i < 8; i++) 
-	{ 
+	for (int i = 0; i < 8; i++)
+	{
 		UPTE1 PTE1;
 		PTE1.Hex = bswap(*(u32*)&pRAM[pteg_addr]);
 
@@ -838,7 +880,7 @@ u32 TranslatePageAddress(const u32 _Address, const XCheckTLBFlag _Flag)
 				case FLAG_WRITE:    PTE2.C = 1; break;
 				case FLAG_NO_EXCEPTION: break;
 				case FLAG_OPCODE: break;
-				}              
+				}
 				*(u32*)&pRAM[(pteg_addr + 4)] = bswap(PTE2.Hex);
 
 				return ((PTE2.RPN << 12) | offset);
@@ -849,13 +891,13 @@ u32 TranslatePageAddress(const u32 _Address, const XCheckTLBFlag _Flag)
 
 	// hash function no 2 "not" .360
 	hash1 = ~hash1;
-	pteg_addr = ((hash1 & pagetable_hashmask) << 6) | pagetable_base;
+	pteg_addr = ((hash1 & PowerPC::ppcState.pagetable_hashmask) << 6) | PowerPC::ppcState.pagetable_base;
 	for (int i = 0; i < 8; i++) 
-	{ 
+	{
 		u32 pte = bswap(*(u32*)&pRAM[pteg_addr]);
-		if ((pte & PTE1_V) && (pte & PTE1_H)) 
+		if ((pte & PTE1_V) && (pte & PTE1_H))
 		{
-			if (VSID == PTE1_VSID(pte) && (api == PTE1_API(pte))) 
+			if (VSID == PTE1_VSID(pte) && (api == PTE1_API(pte)))
 			{
 				UPTE2 PTE2;
 				PTE2.Hex = bswap((*(u32*)&pRAM[(pteg_addr + 4)]));
@@ -898,7 +940,8 @@ u32 TranslateBlockAddress(const u32 addr, const XCheckTLBFlag _Flag)
 	// Check for enhanced mode (secondary BAT enable) using 8 BATs
 	int bats = (Core::g_CoreStartupParameter.bWii && HID4.SBE)?8:4;
 
-	for (int i = 0; i < bats; i++) {
+	for (int i = 0; i < bats; i++)
+	{
 		if (_Flag != FLAG_OPCODE)
 		{
 			u32 bl17 = ~(BATU_BL(PowerPC::ppcState.spr[SPR_DBAT0U + i * 2]) << 17);
@@ -956,7 +999,7 @@ u32 TranslateAddress(const u32 _Address, const XCheckTLBFlag _Flag)
 	// Check MSR[DR] bit before translating data addresses
 	//if (((_Flag == FLAG_READ) || (_Flag == FLAG_WRITE)) && !(MSR & (1 << (31 - 27)))) return _Address;
 
-	u32 tlb_addr = Core::g_CoreStartupParameter.bMMUBAT?TranslateBlockAddress(_Address, _Flag):0;
+	u32 tlb_addr = TranslateBlockAddress(_Address, _Flag);
 	if (tlb_addr == 0)
 	{
 		tlb_addr = TranslatePageAddress(_Address, _Flag);
@@ -966,7 +1009,9 @@ u32 TranslateAddress(const u32 _Address, const XCheckTLBFlag _Flag)
 		}
 	}
 	else
+	{
 		return tlb_addr;
+	}
 
 	return 0;
 }

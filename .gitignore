@@ -20,7 +20,7 @@ Thumbs.db
 *.ilk
 *.log
 [Bb]in
-[Dd]ebug*/
+[Dd]ebug/
 *.lib
 *.sbr
 obj/
@@ -35,3 +35,7 @@ Source/Core/Common/Src/scmrev.h
 *.ipch
 .sconsign.dblite
 Externals/scons-local/*
+.DS_Store
+*~
+#Ignore transifix configuration directory
+.tx

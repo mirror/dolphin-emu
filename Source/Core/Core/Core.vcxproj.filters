@@ -5,9 +5,8 @@
     <ClCompile Include="Src\Console.cpp" />
     <ClCompile Include="Src\Core.cpp" />
     <ClCompile Include="Src\CoreParameter.cpp" />
-    <ClCompile Include="Src\CoreRerecording.cpp" />
     <ClCompile Include="Src\CoreTiming.cpp" />
-    <ClCompile Include="Src\MemTools.cpp" />
+    <ClCompile Include="Src\x64MemTools.cpp" />
     <ClCompile Include="Src\PatchEngine.cpp" />
     <ClCompile Include="Src\DSPEmulator.cpp" />
     <ClCompile Include="Src\State.cpp" />
@@ -287,6 +286,12 @@
     <ClCompile Include="Src\HW\SI_DeviceGCController.cpp">
       <Filter>HW %28Flipper/Hollywood%29\SI - Serial Interface</Filter>
     </ClCompile>
+    <ClCompile Include="Src\HW\SI_DeviceGCSteeringWheel.cpp">
+      <Filter>HW %28Flipper/Hollywood%29\SI - Serial Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\HW\SI_DeviceDanceMat.cpp">
+      <Filter>HW %28Flipper/Hollywood%29\SI - Serial Interface</Filter>
+    </ClCompile>
     <ClCompile Include="Src\HW\VideoInterface.cpp">
       <Filter>HW %28Flipper/Hollywood%29\VI - Video Interface</Filter>
     </ClCompile>
@@ -524,18 +529,12 @@
     <ClCompile Include="Src\HW\Wiimote.cpp">
       <Filter>HW %28Flipper/Hollywood%29\Wiimote</Filter>
     </ClCompile>
-    <ClCompile Include="Src\NetPlay.cpp">
-      <Filter>NetPlay</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\NetPlayServer.cpp">
-      <Filter>NetPlay</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\NetPlayClient.cpp">
-      <Filter>NetPlay</Filter>
-    </ClCompile>
     <ClCompile Include="Src\BootManager.cpp" />
     <ClCompile Include="Src\FifoPlayer\FifoDataFile.cpp">
       <Filter>FifoPlayer</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE_Device_net_ssl.cpp">
+      <Filter>IPC HLE %28IOS/Starlet%29\Net</Filter>
     </ClCompile>
     <ClCompile Include="Src\FifoPlayer\FifoPlayer.cpp">
       <Filter>FifoPlayer</Filter>
@@ -555,6 +554,21 @@
     <ClCompile Include="Src\Movie.cpp" />
     <ClCompile Include="Src\HW\GCMemcard.cpp">
       <Filter>HW %28Flipper/Hollywood%29\GCMemcard</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\PowerPC\JitInterface.cpp">
+      <Filter>PowerPC</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\NetPlayClient.cpp" />
+    <ClCompile Include="Src\NetPlayServer.cpp" />
+    <ClCompile Include="Src\IPC_HLE\ICMPWin.cpp">
+      <Filter>IPC HLE %28IOS/Starlet%29\Net</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE_Device_hid.cpp">
+      <Filter>IPC HLE %28IOS/Starlet%29\USB</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ec_wii.cpp" />
+    <ClCompile Include="Src\IPC_HLE\WII_Socket.cpp">
+      <Filter>IPC HLE %28IOS/Starlet%29\Net</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -727,9 +741,6 @@
     <ClInclude Include="Src\HW\DSPHLE\UCodes\UCode_AX.h">
       <Filter>HW %28Flipper/Hollywood%29\DSP Interface + HLE\HLE\uCodes</Filter>
     </ClInclude>
-    <ClInclude Include="Src\HW\DSPHLE\UCodes\UCode_AX_ADPCM.h">
-      <Filter>HW %28Flipper/Hollywood%29\DSP Interface + HLE\HLE\uCodes</Filter>
-    </ClInclude>
     <ClInclude Include="Src\HW\DSPHLE\UCodes\UCode_AX_Voice.h">
       <Filter>HW %28Flipper/Hollywood%29\DSP Interface + HLE\HLE\uCodes</Filter>
     </ClInclude>
@@ -803,6 +814,12 @@
       <Filter>HW %28Flipper/Hollywood%29\DI - Drive Interface</Filter>
     </ClInclude>
     <ClInclude Include="Src\HW\SI_DeviceGCController.h">
+      <Filter>HW %28Flipper/Hollywood%29\SI - Serial Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\HW\SI_DeviceGCSteeringWheel.h">
+      <Filter>HW %28Flipper/Hollywood%29\SI - Serial Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\HW\SI_DeviceDanceMat.h">
       <Filter>HW %28Flipper/Hollywood%29\SI - Serial Interface</Filter>
     </ClInclude>
     <ClInclude Include="Src\HW\SI.h">
@@ -1003,10 +1020,6 @@
     <ClInclude Include="Src\PowerPC\CPUCoreBase.h">
       <Filter>PowerPC</Filter>
     </ClInclude>
-    <ClInclude Include="Src\DolLoader.h" />
-    <ClInclude Include="Src\NetPlay.h">
-      <Filter>NetPlay</Filter>
-    </ClInclude>
     <ClInclude Include="Src\BootManager.h" />
     <ClInclude Include="Src\FifoPlayer\FifoDataFile.h">
       <Filter>FifoPlayer</Filter>
@@ -1032,6 +1045,28 @@
     <ClInclude Include="Src\Movie.h" />
     <ClInclude Include="Src\HW\GCMemcard.h">
       <Filter>HW %28Flipper/Hollywood%29\GCMemcard</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\PowerPC\JitInterface.h">
+      <Filter>PowerPC</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\NetPlayClient.h" />
+    <ClInclude Include="Src\NetPlayProto.h" />
+    <ClInclude Include="Src\NetPlayServer.h" />
+    <ClInclude Include="Src\IPC_HLE\WII_IPC_HLE_Device_net_ssl.h">
+      <Filter>IPC HLE %28IOS/Starlet%29\Net</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\IPC_HLE\fakepoll.h">
+      <Filter>IPC HLE %28IOS/Starlet%29\Net</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\IPC_HLE\ICMP.h">
+      <Filter>IPC HLE %28IOS/Starlet%29\Net</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\IPC_HLE\WII_IPC_HLE_Device_hid.h">
+      <Filter>IPC HLE %28IOS/Starlet%29\USB</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\ec_wii.h" />
+    <ClInclude Include="Src\IPC_HLE\WII_Socket.h">
+      <Filter>IPC HLE %28IOS/Starlet%29\Net</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1164,14 +1199,14 @@
     <Filter Include="HW %28Flipper/Hollywood%29\Wiimote\Real">
       <UniqueIdentifier>{1c21a3e1-b791-4a23-b0d5-ed2b2c34007f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="NetPlay">
-      <UniqueIdentifier>{231ceb02-1122-402a-87a8-094a9ed768c2}</UniqueIdentifier>
-    </Filter>
     <Filter Include="FifoPlayer">
       <UniqueIdentifier>{ca7d56f7-4e84-4d15-9aea-7ae6fa7d6586}</UniqueIdentifier>
     </Filter>
     <Filter Include="HW %28Flipper/Hollywood%29\GCMemcard">
       <UniqueIdentifier>{3e9e6e83-c1bf-45f9-aeff-231f98f60d29}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="IPC HLE %28IOS/Starlet%29\USB">
+      <UniqueIdentifier>{321a9af5-9b3d-4620-888c-fe9d02e9559e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
