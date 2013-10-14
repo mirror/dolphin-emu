@@ -8,6 +8,7 @@ set(LIBS	core
 			bdisasm
 			inputcommon
 			common
+			sqlite3
 			audiocommon
 			z
 			sfml-network

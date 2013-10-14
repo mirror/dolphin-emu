@@ -511,6 +511,9 @@ include_directories(Source/Core/VideoUICommon/Src)
 add_subdirectory(Externals/Bochs_disasm)
 include_directories(Externals/Bochs_disasm)
 
+add_subdirectory(Externals/sqlite3)
+include_directories(Externals/sqlite3)
+
 if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND NOT ANDROID)
 	check_lib(LZO lzo2 lzo/lzo1x.h QUIET)
 endif()
