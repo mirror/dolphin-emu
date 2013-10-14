@@ -477,30 +477,9 @@ u32 Renderer::AccessEFB(EFBAccessType type, u32 x, u32 y, u32 poke_data)
 	}
 }
 
-// Viewport correction:
-// Say you want a viewport at (ix, iy) with size (iw, ih),
-// but your viewport must be clamped at (ax, ay) with size (aw, ah).
-// Just multiply the projection matrix with the following to get the same
-// effect:
-// [   (iw/aw)         0     0    ((iw - 2*(ax-ix)) / aw - 1)   ]
-// [         0   (ih/ah)     0   ((-ih + 2*(ay-iy)) / ah + 1)   ]
-// [         0         0     1                              0   ]
-// [         0         0     0                              1   ]
-static void ViewportCorrectionMatrix(Matrix44& result,
-	float ix, float iy, float iw, float ih, // Intended viewport (x, y, width, height)
-	float ax, float ay, float aw, float ah) // Actual viewport (x, y, width, height)
-{
-	Matrix44::LoadIdentity(result);
-	if (aw == 0.f || ah == 0.f)
-		return;
-	result.data[4*0+0] = iw / aw;
-	result.data[4*0+3] = (iw - 2.f * (ax - ix)) / aw - 1.f;
-	result.data[4*1+1] = ih / ah;
-	result.data[4*1+3] = (-ih + 2.f * (ay - iy)) / ah + 1.f;
-}
 
 // Called from VertexShaderManager
-void Renderer::UpdateViewport(Matrix44& vpCorrection)
+void Renderer::UpdateViewport()
 {
 	// reversed gxsetviewport(xorig, yorig, width, height, nearz, farz)
 	// [0] = width/2
@@ -515,44 +494,31 @@ void Renderer::UpdateViewport(Matrix44& vpCorrection)
 
 	// TODO: ceil, floor or just cast to int?
 	// TODO: Directly use the floats instead of rounding them?
-	int intendedX = Renderer::EFBToScaledX((int)ceil(xfregs.viewport.xOrig - xfregs.viewport.wd - scissorXOff));
-	int intendedY = Renderer::EFBToScaledY((int)ceil(xfregs.viewport.yOrig + xfregs.viewport.ht - scissorYOff));
-	int intendedWd = Renderer::EFBToScaledX((int)ceil(2.0f * xfregs.viewport.wd));
-	int intendedHt = Renderer::EFBToScaledY((int)ceil(-2.0f * xfregs.viewport.ht));
-	if (intendedWd < 0)
+	int X = Renderer::EFBToScaledX((int)ceil(xfregs.viewport.xOrig - xfregs.viewport.wd - scissorXOff));
+	int Y = Renderer::EFBToScaledY((int)ceil(xfregs.viewport.yOrig + xfregs.viewport.ht - scissorYOff));
+	int Wd = Renderer::EFBToScaledX((int)ceil(2.0f * xfregs.viewport.wd));
+	int Ht = Renderer::EFBToScaledY((int)ceil(-2.0f * xfregs.viewport.ht));
+	if (Wd < 0)
 	{
-		intendedX += intendedWd;
-		intendedWd = -intendedWd;
+		X += Wd;
+		Wd = -Wd;
 	}
-	if (intendedHt < 0)
+	if (Ht < 0)
 	{
-		intendedY += intendedHt;
-		intendedHt = -intendedHt;
+		Y += Ht;
+		Ht = -Ht;
 	}
 
 	// In D3D, the viewport rectangle must fit within the render target.
-	int X = intendedX;
 	if (X < 0)
 		X = 0;
-
-	int Y = intendedY;
 	if (Y < 0)
 		Y = 0;
 
-	int Wd = intendedWd;
 	if (X + Wd > GetTargetWidth())
 		Wd = GetTargetWidth() - X;
-	int Ht = intendedHt;
 	if (Y + Ht > GetTargetHeight())
 		Ht = GetTargetHeight() - Y;
-	
-	// If GX viewport is off the render target, we must clamp our viewport
-	// within the bounds. Use the correction matrix to compensate.
-	ViewportCorrectionMatrix(vpCorrection,
-		(float)intendedX, (float)intendedY,
-		(float)intendedWd, (float)intendedHt,
-		(float)X, (float)Y,
-		(float)Wd, (float)Ht);
 
 	// Some games set invalid values for z-min and z-max so fix them to the max and min allowed and let the shaders do this work
 	D3D11_VIEWPORT vp = CD3D11_VIEWPORT((float)X, (float)Y,

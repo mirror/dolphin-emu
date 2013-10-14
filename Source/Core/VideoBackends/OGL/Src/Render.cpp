@@ -1093,7 +1093,7 @@ u32 Renderer::AccessEFB(EFBAccessType type, u32 x, u32 y, u32 poke_data)
 }
 
 // Called from VertexShaderManager
-void Renderer::UpdateViewport(Matrix44& vpCorrection)
+void Renderer::UpdateViewport()
 {
 	// reversed gxsetviewport(xorig, yorig, width, height, nearz, farz)
 	// [0] = width/2
@@ -1111,8 +1111,8 @@ void Renderer::UpdateViewport(Matrix44& vpCorrection)
 	int Y = EFBToScaledY((int)ceil((float)EFB_HEIGHT - xfregs.viewport.yOrig + xfregs.viewport.ht + (float)scissorYOff));
 	int Width = EFBToScaledX((int)ceil(2.0f * xfregs.viewport.wd));
 	int Height = EFBToScaledY((int)ceil(-2.0f * xfregs.viewport.ht));
-	double GLNear = (xfregs.viewport.farZ - xfregs.viewport.zRange) / 16777216.0f;
-	double GLFar = xfregs.viewport.farZ / 16777216.0f;
+	float GLNear = (xfregs.viewport.farZ - xfregs.viewport.zRange) / 16777216.0f;
+	float GLFar = xfregs.viewport.farZ / 16777216.0f;
 	if (Width < 0)
 	{
 		X += Width;
@@ -1123,9 +1123,6 @@ void Renderer::UpdateViewport(Matrix44& vpCorrection)
 		Y += Height;
 		Height *= -1;
 	}
-
-	// OpenGL does not require any viewport correct
-	Matrix44::LoadIdentity(vpCorrection);
 
 	// Update the view port
 	glViewport(X, Y, Width, Height);

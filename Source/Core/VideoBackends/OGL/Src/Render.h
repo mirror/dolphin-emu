@@ -77,7 +77,7 @@ public:
 
 	void ReinterpretPixelData(unsigned int convtype);
 
-	void UpdateViewport(Matrix44& vpCorrection);
+	void UpdateViewport();
 
 	bool SaveScreenshot(const std::string &filename, const TargetRectangle &rc);
 
