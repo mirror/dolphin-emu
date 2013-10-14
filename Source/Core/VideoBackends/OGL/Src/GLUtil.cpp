@@ -11,7 +11,6 @@
 #include "ConfigManager.h"
 
 #include "Render.h"
-#include "VertexShaderManager.h"
 
 #include "GLUtil.h"
 

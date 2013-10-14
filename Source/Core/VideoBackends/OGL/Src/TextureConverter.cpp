@@ -11,7 +11,6 @@
 #include "TextureConversionShader.h"
 #include "TextureCache.h"
 #include "ProgramShaderCache.h"
-#include "VertexShaderManager.h"
 #include "FramebufferManager.h"
 #include "Globals.h"
 #include "VideoConfig.h"
@@ -352,7 +351,6 @@ void EncodeToRamYUYV(GLuint srcTexture, const TargetRectangle& sourceRc, u8* des
 		
 	EncodeToRamUsingShader(srcTexture, sourceRc, destAddr, dstWidth / 2, dstHeight, 0, false, false);
 	FramebufferManager::SetFramebuffer(0);
-	VertexShaderManager::SetViewportChanged();
 	TextureCache::DisableStage(0);
 	g_renderer->RestoreAPIState();
 	GL_REPORT_ERRORD();
@@ -427,8 +425,6 @@ void DecodeToTexture(u32 xfbAddr, int srcWidth, int srcHeight, GLuint destTextur
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	
 	GL_REPORT_ERRORD();
-
-	VertexShaderManager::SetViewportChanged();
 
 	FramebufferManager::SetFramebuffer(0);
 
