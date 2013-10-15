@@ -298,18 +298,19 @@ void Jit64::WriteExit(u32 destination, int exit_num)
 	b->exitPtrs[exit_num] = GetWritableCodePtr();
 	
 	// Link opportunity!
-	int block = blocks.GetBlockNumberFromStartAddress(destination);
-	if (block >= 0 && jo.enableBlocklink) 
+	if (jo.enableBlocklink)
 	{
-		// It exists! Joy of joy!
-		JMP(blocks.GetBlock(block)->checkedEntry, true);
-		b->linkStatus[exit_num] = true;
+		int block = blocks.GetBlockNumberFromStartAddress(destination);
+		if (block >= 0)
+		{
+			// It exists! Joy of joy!
+			JMP(blocks.GetBlock(block)->checkedEntry, true);
+			b->linkStatus[exit_num] = true;
+			return;
+		}
 	}
-	else 
-	{
-		MOV(32, M(&PC), Imm32(destination));
-		JMP(asm_routines.dispatcher, true);
-	}
+	MOV(32, M(&PC), Imm32(destination));
+	JMP(asm_routines.dispatcher, true);
 }
 
 void Jit64::WriteExitDestInEAX() 
@@ -703,19 +704,9 @@ const u8* Jit64::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBloc
 
 		// Remove the invalid instruction from the icache, forcing a recompile
 #ifdef _M_IX86
-		if (js.compilerPC & JIT_ICACHE_VMEM_BIT)
-			MOV(32, M((jit->GetBlockCache()->GetICacheVMEM() + (js.compilerPC & JIT_ICACHE_MASK))), Imm32(JIT_ICACHE_INVALID_WORD));
-		else if (js.compilerPC & JIT_ICACHE_EXRAM_BIT)
-			MOV(32, M((jit->GetBlockCache()->GetICacheEx() + (js.compilerPC & JIT_ICACHEEX_MASK))), Imm32(JIT_ICACHE_INVALID_WORD));
-		else
-			MOV(32, M((jit->GetBlockCache()->GetICache() + (js.compilerPC & JIT_ICACHE_MASK))), Imm32(JIT_ICACHE_INVALID_WORD));
+		MOV(32, M(jit->GetBlockCache()->GetICachePtr(js.compilerPC)), Imm32(JIT_ICACHE_INVALID_WORD));
 #else
-		if (js.compilerPC & JIT_ICACHE_VMEM_BIT)
-			MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICacheVMEM() + (js.compilerPC & JIT_ICACHE_MASK)));
-		else if (js.compilerPC & JIT_ICACHE_EXRAM_BIT)
-			MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICacheEx() + (js.compilerPC & JIT_ICACHEEX_MASK)));
-		else
-			MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICache() + (js.compilerPC & JIT_ICACHE_MASK)));
+		MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICachePtr(js.compilerPC)));
 		MOV(32,MatR(RAX),Imm32(JIT_ICACHE_INVALID_WORD));
 #endif
 

@@ -85,7 +85,6 @@ void Jit64AsmRoutineManager::Generate()
 			MOV(32, R(EAX), M(&PowerPC::ppcState.pc));
 			dispatcherPcInEAX = GetCodePtr();
 
-#ifdef JIT_UNLIMITED_ICACHE
 			u32 mask = 0;
 			FixupBranch no_mem;
 			FixupBranch exit_mem;
@@ -101,9 +100,9 @@ void Jit64AsmRoutineManager::Generate()
 			}
 			AND(32, R(EAX), Imm32(JIT_ICACHE_MASK));
 #ifdef _M_IX86
-			MOV(32, R(EAX), MDisp(EAX, (u32)jit->GetBlockCache()->GetICache()));
+			MOV(32, R(EAX), MDisp(EAX, (u32)jit->GetBlockCache()->iCache));
 #else
-			MOV(64, R(RSI), Imm64((u64)jit->GetBlockCache()->GetICache()));
+			MOV(64, R(RSI), Imm64((u64)jit->GetBlockCache()->iCache));
 			MOV(32, R(EAX), MComplex(RSI, EAX, SCALE_1, 0));
 #endif
 			if (Core::g_CoreStartupParameter.bWii || Core::g_CoreStartupParameter.bMMU || Core::g_CoreStartupParameter.bTLBHack)
@@ -117,9 +116,9 @@ void Jit64AsmRoutineManager::Generate()
 				FixupBranch no_vmem = J_CC(CC_Z);
 				AND(32, R(EAX), Imm32(JIT_ICACHE_MASK));
 #ifdef _M_IX86
-				MOV(32, R(EAX), MDisp(EAX, (u32)jit->GetBlockCache()->GetICacheVMEM()));
+				MOV(32, R(EAX), MDisp(EAX, (u32)jit->GetBlockCache()->iCacheVMEM));
 #else
-				MOV(64, R(RSI), Imm64((u64)jit->GetBlockCache()->GetICacheVMEM()));
+				MOV(64, R(RSI), Imm64((u64)jit->GetBlockCache()->iCacheVMEM));
 				MOV(32, R(EAX), MComplex(RSI, EAX, SCALE_1, 0));
 #endif
 				if (Core::g_CoreStartupParameter.bWii) exit_vmem = J();
@@ -131,9 +130,9 @@ void Jit64AsmRoutineManager::Generate()
 				FixupBranch no_exram = J_CC(CC_Z);
 				AND(32, R(EAX), Imm32(JIT_ICACHEEX_MASK));
 #ifdef _M_IX86
-				MOV(32, R(EAX), MDisp(EAX, (u32)jit->GetBlockCache()->GetICacheEx()));
+				MOV(32, R(EAX), MDisp(EAX, (u32)jit->GetBlockCache()->iCacheEx));
 #else
-				MOV(64, R(RSI), Imm64((u64)jit->GetBlockCache()->GetICacheEx()));
+				MOV(64, R(RSI), Imm64((u64)jit->GetBlockCache()->iCacheEx));
 				MOV(32, R(EAX), MComplex(RSI, EAX, SCALE_1, 0));
 #endif
 				SetJumpTarget(no_exram);
@@ -142,19 +141,9 @@ void Jit64AsmRoutineManager::Generate()
 				SetJumpTarget(exit_mem);
 			if (Core::g_CoreStartupParameter.bWii && (Core::g_CoreStartupParameter.bMMU || Core::g_CoreStartupParameter.bTLBHack))
 				SetJumpTarget(exit_vmem);
-#else
-#ifdef _M_IX86
-			AND(32, R(EAX), Imm32(Memory::MEMVIEW32_MASK));
-			MOV(32, R(EBX), Imm32((u32)Memory::base));
-			MOV(32, R(EAX), MComplex(EBX, EAX, SCALE_1, 0));
-#else
-			MOV(32, R(EAX), MComplex(RBX, RAX, SCALE_1, 0));
-#endif
-#endif
 
-			TEST(32, R(EAX), Imm32(0xFC));
-			FixupBranch notfound = J_CC(CC_NZ);
-				BSWAP(32, EAX);
+			TEST(32, R(EAX), R(EAX));
+			FixupBranch notfound = J_CC(CC_L);
 				//IDEA - we have 26 bits, why not just use offsets from base of code?
 				if (enableDebug)
 				{
