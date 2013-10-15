@@ -540,6 +540,7 @@ bool ConnectDiag::IsHostOk()
 
 ConnectDiag::~ConnectDiag()
 {
+	netplay_client->m_state_callback = nullptr;
 	if (GetReturnCode() != 0)
 		netplay_client.reset();
 	SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayHost = StripSpaces(WxStrToStr(m_HostCtrl->GetValue()));

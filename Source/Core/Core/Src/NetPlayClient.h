@@ -116,12 +116,13 @@ protected:
 	bool			m_direct_connection;
 	std::thread		m_thread;
 
-	std::string		m_selected_game GUARDED_BY(m_crit);
+	std::string		m_selected_game ACCESS_ON(NET);
 	volatile bool	m_is_running;
 
 	unsigned int	m_target_buffer_size;
 
-	Player*		m_local_player;
+	Player*		m_local_player GUARDED_BY(m_crit);
+	std::string m_local_name ACCESS_ON(NET);
 
 	u32		m_current_game;
 
@@ -140,7 +141,7 @@ private:
 	void DoDirectConnect(const ENetAddress& addr);
 
 	PlayerId		m_pid;
-	std::map<PlayerId, Player>	m_players;
+	std::map<PlayerId, Player>	m_players GUARDED_BY(m_crit);
 	std::unique_ptr<ENetHostClient> m_host_client;
 	Common::Event m_have_dialog_event;
 };

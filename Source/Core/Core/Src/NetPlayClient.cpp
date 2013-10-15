@@ -64,17 +64,9 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 	m_host = NULL;
 	m_server_error = 0;
 	m_state_callback = stateCallback;
+	m_local_name = name;
 
 	ClearBuffers();
-
-	Player player;
-	player.name = name;
-	player.pid = m_pid;
-	player.revision = netplay_dolphin_ver;
-
-	// add self to player list
-	m_players[m_pid] = player;
-	m_local_player = &m_players[m_pid];
 
 	size_t pos = hostSpec.find(':');
 	if (pos != std::string::npos)
@@ -115,7 +107,6 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 
 void NetPlayClient::DoDirectConnect(const ENetAddress& addr)
 {
-	printf("DDC to %x:%d\n", addr.host, addr.port);
 	m_state = Connecting;
 	enet_host_connect(m_host, &addr, /*channelCount=*/0, /*data=*/0);
 }
@@ -139,12 +130,18 @@ void NetPlayClient::OnData(Packet&& packet)
 {
 	if (m_state == WaitingForHelloResponse)
 	{
+		std::lock_guard<std::recursive_mutex> lk(m_crit);
+
 		packet.Do(m_server_error);
 		packet.Do(m_pid);
 		if (packet.failure || m_server_error)
 			return OnDisconnect();
 
-		m_local_player->pid = m_pid;
+		Player player;
+		player.name = m_local_name;
+		player.pid = m_pid;
+		player.revision = netplay_dolphin_ver;
+		m_players[m_pid] = player;
 
 		//PanicAlertT("Connection successful: assigned player id: %d", m_pid);
 		m_state = Connected;
@@ -206,14 +203,16 @@ void NetPlayClient::OnData(Packet&& packet)
 			if (packet.failure)
 				return OnDisconnect();
 
-			// don't need lock to read in this thread
-			const Player& player = m_players[pid];
+			{
+				std::lock_guard<std::recursive_mutex> lk(m_crit);
+				const Player& player = m_players[pid];
 
-			// add to gui
-			std::ostringstream ss;
-			ss << player.name << '[' << (char)(pid+'0') << "]: " << msg;
+				// add to gui
+				std::ostringstream ss;
+				ss << player.name << '[' << (char)(pid+'0') << "]: " << msg;
 
-			m_dialog->AppendChat(ss.str());
+				m_dialog->AppendChat(ss.str());
+			}
 		}
 		break;
 
@@ -303,10 +302,7 @@ void NetPlayClient::OnData(Packet&& packet)
 
 	case NP_MSG_CHANGE_GAME :
 		{
-			{
-				std::lock_guard<std::recursive_mutex> lk(m_crit);
-				packet.Do(m_selected_game);
-			}
+			packet.Do(m_selected_game);
 
 			// update gui
 			m_dialog->OnMsgChangeGame(m_selected_game);
@@ -394,11 +390,14 @@ void NetPlayClient::OnData(Packet&& packet)
 
 void NetPlayClient::OnDisconnect()
 {
+	std::lock_guard<std::recursive_mutex> lk(m_crit);
 	if (m_state == Connected)
 	{
 		NetPlay_Disable();
 		m_dialog->AppendChat("< LOST CONNECTION TO SERVER >");
 		PanicAlertT("Lost connection to server.");
+		m_players.clear();
+		m_pid = -1;
 	}
 	m_is_running = false;
 	m_state = Failure;
@@ -418,7 +417,7 @@ void NetPlayClient::OnENetEvent(ENetEvent* event)
 		Packet hello;
 		hello.W(std::string(NETPLAY_VERSION));
 		hello.W(std::string(netplay_dolphin_ver));
-		hello.W(m_local_player->name);
+		hello.W(m_local_name);
 		ENetUtil::BroadcastPacket(m_host, hello);
 		m_state = WaitingForHelloResponse;
 		if (m_state_callback)
@@ -525,15 +524,18 @@ void NetPlayClient::SendChatMessage(const std::string& msg)
 
 void NetPlayClient::ChangeName(const std::string& name)
 {
-	{
+	g_TraversalClient->RunOnThread([=]() {
+		DO_ASSUME_ON(NET);
 		std::lock_guard<std::recursive_mutex> lk(m_crit);
-		m_local_player->name = name;
-	}
-	Packet packet;
-	packet.W((MessageId)NP_MSG_CHANGE_NAME);
-	packet.W(name);
+		m_local_name = name;
+		if (m_pid != (PlayerId) -1)
+			m_players[m_pid].name = name;
+		Packet packet;
+		packet.W((MessageId)NP_MSG_CHANGE_NAME);
+		packet.W(name);
 
-	SendPacket(packet);
+		SendPacket(packet);
+	});
 }
 
 void NetPlayClient::SendPadState(const PadMapping in_game_pad, const NetPad& np)
@@ -863,12 +865,12 @@ void NetPlayClient::Stop()
 		DO_ASSUME_ON(NET);
 		for (unsigned int i = 0; i < 4; ++i)
 		{
-			if (m_pad_map[i] == m_local_player->pid)
+			if (m_pad_map[i] == m_pid)
 				isPadMapped = true;
 		}
 		for (unsigned int i = 0; i < 4; ++i)
 		{
-			if (m_wiimote_map[i] == m_local_player->pid)
+			if (m_wiimote_map[i] == m_pid)
 				isPadMapped = true;
 		}
 		// tell the server to stop if we have a pad mapped in game.
@@ -884,7 +886,7 @@ void NetPlayClient::Stop()
 u8 NetPlayClient::InGamePadToLocalPad(u8 ingame_pad)
 {
 	// not our pad
-	if (m_pad_map[ingame_pad] != m_local_player->pid)
+	if (m_pad_map[ingame_pad] != m_pid)
 		return 4;
 
 	int local_pad = 0;
@@ -892,7 +894,7 @@ u8 NetPlayClient::InGamePadToLocalPad(u8 ingame_pad)
 
 	for (; pad < ingame_pad; pad++)
 	{
-		if (m_pad_map[pad] == m_local_player->pid)
+		if (m_pad_map[pad] == m_pid)
 			local_pad++;
 	}
 
@@ -908,7 +910,7 @@ u8 NetPlayClient::LocalPadToInGamePad(u8 local_pad)
 	int ingame_pad = 0;
 	for (; ingame_pad < 4; ingame_pad++)
 	{
-		if (m_pad_map[ingame_pad] == m_local_player->pid)
+		if (m_pad_map[ingame_pad] == m_pid)
 			local_pad_count++;
 
 		if (local_pad_count == local_pad)
@@ -927,7 +929,7 @@ u8 NetPlayClient::LocalWiimoteToInGameWiimote(u8 local_pad)
 	int ingame_pad = 0;
 	for (; ingame_pad < 4; ingame_pad++)
 	{
-		if (m_wiimote_map[ingame_pad] == m_local_player->pid)
+		if (m_wiimote_map[ingame_pad] == m_pid)
 			local_pad_count++;
 
 		if (local_pad_count == local_pad)

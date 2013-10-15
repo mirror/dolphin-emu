@@ -138,14 +138,14 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 	}
 
 	// send players
-	for (auto it = m_players.begin(); it != m_players.end(); ++it)
+	for (size_t opid = 0; opid < m_players.size(); opid++)
 	{
-		Client& oplayer = *it;
+		Client& oplayer = m_players[opid];
 		if (oplayer.connected)
 		{
 			Packet opacket;
 			opacket.W((MessageId)NP_MSG_PLAYER_JOIN);
-			opacket.W(pid);
+			opacket.W((PlayerId)opid);
 			opacket.W(oplayer.name);
 			opacket.W(oplayer.revision);
 			ENetUtil::SendPacket(peer, opacket);

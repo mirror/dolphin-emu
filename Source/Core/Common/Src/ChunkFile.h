@@ -345,9 +345,14 @@ private:
 		{
 		case MODE_READ:
 			if (size > vec->size() - readOff)
+			{
 				failure = true;
+				return;
+			}
 			else
+			{
 				memcpy(data, vec->data() + readOff, size);
+			}
 			break;
 
 		case MODE_WRITE:
