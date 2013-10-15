@@ -65,8 +65,8 @@ public:
 	NetPlayClient(const std::string& hostSpec, const std::string& name, std::function<void(NetPlayClient*)> stateCallback);
 	~NetPlayClient();
 
-	void GetPlayerList(std::string& list, std::vector<int>& pid_list);
-	void GetPlayers(std::vector<const Player *>& player_list);
+	void GetPlayerList(std::string& list, std::vector<int>& pid_list) ASSUME_ON(GUI);
+	void GetPlayers(std::vector<const Player *>& player_list) ASSUME_ON(GUI);
 
 	enum State
 	{
@@ -79,16 +79,16 @@ public:
 	} m_state;
 	MessageId m_server_error;
 
-	bool StartGame(const std::string &path);
-	bool StopGame();
-	void Stop();
-	bool ChangeGame(const std::string& game);
-	void SendChatMessage(const std::string& msg);
-	void ChangeName(const std::string& name);
+	bool StartGame(const std::string &path) ASSUME_ON(GUI);
+	bool StopGame() /* multiple threads */;
+	void Stop() ASSUME_ON(GUI);
+	bool ChangeGame(const std::string& game) ASSUME_ON(GUI);
+	void SendChatMessage(const std::string& msg) ASSUME_ON(GUI);
+	void ChangeName(const std::string& name) ASSUME_ON(GUI);
 
 	// Send and receive pads values
-	bool WiimoteUpdate(int _number, u8* data, const u8 size);
-	bool GetNetPads(const u8 pad_nb, const SPADStatus* const, NetPad* const netvalues);
+	bool WiimoteUpdate(int _number, u8* data, const u8 size) ASSUME_ON(CPU);
+	bool GetNetPads(const u8 pad_nb, const SPADStatus* const, NetPad* const netvalues) ASSUME_ON(CPU);
 
 	u8 LocalPadToInGamePad(u8 localPad);
 	u8 InGamePadToLocalPad(u8 localPad);
@@ -97,13 +97,13 @@ public:
 
 	void SetDialog(NetPlayUI* dialog);
 
-	virtual void OnENetEvent(ENetEvent*) override;
-	virtual void OnTraversalStateChanged() override;
-	virtual void OnConnectReady(ENetAddress addr) override;
+	virtual void OnENetEvent(ENetEvent*) override ON(NET);
+	virtual void OnTraversalStateChanged() override ON(NET);
+	virtual void OnConnectReady(ENetAddress addr) override ON(NET);
 
 	std::function<void(NetPlayClient*)> m_state_callback;
 protected:
-	void ClearBuffers();
+	void ClearBuffers() ON(NET);
 
 	std::recursive_mutex m_crit;
 
@@ -116,9 +116,8 @@ protected:
 	bool			m_direct_connection;
 	std::thread		m_thread;
 
-	std::string		m_selected_game;
+	std::string		m_selected_game GUARDED_BY(m_crit);
 	volatile bool	m_is_running;
-	volatile bool	m_do_loop;
 
 	unsigned int	m_target_buffer_size;
 
@@ -132,11 +131,11 @@ protected:
 	bool m_is_recording;
 
 private:
-	void UpdateDevices();
-	void SendPadState(const PadMapping in_game_pad, const NetPad& np);
-	void SendWiimoteState(const PadMapping in_game_pad, const NetWiimote& nw);
-	void OnData(Packet&& packet);
-	void OnDisconnect();
+	void UpdateDevices() ON(NET);
+	void SendPadState(const PadMapping in_game_pad, const NetPad& np) ASSUME_ON(CPU);
+	void SendWiimoteState(const PadMapping in_game_pad, const NetWiimote& nw) ASSUME_ON(CPU);
+	void OnData(Packet&& packet) ON(NET);
+	void OnDisconnect() ON(NET);
 	void SendPacket(Packet& packet);
 	void DoDirectConnect(const ENetAddress& addr);
 

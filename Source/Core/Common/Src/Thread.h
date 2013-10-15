@@ -137,7 +137,7 @@ private:
 	const size_t m_count;
 	volatile size_t m_waiting;
 };
-	
+
 void SleepCurrentThread(int ms);
 void SwitchCurrentThread();	// On Linux, this is equal to sleep 1ms
 

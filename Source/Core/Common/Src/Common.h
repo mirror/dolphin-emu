@@ -175,4 +175,71 @@ enum EMUSTATE_CHANGE
 
 #include "CommonFuncs.h"
 
+#ifdef __clang__
+#define THREAD_SAFETY_ANNOTATIONS
+#endif
+
+#ifdef THREAD_SAFETY_ANNOTATIONS
+/*
+	Optional annotations to denote thread roles.
+	Example:
+	// entry point known to be on CPU thread
+	void foo() ASSUME_ON_CPU;
+	// must be called by someone ON(CPU) or ASSUME_ON(CPU)
+	void foo() ON(CPU) { ...
+	// guarding variables
+	int foo ACCESS_ON(CPU);
+	int *ptr DEREF_ON(CPU);
+	// writes from CPU, reads from GPU
+	int baz ACCESS_ON(CPU2GPU);
+*/
+struct ThreadHat
+{
+} __attribute__((lockable));
+
+template <typename THH>
+struct ThreadHatLock
+{
+	__attribute__((exclusive_lock_function(THH::hat())))
+	ThreadHatLock() {}
+	__attribute__((unlock_function(THH::hat())))
+	~ThreadHatLock() {}
+} __attribute__((scoped_lockable));
+#define _TS_MACRO(a...) a
+#else
+#define _TS_MACRO(...)
+#endif
+
+#define DEFINE_THREAD_HAT(name) \
+	_TS_MACRO( \
+	extern ThreadHat name##ThreadHat; \
+	struct name##ThreadHatLock \
+	{ \
+		__attribute__((exclusive_lock_function(name##ThreadHat))) \
+		name##ThreadHatLock() {} \
+		__attribute__((unlock_function(name##ThreadHat))) \
+		~name##ThreadHatLock() {} \
+	} __attribute__((scoped_lockable)) \
+	)
+
+DEFINE_THREAD_HAT(CPU);
+DEFINE_THREAD_HAT(GPU);
+DEFINE_THREAD_HAT(GUI);
+
+#define GUARDED_BY(name) \
+	_TS_MACRO(__attribute__((guarded_by(name))))
+#define PT_GUARDED_BY(name) \
+	_TS_MACRO(__attribute__((pt_guarded_by(name))))
+#define ACCESS_ON(name) \
+	_TS_MACRO(__attribute__((guarded_by(name##ThreadHat))))
+#define DEREF_ON(name) \
+	_TS_MACRO(__attribute__((pt_guarded_by(name##ThreadHat))))
+#define ON(name) \
+	_TS_MACRO(__attribute__((exclusive_locks_required(name##ThreadHat))))
+#define IGNORE_THREAD_SAFETY \
+	_TS_MACRO(__attribute__((no_thread_safety_analysis)))
+#define ASSUME_ON(name) \
+	_TS_MACRO(__attribute__((exclusive_trylock_function(12345, name##ThreadHat))))
+#define DO_ASSUME_ON(name) \
+	_TS_MACRO(name##ThreadHatLock __##name##__thlock)
 #endif // _COMMON_H_

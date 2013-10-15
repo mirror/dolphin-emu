@@ -45,7 +45,6 @@ NetPad::NetPad(const SPADStatus* const pad_status)
 	nLo |= (u32)((u8)pad_status->substickX << 24);
 }
 
-// called from ---GUI--- thread
 NetPlayClient::~NetPlayClient()
 {
 	// not perfect
@@ -56,11 +55,9 @@ NetPlayClient::~NetPlayClient()
 		g_TraversalClient->Reset();
 }
 
-// called from ---GUI--- thread
 NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& name, std::function<void(NetPlayClient*)> stateCallback)
 {
 	m_is_running = false;
-	m_do_loop = true;
 	m_target_buffer_size = 20;
 	m_state = Failure;
 	m_dialog = NULL;
@@ -129,16 +126,15 @@ void NetPlayClient::SetDialog(NetPlayUI* dialog)
 	m_have_dialog_event.Set();
 }
 
-// called from multiple threads
 void NetPlayClient::SendPacket(Packet& packet)
 {
 	CopyAsMove<Packet> tmp(std::move(packet));
 	g_TraversalClient->RunOnThread([=]() mutable {
+		DO_ASSUME_ON(NET);
 		ENetUtil::BroadcastPacket(m_host, *tmp);
 	});
 }
 
-// called from ---NETPLAY--- thread
 void NetPlayClient::OnData(Packet&& packet)
 {
 	if (m_state == WaitingForHelloResponse)
@@ -396,7 +392,6 @@ void NetPlayClient::OnData(Packet&& packet)
 	}
 }
 
-// called from ---NETPLAY--- thread
 void NetPlayClient::OnDisconnect()
 {
 	if (m_state == Connected)
@@ -411,7 +406,6 @@ void NetPlayClient::OnDisconnect()
 		m_state_callback(this);
 }
 
-// called from ---NETPLAY--- thread
 void NetPlayClient::OnENetEvent(ENetEvent* event)
 {
 	switch (event->type)
@@ -442,7 +436,6 @@ void NetPlayClient::OnENetEvent(ENetEvent* event)
 	}
 }
 
-// called from ---NETPLAY--- thread
 void NetPlayClient::OnTraversalStateChanged()
 {
 	if (m_state == WaitingForTraversalClientConnection &&
@@ -460,7 +453,6 @@ void NetPlayClient::OnTraversalStateChanged()
 	}
 }
 
-// called from ---NETPLAY--- thread
 void NetPlayClient::OnConnectReady(ENetAddress addr)
 {
 	if (m_state == WaitingForTraversalClientConnectReady)
@@ -474,7 +466,6 @@ void NetPlayClient::OnConnectReady(ENetAddress addr)
 	}
 }
 
-// called from ---GUI--- thread
 void NetPlayClient::GetPlayerList(std::string& list, std::vector<int>& pid_list)
 {
 	std::lock_guard<std::recursive_mutex> lk(m_crit);
@@ -509,7 +500,6 @@ void NetPlayClient::GetPlayerList(std::string& list, std::vector<int>& pid_list)
 	list = ss.str();
 }
 
-// called from ---GUI--- thread
 void NetPlayClient::GetPlayers(std::vector<const Player *> &player_list)
 {
 	std::lock_guard<std::recursive_mutex> lk(m_crit);
@@ -524,7 +514,6 @@ void NetPlayClient::GetPlayers(std::vector<const Player *> &player_list)
 }
 
 
-// called from ---GUI--- thread
 void NetPlayClient::SendChatMessage(const std::string& msg)
 {
 	Packet packet;
@@ -534,7 +523,6 @@ void NetPlayClient::SendChatMessage(const std::string& msg)
 	SendPacket(packet);
 }
 
-// called from ---GUI--- thread
 void NetPlayClient::ChangeName(const std::string& name)
 {
 	{
@@ -548,7 +536,6 @@ void NetPlayClient::ChangeName(const std::string& name)
 	SendPacket(packet);
 }
 
-// called from ---CPU--- thread
 void NetPlayClient::SendPadState(const PadMapping in_game_pad, const NetPad& np)
 {
 	// send to server
@@ -561,7 +548,6 @@ void NetPlayClient::SendPadState(const PadMapping in_game_pad, const NetPad& np)
 	SendPacket(packet);
 }
 
-// called from ---CPU--- thread
 void NetPlayClient::SendWiimoteState(const PadMapping in_game_pad, const NetWiimote& nw)
 {
 	// send to server
@@ -573,7 +559,6 @@ void NetPlayClient::SendWiimoteState(const PadMapping in_game_pad, const NetWiim
 	SendPacket(packet);
 }
 
-// called from ---GUI--- thread
 bool NetPlayClient::StartGame(const std::string &path)
 {
 	if (m_is_running)
@@ -644,13 +629,11 @@ bool NetPlayClient::StartGame(const std::string &path)
 	return true;
 }
 
-// called from ---GUI--- thread
 bool NetPlayClient::ChangeGame(const std::string&)
 {
 	return true;
 }
 
-// called from ---NETPLAY--- thread
 void NetPlayClient::UpdateDevices()
 {
 	for (PadMapping i = 0; i < 4; i++)
@@ -660,7 +643,6 @@ void NetPlayClient::UpdateDevices()
 	}
 }
 
-// called from ---NETPLAY--- thread
 void NetPlayClient::ClearBuffers()
 {
 	// clear pad buffers, Clear method isn't thread safe
@@ -674,7 +656,6 @@ void NetPlayClient::ClearBuffers()
 	}
 }
 
-// called from ---CPU--- thread
 bool NetPlayClient::GetNetPads(const u8 pad_nb, const SPADStatus* const pad_status, NetPad* const netvalues)
 {
 	// The interface for this is extremely silly.
@@ -758,7 +739,6 @@ bool NetPlayClient::GetNetPads(const u8 pad_nb, const SPADStatus* const pad_stat
 }
 
 
-// called from ---CPU--- thread
 bool NetPlayClient::WiimoteUpdate(int _number, u8* data, const u8 size)
 {
 	NetWiimote nw;
@@ -853,7 +833,6 @@ bool NetPlayClient::WiimoteUpdate(int _number, u8* data, const u8 size)
 	return true;
 }
 
-// called from ---GUI--- thread and ---NETPLAY--- thread (client side)
 bool NetPlayClient::StopGame()
 {
 	std::lock_guard<std::recursive_mutex> lk(m_crit);
@@ -879,24 +858,27 @@ void NetPlayClient::Stop()
 {
 	if (m_is_running == false)
 		return;
-	bool isPadMapped = false;
-	for (unsigned int i = 0; i < 4; ++i)
-	{
-		if (m_pad_map[i] == m_local_player->pid)
-			isPadMapped = true;
-	}
-	for (unsigned int i = 0; i < 4; ++i)
-	{
-		if (m_wiimote_map[i] == m_local_player->pid)
-			isPadMapped = true;
-	}
-	// tell the server to stop if we have a pad mapped in game.
-	if (isPadMapped)
-	{
-		Packet packet;
-		packet.W((MessageId)NP_MSG_STOP_GAME);
-		ENetUtil::BroadcastPacket(m_host, packet);
-	}
+	g_TraversalClient->RunOnThread([=]() mutable {
+		bool isPadMapped = false;
+		DO_ASSUME_ON(NET);
+		for (unsigned int i = 0; i < 4; ++i)
+		{
+			if (m_pad_map[i] == m_local_player->pid)
+				isPadMapped = true;
+		}
+		for (unsigned int i = 0; i < 4; ++i)
+		{
+			if (m_wiimote_map[i] == m_local_player->pid)
+				isPadMapped = true;
+		}
+		// tell the server to stop if we have a pad mapped in game.
+		if (isPadMapped)
+		{
+			Packet packet;
+			packet.W((MessageId)NP_MSG_STOP_GAME);
+			ENetUtil::BroadcastPacket(m_host, packet);
+		}
+	});
 }
 
 u8 NetPlayClient::InGamePadToLocalPad(u8 ingame_pad)

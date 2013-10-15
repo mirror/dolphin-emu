@@ -25,7 +25,6 @@ NetPlayServer::NetPlayServer()
 	m_host = g_TraversalClient->m_Host;
 }
 
-// called from ---NETPLAY--- thread
 void NetPlayServer::UpdatePings()
 {
 	m_ping_key = Common::Timer::GetTimeMs();
@@ -40,7 +39,6 @@ void NetPlayServer::UpdatePings()
 	m_update_pings = false;
 }
 
-// called from ---NETPLAY--- thread
 void NetPlayServer::OnENetEvent(ENetEvent* event)
 {
 	// update pings every so many seconds
@@ -68,7 +66,6 @@ void NetPlayServer::OnTraversalStateChanged()
 		m_dialog->Update();
 }
 
-// called from ---NETPLAY--- thread
 MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 {
 	Client& player = m_players[pid];
@@ -161,7 +158,6 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 	return 0;
 }
 
-// called from ---NETPLAY--- thread
 void NetPlayServer::OnDisconnect(PlayerId pid)
 {
 	Client& player = m_players[pid];
@@ -199,7 +195,6 @@ void NetPlayServer::OnDisconnect(PlayerId pid)
 	UpdateWiimoteMapping();
 }
 
-// called from ---GUI--- thread
 void NetPlayServer::GetPadMapping(PadMapping map[4])
 {
 	for (int i = 0; i < 4; i++)
@@ -212,7 +207,6 @@ void NetPlayServer::GetWiimoteMapping(PadMapping map[4])
 		map[i] = m_wiimote_map[i];
 }
 
-// called from ---GUI--- thread
 void NetPlayServer::SetPadMapping(const PadMapping map[4])
 {
 	for (int i = 0; i < 4; i++)
@@ -220,7 +214,6 @@ void NetPlayServer::SetPadMapping(const PadMapping map[4])
 	UpdatePadMapping();
 }
 
-// called from ---GUI--- thread
 void NetPlayServer::SetWiimoteMapping(const PadMapping map[4])
 {
 	for (int i = 0; i < 4; i++)
@@ -228,7 +221,6 @@ void NetPlayServer::SetWiimoteMapping(const PadMapping map[4])
 	UpdateWiimoteMapping();
 }
 
-// called from ---GUI--- thread and ---NETPLAY--- thread
 void NetPlayServer::UpdatePadMapping()
 {
 	Packet opacket;
@@ -237,7 +229,6 @@ void NetPlayServer::UpdatePadMapping()
 	SendToClients(opacket);
 }
 
-// called from ---GUI--- thread and ---NETPLAY--- thread
 void NetPlayServer::UpdateWiimoteMapping()
 {
 	Packet opacket;
@@ -246,7 +237,6 @@ void NetPlayServer::UpdateWiimoteMapping()
 	SendToClients(opacket);
 }
 
-// called from ---GUI--- thread and ---NETPLAY--- thread
 void NetPlayServer::AdjustPadBufferSize(unsigned int size)
 {
 	m_target_buffer_size = size;
@@ -258,7 +248,6 @@ void NetPlayServer::AdjustPadBufferSize(unsigned int size)
 	SendToClients(opacket);
 }
 
-// called from ---NETPLAY--- thread
 void NetPlayServer::OnData(PlayerId pid, Packet&& packet)
 {
 	ENetPeer* peer = &m_host->peers[pid];
@@ -418,7 +407,6 @@ void NetPlayServer::OnData(PlayerId pid, Packet&& packet)
 	}
 }
 
-// called from ---GUI--- thread
 bool NetPlayServer::ChangeGame(const std::string &game)
 {
 	std::lock_guard<std::recursive_mutex> lk(m_crit);
@@ -434,13 +422,11 @@ bool NetPlayServer::ChangeGame(const std::string &game)
 	return true;
 }
 
-// called from ---GUI--- thread
 void NetPlayServer::SetNetSettings(const NetSettings &settings)
 {
 	m_settings = settings;
 }
 
-// called from ---GUI--- thread
 bool NetPlayServer::StartGame(const std::string &path)
 {
 	m_current_game = Common::Timer::GetTimeMs();
@@ -466,17 +452,16 @@ bool NetPlayServer::StartGame(const std::string &path)
 	return true;
 }
 
-// called from multiple threads
 void NetPlayServer::SendToClients(Packet& packet, const PlayerId skip_pid)
 {
 	CopyAsMove<Packet> tmp(std::move(packet));
 	g_TraversalClient->RunOnThread([=]() mutable {
+		DO_ASSUME_ON(NET);
 		SendToClientsOnThread(*tmp, skip_pid);
 	});
 }
 
 
-// called from ---NETPLAY--- thread
 void NetPlayServer::SendToClientsOnThread(const Packet& packet, const PlayerId skip_pid)
 {
 	ENetPacket* epacket = NULL;

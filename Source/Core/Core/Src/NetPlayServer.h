@@ -25,24 +25,24 @@ public:
 	NetPlayServer();
 	~NetPlayServer();
 
-	bool ChangeGame(const std::string& game);
+	bool ChangeGame(const std::string& game) ASSUME_ON(GUI);
 
-	void SetNetSettings(const NetSettings &settings);
+	void SetNetSettings(const NetSettings &settings) ASSUME_ON(GUI);
 
-	bool StartGame(const std::string &path);
+	bool StartGame(const std::string &path) ASSUME_ON(GUI);
 
-	void GetPadMapping(PadMapping map[]);
-	void SetPadMapping(const PadMapping map[]);
+	void GetPadMapping(PadMapping map[]) ASSUME_ON(GUI);
+	void SetPadMapping(const PadMapping map[]) ASSUME_ON(GUI);
 
-	void GetWiimoteMapping(PadMapping map[]);
-	void SetWiimoteMapping(const PadMapping map[]);
+	void GetWiimoteMapping(PadMapping map[]) ASSUME_ON(GUI);
+	void SetWiimoteMapping(const PadMapping map[]) ASSUME_ON(GUI);
 
-	void AdjustPadBufferSize(unsigned int size);
+	void AdjustPadBufferSize(unsigned int size) /* multiple threads */;
 
 	void SetDialog(NetPlayUI* dialog);
 
-	virtual void OnENetEvent(ENetEvent*) override;
-	virtual void OnTraversalStateChanged() override;
+	virtual void OnENetEvent(ENetEvent*) override ON(NET);
+	virtual void OnTraversalStateChanged() override ON(NET);
 	virtual void OnConnectReady(ENetAddress addr) override {}
 private:
 	class Client
@@ -58,13 +58,13 @@ private:
 	};
 
 	void SendToClients(Packet& packet, const PlayerId skip_pid = -1);
-	void SendToClientsOnThread(const Packet& packet, const PlayerId skip_pid = -1);
-	MessageId OnConnect(PlayerId pid, Packet& hello);
-	void OnDisconnect(PlayerId pid);
-	void OnData(PlayerId pid, Packet&& packet);
-	void UpdatePadMapping();
-	void UpdateWiimoteMapping();
-	void UpdatePings();
+	void SendToClientsOnThread(const Packet& packet, const PlayerId skip_pid = -1) ON(NET);
+	MessageId OnConnect(PlayerId pid, Packet& hello) ON(NET);
+	void OnDisconnect(PlayerId pid) ON(NET);
+	void OnData(PlayerId pid, Packet&& packet) ON(NET);
+	void UpdatePadMapping() /* multiple threads */;
+	void UpdateWiimoteMapping() /* multiple threads */;
+	void UpdatePings() ON(NET);
 
 	NetSettings     m_settings;
 
@@ -83,7 +83,7 @@ private:
 	// only protects m_selected_game
 	std::recursive_mutex m_crit;
 
-	std::string m_selected_game;
+	std::string m_selected_game GUARDED_BY(m_crit);
 
 	ENetHost*		m_host;
 	NetPlayUI*		m_dialog;

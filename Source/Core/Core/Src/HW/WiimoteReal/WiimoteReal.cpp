@@ -763,6 +763,7 @@ void HandleFoundWiimotes(const std::vector<Wiimote*>& wiimotes)
 }
 
 // This is called from the GUI thread
+IGNORE_THREAD_SAFETY
 void Refresh()
 {
 	g_wiimote_scanner.StopScanning();

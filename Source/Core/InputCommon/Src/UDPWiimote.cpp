@@ -146,6 +146,7 @@ UDPWiimote::UDPWiimote(const char *_port, const char * name, int _index) :
 	return;
 }
 
+IGNORE_THREAD_SAFETY
 void UDPWiimote::mainThread()
 {
 	std::unique_lock<std::mutex> lk(d->termLock);

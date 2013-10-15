@@ -117,6 +117,7 @@ void VideoSoftware::CheckInvalidState()
 	// there is no state to invalidate
 }
 
+IGNORE_THREAD_SAFETY
 void VideoSoftware::PauseAndLock(bool doLock, bool unpauseOnUnlock)
 {
 	if (doLock)

@@ -86,6 +86,7 @@ ENetHostClient::~ENetHostClient()
 	if (m_Host)
 	{
 		RunOnThread([=]() {
+			DO_ASSUME_ON(NET);
 			m_ShouldEndThread = true;
 		});
 		m_Thread.join();
@@ -171,6 +172,7 @@ void TraversalClient::ReconnectToServer()
 	hello.type = TraversalPacketHelloFromClient;
 	hello.helloFromClient.protoVersion = TraversalProtoVersion;
 	RunOnThread([=]() {
+		DO_ASSUME_ON(NET);
 		SendPacket(hello);
 	});
 	m_State = Connecting;

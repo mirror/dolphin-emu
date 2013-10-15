@@ -347,6 +347,7 @@ void DSPLLE::DSP_ClearAudioBuffer(bool mute)
 		soundStream->Clear(mute);
 }
 
+IGNORE_THREAD_SAFETY
 void DSPLLE::PauseAndLock(bool doLock, bool unpauseOnUnlock)
 {
 	if (doLock || unpauseOnUnlock)

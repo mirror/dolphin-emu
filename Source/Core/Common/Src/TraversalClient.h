@@ -10,16 +10,18 @@
 #include <functional>
 #include <list>
 
+DEFINE_THREAD_HAT(NET);
+
 #define MAX_CLIENTS 200
 
 #include "ChunkFile.h"
 namespace ENetUtil
 {
-	void BroadcastPacket(ENetHost* host, const Packet& pac);
-	void SendPacket(ENetPeer* peer, const Packet& pac);
+	void BroadcastPacket(ENetHost* host, const Packet& pac) ON(NET);
+	void SendPacket(ENetPeer* peer, const Packet& pac) ON(NET);
 	Packet MakePacket(ENetPacket* epacket);
 	void Wakeup(ENetHost* host);
-	int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event);
+	int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event) ASSUME_ON(NET);
 }
 
 // Apparently nobody on the C++11 standards committee thought of
@@ -39,9 +41,9 @@ private:
 class TraversalClientClient
 {
 public:
-	virtual void OnENetEvent(ENetEvent*) = 0;
-	virtual void OnTraversalStateChanged() = 0;
-	virtual void OnConnectReady(ENetAddress addr) = 0;
+	virtual void OnENetEvent(ENetEvent*) ASSUME_ON(NET) = 0;
+	virtual void OnTraversalStateChanged() ASSUME_ON(NET) = 0;
+	virtual void OnConnectReady(ENetAddress addr) ASSUME_ON(NET) = 0;
 };
 
 class ENetHostClient
@@ -56,16 +58,15 @@ public:
 	TraversalClientClient* m_Client;
 	ENetHost* m_Host;
 protected:
-	virtual void HandleResends() {}
+	virtual void HandleResends() ON(NET) {}
 private:
-	void ThreadFunc();
+	void ThreadFunc() ASSUME_ON(NET);
 
 	Common::FifoQueue<std::function<void()>, false> m_RunQueue;
 	std::thread m_Thread;
 	// *sigh*
 	Common::Event m_ResetEvent;
-	bool m_ResetReady;
-	bool m_ShouldEndThread;
+	bool m_ShouldEndThread ACCESS_ON(NET);
 	bool m_isTraversalClient;
 };
 
@@ -81,16 +82,15 @@ public:
 	};
 
 	TraversalClient(const std::string& server);
-	void Reset();
-	void Connect(const std::string& host);
+	void Reset() ON(NET);
+	void Connect(const std::string& host) ON(NET);
 	void ReconnectToServer();
 	u16 GetPort();
 
-	// will be called from thread
 	TraversalHostId m_HostId;
 	State m_State;
 protected:
-	virtual void HandleResends();
+	virtual void HandleResends() ON(NET);
 private:
 	struct OutgoingPacketInfo
 	{
@@ -99,16 +99,16 @@ private:
 		enet_uint32 sendTime;
 	};
 
-	void HandleServerPacket(TraversalPacket* packet);
-	void ResendPacket(OutgoingPacketInfo* info);
-	TraversalRequestId SendPacket(const TraversalPacket& packet);
-	void OnConnectFailure();
-	static int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event);
-	void HandlePing();
+	void HandleServerPacket(TraversalPacket* packet) ON(NET);
+	void ResendPacket(OutgoingPacketInfo* info) ON(NET);
+	TraversalRequestId SendPacket(const TraversalPacket& packet) ON(NET);
+	void OnConnectFailure() ON(NET);
+	static int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event) ASSUME_ON(NET);
+	void HandlePing() ON(NET);
 
 	TraversalRequestId m_ConnectRequestId;
 	bool m_PendingConnect;
-	std::list<OutgoingPacketInfo> m_OutgoingPackets;
+	std::list<OutgoingPacketInfo> m_OutgoingPackets ACCESS_ON(NET);
 	ENetAddress m_ServerAddress;
 	enet_uint32 m_PingTime;
 	std::string m_Server;
