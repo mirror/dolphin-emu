@@ -196,7 +196,7 @@ bool AVIDump::SetVideoFormat()
 	memset(&m_header, 0, sizeof(m_header));
 	m_header.fccType = streamtypeVIDEO;
 	m_header.dwScale = 1;
-	m_header.dwRate = VideoInterface::TargetRefreshRate;
+	m_header.dwRate = (DWORD) VideoInterface::TargetRefreshRate;
 	m_header.dwSuggestedBufferSize  = m_bitmap.biSizeImage;
 
 	return SUCCEEDED(AVIFileCreateStream(m_file, &m_stream, &m_header));

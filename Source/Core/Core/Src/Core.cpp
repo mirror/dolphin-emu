@@ -609,7 +609,7 @@ bool PauseAndLock(bool doLock, bool unpauseOnUnlock)
 // This should only be called from VI
 void VideoThrottle()
 {
-	u32 TargetVPS = (SConfig::GetInstance().m_Framelimit > 2) ?
+	float TargetVPS = (SConfig::GetInstance().m_Framelimit > 2) ?
 		(SConfig::GetInstance().m_Framelimit - 1) * 5 : VideoInterface::TargetRefreshRate;
 
 	if (Host_GetKeyState('\t'))
@@ -619,7 +619,7 @@ void VideoThrottle()
 	if (SConfig::GetInstance().m_Framelimit && SConfig::GetInstance().m_Framelimit != 2 && !Host_GetKeyState('\t'))
 	{
 		isTabPressed = false;
-		u32 frametime = ((SConfig::GetInstance().b_UseFPS)? Common::AtomicLoad(DrawnFrame) : DrawnVideo) * 1000 / TargetVPS;
+		u32 frametime = (u32)(((float)(SConfig::GetInstance().b_UseFPS)? Common::AtomicLoad(DrawnFrame) : DrawnVideo) * 1000 / TargetVPS);
 
 		u32 timeDifference = (u32)Timer.GetTimeDifference();
 		if (timeDifference < frametime)
@@ -652,9 +652,9 @@ void VideoThrottle()
 // depending on the framelimit set
 bool ShouldSkipFrame(int skipped)
 {
-	const u32 TargetFPS = (SConfig::GetInstance().m_Framelimit > 1)
+	const u32 TargetFPS = (const u32)((SConfig::GetInstance().m_Framelimit > 1)
 		? SConfig::GetInstance().m_Framelimit * 5
-		: VideoInterface::TargetRefreshRate;
+		: VideoInterface::TargetRefreshRate);
 	const u32 frames = Common::AtomicLoad(DrawnFrame);
 	const bool fps_slow = !(Timer.GetTimeDifference() < (frames + skipped) * 1000 / TargetFPS);
 
@@ -692,9 +692,9 @@ void UpdateTitle()
 	if (ElapseTime == 0)
 		ElapseTime = 1;
 
-	u32 FPS = Common::AtomicLoad(DrawnFrame) * 1000 / ElapseTime;
-	u32 VPS = DrawnVideo * 1000 / ElapseTime;
-	u32 Speed = DrawnVideo * (100 * 1000) / (VideoInterface::TargetRefreshRate * ElapseTime);
+	u32 FPS = (u32)floor(((float)Common::AtomicLoad(DrawnFrame) * 1000 / ElapseTime) + 0.5f);
+	u32 VPS = (u32)floor(((float)DrawnVideo * 1000 / ElapseTime) + 0.5f);
+	u32 Speed = (u32)floor(((float)DrawnVideo * (100 * 1000) / (VideoInterface::TargetRefreshRate * ElapseTime)) + 0.5f);
 
 	// Settings are shown the same for both extended and summary info
 	std::string SSettings = StringFromFormat("%s %s | %s | %s", cpu_core_base->GetName(),	_CoreParameter.bCPUThread ? "DC" : "SC",

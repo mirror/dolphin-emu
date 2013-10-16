@@ -24,8 +24,8 @@ namespace VideoInterface
 #define NTSC_LOWER_BEGIN	21
 #define NTSC_UPPER_BEGIN	283
 
-//#define PAL_FIELD_RATE		50.0f
-#define PAL_FIELD_RATE		50
+#define PAL_FIELD_RATE		50.0f
+//#define PAL_FIELD_RATE		50
 #define PAL_LINE_COUNT		625
 // These line numbers indicate the beginning of the "active video" in a frame.
 // A PAL frame has the upper field first followed by the lower field.
@@ -316,7 +316,7 @@ union UVIDTVStatus
 };
 
 	// urgh, ugly externs.
-	extern u32 TargetRefreshRate;
+	extern float TargetRefreshRate;
 
 	// For BS2 HLE
 	void Preset(bool _bNTSC);
