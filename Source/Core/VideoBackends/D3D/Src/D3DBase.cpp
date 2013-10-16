@@ -255,10 +255,10 @@ D3D_FEATURE_LEVEL GetFeatureLevel(IDXGIAdapter* adapter)
 DXGI_SAMPLE_DESC GetAAMode(std::string aamode)
 {
 	static bool init = false;
-	static std::map<std::string, unsigned int> samplesindex;
+	static std::map<std::string, int> samplesindex;
 	if (!init)
 	{
-		for (unsigned int a = 0; a < g_Config.backend_info.AAModes.size(); ++a)
+		for (int a = 0; a < g_Config.backend_info.AAModes.size(); ++a)
 			samplesindex[a] = g_Config.backend_info.AAModes[a];
 		init = true;
 	}

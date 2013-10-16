@@ -63,9 +63,13 @@ class SettingChoice : public wxChoice
 {
 public:
 	SettingChoice(wxWindow* parent, int &setting, const wxString& tooltip, int num = 0, const wxString choices[] = NULL, long style = 0);
+	SettingChoice(wxWindow* parent, std::string &setting, const wxString& tooltip, int num = 0, const wxString choices[] = NULL, long style = 0);
+
 	void UpdateValue(wxCommandEvent& ev);
+	void UpdateStringValue(wxCommandEvent& ev);
 private:
 	int &m_setting;
+	std::string &m_strsetting;
 };
 
 class VideoConfigDiag : public wxDialog
@@ -177,6 +181,7 @@ protected:
 	// Creates controls and connects their enter/leave window events to Evt_Enter/LeaveControl
 	SettingCheckBox* CreateCheckBox(wxWindow* parent, const wxString& label, const wxString& description, bool &setting, bool reverse = false, long style = 0);
 	SettingChoice* CreateChoice(wxWindow* parent, int& setting, const wxString& description, int num = 0, const wxString choices[] = NULL, long style = 0);
+	SettingChoice* CreateChoice(wxWindow* parent, std::string& setting, const wxString& description, int num = 0, const wxString choices[] = NULL, long style = 0);
 	SettingRadioButton* CreateRadioButton(wxWindow* parent, const wxString& label, const wxString& description, bool &setting, bool reverse = false, long style = 0);
 
 	// Same as above but only connects enter/leave window events
@@ -206,7 +211,7 @@ protected:
 
 	std::map<wxWindow*, wxString> ctrl_descs; // maps setting controls to their descriptions
 	std::map<wxWindow*, wxStaticText*> desc_texts; // maps dialog tabs (which are the parents of the setting controls) to their description text objects
-
+	
 	VideoConfig &vconfig;
 };
 

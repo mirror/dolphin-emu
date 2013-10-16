@@ -47,10 +47,23 @@ SettingChoice::SettingChoice(wxWindow* parent, int &setting, const wxString& too
 	Select(m_setting);
 	Bind(wxEVT_COMMAND_CHOICE_SELECTED, &SettingChoice::UpdateValue, this);
 }
+SettingChoice::SettingChoice(wxWindow* parent, std::string &setting, const wxString& tooltip, int num, const wxString choices[], long style)
+	: wxChoice(parent, -1, wxDefaultPosition, wxDefaultSize, num, choices)
+	, m_strsetting(setting)
+{
+	SetToolTip(tooltip);
+	SelectStringSelection(m_strsetting);
+	Bind(wxEVT_COMMAND_CHOICE_SELECTED, &SettingChoice::UpdateValue, this);
+}
 
 void SettingChoice::UpdateValue(wxCommandEvent& ev)
 {
 	m_setting = ev.GetInt();
+	ev.Skip();
+}
+void SettingChoice::UpdateStringValue(wxCommandEvent& ev)
+{
+	m_strsetting = ev.GetString();
 	ev.Skip();
 }
 
@@ -356,7 +369,7 @@ VideoConfigDiag::VideoConfigDiag(wxWindow* parent, const std::string &title)
 	// AA
 	{
 	text_aamode = new wxStaticText(page_enh, -1, _("Anti-Aliasing:"));
-	choice_aamode = CreateChoice(page_enh, 0, wxGetTranslation(aa_desc));
+	choice_aamode = CreateChoice(page_enh, vconfig.sMultisampleMode, wxGetTranslation(aa_desc));
 
 	std::vector<std::string>::const_iterator
 		it = vconfig.backend_info.AAModes.begin(),
@@ -617,6 +630,13 @@ SettingCheckBox* VideoConfigDiag::CreateCheckBox(wxWindow* parent, const wxStrin
 }
 
 SettingChoice* VideoConfigDiag::CreateChoice(wxWindow* parent, int& setting, const wxString& description, int num, const wxString choices[], long style)
+{
+	SettingChoice* const ch = new SettingChoice(parent, setting, wxString(), num, choices, style);
+	RegisterControl(ch, description);
+	return ch;
+}
+
+SettingChoice* VideoConfigDiag::CreateChoice(wxWindow* parent, std::string& setting, const wxString& description, int num, const wxString choices[], long style)
 {
 	SettingChoice* const ch = new SettingChoice(parent, setting, wxString(), num, choices, style);
 	RegisterControl(ch, description);
