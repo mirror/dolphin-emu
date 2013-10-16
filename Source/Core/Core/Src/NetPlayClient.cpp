@@ -92,10 +92,12 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 		m_direct_connection = false;
 		std::string server = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayCentralServer;
 		EnsureTraversalClient(server);
-		if (!g_TraversalClient)
+		if (!g_TraversalClient ||
+		    g_TraversalClient->m_State == TraversalClient::InitFailure)
 			return;
-		if (g_TraversalClient->m_State == TraversalClient::InitFailure)
-			return;
+		// If we were disconnected in the background, reconnect.
+		if (g_TraversalClient->m_State == TraversalClient::Failure)
+			g_TraversalClient->ReconnectToServer();
 		g_TraversalClient->m_Client = this;
 		m_host_spec = hostSpec;
 		m_host = g_TraversalClient->m_Host;

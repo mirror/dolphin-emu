@@ -23,6 +23,9 @@ NetPlayServer::NetPlayServer()
 
 	g_TraversalClient->m_Client = this;
 	m_host = g_TraversalClient->m_Host;
+
+	if (g_TraversalClient->m_State == TraversalClient::Failure)
+		g_TraversalClient->ReconnectToServer();
 }
 
 void NetPlayServer::UpdatePings()
