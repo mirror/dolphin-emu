@@ -61,7 +61,7 @@ void VideoConfigDiag::Event_ClickClose(wxCommandEvent&)
 
 void VideoConfigDiag::Event_Close(wxCloseEvent& ev)
 {
-	g_Config.Save(File::GetUserPath(F_DOLPHINCONFIG_IDX));
+	g_Config.Save();
 
 	EndModal(wxID_OK);
 }
@@ -190,7 +190,7 @@ VideoConfigDiag::VideoConfigDiag(wxWindow* parent, const std::string &title)
 		wxDefaultPosition, wxDefaultSize)
 	, vconfig(g_Config)
 {
-	vconfig.Load(File::GetUserPath(F_DOLPHINCONFIG_IDX));
+	vconfig.Load();
 
 	Bind(wxEVT_UPDATE_UI, &VideoConfigDiag::OnUpdateUI, this);
 

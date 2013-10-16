@@ -23,9 +23,9 @@ VideoConfigDialog::VideoConfigDialog(wxWindow* parent, const std::string& title)
 	wxDialog(parent, -1,
 		wxString(wxT("Dolphin ")).append(StrToWxStr(title)).append(wxT(" Graphics Configuration")),
 		wxDefaultPosition, wxDefaultSize),
-	vconfig(g_SWVideoConfig),
+	vconfig(g_SWVideoConfig)
 {
-	vconfig.Load(File::GetUserPath(F_DOLPHINCONFIG_IDX));
+	vconfig.Load();
 
 	wxNotebook* const notebook = new wxNotebook(this, -1, wxDefaultPosition, wxDefaultSize);	
 
@@ -126,5 +126,5 @@ VideoConfigDialog::VideoConfigDialog(wxWindow* parent, const std::string& title)
 
 VideoConfigDialog::~VideoConfigDialog()
 {
-	g_SWVideoConfig.Save(File::GetUserPath(F_DOLPHINCONFIG_IDX));
+	g_SWVideoConfig.Save();
 }
