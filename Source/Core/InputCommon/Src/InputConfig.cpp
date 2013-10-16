@@ -56,7 +56,7 @@ bool InputPlugin::LoadConfig(bool isGC)
 		}
 	}
 
-	if (inifile.Load(File::GetUserPath(D_CONFIG_IDX) + ini_name + ".ini"))
+	if (inifile.Load(File::GetUserPath(F_DOLPHINCONFIG_IDX)))
 	{
 		std::vector< ControllerEmu* >::const_iterator
 			i = controllers.begin(),
@@ -90,7 +90,7 @@ bool InputPlugin::LoadConfig(bool isGC)
 
 void InputPlugin::SaveConfig()
 {
-	std::string ini_filename = File::GetUserPath(D_CONFIG_IDX) + ini_name + ".ini";
+	std::string ini_filename = File::GetUserPath(F_DOLPHINCONFIG_IDX);
 
 	IniFile inifile;
 	inifile.Load(ini_filename);

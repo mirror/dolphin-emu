@@ -552,7 +552,7 @@ void Wiimote::ThreadFunc()
 
 void LoadSettings()
 {
-	std::string ini_filename = File::GetUserPath(D_CONFIG_IDX) + WIIMOTE_INI_NAME ".ini";
+	std::string ini_filename = File::GetUserPath(F_DOLPHINCONFIG_IDX);
 
 	IniFile inifile;
 	inifile.Load(ini_filename);
