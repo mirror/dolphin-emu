@@ -140,7 +140,7 @@ public final class FolderBrowser extends ListFragment
 
 	private void FolderSelected()
 	{
-		String Directories = NativeLibrary.GetConfig("Dolphin.ini", "General", "GCMPathes", "0");
+		String Directories = NativeLibrary.GetConfig("General", "GCMPathes", "0");
 		int intDirectories = Integer.parseInt(Directories);
 
 		// Check to see if a path set in the Dolphin config
@@ -149,7 +149,7 @@ public final class FolderBrowser extends ListFragment
 		boolean pathNotPresent = true;
 		for (int i = 0; i < intDirectories; i++)
 		{
-			String gcmPath = NativeLibrary.GetConfig("Dolphin.ini", "General", "GCMPath" + i, "");
+			String gcmPath = NativeLibrary.GetConfig("General", "GCMPath" + i, "");
 
 			if (gcmPath.equals(currentDir.getPath()))
 			{
@@ -164,8 +164,8 @@ public final class FolderBrowser extends ListFragment
 		// User doesn't have this path in the config, so add it.
 		if (pathNotPresent)
 		{
-			NativeLibrary.SetConfig("Dolphin.ini", "General", "GCMPathes", Integer.toString(intDirectories+1));
-			NativeLibrary.SetConfig("Dolphin.ini", "General", "GCMPath" + Integer.toString(intDirectories), currentDir.getPath());
+			NativeLibrary.SetConfig("General", "GCMPathes", Integer.toString(intDirectories+1));
+			NativeLibrary.SetConfig("General", "GCMPath" + Integer.toString(intDirectories), currentDir.getPath());
 		}
 
 		((GameListActivity)m_activity).SwitchPage(0);

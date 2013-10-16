@@ -25,7 +25,7 @@
 class VideoConfigDialog : public wxDialog
 {
 public:
-	VideoConfigDialog(wxWindow* parent, const std::string &title, const std::string& ininame);
+	VideoConfigDialog(wxWindow* parent, const std::string &title);
 	~VideoConfigDialog();
 
 	void Event_Backend(wxCommandEvent &ev)
@@ -46,7 +46,6 @@ public:
 
 protected:
 	SWVideoConfig& vconfig;
-	std::string ininame;
 };
 
 #endif

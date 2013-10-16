@@ -19,14 +19,13 @@ IntegerSetting<T>::IntegerSetting(wxWindow* parent, const wxString& label, T& se
 }
 
 
-VideoConfigDialog::VideoConfigDialog(wxWindow* parent, const std::string& title, const std::string& _ininame) :
+VideoConfigDialog::VideoConfigDialog(wxWindow* parent, const std::string& title) :
 	wxDialog(parent, -1,
 		wxString(wxT("Dolphin ")).append(StrToWxStr(title)).append(wxT(" Graphics Configuration")),
 		wxDefaultPosition, wxDefaultSize),
 	vconfig(g_SWVideoConfig),
-	ininame(_ininame)
 {
-	vconfig.Load((File::GetUserPath(D_CONFIG_IDX) + ininame + ".ini").c_str());
+	vconfig.Load(File::GetUserPath(F_DOLPHINCONFIG_IDX));
 
 	wxNotebook* const notebook = new wxNotebook(this, -1, wxDefaultPosition, wxDefaultSize);	
 
@@ -127,5 +126,5 @@ VideoConfigDialog::VideoConfigDialog(wxWindow* parent, const std::string& title,
 
 VideoConfigDialog::~VideoConfigDialog()
 {
-	g_SWVideoConfig.Save((File::GetUserPath(D_CONFIG_IDX) + ininame + ".ini").c_str());
+	g_SWVideoConfig.Save(File::GetUserPath(F_DOLPHINCONFIG_IDX));
 }

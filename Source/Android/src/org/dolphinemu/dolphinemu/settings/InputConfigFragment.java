@@ -85,7 +85,7 @@ public final class InputConfigFragment extends PreferenceFragment
 		Preference pref;
 		for (String key : keys)
 		{
-			String binding = NativeLibrary.GetConfig("Dolphin.ini", "Android", key, "None");
+			String binding = NativeLibrary.GetConfig("Android", key, "None");
 			pref = findPreference(key);
 			pref.setSummary(binding);
 		}
@@ -109,7 +109,7 @@ public final class InputConfigFragment extends PreferenceFragment
 					case KeyEvent.ACTION_UP:
 						InputDevice input = event.getDevice();
 						String bindStr = "Device '" + getInputDesc(input) + "'-Button " + event.getKeyCode();
-						NativeLibrary.SetConfig("Dolphin.ini", "Android", pref.getKey(), bindStr);
+						NativeLibrary.SetConfig("Android", pref.getKey(), bindStr);
 						pref.setSummary(bindStr);
 						dialog.dismiss();
 						return true;
@@ -154,14 +154,14 @@ public final class InputConfigFragment extends PreferenceFragment
 						if (m_values.get(a) > (event.getAxisValue(range.getAxis()) + 0.5f))
 						{
 							String bindStr = "Device '" + InputConfigFragment.getInputDesc(input) + "'-Axis " + range.getAxis() + "-";
-							NativeLibrary.SetConfig("Dolphin.ini", "Android", pref.getKey(), bindStr);
+							NativeLibrary.SetConfig("Android", pref.getKey(), bindStr);
 							pref.setSummary(bindStr);
 							dialog.dismiss();
 						}
 						else if (m_values.get(a) < (event.getAxisValue(range.getAxis()) - 0.5f))
 						{
 							String bindStr = "Device '" + InputConfigFragment.getInputDesc(input) + "'-Axis " + range.getAxis() + "+";
-							NativeLibrary.SetConfig("Dolphin.ini", "Android", pref.getKey(), bindStr);
+							NativeLibrary.SetConfig("Android", pref.getKey(), bindStr);
 							pref.setSummary(bindStr);
 							dialog.dismiss();
 						}
