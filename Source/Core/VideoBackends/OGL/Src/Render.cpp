@@ -124,7 +124,7 @@ static RasterFont* s_pfont = NULL;
 // 1 for no MSAA. Use s_MSAASamples > 1 to check for MSAA.
 static int s_MSAASamples = 1;
 static int s_MSAACoverageSamples = 0;
-static int s_LastMultisampleMode = 0;
+static std::string s_LastMultisampleMode = "None";
 
 static u32 s_blendMode;
 
@@ -141,35 +141,19 @@ static const u32 EFB_CACHE_HEIGHT = (EFB_HEIGHT + EFB_CACHE_RECT_SIZE - 1) / EFB
 static bool s_efbCacheValid[2][EFB_CACHE_WIDTH * EFB_CACHE_HEIGHT];
 static std::vector<u32> s_efbCache[2][EFB_CACHE_WIDTH * EFB_CACHE_HEIGHT]; // 2 for PEEK_Z and PEEK_COLOR
 
-int GetNumMSAASamples(int MSAAMode)
+int GetNumMSAASamples()
 {
 	int samples;
-	switch (MSAAMode)
+	static bool init = false;
+	static std::map<std::string, int> samplesmap;
+	if (!init)
 	{
-		case MULTISAMPLE_OFF:
-			samples = 1;
-			break;
-
-		case MULTISAMPLE_2X:
-			samples = 2;
-			break;
-
-		case MULTISAMPLE_4X:
-		case MULTISAMPLE_CSAA_8X:
-		case MULTISAMPLE_CSAA_16X:
-		case MULTISAMPLE_SSAA_4X:
-			samples = 4;
-			break;
-
-		case MULTISAMPLE_8X:
-		case MULTISAMPLE_CSAA_8XQ:
-		case MULTISAMPLE_CSAA_16XQ:
-			samples = 8;
-			break;
-
-		default:
-			samples = 1;
+		const int samplevalues[] = {1, 2, 4, 8, 4, 8, 4, 8, 4};
+		for (unsigned int a = 0; a < g_ActiveConfig.backend_info.AAModes.size(); ++a)
+			samplesmap[g_ActiveConfig.backend_info.AAModes[a]] = samplevalues[a];
+		init = true;
 	}
+	samples = samplesmap[g_ActiveConfig.sMultisampleMode];
 	
 	if(samples <= g_ogl_config.max_samples) return samples;
 	
@@ -178,24 +162,20 @@ int GetNumMSAASamples(int MSAAMode)
 	return g_ogl_config.max_samples;
 }
 
-int GetNumMSAACoverageSamples(int MSAAMode)
+int GetNumMSAACoverageSamples()
 {
 	int samples;
-	switch (g_ActiveConfig.iMultisampleMode)
+	static bool init = false;
+	static std::map<std::string, int> samplesmap;
+	if (!init)
 	{
-		case MULTISAMPLE_CSAA_8X:
-		case MULTISAMPLE_CSAA_8XQ:
-			samples = 8;
-			break;
-
-		case MULTISAMPLE_CSAA_16X:
-		case MULTISAMPLE_CSAA_16XQ:
-			samples = 16;
-			break;
-
-		default:
-			samples = 0;
+		const int samplevalues[] = {0, 0, 0, 0, 8, 8, 16, 16, 0};
+		for (unsigned int a = 0; a < g_ActiveConfig.backend_info.AAModes.size(); ++a)
+				samplesmap[g_ActiveConfig.backend_info.AAModes[a]] = samplevalues[a];
+		init = true;
 	}
+	samples = samplesmap[g_ActiveConfig.sMultisampleMode];
+
 	if(g_ogl_config.bSupportCoverageMSAA || samples == 0) return samples;
 	
 	// TODO: move this to InitBackendInfo
@@ -206,7 +186,7 @@ int GetNumMSAACoverageSamples(int MSAAMode)
 void ApplySSAASettings() {
 	// GLES3 doesn't support SSAA
 #ifndef USE_GLES3
-	if(g_ActiveConfig.iMultisampleMode == MULTISAMPLE_SSAA_4X) {
+	if(g_ActiveConfig.sMultisampleMode == "4x SSAA") {
 		if(g_ogl_config.bSupportSampleShading) {
 			glEnable(GL_SAMPLE_SHADING_ARB);
 			glMinSampleShadingARB(s_MSAASamples);
@@ -560,9 +540,9 @@ Renderer::Renderer()
 			g_ogl_config.bSupportSampleShading ? "" : "SSAA "
 			);
 			
-	s_LastMultisampleMode = g_ActiveConfig.iMultisampleMode;
-	s_MSAASamples = GetNumMSAASamples(s_LastMultisampleMode);
-	s_MSAACoverageSamples = GetNumMSAACoverageSamples(s_LastMultisampleMode);
+	s_LastMultisampleMode = g_ActiveConfig.sMultisampleMode;
+	s_MSAASamples = GetNumMSAASamples();
+	s_MSAACoverageSamples = GetNumMSAACoverageSamples();
 	ApplySSAASettings();
 	
 	// Decide framebuffer size
@@ -1538,15 +1518,15 @@ void Renderer::Swap(u32 xfbAddr, u32 fbWidth, u32 fbHeight,const EFBRectangle& r
 		s_LastEFBScale = g_ActiveConfig.iEFBScale;
 	}
 
-	if (xfbchanged || WindowResized || (s_LastMultisampleMode != g_ActiveConfig.iMultisampleMode))
+	if (xfbchanged || WindowResized || (s_LastMultisampleMode != g_ActiveConfig.sMultisampleMode))
 	{
 		UpdateDrawRectangle(s_backbuffer_width, s_backbuffer_height);
 
-		if (CalculateTargetSize(s_backbuffer_width, s_backbuffer_height) || s_LastMultisampleMode != g_ActiveConfig.iMultisampleMode)
+		if (CalculateTargetSize(s_backbuffer_width, s_backbuffer_height) || s_LastMultisampleMode != g_ActiveConfig.sMultisampleMode)
 		{
-			s_LastMultisampleMode = g_ActiveConfig.iMultisampleMode;
-			s_MSAASamples = GetNumMSAASamples(s_LastMultisampleMode);
-			s_MSAACoverageSamples = GetNumMSAACoverageSamples(s_LastMultisampleMode);
+			s_LastMultisampleMode = g_ActiveConfig.sMultisampleMode;
+			s_MSAASamples = GetNumMSAASamples();
+			s_MSAACoverageSamples = GetNumMSAACoverageSamples();
 			ApplySSAASettings();
 			
 			delete g_framebuffer_manager;

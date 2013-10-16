@@ -252,9 +252,17 @@ D3D_FEATURE_LEVEL GetFeatureLevel(IDXGIAdapter* adapter)
 	return feat_level;
 }
 
-DXGI_SAMPLE_DESC GetAAMode(int index)
+DXGI_SAMPLE_DESC GetAAMode(std::string aamode)
 {
-	return aa_modes[index];
+	static bool init = false;
+	static std::map<std::string, unsigned int> samplesindex;
+	if (!init)
+	{
+		for (unsigned int a = 0; a < g_Config.backend_info.AAModes.size(); ++a)
+			samplesindex[a] = g_Config.backend_info.AAModes[a];
+		init = true;
+	}
+	return aa_modes[samplesindex[aamode]];
 }
 
 HRESULT Create(HWND wnd)
@@ -305,11 +313,6 @@ HRESULT Create(HWND wnd)
 
 	// get supported AA modes
 	aa_modes = EnumAAModes(adapter);
-	if (g_Config.iMultisampleMode >= (int)aa_modes.size())
-	{
-		g_Config.iMultisampleMode = 0;
-		UpdateActiveConfig();
-	}
 
 	DXGI_SWAP_CHAIN_DESC swap_chain_desc;
 	memset(&swap_chain_desc, 0, sizeof(swap_chain_desc));

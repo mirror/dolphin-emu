@@ -8,6 +8,7 @@
 #include <D3Dcompiler.h>
 #include "Common.h"
 #include <vector>
+#include <string>
 
 namespace DX11 
 {
@@ -33,7 +34,7 @@ void UnloadD3DCompiler();
 
 D3D_FEATURE_LEVEL GetFeatureLevel(IDXGIAdapter* adapter);
 std::vector<DXGI_SAMPLE_DESC> EnumAAModes(IDXGIAdapter* adapter);
-DXGI_SAMPLE_DESC GetAAMode(int index);
+DXGI_SAMPLE_DESC GetAAMode(std::string aamode);
 
 HRESULT Create(HWND wnd);
 void Close();

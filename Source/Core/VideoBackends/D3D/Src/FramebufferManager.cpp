@@ -28,7 +28,7 @@ ID3D11Texture2D* &FramebufferManager::GetEFBDepthStagingBuffer() { return m_efb.
 
 D3DTexture2D* &FramebufferManager::GetResolvedEFBColorTexture()
 {
-	if (g_ActiveConfig.iMultisampleMode)
+	if (g_ActiveConfig.sMultisampleMode != "None")
 	{
 		D3D::context->ResolveSubresource(m_efb.resolved_color_tex->GetTex(), 0, m_efb.color_tex->GetTex(), 0, DXGI_FORMAT_R8G8B8A8_UNORM);
 		return m_efb.resolved_color_tex;
@@ -39,7 +39,7 @@ D3DTexture2D* &FramebufferManager::GetResolvedEFBColorTexture()
 
 D3DTexture2D* &FramebufferManager::GetResolvedEFBDepthTexture()
 {
-	if (g_ActiveConfig.iMultisampleMode)
+	if (g_ActiveConfig.sMultisampleMode != "None")
 	{
 		D3D::context->ResolveSubresource(m_efb.resolved_color_tex->GetTex(), 0, m_efb.color_tex->GetTex(), 0, DXGI_FORMAT_R8G8B8A8_UNORM);
 		return m_efb.resolved_color_tex;
@@ -52,7 +52,7 @@ FramebufferManager::FramebufferManager()
 {
 	unsigned int target_width = Renderer::GetTargetWidth();
 	unsigned int target_height = Renderer::GetTargetHeight();
-	DXGI_SAMPLE_DESC sample_desc = D3D::GetAAMode(g_ActiveConfig.iMultisampleMode);
+	DXGI_SAMPLE_DESC sample_desc = D3D::GetAAMode(g_ActiveConfig.sMultisampleMode);
 
 	ID3D11Texture2D* buf;
 	D3D11_TEXTURE2D_DESC texdesc;
@@ -111,7 +111,7 @@ FramebufferManager::FramebufferManager()
 	CHECK(hr==S_OK, "create EFB depth staging buffer (hr=%#x)", hr);
 	D3D::SetDebugObjectName((ID3D11DeviceChild*)m_efb.depth_staging_buf, "EFB depth staging texture (used for Renderer::AccessEFB)");
 
-	if (g_ActiveConfig.iMultisampleMode)
+	if (g_ActiveConfig.sMultisampleMode != "None")
 	{
 		// Framebuffer resolve textures (color+depth)
 		texdesc = CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, target_width, target_height, 1, 1, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_DEFAULT, 0, 1);

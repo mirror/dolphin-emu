@@ -356,7 +356,7 @@ VideoConfigDiag::VideoConfigDiag(wxWindow* parent, const std::string &title)
 	// AA
 	{
 	text_aamode = new wxStaticText(page_enh, -1, _("Anti-Aliasing:"));
-	choice_aamode = CreateChoice(page_enh, vconfig.iMultisampleMode, wxGetTranslation(aa_desc));
+	choice_aamode = CreateChoice(page_enh, 0, wxGetTranslation(aa_desc));
 
 	std::vector<std::string>::const_iterator
 		it = vconfig.backend_info.AAModes.begin(),
@@ -364,7 +364,7 @@ VideoConfigDiag::VideoConfigDiag(wxWindow* parent, const std::string &title)
 	for (; it != itend; ++it)
 		choice_aamode->AppendString(wxGetTranslation(StrToWxStr(*it)));
 
-	choice_aamode->Select(vconfig.iMultisampleMode);
+	choice_aamode->SelectStringSelection(vconfig.sMultisampleMode);
 	szr_enh->Add(text_aamode, 1, wxALIGN_CENTER_VERTICAL, 0);
 	szr_enh->Add(choice_aamode);
 	}

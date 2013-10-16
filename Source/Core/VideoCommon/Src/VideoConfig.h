@@ -71,7 +71,7 @@ struct VideoConfig
 	bool bOMPDecoder;
 
 	// Enhancements
-	int iMultisampleMode;
+	std::string sMultisampleMode;
 	int iEFBScale;
 	bool bForceFiltering;
 	int iMaxAnisotropy;

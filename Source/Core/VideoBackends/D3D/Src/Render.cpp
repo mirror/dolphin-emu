@@ -39,7 +39,7 @@ namespace DX11
 
 static int s_fps = 0;
 
-static u32 s_LastAA = 0;
+static std::string s_LastAA = "None";
 
 static Television s_television;
 
@@ -194,7 +194,7 @@ Renderer::Renderer()
 
 	UpdateDrawRectangle(s_backbuffer_width, s_backbuffer_height);
 
-	s_LastAA = g_ActiveConfig.iMultisampleMode;
+	s_LastAA = g_ActiveConfig.sMultisampleMode;
 	s_LastEFBScale = g_ActiveConfig.iEFBScale;
 	CalculateTargetSize(s_backbuffer_width, s_backbuffer_height);
 
@@ -1038,9 +1038,9 @@ void Renderer::Swap(u32 xfbAddr, u32 fbWidth, u32 fbHeight,const EFBRectangle& r
 	if (xfbchanged ||
 		windowResized ||
 		s_LastEFBScale != g_ActiveConfig.iEFBScale ||
-		s_LastAA != g_ActiveConfig.iMultisampleMode)
+		s_LastAA != g_ActiveConfig.sMultisampleMode)
 	{
-		s_LastAA = g_ActiveConfig.iMultisampleMode;
+		s_LastAA = g_ActiveConfig.sMultisampleMode;
 		PixelShaderCache::InvalidateMSAAShaders();
 
 		if (windowResized)
