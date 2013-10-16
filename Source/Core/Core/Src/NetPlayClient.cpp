@@ -80,7 +80,7 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 		m_host = m_host_client->m_Host;
 
 		std::string host = hostSpec.substr(0, pos);
-		int port = std::stoi(hostSpec.substr(pos + 1).c_str());
+		int port = atoi(hostSpec.substr(pos + 1).c_str());
 		ENetAddress addr;
 		if (enet_address_set_host(&addr, host.c_str()))
 			return;

@@ -1,4 +1,3 @@
-
 #ifndef MUTEX_H_
 #define MUTEX_H_
 
@@ -90,7 +89,7 @@ public:
 #endif
 	}
 
-	_TS_MACRO(__attribute__((exclusive_lock_function(*this))))
+	_TS_MACRO(__attribute__((exclusive_lock_function)))
 	void lock()
 	{
 #ifdef _WIN32
@@ -100,7 +99,7 @@ public:
 #endif
 	}
 
-	_TS_MACRO(__attribute__((unlock_function(*this))))
+	_TS_MACRO(__attribute__((unlock_function)))
 	void unlock()
 	{
 #ifdef _WIN32
@@ -110,7 +109,7 @@ public:
 #endif
 	}
 
-	_TS_MACRO(__attribute__((exclusive_trylock_function(true, *this))))
+	_TS_MACRO(__attribute__((exclusive_trylock_function(true))))
 	bool try_lock()
 	{
 #ifdef _WIN32
@@ -162,7 +161,7 @@ public:
 #endif
 	}
 
-	_TS_MACRO(__attribute__((exclusive_lock_function(*this))))
+	_TS_MACRO(__attribute__((exclusive_lock_function)))
 	void lock()
 	{
 #ifdef _WIN32
@@ -172,7 +171,7 @@ public:
 #endif
 	}
 
-	_TS_MACRO(__attribute__((unlock_function(*this))))
+	_TS_MACRO(__attribute__((unlock_function)))
 	void unlock()
 	{
 #ifdef _WIN32
@@ -182,7 +181,7 @@ public:
 #endif
 	}
 
-	_TS_MACRO(__attribute__((exclusive_trylock_function(true, *this))))
+	_TS_MACRO(__attribute__((exclusive_trylock_function(true))))
 	bool try_lock()
 	{
 #ifdef _WIN32

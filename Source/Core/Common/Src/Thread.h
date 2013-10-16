@@ -5,6 +5,7 @@
 #ifndef _THREAD_H_
 #define _THREAD_H_
 
+#include "Common.h"
 #include "StdConditionVariable.h"
 #include "StdMutex.h"
 #include "StdThread.h"

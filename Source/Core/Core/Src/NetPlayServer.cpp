@@ -8,7 +8,7 @@
 #if defined(__APPLE__)
 #include <SystemConfiguration/SystemConfiguration.h>
 #include <SystemConfiguration/SCDynamicStore.h>
-#elif !defined(__WIN32__)
+#elif !defined(_WIN32)
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <ifaddrs.h>

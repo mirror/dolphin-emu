@@ -181,9 +181,8 @@ if(APPLE)
 	set(ENV{PATH} /usr/bin:/bin:/usr/sbin:/sbin)
 
 	# Some of our code contains Objective C constructs.
-	set(CLANG_FLAGS "-stdlib=libc++ -Werror=thread-safety -Werror=thread-safety-beta")
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -x objective-c ${CLANG_FLAGS}")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -x objective-c++ ${CLANG_FLAGS}")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -x objective-c -stdlib=libc++")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -x objective-c++ -stdlib=libc++")
 	# Avoid mistaking an object file for a source file on the link command line.
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -x none")
 
@@ -246,11 +245,26 @@ if(APPLE)
 	find_library(WEBKIT_LIBRARY WebKit)
 endif()
 
+
 if(WIN32)
 	add_definitions(-D_SECURE_SCL=0)
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 	add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
-endif(WIN32)
+else()
+	execute_process(COMMAND ${CMAKE_CXX_COMPILER} --version
+		OUTPUT_VARIABLE CXX_COMPILER_VERSION)
+	string(REGEX MATCH "based on LLVM [0-9.]*"
+		CXX_COMPILER_LLVM_VERSION
+		${CXX_COMPILER_VERSION})
+	if(NOT ("${CXX_COMPILER_LLVM_VERSION}" STREQUAL ""))
+		string(SUBSTRING "${CXX_COMPILER_LLVM_VERSION}"
+			14 -1 CXX_COMPILER_LLVM_VERSION)
+		message(version is ${CXX_COMPILER_LLVM_VERSION})
+		if(NOT ("${CXX_COMPILER_LLVM_VERSION}" VERSION_LESS "3.3"))
+			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=thread-safety -Werror=thread-safety-beta -DTHREAD_SAFETY_ANNOTATIONS")
+		endif()
+	endif()
+endif()
 
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "Release" CACHE STRING

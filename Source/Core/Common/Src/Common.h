@@ -175,10 +175,6 @@ enum EMUSTATE_CHANGE
 
 #include "CommonFuncs.h"
 
-#ifdef __clang__
-#define THREAD_SAFETY_ANNOTATIONS
-#endif
-
 #ifdef THREAD_SAFETY_ANNOTATIONS
 /*
 	Optional annotations to denote thread roles.
@@ -192,6 +188,9 @@ enum EMUSTATE_CHANGE
 	int *ptr DEREF_ON(CPU);
 	// writes from CPU, reads from GPU
 	int baz ACCESS_ON(CPU2GPU);
+
+	Currently only supported in clang >= LLVM 3.3, i.e. not the buildbot at the
+	moment.
 */
 struct ThreadHat
 {
