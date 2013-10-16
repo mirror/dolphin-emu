@@ -10,7 +10,6 @@
 #include "LogManager.h"
 #include "Thread.h"
 #include "ChunkFile.h"
-#include "IniFile.h"
 #include "ConfigManager.h"
 #include "CPUDetect.h"
 #include "Core.h"

@@ -13,8 +13,8 @@
 struct SWVideoConfig : NonCopyable
 {
 	SWVideoConfig();
-	void Load(const char* ini_file);
-	void Save(const char* ini_file);
+	void Load();
+	void Save();
 
 	// General
 	bool bFullscreen;

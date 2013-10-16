@@ -282,40 +282,36 @@ JNIEXPORT jstring JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_GetVersio
 {
 	return env->NewStringUTF(scm_rev_str);
 }
-JNIEXPORT jstring JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_GetConfig(JNIEnv *env, jobject obj, jstring jFile, jstring jKey, jstring jValue, jstring jDefault)
+JNIEXPORT jstring JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_GetConfig(JNIEnv *env, jobject obj, jstring jKey, jstring jValue, jstring jDefault)
 {
 	IniFile ini;
-	const char *File = env->GetStringUTFChars(jFile, NULL);
 	const char *Key = env->GetStringUTFChars(jKey, NULL);
 	const char *Value = env->GetStringUTFChars(jValue, NULL);
 	const char *Default = env->GetStringUTFChars(jDefault, NULL);
 	
-	ini.Load(File::GetUserPath(D_CONFIG_IDX) + std::string(File));
+	ini.Load(File::GetUserPath(F_DOLPHINCONFIG_IDX));
 	std::string value;
 	
 	ini.Get(Key, Value, &value, Default);
 	
-	env->ReleaseStringUTFChars(jFile, File);
 	env->ReleaseStringUTFChars(jKey, Key);
 	env->ReleaseStringUTFChars(jValue, Value);
 	env->ReleaseStringUTFChars(jDefault, Default);
 
 	return env->NewStringUTF(value.c_str());
 }
-JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_SetConfig(JNIEnv *env, jobject obj, jstring jFile, jstring jKey, jstring jValue, jstring jDefault)
+JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_SetConfig(JNIEnv *env, jobject obj, jstring jKey, jstring jValue, jstring jDefault)
 {
 	IniFile ini;
-	const char *File = env->GetStringUTFChars(jFile, NULL);
 	const char *Key = env->GetStringUTFChars(jKey, NULL);
 	const char *Value = env->GetStringUTFChars(jValue, NULL);
 	const char *Default = env->GetStringUTFChars(jDefault, NULL);
 	
-	ini.Load(File::GetUserPath(D_CONFIG_IDX) + std::string(File));
+	ini.Load(File::GetUserPath(F_DOLPHINCONFIG_IDX));
 
 	ini.Set(Key, Value, Default);
-	ini.Save(File::GetUserPath(D_CONFIG_IDX) + std::string(File));
+	ini.Save(File::GetUserPath(F_DOLPHINCONFIG_IDX));
 
-	env->ReleaseStringUTFChars(jFile, File);
 	env->ReleaseStringUTFChars(jKey, Key);
 	env->ReleaseStringUTFChars(jValue, Value);
 	env->ReleaseStringUTFChars(jDefault, Default);

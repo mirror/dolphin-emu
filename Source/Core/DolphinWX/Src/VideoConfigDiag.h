@@ -208,7 +208,6 @@ protected:
 	std::map<wxWindow*, wxStaticText*> desc_texts; // maps dialog tabs (which are the parents of the setting controls) to their description text objects
 
 	VideoConfig &vconfig;
-	std::string ininame;
 };
 
 #endif

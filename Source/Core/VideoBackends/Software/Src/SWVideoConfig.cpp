@@ -32,53 +32,53 @@ SWVideoConfig::SWVideoConfig()
 	drawEnd = 100000;
 }
 
-void SWVideoConfig::Load(const char* ini_file)
+void SWVideoConfig::Load()
 {
 	IniFile iniFile;
-	iniFile.Load(ini_file);
+	iniFile.Load(File::GetUserPath(F_DOLPHINCONFIG_IDX));
 
-	iniFile.Get("Hardware", "Fullscreen", &bFullscreen, 0); // Hardware
-	iniFile.Get("Hardware", "RenderToMainframe", &renderToMainframe, false);
+	iniFile.Get("Software_Renderer", "Fullscreen", &bFullscreen, 0); // Hardware
+	iniFile.Get("Software_Renderer", "RenderToMainframe", &renderToMainframe, false);
 
-	iniFile.Get("Rendering", "HwRasterizer", &bHwRasterizer, false);
-	iniFile.Get("Rendering", "ZComploc", &bZComploc, true);
-	iniFile.Get("Rendering", "ZFreeze", &bZFreeze, true);
+	iniFile.Get("Software_Renderer", "HwRasterizer", &bHwRasterizer, false);
+	iniFile.Get("Software_Renderer", "ZComploc", &bZComploc, true);
+	iniFile.Get("Software_Renderer", "ZFreeze", &bZFreeze, true);
 
-	iniFile.Get("Info", "ShowStats", &bShowStats, false);
+	iniFile.Get("Software_Renderer", "ShowStats", &bShowStats, false);
 
-	iniFile.Get("Utility", "DumpTexture", &bDumpTextures, false);
-	iniFile.Get("Utility", "DumpObjects", &bDumpObjects, false);
-	iniFile.Get("Utility", "DumpFrames", &bDumpFrames, false);
-	iniFile.Get("Utility", "DumpTevStages", &bDumpTevStages, false);
-	iniFile.Get("Utility", "DumpTevTexFetches", &bDumpTevTextureFetches, false);
+	iniFile.Get("Software_Renderer", "DumpTexture", &bDumpTextures, false);
+	iniFile.Get("Software_Renderer", "DumpObjects", &bDumpObjects, false);
+	iniFile.Get("Software_Renderer", "DumpFrames", &bDumpFrames, false);
+	iniFile.Get("Software_Renderer", "DumpTevStages", &bDumpTevStages, false);
+	iniFile.Get("Software_Renderer", "DumpTevTexFetches", &bDumpTevTextureFetches, false);
 
-	iniFile.Get("Misc", "DrawStart", &drawStart, 0);
-	iniFile.Get("Misc", "DrawEnd", &drawEnd, 100000);
+	iniFile.Get("Software_Renderer", "DrawStart", &drawStart, 0);
+	iniFile.Get("Software_Renderer", "DrawEnd", &drawEnd, 100000);
 }
 
-void SWVideoConfig::Save(const char* ini_file)
+void SWVideoConfig::Save()
 {
 	IniFile iniFile;
-	iniFile.Load(ini_file);
+	iniFile.Load(File::GetUserPath(F_DOLPHINCONFIG_IDX));
 
-	iniFile.Set("Hardware", "Fullscreen", bFullscreen);
-	iniFile.Set("Hardware", "RenderToMainframe", renderToMainframe);
+	iniFile.Set("Software_Renderer", "Fullscreen", bFullscreen);
+	iniFile.Set("Software_Renderer", "RenderToMainframe", renderToMainframe);
 
-	iniFile.Set("Rendering", "HwRasterizer", bHwRasterizer);
-	iniFile.Set("Rendering", "ZComploc", &bZComploc);
-	iniFile.Set("Rendering", "ZFreeze", &bZFreeze);
+	iniFile.Set("Software_Renderer", "HwRasterizer", bHwRasterizer);
+	iniFile.Set("Software_Renderer", "ZComploc", &bZComploc);
+	iniFile.Set("Software_Renderer", "ZFreeze", &bZFreeze);
 
-	iniFile.Set("Info", "ShowStats", bShowStats);
+	iniFile.Set("Software_Renderer", "ShowStats", bShowStats);
 
-	iniFile.Set("Utility", "DumpTexture", bDumpTextures);
-	iniFile.Set("Utility", "DumpObjects", bDumpObjects);
-	iniFile.Set("Utility", "DumpFrames", bDumpFrames);
-	iniFile.Set("Utility", "DumpTevStages", bDumpTevStages);
-	iniFile.Set("Utility", "DumpTevTexFetches", bDumpTevTextureFetches);
+	iniFile.Set("Software_Renderer", "DumpTexture", bDumpTextures);
+	iniFile.Set("Software_Renderer", "DumpObjects", bDumpObjects);
+	iniFile.Set("Software_Renderer", "DumpFrames", bDumpFrames);
+	iniFile.Set("Software_Renderer", "DumpTevStages", bDumpTevStages);
+	iniFile.Set("Software_Renderer", "DumpTevTexFetches", bDumpTevTextureFetches);
 
-	iniFile.Set("Misc", "DrawStart", drawStart);
-	iniFile.Set("Misc", "DrawEnd", drawEnd);
+	iniFile.Set("Software_Renderer", "DrawStart", drawStart);
+	iniFile.Set("Software_Renderer", "DrawEnd", drawEnd);
 
-	iniFile.Save(ini_file);
+	iniFile.Save(File::GetUserPath(F_DOLPHINCONFIG_IDX));
 }
 

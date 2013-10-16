@@ -61,7 +61,7 @@ void VideoConfigDiag::Event_ClickClose(wxCommandEvent&)
 
 void VideoConfigDiag::Event_Close(wxCloseEvent& ev)
 {
-	g_Config.Save((File::GetUserPath(D_CONFIG_IDX) + ininame + ".ini").c_str());
+	g_Config.Save(File::GetUserPath(F_DOLPHINCONFIG_IDX));
 
 	EndModal(wxID_OK);
 }
@@ -184,14 +184,13 @@ wxArrayString GetListOfResolutions()
 	return retlist;
 }
 
-VideoConfigDiag::VideoConfigDiag(wxWindow* parent, const std::string &title, const std::string& _ininame)
+VideoConfigDiag::VideoConfigDiag(wxWindow* parent, const std::string &title)
 	: wxDialog(parent, -1,
 		wxString::Format(_("Dolphin %s Graphics Configuration"), wxGetTranslation(StrToWxStr(title))),
 		wxDefaultPosition, wxDefaultSize)
 	, vconfig(g_Config)
-	, ininame(_ininame)
 {
-	vconfig.Load((File::GetUserPath(D_CONFIG_IDX) + ininame + ".ini").c_str());
+	vconfig.Load(File::GetUserPath(F_DOLPHINCONFIG_IDX));
 
 	Bind(wxEVT_UPDATE_UI, &VideoConfigDiag::OnUpdateUI, this);
 

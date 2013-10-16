@@ -53,14 +53,14 @@ void *DllDebugger(void *_hParent, bool Show)
 void VideoSoftware::ShowConfig(void *_hParent)
 {
 #if defined(HAVE_WX) && HAVE_WX
-	VideoConfigDialog diag((wxWindow*)_hParent, "Software", "gfx_software");
+	VideoConfigDialog diag((wxWindow*)_hParent, "Software");
 	diag.ShowModal();
 #endif
 }
 
 bool VideoSoftware::Initialize(void *&window_handle)
 {
-	g_SWVideoConfig.Load((File::GetUserPath(D_CONFIG_IDX) + "gfx_software.ini").c_str());
+	g_SWVideoConfig.Load();
 	InitInterface();	
 	
 	if (!GLInterface->Create(window_handle))

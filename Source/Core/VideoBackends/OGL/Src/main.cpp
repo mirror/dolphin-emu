@@ -47,7 +47,6 @@ Make AA apply instantly during gameplay if possible
 
 #ifdef _WIN32
 #include "EmuWindow.h"
-#include "IniFile.h"
 #endif
 
 #if defined(HAVE_WX) && HAVE_WX
@@ -159,7 +158,7 @@ void VideoBackend::ShowConfig(void *_hParent)
 {
 #if defined(HAVE_WX) && HAVE_WX
 	InitBackendInfo();
-	VideoConfigDiag diag((wxWindow*)_hParent, "OpenGL", "gfx_opengl");
+	VideoConfigDiag diag((wxWindow*)_hParent, "OpenGL");
 	diag.ShowModal();
 #endif
 }
@@ -171,7 +170,7 @@ bool VideoBackend::Initialize(void *&window_handle)
 
 	frameCount = 0;
 
-	g_Config.Load((File::GetUserPath(D_CONFIG_IDX) + "gfx_opengl.ini").c_str());
+	g_Config.Load();
 	g_Config.GameIniLoad();
 	g_Config.UpdateProjectionHack();
 	g_Config.VerifyValidity();

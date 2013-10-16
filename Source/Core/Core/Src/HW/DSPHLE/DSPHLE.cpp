@@ -5,11 +5,9 @@
 #include <iostream>
 
 #include "ChunkFile.h"
-#include "IniFile.h"
 #include "HLEMixer.h"
 #include "StringUtil.h"
 #include "LogManager.h"
-#include "IniFile.h"
 #include "DSPHLE.h"
 #include "UCodes/UCodes.h"
 #include "../AudioInterface.h"

@@ -25,7 +25,6 @@
 #include "IndexGenerator.h"
 #include "FileUtil.h"
 #include "Globals.h"
-#include "IniFile.h"
 #include "VideoConfigDiag.h"
 
 #include "D3DUtil.h"
@@ -142,7 +141,7 @@ void VideoBackend::ShowConfig(void *_hParent)
 {
 #if defined(HAVE_WX) && HAVE_WX
 	InitBackendInfo();
-	VideoConfigDiag diag((wxWindow*)_hParent, _trans("Direct3D"), "gfx_dx11");
+	VideoConfigDiag diag((wxWindow*)_hParent, _trans("Direct3D"));
 	diag.ShowModal();
 #endif
 }
@@ -156,7 +155,7 @@ bool VideoBackend::Initialize(void *&window_handle)
 
 	const SCoreStartupParameter& core_params = SConfig::GetInstance().m_LocalCoreStartupParameter;
 
-	g_Config.Load((File::GetUserPath(D_CONFIG_IDX) + "gfx_dx11.ini").c_str());
+	g_Config.Load();
 	g_Config.GameIniLoad();
 	g_Config.UpdateProjectionHack();
 	g_Config.VerifyValidity();
