@@ -132,7 +132,7 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const 
 	if (is_hosting)
 	{
 		wxBoxSizer* const host_szr = new wxBoxSizer(wxHORIZONTAL);
-		host_szr->Add(new wxStaticText(panel, wxID_ANY, _("Host:")), 0, wxCENTER);
+		host_szr->Add(new wxStaticText(panel, wxID_ANY, _("ID:")), 0, wxCENTER);
 		// The initial label is for sizing...
 		m_host_label = new wxStaticText(panel, wxID_ANY, "555.555.555.555:5555", wxDefaultPosition, wxDefaultSize, wxST_NO_AUTORESIZE | wxALIGN_LEFT);
 		// Update() should fix this immediately.
@@ -478,14 +478,14 @@ ConnectDiag::ConnectDiag(wxWindow* parent)
 {
 	wxBoxSizer* sizerTop = new wxBoxSizer(wxVERTICAL);
 	std::string host = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayHost;
-	wxStaticText* hostLabel = new wxStaticText(this, wxID_ANY, _("Host :"));
+	wxStaticText* hostLabel = new wxStaticText(this, wxID_ANY, _("Host or ID:"));
 	m_HostCtrl = new wxTextCtrl(this, wxID_ANY, StrToWxStr(host));
 	// focus and select all
 	m_HostCtrl->SetFocus();
 	m_HostCtrl->SetSelection(-1, -1);
 	m_HostCtrl->Bind(wxEVT_TEXT, &ConnectDiag::OnChange, this);
 	wxBoxSizer* sizerHost = new wxBoxSizer(wxHORIZONTAL);
-	sizerHost->Add(hostLabel, 0, wxLEFT, 5);
+	sizerHost->Add(hostLabel, 0, wxLEFT | wxCENTER, 5);
 	sizerHost->Add(m_HostCtrl, 1, wxEXPAND | wxLEFT | wxRIGHT, 5);
 	wxStdDialogButtonSizer* sizerButtons = CreateStdDialogButtonSizer(wxOK | wxCANCEL);
 	m_ConnectBtn = sizerButtons->GetAffirmativeButton();
@@ -571,9 +571,12 @@ bool ConnectDiag::IsHostOk()
 
 ConnectDiag::~ConnectDiag()
 {
-	netplay_client->m_state_callback = nullptr;
-	if (GetReturnCode() != 0)
-		netplay_client.reset();
+	if (netplay_client)
+	{
+		netplay_client->m_state_callback = nullptr;
+		if (GetReturnCode() != 0)
+			netplay_client.reset();
+	}
 	SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayHost = StripSpaces(WxStrToStr(m_HostCtrl->GetValue()));
 	SConfig::GetInstance().SaveSettings();
 }
