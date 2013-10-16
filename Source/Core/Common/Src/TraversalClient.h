@@ -41,9 +41,10 @@ private:
 class TraversalClientClient
 {
 public:
-	virtual void OnENetEvent(ENetEvent*) ASSUME_ON(NET) = 0;
-	virtual void OnTraversalStateChanged() ASSUME_ON(NET) = 0;
-	virtual void OnConnectReady(ENetAddress addr) ASSUME_ON(NET) = 0;
+	virtual void OnENetEvent(ENetEvent*) ON(NET) = 0;
+	virtual void OnTraversalStateChanged() ON(NET) = 0;
+	virtual void OnConnectReady(ENetAddress addr) ON(NET) = 0;
+	virtual void OnConnectFailed(u8 reason) ON(NET) = 0;
 };
 
 class ENetHostClient
@@ -77,18 +78,28 @@ public:
 	{
 		InitFailure,
 		Connecting,
-		ConnectFailure,
-		Connected
+		Connected,
+		Failure
+	};
+
+	enum FailureReason
+	{
+		VersionTooOld = 0x300,
+		ServerForgotAboutUs,
+		SocketSendError,
+		ResendTimeout,
+		ConnectFailedError = 0x400,
 	};
 
 	TraversalClient(const std::string& server);
 	void Reset() ON(NET);
-	void Connect(const std::string& host) ON(NET);
+	void ConnectToClient(const std::string& host) ON(NET);
 	void ReconnectToServer();
 	u16 GetPort();
 
 	TraversalHostId m_HostId;
 	State m_State;
+	int m_FailureReason;
 protected:
 	virtual void HandleResends() ON(NET);
 private:
@@ -102,7 +113,7 @@ private:
 	void HandleServerPacket(TraversalPacket* packet) ON(NET);
 	void ResendPacket(OutgoingPacketInfo* info) ON(NET);
 	TraversalRequestId SendPacket(const TraversalPacket& packet) ON(NET);
-	void OnConnectFailure() ON(NET);
+	void OnFailure(int reason) ON(NET);
 	static int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event) ASSUME_ON(NET);
 	void HandlePing() ON(NET);
 

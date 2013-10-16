@@ -44,6 +44,7 @@ public:
 	virtual void OnENetEvent(ENetEvent*) override ON(NET);
 	virtual void OnTraversalStateChanged() override ON(NET);
 	virtual void OnConnectReady(ENetAddress addr) override {}
+	virtual void OnConnectFailed(u8 reason) override ON(NET) {}
 private:
 	class Client
 	{

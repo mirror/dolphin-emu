@@ -255,6 +255,7 @@ static void ResendPackets()
 		TraversalPacket* fail = AllocPacket(MakeSinAddr(it->first));
 		fail->type = TraversalPacketConnectFailed;
 		fail->connectFailed.requestId = it->second;
+		fail->connectFailed.reason = TraversalConnectFailedClientDidntRespond;
 	}
 }
 
@@ -287,6 +288,7 @@ static void HandlePacket(TraversalPacket* packet, struct sockaddr_in6* addr)
 				{
 					ready->type = TraversalPacketConnectFailed;
 					ready->connectFailed.requestId = info->misc;
+					ready->connectFailed.reason = TraversalConnectFailedClientFailure;
 				}
 			}
 
@@ -338,6 +340,7 @@ static void HandlePacket(TraversalPacket* packet, struct sockaddr_in6* addr)
 			TraversalPacket* reply = AllocPacket(*addr);
 			reply->type = TraversalPacketConnectFailed;
 			reply->connectFailed.requestId = packet->requestId;
+			reply->connectFailed.reason = TraversalConnectFailedNoSuchClient;
 		}
 		else
 		{

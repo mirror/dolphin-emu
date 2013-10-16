@@ -168,16 +168,17 @@ void TraversalClient::ReconnectToServer()
 		return;
 	m_ServerAddress.port = 6262;
 
+	m_State = Connecting;
+
 	TraversalPacket hello = {0};
 	hello.type = TraversalPacketHelloFromClient;
 	hello.helloFromClient.protoVersion = TraversalProtoVersion;
 	RunOnThread([=]() {
 		DO_ASSUME_ON(NET);
 		SendPacket(hello);
+		if (m_Client)
+			m_Client->OnTraversalStateChanged();
 	});
-	m_State = Connecting;
-	if (m_Client)
-		m_Client->OnTraversalStateChanged();
 }
 
 u16 TraversalClient::GetPort()
@@ -200,7 +201,7 @@ static ENetAddress MakeENetAddress(TraversalInetAddress* address)
 	return eaddr;
 }
 
-void TraversalClient::Connect(const std::string& host)
+void TraversalClient::ConnectToClient(const std::string& host)
 {
 	if (host.size() > sizeof(TraversalHostId))
 	{
@@ -243,7 +244,7 @@ void TraversalClient::HandleServerPacket(TraversalPacket* packet)
 	case TraversalPacketAck:
 		if (!packet->ack.ok)
 		{
-			OnConnectFailure();
+			OnFailure(ServerForgotAboutUs);
 			break;
 		}
 		for (auto it = m_OutgoingPackets.begin(); it != m_OutgoingPackets.end(); ++it)
@@ -260,7 +261,7 @@ void TraversalClient::HandleServerPacket(TraversalPacket* packet)
 			break;
 		if (!packet->helloFromServer.ok)
 		{
-			OnConnectFailure();
+			OnFailure(VersionTooOld);
 			break;
 		}
 		m_HostId = packet->helloFromServer.yourHostId;
@@ -297,14 +298,13 @@ void TraversalClient::HandleServerPacket(TraversalPacket* packet)
 
 		m_PendingConnect = false;
 
-		ENetAddress addr;
-		if (packet->type == TraversalPacketConnectReady)
-			addr = MakeENetAddress(&packet->connectReady.address);
-		else
-			addr.port = 0;
+		if (!m_Client)
+			break;
 
-		if (m_Client)
-			m_Client->OnConnectReady(addr);
+		if (packet->type == TraversalPacketConnectReady)
+			m_Client->OnConnectReady(MakeENetAddress(&packet->connectReady.address));
+		else
+			m_Client->OnConnectFailed(packet->connectFailed.reason);
 
 		break;
 		}
@@ -323,13 +323,14 @@ void TraversalClient::HandleServerPacket(TraversalPacket* packet)
 		buf.data = &ack;
 		buf.dataLength = sizeof(ack);
 		if (enet_socket_send(m_Host->socket, &m_ServerAddress, &buf, 1) == -1)
-			OnConnectFailure();
+			OnFailure(SocketSendError);
 	}
 }
 
-void TraversalClient::OnConnectFailure()
+void TraversalClient::OnFailure(int reason)
 {
-	m_State = ConnectFailure;
+	m_State = Failure;
+	m_FailureReason = reason;
 	if (m_Client)
 		m_Client->OnTraversalStateChanged();
 }
@@ -342,7 +343,7 @@ void TraversalClient::ResendPacket(OutgoingPacketInfo* info)
 	buf.data = &info->packet;
 	buf.dataLength = sizeof(info->packet);
 	if (enet_socket_send(m_Host->socket, &m_ServerAddress, &buf, 1) == -1)
-		OnConnectFailure();
+		OnFailure(SocketSendError);
 }
 
 void TraversalClient::HandleResends()
@@ -354,7 +355,7 @@ void TraversalClient::HandleResends()
 		{
 			if (it->tries >= 5)
 			{
-				OnConnectFailure();
+				OnFailure(ResendTimeout);
 				m_OutgoingPackets.clear();
 				break;
 			}

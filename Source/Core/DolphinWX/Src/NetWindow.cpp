@@ -21,6 +21,56 @@
 #define NETPLAY_TITLEBAR	"Dolphin NetPlay"
 #define INITIAL_PAD_BUFFER_SIZE 20
 
+static wxString FailureReasonStringForHost(int reason)
+{
+	switch (reason)
+	{
+	case TraversalClient::VersionTooOld:
+		return _("(Error: Dolphin too old)");
+	case TraversalClient::ServerForgotAboutUs:
+		return _("(Error: Disconnected)");
+	case TraversalClient::SocketSendError:
+		return _("(Error: Socket)");
+	case TraversalClient::ResendTimeout:
+		return _("(Error: Timeout)");
+	default:
+		return _("(Error: Unknown)");
+	}
+}
+
+static wxString FailureReasonStringForConnect(int reason)
+{
+	switch (reason)
+	{
+	case TraversalClient::VersionTooOld:
+		return _("Dolphin too old for traversal server");
+	case TraversalClient::ServerForgotAboutUs:
+		return _("Disconnected from traversal server");
+	case TraversalClient::SocketSendError:
+		return _("Socket error sending to traversal server");
+	case TraversalClient::ResendTimeout:
+		return _("Timeout connecting to traversal server");
+	case TraversalClient::ConnectFailedError + TraversalConnectFailedClientDidntRespond:
+		return _("Traversal server timed out connecting to the host");
+	case TraversalClient::ConnectFailedError + TraversalConnectFailedClientFailure:
+		return _("Server rejected traversal attempt");
+	case TraversalClient::ConnectFailedError + TraversalConnectFailedNoSuchClient:
+		return _("Invalid host");
+	case NetPlayClient::ServerError + CON_ERR_SERVER_FULL:
+		return _("Server full");
+	case NetPlayClient::ServerError + CON_ERR_GAME_RUNNING:
+		return _("Game already running");
+	case NetPlayClient::ServerError + CON_ERR_VERSION_MISMATCH:
+		return _("Dolphin version mismatch");
+	case NetPlayClient::InvalidPacket:
+		return _("Bad packet from server");
+	case NetPlayClient::ReceivedENetDisconnect:
+		return _("Disconnected");
+	default:
+		return _("Unknown error");
+	}
+}
+
 BEGIN_EVENT_TABLE(NetPlayDiag, wxFrame)
 	EVT_COMMAND(wxID_ANY, wxEVT_THREAD, NetPlayDiag::OnThread)
 END_EVENT_TABLE()
@@ -305,9 +355,9 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 			m_host_copy_btn->Enable();
 			m_host_copy_btn_is_retry = false;
 			break;
-		case TraversalClient::ConnectFailure:
+		case TraversalClient::Failure:
 			m_host_label->SetForegroundColour(*wxBLACK);
-			m_host_label->SetLabel(_("failure xxx"));
+			m_host_label->SetLabel(FailureReasonStringForHost(g_TraversalClient->m_FailureReason));
 			m_host_copy_btn->SetLabel(_("Retry"));
 			m_host_copy_btn->Enable();
 			m_host_copy_btn_is_retry = true;
@@ -480,26 +530,7 @@ void ConnectDiag::OnThread(wxCommandEvent& event)
 	}
 	else
 	{
-		wxString err;
-		switch (netplay_client->m_server_error)
-		{
-		case 0:
-			// there was no server error.
-			err = _("Failed to connect.");
-			break;
-		case CON_ERR_SERVER_FULL :
-			err = _("The server is full.");
-			break;
-		case CON_ERR_VERSION_MISMATCH :
-			err = _("The server and client's NetPlay versions are incompatible.");
-			break;
-		case CON_ERR_GAME_RUNNING :
-			err = _("The server responded: the game is currently running.");
-			break;
-		default :
-			err = _("The server sent an unknown error message.");
-			break;
-		}
+		wxString err = FailureReasonStringForConnect(netplay_client->m_failure_reason);
 		netplay_client.reset();
 		// connection failure
 		auto complain = new wxMessageDialog(this, err);

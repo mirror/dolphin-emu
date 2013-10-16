@@ -32,6 +32,14 @@ enum
 {
 	TraversalProtoVersion = 0
 };
+
+enum TraversalConnectFailedReason
+{
+	TraversalConnectFailedClientDidntRespond = 0,
+	TraversalConnectFailedClientFailure,
+	TraversalConnectFailedNoSuchClient
+};
+
 #pragma pack(push, 1)
 struct TraversalInetAddress
 {
@@ -79,6 +87,7 @@ struct TraversalPacket
 		struct
 		{
 			TraversalRequestId requestId;
+			u8 reason;
 		} connectFailed;
 	};
 };

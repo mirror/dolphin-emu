@@ -68,6 +68,14 @@ public:
 	void GetPlayerList(std::string& list, std::vector<int>& pid_list) ASSUME_ON(GUI);
 	void GetPlayers(std::vector<const Player *>& player_list) ASSUME_ON(GUI);
 
+	enum FailureReason
+	{
+		ServerFull = 0x100,
+		InvalidPacket,
+		ReceivedENetDisconnect,
+		ServerError = 0x200,
+	};
+
 	enum State
 	{
 		WaitingForTraversalClientConnection,
@@ -77,7 +85,7 @@ public:
 		Connected,
 		Failure
 	} m_state;
-	MessageId m_server_error;
+	int m_failure_reason;
 
 	bool StartGame(const std::string &path) ASSUME_ON(GUI);
 	bool StopGame() /* multiple threads */;
@@ -100,6 +108,7 @@ public:
 	virtual void OnENetEvent(ENetEvent*) override ON(NET);
 	virtual void OnTraversalStateChanged() override ON(NET);
 	virtual void OnConnectReady(ENetAddress addr) override ON(NET);
+	virtual void OnConnectFailed(u8 reason) override ON(NET);
 
 	std::function<void(NetPlayClient*)> m_state_callback;
 protected:
@@ -136,7 +145,7 @@ private:
 	void SendPadState(const PadMapping in_game_pad, const NetPad& np) ASSUME_ON(CPU);
 	void SendWiimoteState(const PadMapping in_game_pad, const NetWiimote& nw) ASSUME_ON(CPU);
 	void OnData(Packet&& packet) ON(NET);
-	void OnDisconnect() ON(NET);
+	void OnDisconnect(int reason) ON(NET);
 	void SendPacket(Packet& packet);
 	void DoDirectConnect(const ENetAddress& addr);
 

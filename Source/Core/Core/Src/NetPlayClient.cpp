@@ -62,7 +62,6 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 	m_state = Failure;
 	m_dialog = NULL;
 	m_host = NULL;
-	m_server_error = 0;
 	m_state_callback = stateCallback;
 	m_local_name = name;
 
@@ -132,10 +131,15 @@ void NetPlayClient::OnData(Packet&& packet)
 	{
 		std::lock_guard<std::recursive_mutex> lk(m_crit);
 
-		packet.Do(m_server_error);
+		MessageId server_error;
+		packet.Do(server_error);
 		packet.Do(m_pid);
-		if (packet.failure || m_server_error)
-			return OnDisconnect();
+
+		if (packet.failure)
+			return OnDisconnect(InvalidPacket);
+
+		if (server_error)
+			return OnDisconnect(ServerError + server_error);
 
 		Player player;
 		player.name = m_local_name;
@@ -156,7 +160,7 @@ void NetPlayClient::OnData(Packet&& packet)
 	MessageId mid;
 	packet.Do(mid);
 	if (packet.failure)
-		return OnDisconnect();
+		return OnDisconnect(InvalidPacket);
 
 	switch (mid)
 	{
@@ -167,7 +171,7 @@ void NetPlayClient::OnData(Packet&& packet)
 			packet.Do(player.name);
 			packet.Do(player.revision);
 			if (packet.failure)
-				return OnDisconnect();
+				return OnDisconnect(InvalidPacket);
 
 			{
 				std::lock_guard<std::recursive_mutex> lk(m_crit);
@@ -183,7 +187,7 @@ void NetPlayClient::OnData(Packet&& packet)
 			PlayerId pid;
 			packet.Do(pid);
 			if (packet.failure)
-				return OnDisconnect();
+				return OnDisconnect(InvalidPacket);
 
 			{
 				std::lock_guard<std::recursive_mutex> lk(m_crit);
@@ -201,7 +205,7 @@ void NetPlayClient::OnData(Packet&& packet)
 			packet.Do(pid);
 			packet.Do(msg);
 			if (packet.failure)
-				return OnDisconnect();
+				return OnDisconnect(InvalidPacket);
 
 			{
 				std::lock_guard<std::recursive_mutex> lk(m_crit);
@@ -223,7 +227,7 @@ void NetPlayClient::OnData(Packet&& packet)
 			packet.Do(pid);
 			packet.Do(name);
 			if (packet.failure)
-				return OnDisconnect();
+				return OnDisconnect(InvalidPacket);
 
 			{
 				std::lock_guard<std::recursive_mutex> lk(m_crit);
@@ -240,7 +244,7 @@ void NetPlayClient::OnData(Packet&& packet)
 			packet.DoArray(m_pad_map, 4);
 
 			if (packet.failure)
-				return OnDisconnect();
+				return OnDisconnect(InvalidPacket);
 
 			UpdateDevices();
 
@@ -253,7 +257,7 @@ void NetPlayClient::OnData(Packet&& packet)
 			packet.DoArray(m_wiimote_map, 4);
 
 			if (packet.failure)
-				return OnDisconnect();
+				return OnDisconnect(InvalidPacket);
 
 			m_dialog->Update();
 		}
@@ -267,7 +271,7 @@ void NetPlayClient::OnData(Packet&& packet)
 			packet.Do(np.nHi);
 			packet.Do(np.nLo);
 			if (packet.failure || map < 0 || map >= 4)
-				return OnDisconnect();
+				return OnDisconnect(InvalidPacket);
 
 			// add to pad buffer
 			m_pad_buffer[map].Push(np);
@@ -281,7 +285,7 @@ void NetPlayClient::OnData(Packet&& packet)
 			packet.Do(map);
 			packet.Do(nw);
 			if (packet.failure || map < 0 || map >= 4)
-				return OnDisconnect();
+				return OnDisconnect(InvalidPacket);
 
 			// add to wiimote buffer
 			m_wiimote_buffer[(unsigned)map].Push(std::move(nw));
@@ -294,7 +298,7 @@ void NetPlayClient::OnData(Packet&& packet)
 			u32 size = 0;
 			packet.Do(size);
 			if (packet.failure)
-				return OnDisconnect();
+				return OnDisconnect(InvalidPacket);
 
 			m_target_buffer_size = size;
 		}
@@ -324,7 +328,7 @@ void NetPlayClient::OnData(Packet&& packet)
 				packet.Do(tmp);
 				g_NetPlaySettings.m_EXIDevice[1] = (TEXIDevices) tmp;
 				if (packet.failure)
-					return OnDisconnect();
+					return OnDisconnect(InvalidPacket);
 			}
 
 			m_dialog->OnMsgStartGame();
@@ -351,7 +355,7 @@ void NetPlayClient::OnData(Packet&& packet)
 			u32 ping_key = 0;
 			packet.Do(ping_key);
 			if (packet.failure)
-				return OnDisconnect();
+				return OnDisconnect(InvalidPacket);
 
 			Packet pong;
 			pong.W((MessageId)NP_MSG_PONG);
@@ -369,7 +373,7 @@ void NetPlayClient::OnData(Packet&& packet)
 			packet.Do(pid);
 			packet.Do(ping);
 			if (packet.failure)
-				return OnDisconnect();
+				return OnDisconnect(InvalidPacket);
 
 			{
 				std::lock_guard<std::recursive_mutex> lk(m_crit);
@@ -388,7 +392,7 @@ void NetPlayClient::OnData(Packet&& packet)
 	}
 }
 
-void NetPlayClient::OnDisconnect()
+void NetPlayClient::OnDisconnect(int reason)
 {
 	std::lock_guard<std::recursive_mutex> lk(m_crit);
 	if (m_state == Connected)
@@ -401,6 +405,7 @@ void NetPlayClient::OnDisconnect()
 	}
 	m_is_running = false;
 	m_state = Failure;
+	m_failure_reason = reason;
 	if (m_state_callback)
 		m_state_callback(this);
 }
@@ -425,7 +430,7 @@ void NetPlayClient::OnENetEvent(ENetEvent* event)
 		break;
 		}
 	case ENET_EVENT_TYPE_DISCONNECT:
-		OnDisconnect();
+		OnDisconnect(ReceivedENetDisconnect);
 		break;
 	case ENET_EVENT_TYPE_RECEIVE:
 		OnData(ENetUtil::MakePacket(event->packet));
@@ -443,12 +448,12 @@ void NetPlayClient::OnTraversalStateChanged()
 		m_state = WaitingForTraversalClientConnectReady;
 		if (m_state_callback)
 			m_state_callback(this);
-		g_TraversalClient->Connect(m_host_spec);
+		g_TraversalClient->ConnectToClient(m_host_spec);
 	}
 	else if (m_state != Failure &&
-	         g_TraversalClient->m_State == TraversalClient::ConnectFailure)
+	         g_TraversalClient->m_State == TraversalClient::Failure)
 	{
-		OnDisconnect();
+		OnDisconnect(g_TraversalClient->m_FailureReason);
 	}
 }
 
@@ -456,13 +461,18 @@ void NetPlayClient::OnConnectReady(ENetAddress addr)
 {
 	if (m_state == WaitingForTraversalClientConnectReady)
 	{
-		if (addr.port != 0)
-			DoDirectConnect(addr);
-		else
-			m_state = Failure;
+		DoDirectConnect(addr); // sets m_state
 		if (m_state_callback)
 			m_state_callback(this);
 	}
+}
+
+void NetPlayClient::OnConnectFailed(u8 reason)
+{
+	m_state = Failure;
+	m_failure_reason = ServerError + reason;
+	if (m_state_callback)
+		m_state_callback(this);
 }
 
 void NetPlayClient::GetPlayerList(std::string& list, std::vector<int>& pid_list)
