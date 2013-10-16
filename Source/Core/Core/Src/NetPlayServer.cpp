@@ -5,8 +5,24 @@
 #include "NetPlayServer.h"
 #include "NetPlayClient.h" // for NetPlayUI
 
+#if defined(__APPLE__)
+#include <SystemConfiguration/SystemConfiguration.h>
+#include <SystemConfiguration/SCDynamicStore.h>
+#elif !defined(__WIN32__)
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <ifaddrs.h>
+#include <arpa/inet.h>
+#endif
+
 NetPlayServer::~NetPlayServer()
 {
+#ifdef __APPLE__
+	if (m_dynamic_store)
+		CFRelease(m_dynamic_store);
+	if (m_prefs)
+		CFRelease(m_prefs);
+#endif
 	// leave the host open for future use
 	g_TraversalClient->Reset();
 }
@@ -20,6 +36,10 @@ NetPlayServer::NetPlayServer()
 	memset(m_pad_map, -1, sizeof(m_pad_map));
 	memset(m_wiimote_map, -1, sizeof(m_wiimote_map));
 	m_target_buffer_size = 20;
+#ifdef __APPLE__
+	m_dynamic_store = SCDynamicStoreCreate(NULL, CFSTR("NetPlayServer"), NULL, NULL);
+	m_prefs = SCPreferencesCreate(NULL, CFSTR("NetPlayServer"), NULL);
+#endif
 
 	g_TraversalClient->m_Client = this;
 	m_host = g_TraversalClient->m_Host;
@@ -67,6 +87,99 @@ void NetPlayServer::OnTraversalStateChanged()
 {
 	if (m_dialog)
 		m_dialog->Update();
+}
+
+#if defined(__APPLE__)
+std::string CFStrToStr(CFStringRef cfstr)
+{
+	if (!cfstr)
+		return "";
+	if (const char* ptr = CFStringGetCStringPtr(cfstr, kCFStringEncodingUTF8))
+		return ptr;
+	char buf[512];
+	if (CFStringGetCString(cfstr, buf, sizeof(buf), kCFStringEncodingUTF8))
+		return buf;
+	return "";
+}
+#endif
+
+std::vector<std::pair<std::string, std::string>> NetPlayServer::GetInterfaceListInternal()
+{
+	std::vector<std::pair<std::string, std::string>> result;
+#if defined(_WIN32)
+
+#elif defined(__APPLE__)
+	// we do this to get the friendly names rather than the BSD ones. ew.
+	if (m_dynamic_store && m_prefs)
+	{
+		CFArrayRef ary = SCNetworkServiceCopyAll((SCPreferencesRef) m_prefs);
+		for (CFIndex i = 0; i < CFArrayGetCount(ary); i++)
+		{
+			SCNetworkServiceRef ifr = (SCNetworkServiceRef) CFArrayGetValueAtIndex(ary, i);
+			std::string name = CFStrToStr(SCNetworkServiceGetName(ifr));
+			CFStringRef key = SCDynamicStoreKeyCreateNetworkServiceEntity(NULL, kSCDynamicStoreDomainState, SCNetworkServiceGetServiceID(ifr), kSCEntNetIPv4);
+			CFDictionaryRef props = (CFDictionaryRef) SCDynamicStoreCopyValue((SCDynamicStoreRef) m_dynamic_store, key);
+			CFRelease(key);
+			if (!props)
+				continue;
+			CFArrayRef ipary = (CFArrayRef) CFDictionaryGetValue(props, kSCPropNetIPv4Addresses); 
+			if (ipary)
+			{
+				for (CFIndex j = 0; j < CFArrayGetCount(ipary); j++)
+					result.push_back(std::make_pair(name, CFStrToStr((CFStringRef) CFArrayGetValueAtIndex(ipary, j))));
+				CFRelease(ipary);
+			}
+		}
+		CFRelease(ary);
+	}
+#else
+	struct ifaddrs* ifp;
+	char buf[512];
+	if (getifaddrs(&ifp) != -1)
+	{
+		for (struct ifaddrs* curifp = ifp; curifp; curifp = curifp->ifa_next)
+		{
+			struct sockaddr* sa = curifp->ifa_addr;
+			if (sa->sa_family != AF_INET)
+				continue;
+			struct sockaddr_in* sai = (struct sockaddr_in*) sa;
+			if (ntohl(((struct sockaddr_in*) sa)->sin_addr.s_addr) == 0x7f000001)
+				continue;
+			const char *ip = inet_ntop(sa->sa_family, &sai->sin_addr, buf, sizeof(buf));
+			if (ip == NULL)
+				continue;
+			result.push_back(std::make_pair(curifp->ifa_name, ip));
+		}
+		freeifaddrs(ifp);
+	}
+#endif
+	if (result.empty())
+		result.push_back(std::make_pair("?", "127.0.0.1:"));
+	return result;
+}
+
+std::unordered_set<std::string> NetPlayServer::GetInterfaceSet()
+{
+	std::unordered_set<std::string> result;
+	auto lst = GetInterfaceListInternal();
+	for (auto it = lst.begin(); it != lst.end(); ++it)
+		result.insert(it->first);
+	return result;
+}
+
+std::string NetPlayServer::GetInterfaceHost(std::string interface)
+{
+	char buf[16];
+	sprintf(buf, ":%d", g_TraversalClient->GetPort());
+	auto lst = GetInterfaceListInternal();
+	for (auto it = lst.begin(); it != lst.end(); ++it)
+	{
+		if (it->first == interface)
+		{
+			return it->second + buf;
+		}
+	}
+	return "?";
 }
 
 MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)

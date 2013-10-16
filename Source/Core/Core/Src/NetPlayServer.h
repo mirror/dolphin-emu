@@ -16,6 +16,7 @@
 #include "TraversalClient.h"
 
 #include <functional>
+#include <unordered_set>
 
 class NetPlayUI;
 
@@ -45,6 +46,9 @@ public:
 	virtual void OnTraversalStateChanged() override ON(NET);
 	virtual void OnConnectReady(ENetAddress addr) override {}
 	virtual void OnConnectFailed(u8 reason) override ON(NET) {}
+
+	std::unordered_set<std::string> GetInterfaceSet();
+	std::string GetInterfaceHost(std::string interface);
 private:
 	class Client
 	{
@@ -66,6 +70,7 @@ private:
 	void UpdatePadMapping() /* multiple threads */;
 	void UpdateWiimoteMapping() /* multiple threads */;
 	void UpdatePings() ON(NET);
+	std::vector<std::pair<std::string, std::string>> GetInterfaceListInternal();
 
 	NetSettings     m_settings;
 
@@ -88,6 +93,11 @@ private:
 
 	ENetHost*		m_host;
 	NetPlayUI*		m_dialog;
+
+#if defined(__APPLE__)
+	const void* m_dynamic_store;
+	const void* m_prefs;
+#endif
 };
 
 #endif

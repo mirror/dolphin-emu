@@ -47,6 +47,10 @@ if(LIBAV_FOUND)
 	set(LIBS	${LIBS} ${LIBAV_LIBRARIES})
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	set(LIBS	${LIBS} ${SYSTEMCONFIGURATION_LIBRARY})
+endif()
+
 if(wxWidgets_FOUND)
 	set(SRCS 
 				Src/ARCodeAddEdit.cpp

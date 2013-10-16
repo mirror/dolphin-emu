@@ -132,12 +132,15 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const 
 	if (is_hosting)
 	{
 		wxBoxSizer* const host_szr = new wxBoxSizer(wxHORIZONTAL);
-		host_szr->Add(new wxStaticText(panel, wxID_ANY, _("ID:")), 0, wxCENTER);
+		m_host_type_choice = new wxChoice(panel, wxID_ANY, wxDefaultPosition, wxSize(60, -1));
+		m_host_type_choice->Bind(wxEVT_COMMAND_CHOICE_SELECTED, &NetPlayDiag::OnChoice, this);
+		m_host_type_choice->Append(_("ID:"));
+		host_szr->Add(m_host_type_choice);
 		// The initial label is for sizing...
-		m_host_label = new wxStaticText(panel, wxID_ANY, "555.555.555.555:5555", wxDefaultPosition, wxDefaultSize, wxST_NO_AUTORESIZE | wxALIGN_LEFT);
+		m_host_label = new wxStaticText(panel, wxID_ANY, "555.555.555.555:55555", wxDefaultPosition, wxDefaultSize, wxST_NO_AUTORESIZE | wxALIGN_LEFT);
 		// Update() should fix this immediately.
 		m_host_label->SetLabel(_(""));
-		host_szr->Add(m_host_label, 1, wxCENTER);
+		host_szr->Add(m_host_label, 1, wxLEFT | wxCENTER, 5);
 		m_host_copy_btn = new wxButton(panel, wxID_ANY, _("Copy"));
 		m_host_copy_btn->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &NetPlayDiag::OnCopyIP, this);
 		m_host_copy_btn->Disable();
@@ -335,11 +338,19 @@ void NetPlayDiag::OnQuit(wxCommandEvent&)
 	Destroy();
 }
 
-// update gui
-void NetPlayDiag::OnThread(wxCommandEvent& event)
+void NetPlayDiag::UpdateHostLabel()
 {
-	if (m_is_hosting)
+	wxString label = _(" (internal IP)");
+	auto DeLabel = [=](wxString str) {
+		return WxStrToStr(str.Left(str.Len() - label.Len()));
+	};
+	auto EnLabel = [=](std::string str) {
+		return StrToWxStr(str) + label;
+	};
+	int sel = m_host_type_choice->GetSelection();
+	if (sel == 0)
 	{
+		// the traversal ID
 		switch (g_TraversalClient->m_State)
 		{
 		case TraversalClient::Connecting:
@@ -366,6 +377,45 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 			// can't happen
 			break;
 		}
+	}
+	else if (sel != wxNOT_FOUND) // wxNOT_FOUND shouldn't generally happen
+	{
+		m_host_label->SetForegroundColour(*wxBLACK);
+		m_host_label->SetLabel(netplay_server->GetInterfaceHost(DeLabel(m_host_type_choice->GetString(sel))));
+		m_host_copy_btn->SetLabel(_("Copy"));
+		m_host_copy_btn->Enable();
+		m_host_copy_btn_is_retry = false;
+	}
+
+	auto set = netplay_server->GetInterfaceSet();
+	for (auto it = set.begin(); it != set.end(); ++it)
+	{
+		wxString kind = EnLabel(*it);
+		if (m_host_type_choice->FindString(kind) == wxNOT_FOUND)
+			m_host_type_choice->Append(kind);
+	}
+	for (unsigned i = 1, count = m_host_type_choice->GetCount(); i != count; i++)
+	{
+		if (set.find(DeLabel(m_host_type_choice->GetString(i))) == set.end())
+		{
+			m_host_type_choice->Delete(i);
+			i--;
+			count--;
+		}
+	}
+}
+
+void NetPlayDiag::OnChoice(wxCommandEvent& event)
+{
+	UpdateHostLabel();
+}
+
+// update gui
+void NetPlayDiag::OnThread(wxCommandEvent& event)
+{
+	if (m_is_hosting)
+	{
+		UpdateHostLabel();
 	}
 
 	// player list

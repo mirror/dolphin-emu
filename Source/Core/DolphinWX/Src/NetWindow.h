@@ -65,6 +65,8 @@ private:
 
 	void OnChat(wxCommandEvent& event);
 	void OnQuit(wxCommandEvent& event);
+	void UpdateHostLabel();
+	void OnChoice(wxCommandEvent& event);
 	void OnThread(wxCommandEvent& event);
 	void OnAdjustBuffer(wxCommandEvent& event);
 	void OnConfigPads(wxCommandEvent& event);
@@ -78,6 +80,7 @@ private:
 	wxTextCtrl*		m_chat_msg_text;
 	wxCheckBox*		m_memcard_write;
 	wxCheckBox*		m_record_chkbox;
+	wxChoice*		m_host_type_choice;
     wxStaticText*   m_host_label;
     wxButton*       m_host_copy_btn;
     bool            m_host_copy_btn_is_retry;
