@@ -459,7 +459,7 @@ void NetPlayServer::SendToClients(Packet& packet, const PlayerId skip_pid)
 {
 	CopyAsMove<Packet> tmp(std::move(packet));
 	g_TraversalClient->RunOnThread([=]() mutable {
-		DO_ASSUME_ON(NET);
+		ASSUME_ON(NET);
 		SendToClientsOnThread(*tmp, skip_pid);
 	});
 }

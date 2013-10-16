@@ -25,17 +25,17 @@ public:
 	NetPlayServer();
 	~NetPlayServer();
 
-	bool ChangeGame(const std::string& game) ASSUME_ON(GUI);
+	bool ChangeGame(const std::string& game) /* ON(GUI) */;
 
-	void SetNetSettings(const NetSettings &settings) ASSUME_ON(GUI);
+	void SetNetSettings(const NetSettings &settings) /* ON(GUI) */;
 
-	bool StartGame(const std::string &path) ASSUME_ON(GUI);
+	bool StartGame(const std::string &path) /* ON(GUI) */;
 
-	void GetPadMapping(PadMapping map[]) ASSUME_ON(GUI);
-	void SetPadMapping(const PadMapping map[]) ASSUME_ON(GUI);
+	void GetPadMapping(PadMapping map[]) /* ON(GUI) */;
+	void SetPadMapping(const PadMapping map[]) /* ON(GUI) */;
 
-	void GetWiimoteMapping(PadMapping map[]) ASSUME_ON(GUI);
-	void SetWiimoteMapping(const PadMapping map[]) ASSUME_ON(GUI);
+	void GetWiimoteMapping(PadMapping map[]) /* ON(GUI) */;
+	void SetWiimoteMapping(const PadMapping map[]) /* ON(GUI) */;
 
 	void AdjustPadBufferSize(unsigned int size) /* multiple threads */;
 

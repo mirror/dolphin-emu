@@ -65,8 +65,8 @@ public:
 	NetPlayClient(const std::string& hostSpec, const std::string& name, std::function<void(NetPlayClient*)> stateCallback);
 	~NetPlayClient();
 
-	void GetPlayerList(std::string& list, std::vector<int>& pid_list) ASSUME_ON(GUI);
-	void GetPlayers(std::vector<const Player *>& player_list) ASSUME_ON(GUI);
+	void GetPlayerList(std::string& list, std::vector<int>& pid_list) /* ON(GUI) */;
+	void GetPlayers(std::vector<const Player *>& player_list) /* ON(GUI) */;
 
 	enum FailureReason
 	{
@@ -87,16 +87,16 @@ public:
 	} m_state;
 	int m_failure_reason;
 
-	bool StartGame(const std::string &path) ASSUME_ON(GUI);
+	bool StartGame(const std::string &path) /* ON(GUI) */;
 	bool StopGame() /* multiple threads */;
-	void Stop() ASSUME_ON(GUI);
-	bool ChangeGame(const std::string& game) ASSUME_ON(GUI);
-	void SendChatMessage(const std::string& msg) ASSUME_ON(GUI);
-	void ChangeName(const std::string& name) ASSUME_ON(GUI);
+	void Stop() /* ON(GUI) */;
+	bool ChangeGame(const std::string& game) /* ON(GUI) */;
+	void SendChatMessage(const std::string& msg) /* ON(GUI) */;
+	void ChangeName(const std::string& name) /* ON(GUI) */;
 
 	// Send and receive pads values
-	bool WiimoteUpdate(int _number, u8* data, const u8 size) ASSUME_ON(CPU);
-	bool GetNetPads(const u8 pad_nb, const SPADStatus* const, NetPad* const netvalues) ASSUME_ON(CPU);
+	bool WiimoteUpdate(int _number, u8* data, const u8 size) /* ON(CPU) */;
+	bool GetNetPads(const u8 pad_nb, const SPADStatus* const, NetPad* const netvalues) /* ON(CPU) */;
 
 	u8 LocalPadToInGamePad(u8 localPad);
 	u8 InGamePadToLocalPad(u8 localPad);
@@ -112,7 +112,7 @@ public:
 
 	std::function<void(NetPlayClient*)> m_state_callback;
 protected:
-	void ClearBuffers() ON(NET);
+	void ClearBuffers() /* on multiple */;
 
 	std::recursive_mutex m_crit;
 
@@ -141,9 +141,9 @@ protected:
 	bool m_is_recording;
 
 private:
-	void UpdateDevices() ON(NET);
-	void SendPadState(const PadMapping in_game_pad, const NetPad& np) ASSUME_ON(CPU);
-	void SendWiimoteState(const PadMapping in_game_pad, const NetWiimote& nw) ASSUME_ON(CPU);
+	void UpdateDevices() /* on multiple, this sucks */;
+	void SendPadState(const PadMapping in_game_pad, const NetPad& np) /* ON(CPU) */;
+	void SendWiimoteState(const PadMapping in_game_pad, const NetWiimote& nw) /* ON(CPU) */;
 	void OnData(Packet&& packet) ON(NET);
 	void OnDisconnect(int reason) ON(NET);
 	void SendPacket(Packet& packet);

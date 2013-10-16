@@ -86,7 +86,7 @@ ENetHostClient::~ENetHostClient()
 	if (m_Host)
 	{
 		RunOnThread([=]() {
-			DO_ASSUME_ON(NET);
+			ASSUME_ON(NET);
 			m_ShouldEndThread = true;
 		});
 		m_Thread.join();
@@ -114,6 +114,7 @@ void ENetHostClient::Reset()
 
 void ENetHostClient::ThreadFunc()
 {
+	ASSUME_ON(NET);
 	Common::SetCurrentThreadName(m_isTraversalClient ? "TraversalClient thread" : "ENetHostClient thread");
 	while (1)
 	{
@@ -174,7 +175,7 @@ void TraversalClient::ReconnectToServer()
 	hello.type = TraversalPacketHelloFromClient;
 	hello.helloFromClient.protoVersion = TraversalProtoVersion;
 	RunOnThread([=]() {
-		DO_ASSUME_ON(NET);
+		ASSUME_ON(NET);
 		SendPacket(hello);
 		if (m_Client)
 			m_Client->OnTraversalStateChanged();
@@ -217,6 +218,7 @@ void TraversalClient::ConnectToClient(const std::string& host)
 
 int ENET_CALLBACK TraversalClient::InterceptCallback(ENetHost* host, ENetEvent* event)
 {
+	ASSUME_ON(NET);
 	const ENetAddress* addr = &host->receivedAddress;
 	auto self = (TraversalClient*) host->compressor.destroy;
 	if (addr->host == self->m_ServerAddress.host &&

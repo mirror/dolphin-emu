@@ -21,7 +21,7 @@ namespace ENetUtil
 	void SendPacket(ENetPeer* peer, const Packet& pac) ON(NET);
 	Packet MakePacket(ENetPacket* epacket);
 	void Wakeup(ENetHost* host);
-	int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event) ASSUME_ON(NET);
+	int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event) /* ON(NET) */;
 }
 
 // Apparently nobody on the C++11 standards committee thought of
@@ -61,7 +61,7 @@ public:
 protected:
 	virtual void HandleResends() ON(NET) {}
 private:
-	void ThreadFunc() ASSUME_ON(NET);
+	void ThreadFunc() /* ON(NET) */;
 
 	Common::FifoQueue<std::function<void()>, false> m_RunQueue;
 	std::thread m_Thread;
@@ -114,7 +114,7 @@ private:
 	void ResendPacket(OutgoingPacketInfo* info) ON(NET);
 	TraversalRequestId SendPacket(const TraversalPacket& packet) ON(NET);
 	void OnFailure(int reason) ON(NET);
-	static int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event) ASSUME_ON(NET);
+	static int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event) /* ON(NET) */;
 	void HandlePing() ON(NET);
 
 	TraversalRequestId m_ConnectRequestId;

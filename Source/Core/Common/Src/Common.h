@@ -184,7 +184,7 @@ enum EMUSTATE_CHANGE
 	Optional annotations to denote thread roles.
 	Example:
 	// entry point known to be on CPU thread
-	void foo() ASSUME_ON_CPU;
+	{ ... ASSUME_ON(CPU); ... }
 	// must be called by someone ON(CPU) or ASSUME_ON(CPU)
 	void foo() ON(CPU) { ...
 	// guarding variables
@@ -239,7 +239,5 @@ DEFINE_THREAD_HAT(GUI);
 #define IGNORE_THREAD_SAFETY \
 	_TS_MACRO(__attribute__((no_thread_safety_analysis)))
 #define ASSUME_ON(name) \
-	_TS_MACRO(__attribute__((exclusive_trylock_function(12345, name##ThreadHat))))
-#define DO_ASSUME_ON(name) \
 	_TS_MACRO(name##ThreadHatLock __##name##__thlock)
 #endif // _COMMON_H_

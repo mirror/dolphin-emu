@@ -122,7 +122,7 @@ void NetPlayClient::SendPacket(Packet& packet)
 {
 	CopyAsMove<Packet> tmp(std::move(packet));
 	g_TraversalClient->RunOnThread([=]() mutable {
-		DO_ASSUME_ON(NET);
+		ASSUME_ON(NET);
 		ENetUtil::BroadcastPacket(m_host, *tmp);
 	});
 }
@@ -537,7 +537,7 @@ void NetPlayClient::SendChatMessage(const std::string& msg)
 void NetPlayClient::ChangeName(const std::string& name)
 {
 	g_TraversalClient->RunOnThread([=]() {
-		DO_ASSUME_ON(NET);
+		ASSUME_ON(NET);
 		std::lock_guard<std::recursive_mutex> lk(m_crit);
 		m_local_name = name;
 		if (m_pid != (PlayerId) -1)
@@ -874,7 +874,7 @@ void NetPlayClient::Stop()
 		return;
 	g_TraversalClient->RunOnThread([=]() mutable {
 		bool isPadMapped = false;
-		DO_ASSUME_ON(NET);
+		ASSUME_ON(NET);
 		for (unsigned int i = 0; i < 4; ++i)
 		{
 			if (m_pad_map[i] == m_pid)
