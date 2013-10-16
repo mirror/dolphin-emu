@@ -147,6 +147,7 @@ void NetPlayClient::OnData(Packet&& packet)
 		player.name = m_local_name;
 		player.pid = m_pid;
 		player.revision = netplay_dolphin_ver;
+		player.ping = -1u;
 		m_players[m_pid] = player;
 
 		//PanicAlertT("Connection successful: assigned player id: %d", m_pid);
@@ -172,6 +173,7 @@ void NetPlayClient::OnData(Packet&& packet)
 			packet.Do(player.pid);
 			packet.Do(player.name);
 			packet.Do(player.revision);
+			player.ping = -1u;
 			if (packet.failure)
 				return OnDisconnect(InvalidPacket);
 
@@ -504,7 +506,12 @@ void NetPlayClient::GetPlayerList(std::string& list, std::vector<int>& pid_list)
 			else
 				ss << '-';
 		}
-		ss << " | " << player->ping << "ms\n";
+		ss << " | ";
+		if (player->ping != -1u)
+			ss << player->ping;
+		else
+			ss << "?";
+		ss << "ms\n";
 		pid_list.push_back(player->pid);
 	}
 

@@ -191,6 +191,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 	hello.Do(npver);
 	hello.Do(player.revision);
 	hello.Do(player.name);
+	player.ping = -1u;
 	// dolphin netplay version
 	if (hello.failure || npver != NETPLAY_VERSION)
 		return CON_ERR_VERSION_MISMATCH;
