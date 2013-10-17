@@ -96,7 +96,10 @@ ENetHostClient::~ENetHostClient()
 
 void ENetHostClient::RunOnThread(std::function<void()> func)
 {
-	m_RunQueue.Push(func);
+	{
+		std::lock_guard<std::mutex> lk(m_RunQueueWriteLock);
+		m_RunQueue.Push(func);
+	}
 	ENetUtil::Wakeup(m_Host);
 }
 

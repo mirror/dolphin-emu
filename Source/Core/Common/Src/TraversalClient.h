@@ -64,8 +64,8 @@ private:
 	void ThreadFunc() /* ON(NET) */;
 
 	Common::FifoQueue<std::function<void()>, false> m_RunQueue;
+	std::mutex m_RunQueueWriteLock;
 	std::thread m_Thread;
-	// *sigh*
 	Common::Event m_ResetEvent;
 	bool m_ShouldEndThread ACCESS_ON(NET);
 	bool m_isTraversalClient;
