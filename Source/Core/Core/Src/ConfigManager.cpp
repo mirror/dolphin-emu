@@ -190,9 +190,10 @@ void SConfig::SaveSettings()
 	ini.Set("Interface", "ShowLogConfigWindow",	m_InterfaceLogConfigWindow);
 	ini.Set("Interface", "ShowConsole",			m_InterfaceConsole);
 	ini.Set("Interface", "ThemeName40",			m_LocalCoreStartupParameter.theme_name);
-	ini.Set("NetPlay", "LastHost", m_LocalCoreStartupParameter.strNetplayHost);
-	ini.Set("NetPlay", "Nickname", m_LocalCoreStartupParameter.strNetplayNickname);
-	ini.Set("NetPlay", "CentralServer", m_LocalCoreStartupParameter.strNetplayCentralServer);
+	ini.Set("NetPlay", "LastHost", m_LocalCoreStartupParameter.strNetPlayHost);
+	ini.Set("NetPlay", "Nickname", m_LocalCoreStartupParameter.strNetPlayNickname);
+	ini.Set("NetPlay", "CentralServer", m_LocalCoreStartupParameter.strNetPlayCentralServer);
+	ini.Set("NetPlay", "ListenPort", m_LocalCoreStartupParameter.iNetPlayListenPort);
 
 	// Hotkeys
 	for (int i = 0; i < NUM_HOTKEYS; i++)
@@ -346,9 +347,10 @@ void SConfig::LoadSettings()
 		ini.Get("Interface", "ShowLogConfigWindow",	&m_InterfaceLogConfigWindow,					false);
 		ini.Get("Interface", "ShowConsole",			&m_InterfaceConsole,							false);
 		ini.Get("Interface", "ThemeName40",			&m_LocalCoreStartupParameter.theme_name,		"Clean");
-		ini.Get("NetPlay", "LastHost", &m_LocalCoreStartupParameter.strNetplayHost, "8.8.8.8:1234");
-		ini.Get("NetPlay", "Nickname", &m_LocalCoreStartupParameter.strNetplayNickname, "");
-		ini.Get("NetPlay", "CentralServer", &m_LocalCoreStartupParameter.strNetplayCentralServer, "dolphin-emu.org");
+		ini.Get("NetPlay", "LastHost", &m_LocalCoreStartupParameter.strNetPlayHost, "8.8.8.8:1234");
+		ini.Get("NetPlay", "Nickname", &m_LocalCoreStartupParameter.strNetPlayNickname, "");
+		ini.Get("NetPlay", "CentralServer", &m_LocalCoreStartupParameter.strNetPlayCentralServer, "dolphin-emu.org");
+		ini.Get("NetPlay", "ListenPort", &m_LocalCoreStartupParameter.iNetPlayListenPort, 0);
 
 		// Hotkeys
 		for (int i = 0; i < NUM_HOTKEYS; i++)

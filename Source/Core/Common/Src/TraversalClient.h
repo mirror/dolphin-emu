@@ -50,7 +50,7 @@ public:
 class ENetHostClient
 {
 public:
-	ENetHostClient(size_t peerCount, bool isTraversalClient = false);
+	ENetHostClient(size_t peerCount, u16 port, bool isTraversalClient = false);
 	~ENetHostClient();
 	void RunOnThread(std::function<void()> func);
 	void CreateThread();
@@ -91,8 +91,8 @@ public:
 		ConnectFailedError = 0x400,
 	};
 
-	TraversalClient(const std::string& server);
-	void Reset() ON(NET);
+	TraversalClient(const std::string& server, u16 port);
+	void Reset();
 	void ConnectToClient(const std::string& host) ON(NET);
 	void ReconnectToServer();
 	u16 GetPort();
@@ -126,4 +126,5 @@ private:
 };
 
 extern std::unique_ptr<TraversalClient> g_TraversalClient;
-void EnsureTraversalClient(const std::string& server);
+void EnsureTraversalClient(const std::string& server, u16 port);
+void ReleaseTraversalClient();

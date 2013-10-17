@@ -4,6 +4,7 @@
 
 #include "NetPlayServer.h"
 #include "NetPlayClient.h" // for NetPlayUI
+#include "ConfigManager.h"
 
 #if defined(__APPLE__)
 #include <SystemConfiguration/SystemConfiguration.h>
@@ -24,7 +25,7 @@ NetPlayServer::~NetPlayServer()
 		CFRelease(m_prefs);
 #endif
 	// leave the host open for future use
-	g_TraversalClient->Reset();
+	ReleaseTraversalClient();
 }
 
 // called from ---GUI--- thread
@@ -40,6 +41,12 @@ NetPlayServer::NetPlayServer()
 	m_dynamic_store = SCDynamicStoreCreate(NULL, CFSTR("NetPlayServer"), NULL, NULL);
 	m_prefs = SCPreferencesCreate(NULL, CFSTR("NetPlayServer"), NULL);
 #endif
+
+	EnsureTraversalClient(
+		SConfig::GetInstance().m_LocalCoreStartupParameter.strNetPlayCentralServer,
+		SConfig::GetInstance().m_LocalCoreStartupParameter.iNetPlayListenPort);
+	if (!g_TraversalClient)
+		return;
 
 	g_TraversalClient->m_Client = this;
 	m_host = g_TraversalClient->m_Host;

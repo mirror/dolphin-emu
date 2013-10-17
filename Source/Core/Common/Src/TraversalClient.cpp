@@ -59,10 +59,10 @@ static void GetRandomishBytes(u8* buf, size_t size)
 		buf[i] = rand() & 0xff;
 }
 
-ENetHostClient::ENetHostClient(size_t peerCount, bool isTraversalClient)
+ENetHostClient::ENetHostClient(size_t peerCount, u16 port, bool isTraversalClient)
 {
 	m_isTraversalClient = isTraversalClient;
-	ENetAddress addr = { ENET_HOST_ANY, ENET_PORT_ANY };
+	ENetAddress addr = { ENET_HOST_ANY, port };
 	m_Host = enet_host_create(
 		&addr, // address
 		peerCount, // peerCount
@@ -82,9 +82,9 @@ ENetHostClient::ENetHostClient(size_t peerCount, bool isTraversalClient)
 
 ENetHostClient::~ENetHostClient()
 {
-	Reset();
 	if (m_Host)
 	{
+		Reset();
 		RunOnThread([=]() {
 			ASSUME_ON(NET);
 			m_ShouldEndThread = true;
@@ -106,6 +106,12 @@ void ENetHostClient::Reset()
 	// bleh, sync up with the thread
 	m_ResetEvent.Reset();
 	RunOnThread([=]() {
+		for (size_t i = 0; i < m_Host->peerCount; i++)
+		{
+			ENetPeer* peer = &m_Host->peers[i];
+			if (peer->state != ENET_PEER_STATE_DISCONNECTED)
+				enet_peer_disconnect_later(peer, 0);
+		}
 		m_ResetEvent.Set();
 	});
 	m_ResetEvent.Wait();
@@ -146,15 +152,16 @@ void ENetHostClient::ThreadFunc()
 	}
 }
 
-TraversalClient::TraversalClient(const std::string& server)
-: ENetHostClient(MAX_CLIENTS + 16, true), // leave some spaces free for server full notification
+TraversalClient::TraversalClient(const std::string& server, u16 port)
+: ENetHostClient(MAX_CLIENTS + 16, port, true), // leave some spaces free for server full notification
 m_Server(server)
 {
+	m_State = InitFailure;
+
 	if (!m_Host)
 		return;
 
 	Reset();
-	m_State = InitFailure;
 
 	m_Host->intercept = TraversalClient::InterceptCallback;
 	m_Host->compressor.destroy = (decltype(m_Host->compressor.destroy)) this;
@@ -398,25 +405,33 @@ void TraversalClient::Reset()
 {
 	ENetHostClient::Reset();
 
-	for (size_t i = 0; i < m_Host->peerCount; i++)
-	{
-		ENetPeer* peer = &m_Host->peers[i];
-		if (peer->state != ENET_PEER_STATE_DISCONNECTED)
-			enet_peer_disconnect_later(peer, 0);
-	}
 	m_PendingConnect = false;
 }
 
 std::unique_ptr<TraversalClient> g_TraversalClient;
+static std::string g_OldServer;
+static u16 g_OldPort;
 
-void EnsureTraversalClient(const std::string& server)
+void EnsureTraversalClient(const std::string& server, u16 port)
 {
-	if (!g_TraversalClient)
+	if (!g_TraversalClient || server != g_OldServer || port != g_OldPort)
 	{
-		g_TraversalClient.reset(new TraversalClient(server));
+		g_OldServer = server;
+		g_OldPort = port;
+		g_TraversalClient.reset(new TraversalClient(g_OldServer, g_OldPort));
 		if (g_TraversalClient->m_State == TraversalClient::InitFailure)
 		{
 			g_TraversalClient.reset();
 		}
 	}
+}
+
+void ReleaseTraversalClient()
+{
+	if (!g_TraversalClient)
+		return;
+	if (g_OldPort != 0)
+		g_TraversalClient.reset();
+	else
+		g_TraversalClient->Reset();
 }

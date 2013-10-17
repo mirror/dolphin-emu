@@ -102,7 +102,7 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const 
 	// chat
 	wxBoxSizer* const nickname_szr = new wxBoxSizer(wxHORIZONTAL);
 	nickname_szr->Add(new wxStaticText(panel, wxID_ANY, _("Nickname: ")), 0, wxCENTER);
-	m_name_text = new wxTextCtrl(panel, wxID_ANY, StrToWxStr(SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayNickname));
+	m_name_text = new wxTextCtrl(panel, wxID_ANY, StrToWxStr(SConfig::GetInstance().m_LocalCoreStartupParameter.strNetPlayNickname));
 	m_name_text->Bind(wxEVT_KILL_FOCUS, &NetPlayDiag::OnDefocusName, this);
 	nickname_szr->Add(m_name_text, 1, wxCENTER);
 
@@ -491,7 +491,7 @@ void NetPlayDiag::OnConfigPads(wxCommandEvent&)
 void NetPlayDiag::OnDefocusName(wxFocusEvent&)
 {
 	std::string name = StripSpaces(WxStrToStr(m_name_text->GetValue()));
-	std::string* cur = &SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayNickname;
+	std::string* cur = &SConfig::GetInstance().m_LocalCoreStartupParameter.strNetPlayNickname;
 	if (*cur != name)
 	{
 		*cur = name;
@@ -524,10 +524,10 @@ bool NetPlayDiag::IsRecording()
 }
 
 ConnectDiag::ConnectDiag(wxWindow* parent)
-	: wxDialog(parent, wxID_ANY, _("Connect to Netplay"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER)
+	: wxDialog(parent, wxID_ANY, _("Connect to NetPlay"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER)
 {
 	wxBoxSizer* sizerTop = new wxBoxSizer(wxVERTICAL);
-	std::string host = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayHost;
+	std::string host = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetPlayHost;
 	wxStaticText* hostLabel = new wxStaticText(this, wxID_ANY, _("Host or ID:"));
 	m_HostCtrl = new wxTextCtrl(this, wxID_ANY, StrToWxStr(host));
 	// focus and select all
@@ -556,7 +556,7 @@ bool ConnectDiag::Validate()
 		return false;
 	}
 	std::string hostSpec = GetHost();
-	std::string nickname = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayNickname;
+	std::string nickname = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetPlayNickname;
 	netplay_client.reset(new NetPlayClient(GetHost(), nickname, [=](NetPlayClient* npc) {
 		auto state = npc->m_state;
 		if (state == NetPlayClient::Connected || state == NetPlayClient::Failure)
@@ -627,7 +627,7 @@ ConnectDiag::~ConnectDiag()
 		if (GetReturnCode() != 0)
 			netplay_client.reset();
 	}
-	SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayHost = StripSpaces(WxStrToStr(m_HostCtrl->GetValue()));
+	SConfig::GetInstance().m_LocalCoreStartupParameter.strNetPlayHost = StripSpaces(WxStrToStr(m_HostCtrl->GetValue()));
 	SConfig::GetInstance().SaveSettings();
 }
 
@@ -747,18 +747,27 @@ void NetPlay::StartHosting(std::string id, wxWindow* parent)
 		return;
 	}
 
-	std::string server = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayCentralServer;
-	EnsureTraversalClient(server);
+	netplay_server.reset(new NetPlayServer());
+
 	if (!g_TraversalClient)
 	{
-		wxMessageBox(_("Failed to init traversal client.  This shouldn't happen..."), _("Error"), wxOK, parent);
+		netplay_server.reset();
+		wxString error;
+		if (SConfig::GetInstance().m_LocalCoreStartupParameter.iNetPlayListenPort != 0)
+		{
+			error = _("Failed to init traversal client.  Force Netplay Listen Port is enabled; someone is probably already listening on that port.");
+		}
+		else
+		{
+			error = _("Failed to init traversal client.  This shouldn't happen...");
+		}
+		wxMessageBox(error, _("Error"), wxOK, parent);
 		return;
 	}
 
-	netplay_server.reset(new NetPlayServer());
 	netplay_server->ChangeGame(id);
 	netplay_server->AdjustPadBufferSize(INITIAL_PAD_BUFFER_SIZE);
-	std::string nickname = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayNickname;
+	std::string nickname = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetPlayNickname;
 	Common::Event ev;
 	char buf[64];
 	sprintf(buf, "127.0.0.1:%d", g_TraversalClient->GetPort());

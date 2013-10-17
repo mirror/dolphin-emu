@@ -51,8 +51,8 @@ NetPlayClient::~NetPlayClient()
 	if (m_is_running)
 		StopGame();
 
-	if (!m_direct_connection && g_TraversalClient)
-		g_TraversalClient->Reset();
+	if (!m_direct_connection)
+		ReleaseTraversalClient();
 }
 
 NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& name, std::function<void(NetPlayClient*)> stateCallback)
@@ -72,7 +72,7 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 	{
 		// Direct or local connection.  Don't use TraversalClient.
 		m_direct_connection = true;
-		m_host_client.reset(new ENetHostClient(1));
+		m_host_client.reset(new ENetHostClient(/*peerCount=*/1, /*port=*/0));
 		if (!m_host_client->m_Host)
 			return;
 		m_host_client->m_Client = this;
@@ -90,10 +90,8 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 	else
 	{
 		m_direct_connection = false;
-		std::string server = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetplayCentralServer;
-		EnsureTraversalClient(server);
-		if (!g_TraversalClient ||
-		    g_TraversalClient->m_State == TraversalClient::InitFailure)
+		EnsureTraversalClient(SConfig::GetInstance().m_LocalCoreStartupParameter.strNetPlayCentralServer, 0);
+		if (!g_TraversalClient)
 			return;
 		// If we were disconnected in the background, reconnect.
 		if (g_TraversalClient->m_State == TraversalClient::Failure)
