@@ -12,7 +12,9 @@
 #elif !defined(_WIN32)
 #include <sys/types.h>
 #include <sys/socket.h>
+#ifndef ANDROID
 #include <ifaddrs.h>
+#endif
 #include <arpa/inet.h>
 #endif
 
@@ -139,6 +141,9 @@ std::vector<std::pair<std::string, std::string>> NetPlayServer::GetInterfaceList
 		}
 		CFRelease(ary);
 	}
+#elif defined(ANDROID)
+	// Android has no getifaddrs for some stupid reason.  If this
+	// functionality ends up actually being used on Android, fix this.
 #else
 	struct ifaddrs* ifp;
 	char buf[512];
