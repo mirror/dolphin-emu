@@ -146,9 +146,17 @@ void InitBackendInfo()
 	g_Config.backend_info.bSupportsPixelLighting = true;
 	//g_Config.backend_info.bSupportsEarlyZ = true; // is gpu dependent and must be set in renderer
 
-	// aamodes
-	const char* caamodes[] = {_trans("None"), "2x", "4x", "8x", "8x CSAA", "8xQ CSAA", "16x CSAA", "16xQ CSAA", "4x SSAA"};
-	g_Config.backend_info.AAModes.assign(caamodes, caamodes + sizeof(caamodes)/sizeof(*caamodes));
+	// XXX: Create a temporary GL Context and grab everything that the driver supports.
+	g_Config.backend_info.AAModes.clear();
+	g_Config.backend_info.AAModes.push_back(std::make_pair(AA_NONE, 1));
+	g_Config.backend_info.AAModes.push_back(std::make_pair(AA_MSAA, 2));
+	g_Config.backend_info.AAModes.push_back(std::make_pair(AA_MSAA, 4));
+	g_Config.backend_info.AAModes.push_back(std::make_pair(AA_MSAA, 8));
+	g_Config.backend_info.AAModes.push_back(std::make_pair(AA_CSAA, 8));
+	g_Config.backend_info.AAModes.push_back(std::make_pair(AA_QCSAA, 8));
+	g_Config.backend_info.AAModes.push_back(std::make_pair(AA_CSAA, 16));
+	g_Config.backend_info.AAModes.push_back(std::make_pair(AA_QCSAA, 16));
+	g_Config.backend_info.AAModes.push_back(std::make_pair(AA_SSAA, 4));
 
 	// pp shaders
 	GetShaders(g_Config.backend_info.PPShaders);

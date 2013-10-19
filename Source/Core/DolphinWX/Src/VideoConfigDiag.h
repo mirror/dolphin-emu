@@ -63,13 +63,10 @@ class SettingChoice : public wxChoice
 {
 public:
 	SettingChoice(wxWindow* parent, int &setting, const wxString& tooltip, int num = 0, const wxString choices[] = NULL, long style = 0);
-	SettingChoice(wxWindow* parent, std::string &setting, const wxString& tooltip, int num = 0, const wxString choices[] = NULL, long style = 0);
 
 	void UpdateValue(wxCommandEvent& ev);
-	void UpdateStringValue(wxCommandEvent& ev);
 private:
 	int &m_setting;
-	std::string &m_strsetting;
 };
 
 class VideoConfigDiag : public wxDialog
@@ -151,6 +148,12 @@ protected:
 		// Anti-aliasing
 		choice_aamode->Enable(vconfig.backend_info.AAModes.size() > 1);
 		text_aamode->Enable(vconfig.backend_info.AAModes.size() > 1);
+		
+		choice_aaquality->Enable(choice_aamode->GetSelection() > 0);
+		text_aaquality->Enable(choice_aamode->GetSelection() > 0);
+
+		choice_aaquality->Show(vconfig.backend_info.APIType == API_D3D);
+		text_aaquality->Show(vconfig.backend_info.APIType == API_D3D);
 
 		// pixel lighting
 		pixel_lighting->Enable(vconfig.backend_info.bSupportsPixelLighting);
@@ -178,10 +181,12 @@ protected:
 		ev.Skip();
 	}
 
+	// Sets AA Mode
+	void Event_AAMode(wxCommandEvent& ev);
+
 	// Creates controls and connects their enter/leave window events to Evt_Enter/LeaveControl
 	SettingCheckBox* CreateCheckBox(wxWindow* parent, const wxString& label, const wxString& description, bool &setting, bool reverse = false, long style = 0);
 	SettingChoice* CreateChoice(wxWindow* parent, int& setting, const wxString& description, int num = 0, const wxString choices[] = NULL, long style = 0);
-	SettingChoice* CreateChoice(wxWindow* parent, std::string& setting, const wxString& description, int num = 0, const wxString choices[] = NULL, long style = 0);
 	SettingRadioButton* CreateRadioButton(wxWindow* parent, const wxString& label, const wxString& description, bool &setting, bool reverse = false, long style = 0);
 
 	// Same as above but only connects enter/leave window events
@@ -194,7 +199,9 @@ protected:
 	wxChoice* choice_backend;
 	wxChoice* choice_display_resolution;
 	wxStaticText* text_aamode;
-	SettingChoice* choice_aamode;
+	wxChoice* choice_aamode;
+	wxStaticText* text_aaquality;
+	wxChoice* choice_aaquality;
 
 	SettingCheckBox* pixel_lighting;
 

@@ -74,7 +74,10 @@ void VideoConfig::Load()
 	iniFile.Get("Video_Settings", "HackedBufferUpload", &bHackedBufferUpload, 0);
 	iniFile.Get("Video_Settings", "FastDepthCalc", &bFastDepthCalc, true);
 
-	iniFile.Get("Video_Settings", "MSAA", &sMultisampleMode, "None");
+	iniFile.Get("Video_Settings", "AAMode", &iMultisampleMode, 0);
+	iniFile.Get("Video_Settings", "AASamples", &iMultisampleSamples, 1);
+	iniFile.Get("Video_Settings", "AAQualityLevel", &iMultisampleQualityLevel, 1);
+
 	iniFile.Get("Video_Settings", "EFBScale", &iEFBScale, (int) SCALE_1X); // native
 
 	iniFile.Get("Video_Settings", "DstAlphaPass", &bDstAlphaPass, false);
@@ -156,7 +159,10 @@ void VideoConfig::GameIniLoad()
 	CHECK_SETTING("Video_Settings", "EnablePixelLighting", bEnablePixelLighting);
 	CHECK_SETTING("Video_Settings", "HackedBufferUpload", bHackedBufferUpload);
 	CHECK_SETTING("Video_Settings", "FastDepthCalc", bFastDepthCalc);
-	CHECK_SETTING("Video_Settings", "MSAA", sMultisampleMode);
+	CHECK_SETTING("Video_Settings", "AAMode", iMultisampleMode);
+	CHECK_SETTING("Video_Settings", "AASamples", iMultisampleSamples);
+	CHECK_SETTING("Video_Settings", "AAQualityLevel", iMultisampleQualityLevel);
+
 	int tmp = -9000;
 	CHECK_SETTING("Video_Settings", "EFBScale", tmp); // integral
 	if (tmp != -9000)
@@ -220,14 +226,15 @@ void VideoConfig::VerifyValidity()
 {
 	// TODO: Check iMaxAnisotropy value
 	if (iAdapter < 0 || iAdapter > ((int)backend_info.Adapters.size() - 1)) iAdapter = 0;
-	if (sMultisampleMode != "None") // Check to make sure it is valid for the backend selected
+	if (iMultisampleMode != AA_NONE) // Check to make sure it is valid for the backend selected
 	{
 		bool Found = false;
 		for (unsigned int a = 0; a < backend_info.AAModes.size() && !Found; ++a)
-			if (sMultisampleMode == backend_info.AAModes[a])
+			if (iMultisampleMode == backend_info.AAModes[a].first
+				|| iMultisampleSamples == backend_info.AAModes[a].second)
 				Found = true;
 		if (!Found)
-			sMultisampleMode = "None"; // Not in available list, set to none
+			iMultisampleMode = AA_NONE; // Not in available list, set to none
 	}
 	if (!backend_info.bSupports3DVision) b3DVision = false;
 	if (!backend_info.bSupportsFormatReinterpretation) bEFBEmulateFormatChanges = false;
@@ -270,7 +277,10 @@ void VideoConfig::Save()
 	iniFile.Set("Video_Settings", "FastDepthCalc", bFastDepthCalc);
 
 	iniFile.Set("Video_Settings", "ShowEFBCopyRegions", bShowEFBCopyRegions);
-	iniFile.Set("Video_Settings", "MSAA", sMultisampleMode);
+	iniFile.Set("Video_Settings", "AAMode", iMultisampleMode);
+	iniFile.Set("Video_Settings", "AASamples", iMultisampleSamples);
+	iniFile.Set("Video_Settings", "AAQualityLevel", iMultisampleQualityLevel);
+
 	iniFile.Set("Video_Settings", "EFBScale", iEFBScale);
 	iniFile.Set("Video_Settings", "TexFmtOverlayEnable", bTexFmtOverlayEnable);
 	iniFile.Set("Video_Settings", "TexFmtOverlayCenter", bTexFmtOverlayCenter);

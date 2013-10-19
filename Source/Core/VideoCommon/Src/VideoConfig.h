@@ -43,6 +43,14 @@ enum EFBScale {
 	SCALE_4X,
 };
 
+enum AAType {
+	AA_NONE = 0,
+	AA_MSAA,
+	AA_CSAA,
+	AA_QCSAA,
+	AA_SSAA,
+};
+
 class IniFile;
 
 // NEVER inherit from this class.
@@ -71,7 +79,9 @@ struct VideoConfig
 	bool bOMPDecoder;
 
 	// Enhancements
-	std::string sMultisampleMode;
+	int iMultisampleMode;
+	int iMultisampleSamples;
+	int iMultisampleQualityLevel;
 	int iEFBScale;
 	bool bForceFiltering;
 	int iMaxAnisotropy;
@@ -142,7 +152,8 @@ struct VideoConfig
 		API_TYPE APIType;
 
 		std::vector<std::string> Adapters; // for D3D
-		std::vector<std::string> AAModes;
+		std::vector<std::pair<AAType, int>> AAModes;
+		int MaxAAQualityLevel;
 		std::vector<std::string> PPShaders; // post-processing shaders
 
 		bool bUseRGBATextures; // used for D3D in TextureCache

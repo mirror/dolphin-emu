@@ -6,6 +6,7 @@
 #include "Frame.h"
 
 #include <wx/intl.h>
+#include <sstream>
 
 #ifdef __APPLE__
 #include <ApplicationServices/ApplicationServices.h>
@@ -47,23 +48,10 @@ SettingChoice::SettingChoice(wxWindow* parent, int &setting, const wxString& too
 	Select(m_setting);
 	Bind(wxEVT_COMMAND_CHOICE_SELECTED, &SettingChoice::UpdateValue, this);
 }
-SettingChoice::SettingChoice(wxWindow* parent, std::string &setting, const wxString& tooltip, int num, const wxString choices[], long style)
-	: wxChoice(parent, -1, wxDefaultPosition, wxDefaultSize, num, choices)
-	, m_strsetting(setting)
-{
-	SetToolTip(tooltip);
-	SelectStringSelection(m_strsetting);
-	Bind(wxEVT_COMMAND_CHOICE_SELECTED, &SettingChoice::UpdateValue, this);
-}
 
 void SettingChoice::UpdateValue(wxCommandEvent& ev)
 {
 	m_setting = ev.GetInt();
-	ev.Skip();
-}
-void SettingChoice::UpdateStringValue(wxCommandEvent& ev)
-{
-	m_strsetting = ev.GetString();
 	ev.Skip();
 }
 
@@ -77,6 +65,12 @@ void VideoConfigDiag::Event_Close(wxCloseEvent& ev)
 	g_Config.Save();
 
 	EndModal(wxID_OK);
+}
+void VideoConfigDiag::Event_AAMode(wxCommandEvent& ev)
+{
+	vconfig.iMultisampleMode = vconfig.backend_info.AAModes[ev.GetInt()].first;
+	vconfig.iMultisampleSamples = vconfig.backend_info.AAModes[ev.GetInt()].second;
+	ev.Skip();
 }
 
 #if defined(_WIN32)
@@ -369,17 +363,64 @@ VideoConfigDiag::VideoConfigDiag(wxWindow* parent, const std::string &title)
 	// AA
 	{
 	text_aamode = new wxStaticText(page_enh, -1, _("Anti-Aliasing:"));
-	choice_aamode = CreateChoice(page_enh, vconfig.sMultisampleMode, wxGetTranslation(aa_desc));
 
-	std::vector<std::string>::const_iterator
-		it = vconfig.backend_info.AAModes.begin(),
+	/////////////////////////////////
+	choice_aamode = new wxChoice(page_enh, wxID_ANY, wxDefaultPosition);
+	RegisterControl(choice_aamode, wxGetTranslation(aa_desc));
+
+	auto it = vconfig.backend_info.AAModes.begin(),
 		itend = vconfig.backend_info.AAModes.end();
-	for (; it != itend; ++it)
-		choice_aamode->AppendString(wxGetTranslation(StrToWxStr(*it)));
+	u32 selectedAAIndex = 0;
+	for (u32 a = 0; it != itend; ++it, ++a)
+	{
+		std::ostringstream str;
+		if (it->first == vconfig.iMultisampleMode)
+			if (it->second == vconfig.iMultisampleSamples)
+				selectedAAIndex = a;
+		if (it->first == AA_NONE)
+			str << "None";
+		else
+		{
+			str << it->second << "x";
+			switch (it->first)
+			{
+				case AA_MSAA:
+					str << " MSAA";
+				break;
+				case AA_SSAA:
+					str << " SSAA";
+				break;
+				case AA_QCSAA:
+					str << "Q CSAA";
+				break;
+				case AA_CSAA:
+					str << " CSAA";
+				break;
+				case AA_NONE:
+					// Won't ever get hit
+				break;
+			}
+		}
+		choice_aamode->AppendString(wxGetTranslation(StrToWxStr(str.str())));
+	}
+	choice_aamode->Select(selectedAAIndex);
 
-	choice_aamode->SelectStringSelection(vconfig.sMultisampleMode);
+	choice_aamode->Bind(wxEVT_COMMAND_CHOICE_SELECTED, &VideoConfigDiag::Event_AAMode, this);
+
 	szr_enh->Add(text_aamode, 1, wxALIGN_CENTER_VERTICAL, 0);
 	szr_enh->Add(choice_aamode);
+
+	text_aaquality = new wxStaticText(page_enh, -1, _("AA Quality Level:"));
+	choice_aaquality = CreateChoice(page_enh, vconfig.iMultisampleQualityLevel, wxGetTranslation(af_desc));
+	for (int a = 0; a < vconfig.backend_info.MaxAAQualityLevel; ++a)
+	{
+		std::ostringstream str;
+		str << a << "x";
+		choice_aaquality->AppendString(wxGetTranslation(StrToWxStr(str.str())));
+	}
+	szr_enh->Add(text_aaquality, 1, wxALIGN_CENTER_VERTICAL, 0);
+	szr_enh->Add(choice_aaquality);
+
 	}
 
 	// AF
@@ -630,13 +671,6 @@ SettingCheckBox* VideoConfigDiag::CreateCheckBox(wxWindow* parent, const wxStrin
 }
 
 SettingChoice* VideoConfigDiag::CreateChoice(wxWindow* parent, int& setting, const wxString& description, int num, const wxString choices[], long style)
-{
-	SettingChoice* const ch = new SettingChoice(parent, setting, wxString(), num, choices, style);
-	RegisterControl(ch, description);
-	return ch;
-}
-
-SettingChoice* VideoConfigDiag::CreateChoice(wxWindow* parent, std::string& setting, const wxString& description, int num, const wxString choices[], long style)
 {
 	SettingChoice* const ch = new SettingChoice(parent, setting, wxString(), num, choices, style);
 	RegisterControl(ch, description);
