@@ -21,7 +21,7 @@ StreamBuffer::StreamBuffer(u32 type, size_t size, StreamType uploadType)
 {
 	glGenBuffers(1, &m_buffer);
 	
-	bool nvidia = false;//!strcmp(g_ogl_config.gl_vendor, "NVIDIA Corporation");
+	bool nvidia = !strcmp(g_ogl_config.gl_vendor, "NVIDIA Corporation");
 	
 	if(m_uploadtype & STREAM_DETECT)
 	{
