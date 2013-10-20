@@ -144,10 +144,7 @@ bool CSIDevice_GCController::GetData(u32& _Hi, u32& _Low)
 		Movie::CheckPadStatus(&PadStatus, ISIDevice::m_iDeviceNumber);
 	}
 
-	// Thankfully changing mode does not change the high bits ;)
-	_Hi  = (u32)((u8)PadStatus.stickY);
-	_Hi |= (u32)((u8)PadStatus.stickX << 8);
-	_Hi |= (u32)((u16)(PadStatus.button | PAD_USE_ORIGIN) << 16);
+	_Hi = MapPadStatus(PadStatus);
 
 	// Low bits are packed differently per mode
 	if (m_Mode == 0 || m_Mode == 5 || m_Mode == 6 || m_Mode == 7)
@@ -194,11 +191,27 @@ bool CSIDevice_GCController::GetData(u32& _Hi, u32& _Low)
 		_Low |= (u32)((u8)PadStatus.substickX << 24);			// All 8 bits
 	}
 
+	HandleButtonCombos(PadStatus);
+	return true;
+}
+
+u32 CSIDevice_GCController::MapPadStatus(const SPADStatus& padStatus)
+{
+	// Thankfully changing mode does not change the high bits ;)
+	u32 _Hi = 0;
+	_Hi  = (u32)((u8)padStatus.stickY);
+	_Hi |= (u32)((u8)padStatus.stickX << 8);
+	_Hi |= (u32)((u16)(padStatus.button | PAD_USE_ORIGIN) << 16);
+	return _Hi;
+}
+
+void CSIDevice_GCController::HandleButtonCombos(const SPADStatus& padStatus)
+{
 	// Keep track of the special button combos (embedded in controller hardware... :( )
 	EButtonCombo tempCombo;
-	if ((PadStatus.button & 0xff00) == (PAD_BUTTON_Y|PAD_BUTTON_X|PAD_BUTTON_START))
+	if ((padStatus.button & 0xff00) == (PAD_BUTTON_Y|PAD_BUTTON_X|PAD_BUTTON_START))
 		tempCombo = COMBO_ORIGIN;
-	else if ((PadStatus.button & 0xff00) == (PAD_BUTTON_B|PAD_BUTTON_X|PAD_BUTTON_START))
+	else if ((padStatus.button & 0xff00) == (PAD_BUTTON_B|PAD_BUTTON_X|PAD_BUTTON_START))
 		tempCombo = COMBO_RESET;
 	else
 		tempCombo = COMBO_NONE;
@@ -217,20 +230,17 @@ bool CSIDevice_GCController::GetData(u32& _Hi, u32& _Low)
 				ProcessorInterface::ResetButton_Tap();
 			else if (m_LastButtonCombo == COMBO_ORIGIN)
 			{
-				m_Origin.uOriginStickX		= PadStatus.stickX;
-				m_Origin.uOriginStickY		= PadStatus.stickY;
-				m_Origin.uSubStickStickX	= PadStatus.substickX;
-				m_Origin.uSubStickStickY	= PadStatus.substickY;
-				m_Origin.uTrigger_L			= PadStatus.triggerLeft;
-				m_Origin.uTrigger_R			= PadStatus.triggerRight;
+				m_Origin.uOriginStickX		= padStatus.stickX;
+				m_Origin.uOriginStickY		= padStatus.stickY;
+				m_Origin.uSubStickStickX	= padStatus.substickX;
+				m_Origin.uSubStickStickY	= padStatus.substickY;
+				m_Origin.uTrigger_L			= padStatus.triggerLeft;
+				m_Origin.uTrigger_R			= padStatus.triggerRight;
 			}
 			m_LastButtonCombo = COMBO_NONE;
 		}
 	}
-
-	return true;
 }
-
 
 // SendCommand
 void CSIDevice_GCController::SendCommand(u32 _Cmd, u8 _Poll)

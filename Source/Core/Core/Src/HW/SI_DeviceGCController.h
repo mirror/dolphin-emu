@@ -12,7 +12,7 @@
 // standard gamecube controller
 class CSIDevice_GCController : public ISIDevice
 {
-private:
+protected:
 	
 	// Commands
 	enum EBufferCommands
@@ -94,6 +94,9 @@ public:
 
 	// Return true on new data
 	virtual bool GetData(u32& _Hi, u32& _Low);
+
+	virtual u32 MapPadStatus(const SPADStatus& padStatus);
+	virtual void HandleButtonCombos(const SPADStatus& padStatus);
 
 	// Send a command directly
 	virtual void SendCommand(u32 _Cmd, u8 _Poll);

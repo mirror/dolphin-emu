@@ -11,8 +11,6 @@
 // for gcpad
 #include "HW/SI.h"
 #include "HW/SI_DeviceGCController.h"
-#include "HW/SI_DeviceGCSteeringWheel.h"
-#include "HW/SI_DeviceDanceMat.h"
 // for gctime
 #include "HW/EXI_DeviceIPL.h"
 // for wiimote/ OSD messages
@@ -980,16 +978,6 @@ bool WiimoteEmu::Wiimote::NetPlay_GetWiimoteData(int wiimote, u8* data, u8 size)
 		return false;
 }
 
-bool CSIDevice_GCSteeringWheel::NetPlay_GetInput(u8 numPAD, SPADStatus PadStatus, u32 *PADStatus)
-{
-	return CSIDevice_GCController::NetPlay_GetInput(numPAD, PadStatus, PADStatus);
-}
-
-bool CSIDevice_DanceMat::NetPlay_GetInput(u8 numPAD, SPADStatus PadStatus, u32 *PADStatus)
-{
-	return CSIDevice_GCController::NetPlay_GetInput(numPAD, PadStatus, PADStatus);
-}
-
 // called from ---CPU--- thread
 // so all players' games get the same time
 u32 CEXIIPL::NetPlay_GetGCTime()
@@ -1012,16 +1000,6 @@ u8 CSIDevice_GCController::NetPlay_InGamePadToLocalPad(u8 numPAD)
 		return netplay_client->InGamePadToLocalPad(numPAD);
 	else
 		return numPAD;
-}
-
-u8 CSIDevice_GCSteeringWheel::NetPlay_InGamePadToLocalPad(u8 numPAD)
-{
-	return CSIDevice_GCController::NetPlay_InGamePadToLocalPad(numPAD);
-}
-
-u8 CSIDevice_DanceMat::NetPlay_InGamePadToLocalPad(u8 numPAD)
-{
-	return CSIDevice_GCController::NetPlay_InGamePadToLocalPad(numPAD);
 }
 
 bool NetPlay::IsNetPlayRunning()
