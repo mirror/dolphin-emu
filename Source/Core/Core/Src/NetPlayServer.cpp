@@ -294,17 +294,24 @@ void NetPlayServer::OnDisconnect(PlayerId pid)
 	if (!player.connected)
 		return;
 
+	player.connected = false;
+
 	if (m_is_running)
 	{
-		PanicAlertT("A client disconnected while game is running.  NetPlay is disabled.  You must manually stop the game.");
-		m_is_running = false;
+		for (int i = 0; i < 4; i++)
+		{
+			if (m_pad_map[i] == pid)
+			{
+				PanicAlertT("Client disconnect while game is running!! NetPlay is disabled. You must manually stop the game.");
+				m_is_running = false;
 
-		Packet opacket;
-		opacket.W((MessageId)NP_MSG_DISABLE_GAME);
-		SendToClientsOnThread(opacket);
+				Packet opacket;
+				opacket.W((MessageId)NP_MSG_DISABLE_GAME);
+				SendToClientsOnThread(opacket);
+				break;
+			}
+		}
 	}
-
-	player.connected = false;
 
 	Packet opacket;
 	opacket.W((MessageId)NP_MSG_PLAYER_LEAVE);

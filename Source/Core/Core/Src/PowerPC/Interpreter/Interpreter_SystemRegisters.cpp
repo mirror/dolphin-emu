@@ -2,7 +2,6 @@
 // Licensed under GPLv2
 // Refer to the license.txt file included.
 
-#include <float.h>
 #ifdef _WIN32
 #define _interlockedbittestandset workaround_ms_header_bug_platform_sdk6_set
 #define _interlockedbittestandreset workaround_ms_header_bug_platform_sdk6_reset
@@ -16,16 +15,11 @@
 #endif
 
 #include "CPUDetect.h"
-#include "Atomic.h"
-#include "../../CoreTiming.h"
-#include "../../HW/Memmap.h"
+#include "Interpreter.h"
+#include "Interpreter_FPUtils.h"
+#include "FPURoundMode.h"
 #include "../../HW/GPFifo.h"
 #include "../../HW/SystemTimers.h"
-#include "../../Core.h"
-#include "Interpreter.h"
-#include "FPURoundMode.h"
-
-#include "Interpreter_FPUtils.h"
 
 /*
 
