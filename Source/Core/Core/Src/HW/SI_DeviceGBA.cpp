@@ -126,6 +126,10 @@ CSIDevice_GBA::CSIDevice_GBA(SIDevices _device, int _iDeviceNumber)
 	: ISIDevice(_device, _iDeviceNumber)
 	, GBASockServer()
 {
+	if (GetLocalIndex() == -1)
+	{
+		PanicAlert("GBA code is too insane for netplay.  This won't work.");
+	}
 }
 
 int CSIDevice_GBA::RunBuffer(u8* _pBuffer, int _iLength)

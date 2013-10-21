@@ -13,7 +13,6 @@
 #include "enet/enet.h"
 
 #include "NetPlayProto.h"
-#include "GCPadStatus.h"
 
 #include <functional>
 #include <map>
@@ -22,16 +21,6 @@
 
 #include "FifoQueue.h"
 #include "TraversalClient.h"
-
-class NetPad
-{
-public:
-	NetPad();
-	NetPad(const SPADStatus* const);
-
-	u32 nHi;
-	u32 nLo;
-};
 
 class NetPlayUI
 {
@@ -94,6 +83,7 @@ public:
 	void SendChatMessage(const std::string& msg) /* ON(GUI) */;
 	void ChangeName(const std::string& name) /* ON(GUI) */;
 
+	#if 0
 	// Send and receive pads values
 	bool WiimoteUpdate(int _number, u8* data, const u8 size) /* ON(CPU) */;
 	bool GetNetPads(const u8 pad_nb, const SPADStatus* const, NetPad* const netvalues) /* ON(CPU) */;
@@ -102,6 +92,7 @@ public:
 	u8 InGamePadToLocalPad(u8 localPad);
 
 	u8 LocalWiimoteToInGameWiimote(u8 local_pad);
+	#endif
 
 	void SetDialog(NetPlayUI* dialog);
 
@@ -112,12 +103,11 @@ public:
 
 	std::function<void(NetPlayClient*)> m_state_callback;
 protected:
+	#if 0
 	void ClearBuffers() /* on multiple */;
+	#endif
 
 	std::recursive_mutex m_crit;
-
-	Common::FifoQueue<NetPad>		m_pad_buffer[4];
-	Common::FifoQueue<NetWiimote>	m_wiimote_buffer[4];
 
 	NetPlayUI*		m_dialog;
 	ENetHost*		m_host;
@@ -135,15 +125,19 @@ protected:
 
 	u32		m_current_game;
 
+	#if 0
 	PadMapping	m_pad_map[4];
 	PadMapping	m_wiimote_map[4];
+	#endif
 
 	bool m_is_recording;
 
 private:
+	#if 0
 	void UpdateDevices() /* on multiple, this sucks */;
 	void SendPadState(const PadMapping in_game_pad, const NetPad& np) /* ON(CPU) */;
 	void SendWiimoteState(const PadMapping in_game_pad, const NetWiimote& nw) /* ON(CPU) */;
+	#endif
 	void OnData(Packet&& packet) ON(NET);
 	void OnDisconnect(int reason) ON(NET);
 	void SendPacket(Packet& packet);

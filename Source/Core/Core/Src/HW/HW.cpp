@@ -32,6 +32,7 @@ namespace HW
 		SystemTimers::PreInit();
 
 		State::Init();
+		IOSync::Init();
 
 		// Init the whole Hardware
 		AudioInterface::Init();
@@ -102,6 +103,10 @@ namespace HW
 			WII_IPC_HLE_Interface::DoState(p);
 			p.DoMarker("WII_IPC_HLE_Interface");
 		}
+
+		// must be after SI
+		p.DoMarker("IOSync");
+		IOSync::DoState(p);
 
 		p.DoMarker("WIIHW");
 	}

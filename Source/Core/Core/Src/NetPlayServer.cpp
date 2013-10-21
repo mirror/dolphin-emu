@@ -36,8 +36,10 @@ NetPlayServer::NetPlayServer()
 	m_is_running = false;
 	m_num_players = 0;
 	m_dialog = NULL;
+#if 0
 	memset(m_pad_map, -1, sizeof(m_pad_map));
 	memset(m_wiimote_map, -1, sizeof(m_wiimote_map));
+#endif
 	m_target_buffer_size = 20;
 #ifdef __APPLE__
 	m_dynamic_store = SCDynamicStoreCreate(NULL, CFSTR("NetPlayServer"), NULL, NULL);
@@ -218,6 +220,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 
 	UpdatePings();
 
+#if 0
 	// try to automatically assign new user a pad
 	for (unsigned int m = 0; m < 4; ++m)
 	{
@@ -227,6 +230,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 			break;
 		}
 	}
+#endif
 
 	// send join message to already connected clients
 	{
@@ -281,8 +285,10 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 		}
 	}
 
+#if 0
 	UpdatePadMapping();	// sync pad mappings with everyone
 	UpdateWiimoteMapping();
+#endif
 
 	return 0;
 }
@@ -296,6 +302,7 @@ void NetPlayServer::OnDisconnect(PlayerId pid)
 
 	player.connected = false;
 
+#if 0
 	if (m_is_running)
 	{
 		for (int i = 0; i < 4; i++)
@@ -312,6 +319,7 @@ void NetPlayServer::OnDisconnect(PlayerId pid)
 			}
 		}
 	}
+#endif
 
 	Packet opacket;
 	opacket.W((MessageId)NP_MSG_PLAYER_LEAVE);
@@ -320,6 +328,7 @@ void NetPlayServer::OnDisconnect(PlayerId pid)
 	// alert other players of disconnect
 	SendToClientsOnThread(opacket);
 
+#if 0
 	for (int i = 0; i < 4; i++)
 		if (m_pad_map[i] == pid)
 			m_pad_map[i] = -1;
@@ -329,8 +338,10 @@ void NetPlayServer::OnDisconnect(PlayerId pid)
 		if (m_wiimote_map[i] == pid)
 			m_wiimote_map[i] = -1;
 	UpdateWiimoteMapping();
+#endif
 }
 
+#if 0
 void NetPlayServer::GetPadMapping(PadMapping map[4])
 {
 	for (int i = 0; i < 4; i++)
@@ -372,6 +383,7 @@ void NetPlayServer::UpdateWiimoteMapping()
 	opacket.DoArray(m_wiimote_map, 4);
 	SendToClients(opacket);
 }
+#endif
 
 void NetPlayServer::AdjustPadBufferSize(unsigned int size)
 {
@@ -452,6 +464,7 @@ void NetPlayServer::OnData(PlayerId pid, Packet&& packet)
 		}
 		break;
 
+#if 0
 	case NP_MSG_PAD_DATA :
 		{
 			// if this is pad data from the last game still being received, ignore it
@@ -495,6 +508,7 @@ void NetPlayServer::OnData(PlayerId pid, Packet&& packet)
 			SendToClients(packet, pid);
 		}
 		break;
+#endif
 
 	case NP_MSG_PONG :
 		{

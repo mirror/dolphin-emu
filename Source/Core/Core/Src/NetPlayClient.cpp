@@ -16,7 +16,6 @@
 // for wiimote/ OSD messages
 #include "Core.h"
 #include "ConfigManager.h"
-#include "Movie.h"
 #include "HW/WiimoteEmu/WiimoteEmu.h"
 
 std::mutex crit_netplay_client;
@@ -24,25 +23,6 @@ static NetPlayClient * netplay_client = NULL;
 NetSettings g_NetPlaySettings;
 
 #define RPT_SIZE_HACK	(1 << 16)
-
-NetPad::NetPad()
-{
-	nHi = 0x00808080;
-	nLo = 0x80800000;
-}
-
-NetPad::NetPad(const SPADStatus* const pad_status)
-{
-	nHi = (u32)((u8)pad_status->stickY);
-	nHi |= (u32)((u8)pad_status->stickX << 8);
-	nHi |= (u32)((u16)pad_status->button << 16);
-	nHi |= 0x00800000;
-	nLo = (u8)pad_status->triggerRight;
-	nLo |= (u32)((u8)pad_status->triggerLeft << 8);
-	nLo |= (u32)((u8)pad_status->substickY << 16);
-	nLo |= (u32)((u8)pad_status->substickX << 24);
-}
-
 NetPlayClient::~NetPlayClient()
 {
 	// not perfect
@@ -63,7 +43,9 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 	m_state_callback = stateCallback;
 	m_local_name = name;
 
+#if 0
 	ClearBuffers();
+#endif
 
 	size_t pos = hostSpec.find(':');
 	if (pos != std::string::npos)
@@ -239,6 +221,7 @@ void NetPlayClient::OnData(Packet&& packet)
 		}
 		break;
 
+#if 0
 	case NP_MSG_PAD_MAPPING :
 		{
 			packet.DoArray(m_pad_map, 4);
@@ -291,7 +274,7 @@ void NetPlayClient::OnData(Packet&& packet)
 			m_wiimote_buffer[(unsigned)map].Push(std::move(nw));
 		}
 		break;
-
+#endif
 
 	case NP_MSG_PAD_BUFFER :
 		{
@@ -488,6 +471,7 @@ void NetPlayClient::GetPlayerList(std::string& list, std::vector<int>& pid_list)
 	{
 		const Player *player = &(i->second);
 		ss << player->name << "[" << (int)player->pid << "] : " << player->revision << "\n   | ";
+		#if 0
 		for (unsigned int j = 0; j < 4; j++)
 		{
 			if (m_pad_map[j] == player->pid)
@@ -502,6 +486,7 @@ void NetPlayClient::GetPlayerList(std::string& list, std::vector<int>& pid_list)
 			else
 				ss << '-';
 		}
+		#endif
 		ss << " | ";
 		if (player->ping != -1u)
 			ss << player->ping;
@@ -553,6 +538,7 @@ void NetPlayClient::ChangeName(const std::string& name)
 	});
 }
 
+#if 0
 void NetPlayClient::SendPadState(const PadMapping in_game_pad, const NetPad& np)
 {
 	// send to server
@@ -575,6 +561,7 @@ void NetPlayClient::SendWiimoteState(const PadMapping in_game_pad, const NetWiim
 
 	SendPacket(packet);
 }
+#endif
 
 bool NetPlayClient::StartGame(const std::string &path)
 {
@@ -600,6 +587,7 @@ bool NetPlayClient::StartGame(const std::string &path)
 
 	NetPlay_Enable(this);
 
+#if 0
 	ClearBuffers();
 
 	if (m_dialog->IsRecording())
@@ -618,30 +606,15 @@ bool NetPlayClient::StartGame(const std::string &path)
 		}
 		Movie::BeginRecordingInput(controllers_mask);
 	}
+#endif
 
 	// boot game
 
 	m_dialog->BootGame(path);
 
+#if 0
 	UpdateDevices();
-
-	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bWii)
-	{
-		for (unsigned int i = 0; i < 4; ++i)
-			WiimoteReal::ChangeWiimoteSource(i, m_wiimote_map[i] != -1 ? WIIMOTE_SRC_EMU : WIIMOTE_SRC_NONE);
-
-		// Needed to prevent locking up at boot if (when) the wiimotes connect out of order.
-		NetWiimote nw;
-		nw.resize(4, 0);
-
-		for (unsigned int w = 0; w < 4; ++w)
-		{
-			if (m_wiimote_map[w] != -1)
-				// probably overkill, but whatever
-				for (unsigned int i = 0; i < 7; ++i)
-					m_wiimote_buffer[w].Push(nw);
-		}
-	}
+#endif
 
 	return true;
 }
@@ -651,6 +624,7 @@ bool NetPlayClient::ChangeGame(const std::string&)
 	return true;
 }
 
+#if 0
 void NetPlayClient::UpdateDevices()
 {
 	for (PadMapping i = 0; i < 4; i++)
@@ -742,6 +716,8 @@ bool NetPlayClient::GetNetPads(const u8 pad_nb, const SPADStatus* const pad_stat
 	tmp.substickY =  ((u8*)&netvalues->nLo)[2];
 	tmp.triggerLeft = ((u8*)&netvalues->nLo)[1];
 	tmp.triggerRight = ((u8*)&netvalues->nLo)[0];
+
+#if 0
 	if (Movie::IsRecordingInput())
 	{
 		Movie::RecordInput(&tmp, pad_nb);
@@ -751,6 +727,7 @@ bool NetPlayClient::GetNetPads(const u8 pad_nb, const SPADStatus* const pad_stat
 	{
 		Movie::CheckPadStatus(&tmp, pad_nb);
 	}
+#endif
 
 	return true;
 }
@@ -849,6 +826,7 @@ bool NetPlayClient::WiimoteUpdate(int _number, u8* data, const u8 size)
 	memcpy(data, nw.data(), size);
 	return true;
 }
+#endif
 
 bool NetPlayClient::StopGame()
 {
@@ -875,6 +853,7 @@ void NetPlayClient::Stop()
 {
 	if (m_is_running == false)
 		return;
+#if 0
 	g_TraversalClient->RunOnThread([=]() mutable {
 		bool isPadMapped = false;
 		ASSUME_ON(NET);
@@ -896,8 +875,10 @@ void NetPlayClient::Stop()
 			ENetUtil::BroadcastPacket(m_host, packet);
 		}
 	});
+#endif
 }
 
+#if 0
 u8 NetPlayClient::InGamePadToLocalPad(u8 ingame_pad)
 {
 	// not our pad
@@ -1001,6 +982,7 @@ u8 CSIDevice_GCController::NetPlay_InGamePadToLocalPad(u8 numPAD)
 	else
 		return numPAD;
 }
+#endif
 
 bool NetPlay::IsNetPlayRunning()
 {

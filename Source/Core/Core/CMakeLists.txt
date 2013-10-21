@@ -10,6 +10,8 @@ set(SRCS	Src/ActionReplay.cpp
 			Src/ec_wii.cpp
 			Src/GeckoCodeConfig.cpp
 			Src/GeckoCode.cpp
+			Src/IOSync.cpp
+			Src/IOSyncBackends.cpp
 			Src/Movie.cpp
 			Src/NetPlayClient.cpp
 			Src/NetPlayServer.cpp

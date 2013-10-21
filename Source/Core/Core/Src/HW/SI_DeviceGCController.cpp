@@ -11,8 +11,6 @@
 
 #include "GCPad.h"
 
-#include "../Movie.h"
-
 #include "../CoreTiming.h"
 #include "SystemTimers.h"
 #include "ProcessorInterface.h"
@@ -102,6 +100,14 @@ int CSIDevice_GCController::RunBuffer(u8* _pBuffer, int _iLength)
 }
 
 
+void CSIDevice_GCController::EnqueueLocalData()
+{
+	SReport PadStatus;
+	memset(&PadStatus, 0, sizeof(PadStatus));
+	Pad::GetStatus(ISIDevice::m_iDeviceNumber, &PadStatus);
+	g_SISyncClass.EnqueueLocalReport(GetLocalIndex(), PadStatus);
+}
+
 // GetData
 
 // Return true on new data (max 7 Bytes and 6 bits ;)
@@ -110,37 +116,7 @@ int CSIDevice_GCController::RunBuffer(u8* _pBuffer, int _iLength)
 //  |_ ERR_STATUS (error on last GetData or SendCmd?)
 bool CSIDevice_GCController::GetData(u32& _Hi, u32& _Low)
 {
-	SPADStatus PadStatus;
-	memset(&PadStatus, 0, sizeof(PadStatus));
-	
-	Pad::GetStatus(ISIDevice::m_iDeviceNumber, &PadStatus);
-	Movie::CallInputManip(&PadStatus, ISIDevice::m_iDeviceNumber);
-
-	u32 netValues[2];
-	if (NetPlay_GetInput(ISIDevice::m_iDeviceNumber, PadStatus, netValues))
-	{
-		_Hi  = netValues[0];	// first 4 bytes
-		_Low = netValues[1];	// last  4 bytes
-		return true;
-	}
-
-	Movie::SetPolledDevice();
-
-	if(Movie::IsPlayingInput())
-	{
-		Movie::PlayController(&PadStatus, ISIDevice::m_iDeviceNumber);
-		Movie::InputUpdate();
-	}
-	else if(Movie::IsRecordingInput())
-	{
-		Movie::RecordInput(&PadStatus, ISIDevice::m_iDeviceNumber);
-		Movie::InputUpdate();
-	}
-	else
-	{
-		Movie::CheckPadStatus(&PadStatus, ISIDevice::m_iDeviceNumber);
-	}
-
+	auto PadStatus = g_SISyncClass.DequeueReport<SReport>(ISIDevice::m_iDeviceNumber);
 	_Hi = MapPadStatus(PadStatus);
 
 	// Low bits are packed differently per mode
@@ -255,11 +231,9 @@ void CSIDevice_GCController::SendCommand(u32 _Cmd, u8 _Poll)
 			unsigned int uType = command.Parameter1;  // 0 = stop, 1 = rumble, 2 = stop hard
 			unsigned int uStrength = command.Parameter2;
 
-			// get the correct pad number that should rumble locally when using netplay
-			const u8 numPAD = NetPlay_InGamePadToLocalPad(ISIDevice::m_iDeviceNumber);
-
-			if (numPAD < 4)
-				Pad::Rumble(numPAD, uType, uStrength);
+			int li = GetLocalIndex();
+			if (li != -1)
+				Pad::Rumble(li, uType, uStrength);
 
 			if (!_Poll)
 			{

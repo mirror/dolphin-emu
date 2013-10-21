@@ -295,6 +295,8 @@
     <ClCompile Include="Src\HW\VideoInterface.cpp">
       <Filter>HW %28Flipper/Hollywood%29\VI - Video Interface</Filter>
     </ClCompile>
+    <ClCompile Include="Src\IOSync.cpp" />
+    <ClCompile Include="Src\IOSyncBackends.cpp" />
     <ClCompile Include="Src\PowerPC\Interpreter\Interpreter.cpp">
       <Filter>PowerPC\Interpreter</Filter>
     </ClCompile>
@@ -837,6 +839,8 @@
     <ClInclude Include="Src\HW\VideoInterface.h">
       <Filter>HW %28Flipper/Hollywood%29\VI - Video Interface</Filter>
     </ClInclude>
+    <ClInclude Include="Src\IOSync.h" />
+    <ClInclude Include="Src\IOSyncBackends.h" />
     <ClInclude Include="Src\PowerPC\Interpreter\Interpreter_Tables.h">
       <Filter>PowerPC\Interpreter</Filter>
     </ClInclude>

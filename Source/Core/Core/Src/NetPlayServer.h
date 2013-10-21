@@ -32,11 +32,13 @@ public:
 
 	bool StartGame(const std::string &path) /* ON(GUI) */;
 
+#if 0
 	void GetPadMapping(PadMapping map[]) /* ON(GUI) */;
 	void SetPadMapping(const PadMapping map[]) /* ON(GUI) */;
 
 	void GetWiimoteMapping(PadMapping map[]) /* ON(GUI) */;
 	void SetWiimoteMapping(const PadMapping map[]) /* ON(GUI) */;
+#endif
 
 	void AdjustPadBufferSize(unsigned int size) /* multiple threads */;
 
@@ -67,8 +69,10 @@ private:
 	MessageId OnConnect(PlayerId pid, Packet& hello) ON(NET);
 	void OnDisconnect(PlayerId pid) ON(NET);
 	void OnData(PlayerId pid, Packet&& packet) ON(NET);
+#if 0
 	void UpdatePadMapping() /* multiple threads */;
 	void UpdateWiimoteMapping() /* multiple threads */;
+#endif
 	void UpdatePings() ON(NET);
 	std::vector<std::pair<std::string, std::string>> GetInterfaceListInternal();
 
@@ -80,8 +84,10 @@ private:
 	bool            m_update_pings;
 	u32		m_current_game;
 	u32				m_target_buffer_size;
+#if 0
 	PadMapping      m_pad_map[4];
 	PadMapping      m_wiimote_map[4];
+#endif
 
 	std::vector<Client>	m_players;
 	unsigned m_num_players;

@@ -478,6 +478,7 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 
 void NetPlayDiag::OnConfigPads(wxCommandEvent&)
 {
+#if 0
 	PadMapping mapping[4];
 	PadMapping wiimotemapping[4];
 	std::vector<const Player *> player_list;
@@ -488,6 +489,7 @@ void NetPlayDiag::OnConfigPads(wxCommandEvent&)
 	pmd.ShowModal();
 	netplay_server->SetPadMapping(mapping);
 	netplay_server->SetWiimoteMapping(wiimotemapping);
+#endif
 }
 
 void NetPlayDiag::OnDefocusName(wxFocusEvent&)
