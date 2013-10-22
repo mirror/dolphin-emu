@@ -96,12 +96,12 @@ void NetPlayClient::SetDialog(NetPlayUI* dialog)
 	m_have_dialog_event.Set();
 }
 
-void NetPlayClient::SendPacket(Packet& packet)
+void NetPlayClient::SendPacket(Packet&& packet)
 {
 	CopyAsMove<Packet> tmp(std::move(packet));
 	g_TraversalClient->RunOnThread([=]() mutable {
 		ASSUME_ON(NET);
-		ENetUtil::BroadcastPacket(m_host, *tmp);
+		ENetUtil::BroadcastPacket(m_host, std::move(*tmp));
 	});
 }
 
@@ -345,7 +345,7 @@ void NetPlayClient::OnData(Packet&& packet)
 			pong.W(ping_key);
 
 			std::lock_guard<std::recursive_mutex> lk(m_crit);
-			ENetUtil::BroadcastPacket(m_host, pong);
+			ENetUtil::BroadcastPacket(m_host, std::move(pong));
 		}
 		break;
 
@@ -406,7 +406,7 @@ void NetPlayClient::OnENetEvent(ENetEvent* event)
 		hello.W(std::string(NETPLAY_VERSION));
 		hello.W(std::string(netplay_dolphin_ver));
 		hello.W(m_local_name);
-		ENetUtil::BroadcastPacket(m_host, hello);
+		ENetUtil::BroadcastPacket(m_host, std::move(hello));
 		m_state = WaitingForHelloResponse;
 		if (m_state_callback)
 			m_state_callback(this);
@@ -519,7 +519,7 @@ void NetPlayClient::SendChatMessage(const std::string& msg)
 	packet.W((MessageId)NP_MSG_CHAT_MESSAGE);
 	packet.W(msg);
 
-	SendPacket(packet);
+	SendPacket(std::move(packet));
 }
 
 void NetPlayClient::ChangeName(const std::string& name)
@@ -534,7 +534,7 @@ void NetPlayClient::ChangeName(const std::string& name)
 		packet.W((MessageId)NP_MSG_CHANGE_NAME);
 		packet.W(name);
 
-		SendPacket(packet);
+		SendPacket(std::move(packet));
 	});
 }
 
@@ -579,7 +579,7 @@ bool NetPlayClient::StartGame(const std::string &path)
 	packet.W(m_current_game);
 	packet.W(g_NetPlaySettings);
 
-	SendPacket(packet);
+	SendPacket(std::move(packet));
 
 	std::lock_guard<std::recursive_mutex> lk(m_crit);
 

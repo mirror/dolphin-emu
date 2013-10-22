@@ -68,7 +68,7 @@ void NetPlayServer::UpdatePings()
 	ping.W(m_ping_key);
 
 	m_ping_timer.Start();
-	SendToClientsOnThread(ping);
+	SendToClientsOnThread(std::move(ping));
 
 	m_update_pings = false;
 }
@@ -239,7 +239,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 		opacket.W(pid);
 		opacket.W(player.name);
 		opacket.W(player.revision);
-		SendToClientsOnThread(opacket);
+		SendToClientsOnThread(std::move(opacket));
 	}
 
 	// send new client success message with their id
@@ -247,7 +247,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 		Packet opacket;
 		opacket.W((MessageId)0);
 		opacket.W(pid);
-		ENetUtil::SendPacket(peer, opacket);
+		ENetUtil::SendPacket(peer, std::move(opacket));
 	}
 
 	// send new client the selected game
@@ -258,7 +258,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 			Packet opacket;
 			opacket.W((MessageId)NP_MSG_CHANGE_GAME);
 			opacket.W(m_selected_game);
-			ENetUtil::SendPacket(peer, opacket);
+			ENetUtil::SendPacket(peer, std::move(opacket));
 		}
 	}
 
@@ -267,7 +267,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 		Packet opacket;
 		opacket.W((MessageId)NP_MSG_PAD_BUFFER);
 		opacket.W((u32)m_target_buffer_size);
-		ENetUtil::SendPacket(peer, opacket);
+		ENetUtil::SendPacket(peer, std::move(opacket));
 	}
 
 	// send players
@@ -281,7 +281,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 			opacket.W((PlayerId)opid);
 			opacket.W(oplayer.name);
 			opacket.W(oplayer.revision);
-			ENetUtil::SendPacket(peer, opacket);
+			ENetUtil::SendPacket(peer, std::move(opacket));
 		}
 	}
 
@@ -314,7 +314,7 @@ void NetPlayServer::OnDisconnect(PlayerId pid)
 
 				Packet opacket;
 				opacket.W((MessageId)NP_MSG_DISABLE_GAME);
-				SendToClientsOnThread(opacket);
+				SendToClientsOnThread(std::move(opacket));
 				break;
 			}
 		}
@@ -326,7 +326,7 @@ void NetPlayServer::OnDisconnect(PlayerId pid)
 	opacket.W(pid);
 
 	// alert other players of disconnect
-	SendToClientsOnThread(opacket);
+	SendToClientsOnThread(std::move(opacket));
 
 #if 0
 	for (int i = 0; i < 4; i++)
@@ -373,7 +373,7 @@ void NetPlayServer::UpdatePadMapping()
 	Packet opacket;
 	opacket.W((MessageId)NP_MSG_PAD_MAPPING);
 	opacket.DoArray(m_pad_map, 4);
-	SendToClients(opacket);
+	SendToClients(std::move(opacket));
 }
 
 void NetPlayServer::UpdateWiimoteMapping()
@@ -381,7 +381,7 @@ void NetPlayServer::UpdateWiimoteMapping()
 	Packet opacket;
 	opacket.W((MessageId)NP_MSG_WIIMOTE_MAPPING);
 	opacket.DoArray(m_wiimote_map, 4);
-	SendToClients(opacket);
+	SendToClients(std::move(opacket));
 }
 #endif
 
@@ -393,7 +393,7 @@ void NetPlayServer::AdjustPadBufferSize(unsigned int size)
 	Packet opacket;
 	opacket.W((MessageId)NP_MSG_PAD_BUFFER);
 	opacket.W(m_target_buffer_size);
-	SendToClients(opacket);
+	SendToClients(std::move(opacket));
 }
 
 void NetPlayServer::OnData(PlayerId pid, Packet&& packet)
@@ -411,7 +411,7 @@ void NetPlayServer::OnData(PlayerId pid, Packet&& packet)
 			Packet opacket;
 			opacket.W(error);
 			opacket.W((PlayerId)0);
-			ENetUtil::SendPacket(peer, opacket);
+			ENetUtil::SendPacket(peer, std::move(opacket));
 			enet_peer_disconnect_later(peer, 0);
 		}
 		else
@@ -442,7 +442,7 @@ void NetPlayServer::OnData(PlayerId pid, Packet&& packet)
 			opacket.W(pid);
 			opacket.W(msg);
 
-			SendToClientsOnThread(opacket, pid);
+			SendToClientsOnThread(std::move(opacket), pid);
 		}
 		break;
 
@@ -460,7 +460,7 @@ void NetPlayServer::OnData(PlayerId pid, Packet&& packet)
 			opacket.W(pid);
 			opacket.W(name);
 
-			SendToClientsOnThread(opacket, pid);
+			SendToClientsOnThread(std::move(opacket), pid);
 		}
 		break;
 
@@ -526,7 +526,7 @@ void NetPlayServer::OnData(PlayerId pid, Packet&& packet)
 			opacket.W(pid);
 			opacket.W(player.ping);
 
-			SendToClientsOnThread(opacket);
+			SendToClientsOnThread(std::move(opacket));
 		}
 		break;
 
@@ -544,7 +544,7 @@ void NetPlayServer::OnData(PlayerId pid, Packet&& packet)
 			Packet opacket;
 			opacket.W((MessageId)NP_MSG_STOP_GAME);
 
-			SendToClientsOnThread(opacket);
+			SendToClientsOnThread(std::move(opacket));
 
 			m_is_running = false;
 		}
@@ -567,7 +567,7 @@ bool NetPlayServer::ChangeGame(const std::string &game)
 	Packet opacket;
 	opacket.W((MessageId)NP_MSG_CHANGE_GAME);
 	opacket.W(game);
-	SendToClients(opacket);
+	SendToClients(std::move(opacket));
 
 	return true;
 }
@@ -595,24 +595,24 @@ bool NetPlayServer::StartGame(const std::string &path)
 	opacket.W((int) m_settings.m_EXIDevice[0]);
 	opacket.W((int) m_settings.m_EXIDevice[1]);
 
-	SendToClients(opacket);
+	SendToClients(std::move(opacket));
 
 	m_is_running = true;
 
 	return true;
 }
 
-void NetPlayServer::SendToClients(Packet& packet, const PlayerId skip_pid)
+void NetPlayServer::SendToClients(Packet&& packet, const PlayerId skip_pid)
 {
 	CopyAsMove<Packet> tmp(std::move(packet));
 	g_TraversalClient->RunOnThread([=]() mutable {
 		ASSUME_ON(NET);
-		SendToClientsOnThread(*tmp, skip_pid);
+		SendToClientsOnThread(std::move(*tmp), skip_pid);
 	});
 }
 
 
-void NetPlayServer::SendToClientsOnThread(const Packet& packet, const PlayerId skip_pid)
+void NetPlayServer::SendToClientsOnThread(Packet&& packet, const PlayerId skip_pid)
 {
 	ENetPacket* epacket = NULL;
 	for (size_t pid = 0; pid < m_players.size(); pid++)
@@ -621,7 +621,7 @@ void NetPlayServer::SendToClientsOnThread(const Packet& packet, const PlayerId s
 		    m_players[pid].connected)
 		{
 			if (!epacket)
-				epacket = enet_packet_create(packet.vec->data(), packet.vec->size(), ENET_PACKET_FLAG_RELIABLE);
+				epacket = ENetUtil::MakeENetPacket(std::move(packet), ENET_PACKET_FLAG_RELIABLE);
 			enet_peer_send(&m_host->peers[pid], 0, epacket);
 		}
 	}

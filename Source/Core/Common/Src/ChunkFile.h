@@ -69,6 +69,10 @@ public:
 	{
 		free(m_Data);
 	}
+	PWBuffer copy()
+	{
+		return PWBuffer(m_Data, m_Size);
+	}
 	void swap(PWBuffer& other)
 	{
 		std::swap(m_Data, other.m_Data);
@@ -97,6 +101,13 @@ public:
 		size_t old = m_Size;
 		resize(old + _size);
 		memcpy(&m_Data[old], inData, _size);
+	}
+	u8* release_data()
+	{
+		u8* data = m_Data;
+		m_Data = NULL;
+		m_Size = m_Capacity = 0;
+		return data;
 	}
 	u8* data() { return m_Data; }
 	const u8* data() const { return m_Data; }

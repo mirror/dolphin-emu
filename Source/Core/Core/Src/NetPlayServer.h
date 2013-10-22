@@ -64,8 +64,8 @@ private:
 		bool connected;
 	};
 
-	void SendToClients(Packet& packet, const PlayerId skip_pid = -1);
-	void SendToClientsOnThread(const Packet& packet, const PlayerId skip_pid = -1) ON(NET);
+	void SendToClients(Packet&& packet, const PlayerId skip_pid = -1);
+	void SendToClientsOnThread(Packet&& packet, const PlayerId skip_pid = -1) ON(NET);
 	MessageId OnConnect(PlayerId pid, Packet& hello) ON(NET);
 	void OnDisconnect(PlayerId pid) ON(NET);
 	void OnData(PlayerId pid, Packet&& packet) ON(NET);

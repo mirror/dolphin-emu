@@ -17,8 +17,9 @@ DEFINE_THREAD_HAT(NET);
 #include "ChunkFile.h"
 namespace ENetUtil
 {
-	void BroadcastPacket(ENetHost* host, const Packet& pac) ON(NET);
-	void SendPacket(ENetPeer* peer, const Packet& pac) ON(NET);
+	ENetPacket* MakeENetPacket(Packet&& pac, enet_uint32 flags);
+	void BroadcastPacket(ENetHost* host, Packet&& pac) ON(NET);
+	void SendPacket(ENetPeer* peer, Packet&& pac) ON(NET);
 	Packet MakePacket(ENetPacket* epacket);
 	void Wakeup(ENetHost* host);
 	int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event) /* ON(NET) */;

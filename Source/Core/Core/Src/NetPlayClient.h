@@ -140,7 +140,7 @@ private:
 	#endif
 	void OnData(Packet&& packet) ON(NET);
 	void OnDisconnect(int reason) ON(NET);
-	void SendPacket(Packet& packet);
+	void SendPacket(Packet&& packet);
 	void DoDirectConnect(const ENetAddress& addr);
 
 	PlayerId		m_pid;

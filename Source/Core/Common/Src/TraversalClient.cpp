@@ -3,14 +3,26 @@
 #include "TraversalClient.h"
 #include "enet/enet.h"
 
-void ENetUtil::BroadcastPacket(ENetHost* host, const Packet& pac)
+// derp
+inline ENetPacket* ENetUtil::MakeENetPacket(Packet&& pac, enet_uint32 flags)
 {
-	enet_host_broadcast(host, 0, enet_packet_create((u8*) pac.vec->data(), pac.vec->size(), ENET_PACKET_FLAG_RELIABLE));
+    ENetPacket* packet = (ENetPacket*) enet_malloc (sizeof (ENetPacket));
+	packet->dataLength = pac.vec->size();
+	packet->data = pac.vec->release_data();
+	packet->referenceCount = 0;
+	packet->flags = flags;
+	packet->freeCallback = NULL;
+	return packet;
 }
 
-void ENetUtil::SendPacket(ENetPeer* peer, const Packet& pac)
+void ENetUtil::BroadcastPacket(ENetHost* host, Packet&& pac)
 {
-	enet_peer_send(peer, 0, enet_packet_create((u8*) pac.vec->data(), pac.vec->size(), ENET_PACKET_FLAG_RELIABLE));
+	enet_host_broadcast(host, 0, MakeENetPacket(std::move(pac), ENET_PACKET_FLAG_RELIABLE));
+}
+
+void ENetUtil::SendPacket(ENetPeer* peer, Packet&& pac)
+{
+	enet_peer_send(peer, 0, MakeENetPacket(std::move(pac), ENET_PACKET_FLAG_RELIABLE));
 }
 
 Packet ENetUtil::MakePacket(ENetPacket* epacket)
