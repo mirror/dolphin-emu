@@ -53,7 +53,7 @@ class ENetHostClient
 public:
 	ENetHostClient(size_t peerCount, u16 port, bool isTraversalClient = false);
 	~ENetHostClient();
-	void RunOnThread(std::function<void()> func);
+	void RunOnThread(std::function<void()> func) NOT_ON(NET);
 	void CreateThread();
 	void Reset();
 

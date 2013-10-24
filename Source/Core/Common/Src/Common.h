@@ -235,6 +235,8 @@ DEFINE_THREAD_HAT(GUI);
 	_TS_MACRO(__attribute__((pt_guarded_by(name##ThreadHat))))
 #define ON(name) \
 	_TS_MACRO(__attribute__((exclusive_locks_required(name##ThreadHat))))
+#define NOT_ON(name) \
+	_TS_MACRO(__attribute__((locks_excluded(name##ThreadHat))))
 #define IGNORE_THREAD_SAFETY \
 	_TS_MACRO(__attribute__((no_thread_safety_analysis)))
 #define ASSUME_ON(name) \
