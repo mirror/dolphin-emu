@@ -152,7 +152,7 @@ void ENetHostClient::ThreadFunc()
 			PanicAlert("enet_socket_get_address failed.");
 			continue;
 		}
-		int count = enet_host_service(m_Host, &event, 500);
+		int count = enet_host_service(m_Host, &event, m_Host->connectedPeers > 0 ? 10 : 300);
 		if (count < 0)
 		{
 			PanicAlert("enet_host_service failed... do something about this.");
