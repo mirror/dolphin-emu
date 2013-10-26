@@ -4,47 +4,49 @@
 namespace IOSync
 {
 
-// This sticks around even if the backend is replaced.
-static PWBuffer g_LocalSubtypes[ClassBase::NumClasses][ClassBase::MaxDeviceIndex];
-static bool g_LocalIsConnected[ClassBase::NumClasses][ClassBase::MaxDeviceIndex];
-
-void Backend::ConnectLocalDevice(int classId, int localIndex, PWBuffer&& buf)
+void Class::SetIndex(int localIndex, int index)
 {
-	g_LocalSubtypes[classId][localIndex] = std::move(buf);
-	g_LocalIsConnected[classId][localIndex] = true;
-}
-
-void Backend::DisconnectLocalDevice(int classId, int localIndex)
-{
-	g_LocalIsConnected[classId][localIndex] = false;
-}
-
-PWBuffer* Backend::GetLocalSubtype(int classId, int localIndex)
-{
-	return g_LocalIsConnected[classId][localIndex] ?
-		&g_LocalSubtypes[classId][localIndex] :
-		NULL;
-
-}
-
-ClassBase::ClassBase()
-{
-	for (int d = 0; d < MaxDeviceIndex; d++)
+	if (localIndex != -1)
 	{
-		m_LocalToRemote[d] = -1;
-		m_RemoteToLocal[d] = -1;
-		m_IsConnected[d] = 0;
+		int oldRemote = m_Local[localIndex].m_OtherIndex;
+		if (oldRemote != -1)
+			m_Remote[oldRemote].m_OtherIndex = -1;
+		m_Local[localIndex].m_OtherIndex = index;
+	}
+	if (index != -1)
+	{
+		int oldLocal = m_Remote[index].m_OtherIndex;
+		if (oldLocal != -1)
+			m_Local[oldLocal].m_OtherIndex = -1;
+		m_Remote[index].m_OtherIndex = localIndex;
 	}
 }
 
-void ClassBase::SetIndex(int localIndex, int index)
+void Class::OnConnected(int index, PWBuffer&& subtype)
 {
-	int oldRemote = m_LocalToRemote[localIndex];
-	if (oldRemote != -1)
-		m_RemoteToLocal[oldRemote] = -1;
-	m_LocalToRemote[localIndex] = index;
-	if (index != -1)
-		m_RemoteToLocal[index] = localIndex;
+	m_Remote[index].m_Subtype = std::move(subtype);
+	m_Remote[index].m_IsConnected = true;
+}
+
+void Class::OnDisconnected(int index)
+{
+	m_Remote[index] = DeviceInfo();
+}
+
+void Class::DeviceInfo::DoState(PointerWrap& p)
+{
+	p.Do(m_OtherIndex);
+	p.Do(m_IsConnected);
+	p.Do(m_Subtype);
+}
+
+void Class::DoState(PointerWrap& p)
+{
+	for (int i = 0; i< MaxDeviceIndex; i++)
+	{
+		m_Local[i].DoState(p);
+		m_Remote[i].DoState(p);
+	}
 }
 
 void Init()
@@ -54,7 +56,7 @@ void Init()
 
 void DoState(PointerWrap& p)
 {
-	for (int c = 0; c < ClassBase::NumClasses; c++)
+	for (int c = 0; c < Class::NumClasses; c++)
 	{
 		g_Classes[c]->DoState(p);
 	}
@@ -63,6 +65,6 @@ void DoState(PointerWrap& p)
 }
 
 std::unique_ptr<Backend> g_Backend;
-ClassBase* g_Classes[ClassBase::NumClasses];
+Class* g_Classes[Class::NumClasses];
 
 }

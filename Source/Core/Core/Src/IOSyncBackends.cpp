@@ -6,15 +6,13 @@ namespace IOSync
 
 void BackendLocal::ConnectLocalDevice(int classId, int localIndex, PWBuffer&& buf)
 {
-	Backend::ConnectLocalDevice(classId, localIndex, std::move(buf));
 	g_Classes[classId]->SetIndex(localIndex, localIndex);
-	g_Classes[classId]->OnConnectedInternal(localIndex, GetLocalSubtype(classId, localIndex));
+	g_Classes[classId]->OnConnected(localIndex, std::move(buf));
 }
 
 void BackendLocal::DisconnectLocalDevice(int classId, int localIndex)
 {
-	Backend::DisconnectLocalDevice(classId, localIndex);
-	g_Classes[classId]->OnDisconnectedInternal(localIndex);
+	g_Classes[classId]->OnDisconnected(localIndex);
 }
 
 void BackendLocal::EnqueueLocalReport(int classId, int localIndex, PWBuffer&& buf)
@@ -42,17 +40,17 @@ void BackendLocal::DoState(PointerWrap& p)
 	if (p.GetMode() != PointerWrap::MODE_READ)
 		return;
 	// Disregard existing devices.
-	for (int c = 0; c < ClassBase::NumClasses; c++)
+	for (int c = 0; c < Class::NumClasses; c++)
 	{
-		ClassBase* cls = g_Classes[c];
-		for (int d = 0; d < ClassBase::MaxDeviceIndex; d++)
+		Class* cls = g_Classes[c];
+		for (int d = 0; d < Class::MaxDeviceIndex; d++)
 		{
-			if (cls->m_IsConnected[d])
-				cls->OnDisconnectedInternal(d);
-			if (PWBuffer* subtype = GetLocalSubtype(c, d))
+			if (cls->IsConnected(d))
+				cls->OnDisconnected(d);
+			if (const PWBuffer* subtype = cls->GetLocalSubtype(d))
 			{
-				g_Classes[c]->SetIndex(d, d);
-				g_Classes[c]->OnConnectedInternal(d, subtype);
+				cls->SetIndex(d, d);
+				cls->OnConnected(d, subtype->copy());
 			}
 		}
 	}

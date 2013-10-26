@@ -21,7 +21,7 @@ public:
 	virtual u32 GetTime() override;
 	virtual void DoState(PointerWrap& p) override;
 private:
-	PWBuffer m_Reports[ClassBase::NumClasses][ClassBase::MaxDeviceIndex];
+	PWBuffer m_Reports[Class::NumClasses][Class::MaxDeviceIndex];
 };
 
 

@@ -210,19 +210,23 @@ static u8					g_SIBuffer[128];
 static int changeDevice[4];
 }
 
-void SIDeviceSyncerBase::OnConnected(int channel, SIDevices& subtype)
+void SISyncClass::OnConnected(int channel, PWBuffer&& subtype)
 {
+	IOSync::Class::OnConnected(channel, std::move(subtype));
+	SIDevices type = GrabSubtype<SIDevices>(GetSubtype(channel));
+
 	CoreTiming::RemoveAllEvents(SerialInterface::changeDevice[channel]);
 	auto& sidev = SerialInterface::g_Channel[channel].m_pDevice;
-	if (!sidev || subtype != sidev->GetDeviceType())
+	if (!sidev || type != sidev->GetDeviceType())
 	{
 		CoreTiming::ScheduleEvent(0, SerialInterface::changeDevice[channel], ((u64)channel << 32) | SIDEVICE_NONE);
-		CoreTiming::ScheduleEvent(50000000, SerialInterface::changeDevice[channel], ((u64)channel << 32) | subtype);
+		CoreTiming::ScheduleEvent(50000000, SerialInterface::changeDevice[channel], ((u64)channel << 32) | type);
 	}
 }
 
-void SIDeviceSyncerBase::OnDisconnected(int channel)
+void SISyncClass::OnDisconnected(int channel)
 {
+	IOSync::Class::OnDisconnected(channel);
 	CoreTiming::RemoveAllEvents(SerialInterface::changeDevice[channel]);
 	CoreTiming::ScheduleEvent(0, SerialInterface::changeDevice[channel], ((u64)channel << 32) | SIDEVICE_NONE);
 }
@@ -611,7 +615,7 @@ void ChangeDevice(SIDevices device, int channel)
 {
 	g_SISyncClass.DisconnectLocalDevice(channel);
 	if (device != SIDEVICE_NONE)
-		g_SISyncClass.ConnectLocalDevice(channel, std::move(device));
+		g_SISyncClass.ConnectLocalDevice(channel, g_SISyncClass.PushSubtype(device));
 }
 
 void UpdateDevices()

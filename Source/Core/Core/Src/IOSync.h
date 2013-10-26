@@ -11,23 +11,29 @@
 namespace IOSync
 {
 
+
+class Class;
+class Backend;
+
+extern std::unique_ptr<Backend> g_Backend;
+extern Class* g_Classes[];
+
 class Backend
 {
 public:
-	virtual void ConnectLocalDevice(int classId, int localIndex, PWBuffer&& buf);
-	virtual void DisconnectLocalDevice(int classId, int localIndex);
+	virtual void ConnectLocalDevice(int classId, int localIndex, PWBuffer&& buf) = 0;
+	virtual void DisconnectLocalDevice(int classId, int localIndex) = 0;
 	virtual void EnqueueLocalReport(int classId, int localIndex, PWBuffer&& buf) = 0;
 	virtual PWBuffer DequeueReport(int classId, int index) = 0;
 	virtual void OnPacketError() = 0;
 	virtual u32 GetTime() = 0;
 	virtual void DoState(PointerWrap& p) = 0;
-	PWBuffer* GetLocalSubtype(int classId, int localIndex);
 };
 
-class ClassBase
+class Class
 {
 public:
-	enum Class
+	enum ClassID
 	{
 		// These are part of the binary format and should not be changed.
 		ClassSI,
@@ -39,58 +45,38 @@ public:
 		MaxDeviceIndex = 4
 	};
 
-	ClassBase();
+	Class(int classId)
+	: m_ClassId(classId)
+	{
+		g_Classes[classId] = this;
+	}
 
 	// Are reports needed for this local device?
 	bool IsInUse(int localIndex)
 	{
-		return m_LocalToRemote[localIndex] != -1;
+		return m_Local[localIndex].m_OtherIndex != -1;
 	}
 
 	// Gets the local index, if any, corresponding to this remote device, or -1
 	// if there is none.  Used for output such as rumble.
 	int GetLocalIndex(int index)
 	{
-		return m_RemoteToLocal[index];
+		return m_Remote[index].m_OtherIndex;
 	}
 
 	void SetIndex(int localIndex, int index);
 
-	// These should be called on thread.
-	virtual void OnConnectedInternal(int index, const PWBuffer* subtype) = 0;
-	virtual void OnDisconnectedInternal(int index) = 0;
-	virtual void DoState(PointerWrap& p) = 0;
-
-	s8 m_IsConnected[MaxDeviceIndex];
-private:
-	s8 m_LocalToRemote[MaxDeviceIndex];
-	s8 m_RemoteToLocal[MaxDeviceIndex];
-};
-
-extern std::unique_ptr<Backend> g_Backend;
-extern ClassBase* g_Classes[ClassBase::NumClasses];
-
-template <typename Base>
-class Class : public Base, public ClassBase
-{
-public:
-	Class()
-	{
-		g_Classes[Base::ClassId] = this;
-	}
 	// Make a local device available.
 	// subtypeData is data that does not change during the life of the device,
 	// and is sent along with the connection notice.
-	void ConnectLocalDevice(int localIndex, typename Base::SubtypeData&& subtypeData)
+	void ConnectLocalDevice(int localIndex, PWBuffer&& subtypeData)
 	{
-		Packet p;
-		Base::DoSubtypeData(&subtypeData, p);
-		g_Backend->ConnectLocalDevice(Base::ClassId, localIndex, std::move(*p.vec));
+		g_Backend->ConnectLocalDevice(m_ClassId, localIndex, std::move(subtypeData));
 	}
 
 	void DisconnectLocalDevice(int localIndex)
 	{
-		g_Backend->DisconnectLocalDevice(Base::ClassId, localIndex);
+		g_Backend->DisconnectLocalDevice(m_ClassId, localIndex);
 	}
 
 	void DisconnectAllLocalDevices()
@@ -104,12 +90,22 @@ public:
 	{
 		Packet p;
 		reportData.DoReport(p);
-		g_Backend->EnqueueLocalReport(Base::ClassId, localIndex, std::move(*p.vec));
+		g_Backend->EnqueueLocalReport(m_ClassId, localIndex, std::move(*p.vec));
 	}
 
-	typename Base::SubtypeData& GetSubtype(int index)
+	const PWBuffer* GetSubtype(int index)
 	{
-		return m_Subtypes[index];
+		return &m_Remote[index].m_Subtype;
+	}
+
+	const PWBuffer* GetLocalSubtype(int index)
+	{
+		return &m_Local[index].m_Subtype;
+	}
+
+	bool IsConnected(int index)
+	{
+		return m_Remote[index].m_IsConnected;
 	}
 
 	template <typename Report>
@@ -117,7 +113,7 @@ public:
 	{
 		while (1)
 		{
-			Packet p(g_Backend->DequeueReport(Base::ClassId, index));
+			Packet p(g_Backend->DequeueReport(m_ClassId, index));
 			Report reportData;
 			reportData.DoReport(p);
 			if (p.failure)
@@ -129,35 +125,47 @@ public:
 		}
 	}
 
-	virtual void OnConnectedInternal(int index, const PWBuffer* subtype) override
+	template <typename T>
+	static T GrabSubtype(const PWBuffer* buf)
 	{
-		PointerWrap p(const_cast<PWBuffer*>(subtype), PointerWrap::MODE_READ);
-		Base::DoSubtypeData(&m_Subtypes[index], p);
-		m_IsConnected[index] = true;
+		PointerWrap p(const_cast<PWBuffer*>(buf), PointerWrap::MODE_READ);
+		T t = T();
+		p.Do(t);
 		if (p.failure)
-		{
-			m_Subtypes[index] = typename Base::SubtypeData();
 			g_Backend->OnPacketError();
-		}
-		Base::OnConnected(index, m_Subtypes[index]);
+		return t;
 	}
 
-	virtual void OnDisconnectedInternal(int index) override
+	template <typename T>
+	static PWBuffer PushSubtype(T subtype)
 	{
-		m_Subtypes[index] = typename Base::SubtypeData();
-		m_IsConnected[index] = false;
-		Base::OnDisconnected(index);
+		Packet p;
+		p.W(subtype);
+		return std::move(*p.vec);
 	}
 
-	virtual void DoState(PointerWrap& p)
-	{
-		p.Do(m_IsConnected);
-		p.Do(m_Subtypes);
-	}
+	// These should be called on thread.
+	virtual void OnConnected(int index, PWBuffer&& subtype);
+	virtual void OnDisconnected(int index);
+	virtual void DoState(PointerWrap& p);
 
 private:
-	typename Base::SubtypeData m_Subtypes[MaxDeviceIndex];
+	struct DeviceInfo // local or remote
+	{
+		DeviceInfo()
+		: m_OtherIndex(-1), m_IsConnected(false) {}
+		void DoState(PointerWrap& p);
+
+		s8 m_OtherIndex; // remote<->local
+		bool m_IsConnected;
+		PWBuffer m_Subtype;
+	};
+
+	DeviceInfo m_Local[MaxDeviceIndex];
+	DeviceInfo m_Remote[MaxDeviceIndex];
+	int m_ClassId;
 };
+
 
 void Init();
 void DoState(PointerWrap& p);

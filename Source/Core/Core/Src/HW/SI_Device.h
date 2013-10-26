@@ -56,16 +56,14 @@ enum SIDevices
 	SIDEVICE_AM_BASEBOARD
 };
 
-class SIDeviceSyncerBase
+class SISyncClass : public IOSync::Class
 {
 public:
-	enum { ClassId = IOSync::ClassBase::ClassSI };
-	typedef SIDevices SubtypeData;
-	void OnConnected(int index, SIDevices& subtype);
-	void OnDisconnected(int index);
-	void DoSubtypeData(SIDevices* subtype, PointerWrap& p) { p.Do(*subtype); }
+	SISyncClass() : IOSync::Class(ClassSI) {}
+    virtual void OnConnected(int index, PWBuffer&& subtype) override;
+    virtual void OnDisconnected(int index) override;
 };
-extern IOSync::Class<SIDeviceSyncerBase> g_SISyncClass;
+extern SISyncClass g_SISyncClass;
 
 class ISIDevice
 {

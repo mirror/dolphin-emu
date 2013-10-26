@@ -69,7 +69,7 @@ public:
 	{
 		free(m_Data);
 	}
-	PWBuffer copy()
+	PWBuffer copy() const
 	{
 		return PWBuffer(m_Data, m_Size);
 	}
@@ -254,6 +254,15 @@ public:
 		{
 			DoContainer(x);
 		}
+	}
+
+	void Do(PWBuffer& x)
+	{
+		u32 size = (u32)x.size();
+		Do(size);
+		if (mode == MODE_READ)
+			x.resize(size);
+		DoArray(x.data(), size);
 	}
 
 	template <typename T>

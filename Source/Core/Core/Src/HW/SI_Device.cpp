@@ -92,4 +92,4 @@ ISIDevice* SIDevice_Create(const SIDevices device, const int port_number)
 	}
 }
 
-IOSync::Class<SIDeviceSyncerBase> g_SISyncClass;
+SISyncClass g_SISyncClass;
