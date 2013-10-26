@@ -102,6 +102,10 @@ public:
 		resize(old + _size);
 		memcpy(&m_Data[old], inData, _size);
 	}
+	void append(const PWBuffer& other)
+	{
+		append(other.m_Data, other.m_Size);
+	}
 	u8* release_data()
 	{
 		u8* data = m_Data;

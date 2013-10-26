@@ -285,11 +285,6 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 		}
 	}
 
-#if 0
-	UpdatePadMapping();	// sync pad mappings with everyone
-	UpdateWiimoteMapping();
-#endif
-
 	return 0;
 }
 
@@ -302,24 +297,20 @@ void NetPlayServer::OnDisconnect(PlayerId pid)
 
 	player.connected = false;
 
-#if 0
-	if (m_is_running)
+	for (int c = 0; c < IOSync::Class::NumClasses; c++)
 	{
-		for (int i = 0; i < 4; i++)
+		for (int i = 0; i < IOSync::Class::MaxDeviceIndex; i++)
 		{
-			if (m_pad_map[i] == pid)
+			if (m_device_map[c][i].first == pid)
 			{
-				PanicAlertT("Client disconnect while game is running!! NetPlay is disabled. You must manually stop the game.");
-				m_is_running = false;
-
 				Packet opacket;
-				opacket.W((MessageId)NP_MSG_DISABLE_GAME);
+				opacket.W((MessageId)NP_MSG_DISCONNECT_DEVICE);
+				opacket.W((u8)c);
+				opacket.W((u8)i);
 				SendToClientsOnThread(std::move(opacket));
-				break;
 			}
 		}
 	}
-#endif
 
 	Packet opacket;
 	opacket.W((MessageId)NP_MSG_PLAYER_LEAVE);
@@ -327,63 +318,7 @@ void NetPlayServer::OnDisconnect(PlayerId pid)
 
 	// alert other players of disconnect
 	SendToClientsOnThread(std::move(opacket));
-
-#if 0
-	for (int i = 0; i < 4; i++)
-		if (m_pad_map[i] == pid)
-			m_pad_map[i] = -1;
-	UpdatePadMapping();
-
-	for (int i = 0; i < 4; i++)
-		if (m_wiimote_map[i] == pid)
-			m_wiimote_map[i] = -1;
-	UpdateWiimoteMapping();
-#endif
 }
-
-#if 0
-void NetPlayServer::GetPadMapping(PadMapping map[4])
-{
-	for (int i = 0; i < 4; i++)
-		map[i] = m_pad_map[i];
-}
-
-void NetPlayServer::GetWiimoteMapping(PadMapping map[4])
-{
-	for (int i = 0; i < 4; i++)
-		map[i] = m_wiimote_map[i];
-}
-
-void NetPlayServer::SetPadMapping(const PadMapping map[4])
-{
-	for (int i = 0; i < 4; i++)
-		m_pad_map[i] = map[i];
-	UpdatePadMapping();
-}
-
-void NetPlayServer::SetWiimoteMapping(const PadMapping map[4])
-{
-	for (int i = 0; i < 4; i++)
-		m_wiimote_map[i] = map[i];
-	UpdateWiimoteMapping();
-}
-
-void NetPlayServer::UpdatePadMapping()
-{
-	Packet opacket;
-	opacket.W((MessageId)NP_MSG_PAD_MAPPING);
-	opacket.DoArray(m_pad_map, 4);
-	SendToClients(std::move(opacket));
-}
-
-void NetPlayServer::UpdateWiimoteMapping()
-{
-	Packet opacket;
-	opacket.W((MessageId)NP_MSG_WIIMOTE_MAPPING);
-	opacket.DoArray(m_wiimote_map, 4);
-	SendToClients(std::move(opacket));
-}
-#endif
 
 void NetPlayServer::AdjustPadBufferSize(unsigned int size)
 {
@@ -416,6 +351,7 @@ void NetPlayServer::OnData(PlayerId pid, Packet&& packet)
 		}
 		else
 		{
+			player.is_localhost = peer->address.host == 0x0100007f;
 			player.connected = true;
 			m_num_players++;
 		}
@@ -464,51 +400,96 @@ void NetPlayServer::OnData(PlayerId pid, Packet&& packet)
 		}
 		break;
 
-#if 0
-	case NP_MSG_PAD_DATA :
+	case NP_MSG_CONNECT_DEVICE:
+	case NP_MSG_DISCONNECT_DEVICE:
 		{
-			// if this is pad data from the last game still being received, ignore it
-			if (player.current_game != m_current_game)
-				break;
-
-			PadMapping map;
-			u32 hi, lo;
-			packet.Do(map);
-			packet.Do(hi);
-			packet.Do(lo);
-			if (packet.failure)
+			u8 classId, localIndex, flags;
+			packet.Do(classId);
+			u8* indexP = (u8*) packet.vec->data() + packet.readOff;
+			packet.Do(localIndex);
+			packet.Do(flags);
+			int limit;
+			if (packet.failure ||
+			    classId >= IOSync::Class::NumClasses ||
+				localIndex >= (limit = IOSync::g_Classes[classId]->GetMaxDeviceIndex()))
+			{
 				return OnDisconnect(pid);
+			}
+			// todo: bring customization back
+			std::pair<PlayerId, s8>* map = m_device_map[classId];
+			if (mid == NP_MSG_CONNECT_DEVICE)
+			{
+				PlayerId dummy1;
+				u8 dummy2;
+				PlayerId* localPlayerP = (PlayerId*) packet.vec->data() + packet.readOff;
+				packet.Do(dummy1);
+				u8* localIndexP = (u8*) packet.vec->data() + packet.readOff;
+				packet.Do(dummy2);
+				if (packet.failure)
+					return OnDisconnect(pid);
 
-			// If the data is not from the correct player,
-			// then disconnect them.
-			if (m_pad_map[map] != pid)
-				return OnDisconnect(pid);
-
-			// Relay to clients
-			SendToClients(packet, pid);
+				WARN_LOG(NETPLAY, "Server: received CONNECT_DEVICE (%u/%u) from client %u", classId, localIndex, pid);
+				int i;
+				for (i = 0; i < limit; i++)
+				{
+					if (map[i].second == -1)
+					{
+						map[i].first = pid;
+						map[i].second = localIndex;
+						*indexP = i;
+						*localPlayerP = pid;
+						*localIndexP = localIndex;
+						WARN_LOG(NETPLAY, "   --> assigning %d", i);
+						SendToClientsOnThread(std::move(packet));
+						break;
+					}
+				}
+				if (i == limit)
+					WARN_LOG(NETPLAY, "   --> no assignment");
+				// todo: keep track of connected local devices so they can be
+				// assigned back later
+			}
+			else // DISCONNECT
+			{
+				WARN_LOG(NETPLAY, "Server: received DISCONNECT_DEVICE (%u/%u) from client %u", classId, localIndex, pid);
+				for (int i = 0; i < IOSync::Class::MaxDeviceIndex; i++)
+				{
+					if (map[i].first == pid && map[i].second == localIndex)
+					{
+						map[i].first = map[i].second = -1;
+						*indexP = i;
+						SendToClientsOnThread(std::move(packet));
+						break;
+					}
+				}
+			}
+			break;
 		}
-		break;
 
-		case NP_MSG_WIIMOTE_DATA :
+
+	case NP_MSG_REPORT:
 		{
-			// if this is wiimote data from the last game still being received, ignore it
-			if (player.current_game != m_current_game)
-				break;
-
-			PadMapping map;
-			NetWiimote nw;
-			packet.Do(map);
-			packet.Do(nw);
-			// If the data is not from the correct player,
-			// then disconnect them.
-			if (packet.failure || m_wiimote_map[map] != pid)
+			u8 classId, index, flags;
+			packet.Do(classId);
+			packet.Do(index);
+			packet.Do(flags);
+			if (packet.failure ||
+			    classId >= IOSync::Class::NumClasses ||
+				index >= IOSync::g_Classes[classId]->GetMaxDeviceIndex())
+			{
 				return OnDisconnect(pid);
+			}
 
-			// relay to clients
-			SendToClients(packet, pid);
+			if (m_device_map[classId][index].first == pid)
+			{
+				SendToClientsOnThread(std::move(packet), pid);
+			}
+			else
+			{
+				WARN_LOG(NETPLAY, "Received spurious report for index %u from pid %u!", index, pid);
+			}
+			break;
 		}
-		break;
-#endif
 
 	case NP_MSG_PONG :
 		{
@@ -598,6 +579,8 @@ bool NetPlayServer::StartGame(const std::string &path)
 	SendToClients(std::move(opacket));
 
 	m_is_running = true;
+
+	memset(m_device_map, 0xff, sizeof(m_device_map));
 
 	return true;
 }

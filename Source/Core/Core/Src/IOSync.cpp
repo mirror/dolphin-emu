@@ -4,7 +4,7 @@
 namespace IOSync
 {
 
-void Class::SetIndex(int localIndex, int index)
+void Class::SetIndex(int index, int localIndex)
 {
 	if (localIndex != -1)
 	{
@@ -42,7 +42,7 @@ void Class::DeviceInfo::DoState(PointerWrap& p)
 
 void Class::DoState(PointerWrap& p)
 {
-	for (int i = 0; i< MaxDeviceIndex; i++)
+	for (int i = 0; i < MaxDeviceIndex; i++)
 	{
 		m_Local[i].DoState(p);
 		m_Remote[i].DoState(p);
@@ -50,6 +50,12 @@ void Class::DoState(PointerWrap& p)
 }
 
 void Init()
+{
+	if (!g_Backend)
+		ResetBackend();
+}
+
+void ResetBackend()
 {
 	g_Backend.reset(new BackendLocal());
 }

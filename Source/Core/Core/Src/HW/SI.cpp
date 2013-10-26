@@ -613,7 +613,8 @@ void ChangeDeviceCallback(u64 userdata, int cyclesLate)
 
 void ChangeDevice(SIDevices device, int channel)
 {
-	g_SISyncClass.DisconnectLocalDevice(channel);
+	if (g_SISyncClass.LocalIsConnected(channel))
+		g_SISyncClass.DisconnectLocalDevice(channel);
 	if (device != SIDEVICE_NONE)
 		g_SISyncClass.ConnectLocalDevice(channel, g_SISyncClass.PushSubtype(device));
 }
@@ -634,6 +635,11 @@ void UpdateDevices()
 	g_StatusReg.RDST3 = !!g_Channel[3].m_pDevice->GetData(g_Channel[3].m_InHi.Hex, g_Channel[3].m_InLo.Hex);
 
 	UpdateInterrupts();
+
+	// This doesn't really have to be synced with SI, but we do it here to
+	// minimize the time before packets are sent out
+	IOSync::g_Backend->NewLocalSubframe();
+
 }
 
 void RunSIBuffer()

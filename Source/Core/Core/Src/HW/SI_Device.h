@@ -62,6 +62,7 @@ public:
 	SISyncClass() : IOSync::Class(ClassSI) {}
     virtual void OnConnected(int index, PWBuffer&& subtype) override;
     virtual void OnDisconnected(int index) override;
+	virtual int GetMaxDeviceIndex() override { return 4; }
 };
 extern SISyncClass g_SISyncClass;
 

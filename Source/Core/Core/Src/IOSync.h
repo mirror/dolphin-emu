@@ -24,10 +24,11 @@ public:
 	virtual void ConnectLocalDevice(int classId, int localIndex, PWBuffer&& buf) = 0;
 	virtual void DisconnectLocalDevice(int classId, int localIndex) = 0;
 	virtual void EnqueueLocalReport(int classId, int localIndex, PWBuffer&& buf) = 0;
-	virtual PWBuffer DequeueReport(int classId, int index) = 0;
+	virtual Packet DequeueReport(int classId, int index, bool* keepGoing) = 0;
 	virtual void OnPacketError() = 0;
 	virtual u32 GetTime() = 0;
 	virtual void DoState(PointerWrap& p) = 0;
+	virtual void NewLocalSubframe() {}
 };
 
 class Class
@@ -51,10 +52,11 @@ public:
 		g_Classes[classId] = this;
 	}
 
-	// Are reports needed for this local device?
-	bool IsInUse(int localIndex)
+	// Emulation code should only use this to test if a device is
+	// in use as an optimization, if necessary.
+	int GetRemoteIndex(int localIndex)
 	{
-		return m_Local[localIndex].m_OtherIndex != -1;
+		return m_Local[localIndex].m_OtherIndex;
 	}
 
 	// Gets the local index, if any, corresponding to this remote device, or -1
@@ -64,7 +66,7 @@ public:
 		return m_Remote[index].m_OtherIndex;
 	}
 
-	void SetIndex(int localIndex, int index);
+	void SetIndex(int index, int localIndex);
 
 	// Make a local device available.
 	// subtypeData is data that does not change during the life of the device,
@@ -103,25 +105,33 @@ public:
 		return &m_Local[index].m_Subtype;
 	}
 
-	bool IsConnected(int index)
+	const bool& LocalIsConnected(int index)
+	{
+		return m_Local[index].m_IsConnected;
+	}
+
+	const bool& IsConnected(int index)
 	{
 		return m_Remote[index].m_IsConnected;
 	}
 
-	template <typename Report>
-	Report DequeueReport(int index)
+	template <typename Report, typename Callback>
+	void DequeueReport(int index, Callback cb)
 	{
-		while (1)
+		bool keepGoing = true;
+		while (keepGoing)
 		{
-			Packet p(g_Backend->DequeueReport(m_ClassId, index));
+			Packet p = g_Backend->DequeueReport(m_ClassId, index, &keepGoing);
 			Report reportData;
+			if (p.vec->empty())
+				break;
 			reportData.DoReport(p);
 			if (p.failure)
 			{
 				g_Backend->OnPacketError();
 				continue;
 			}
-			return reportData;
+			cb(std::move(reportData));
 		}
 	}
 
@@ -148,6 +158,7 @@ public:
 	virtual void OnConnected(int index, PWBuffer&& subtype);
 	virtual void OnDisconnected(int index);
 	virtual void DoState(PointerWrap& p);
+	virtual int GetMaxDeviceIndex() = 0;
 
 private:
 	struct DeviceInfo // local or remote
@@ -168,6 +179,7 @@ private:
 
 
 void Init();
+void ResetBackend();
 void DoState(PointerWrap& p);
 
 }

@@ -22,6 +22,11 @@
 #include "FifoQueue.h"
 #include "TraversalClient.h"
 
+namespace IOSync
+{
+	class BackendNetPlay;
+}
+
 class NetPlayUI
 {
 public:
@@ -83,16 +88,7 @@ public:
 	void SendChatMessage(const std::string& msg) /* ON(GUI) */;
 	void ChangeName(const std::string& name) /* ON(GUI) */;
 
-	#if 0
-	// Send and receive pads values
-	bool WiimoteUpdate(int _number, u8* data, const u8 size) /* ON(CPU) */;
-	bool GetNetPads(const u8 pad_nb, const SPADStatus* const, NetPad* const netvalues) /* ON(CPU) */;
-
-	u8 LocalPadToInGamePad(u8 localPad);
-	u8 InGamePadToLocalPad(u8 localPad);
-
-	u8 LocalWiimoteToInGameWiimote(u8 local_pad);
-	#endif
+	void SendPacketFromIOSync(Packet&& pac) /* ON(CPU) */;
 
 	void SetDialog(NetPlayUI* dialog);
 
@@ -101,12 +97,13 @@ public:
 	virtual void OnConnectReady(ENetAddress addr) override ON(NET);
 	virtual void OnConnectFailed(u8 reason) override ON(NET);
 
-	std::function<void(NetPlayClient*)> m_state_callback;
-protected:
-	#if 0
-	void ClearBuffers() /* on multiple */;
-	#endif
+	// temporarily public, to replace with GetPacketToSendLater	
+	void SendPacket(Packet&& packet);
+	void OnPacketErrorFromIOSync();
 
+	std::function<void(NetPlayClient*)> m_state_callback;
+	PlayerId		m_pid;
+protected:
 	std::recursive_mutex m_crit;
 
 	NetPlayUI*		m_dialog;
@@ -118,32 +115,23 @@ protected:
 	std::string		m_selected_game ACCESS_ON(NET);
 	volatile bool	m_is_running;
 
-	unsigned int	m_target_buffer_size;
+	// frame delay
+	u32				m_delay;
 
 	Player*		m_local_player GUARDED_BY(m_crit);
 	std::string m_local_name ACCESS_ON(NET);
 
-	u32		m_current_game;
+	IOSync::BackendNetPlay* m_backend;
 
-	#if 0
-	PadMapping	m_pad_map[4];
-	PadMapping	m_wiimote_map[4];
-	#endif
+	u32		m_current_game;
 
 	bool m_is_recording;
 
 private:
-	#if 0
-	void UpdateDevices() /* on multiple, this sucks */;
-	void SendPadState(const PadMapping in_game_pad, const NetPad& np) /* ON(CPU) */;
-	void SendWiimoteState(const PadMapping in_game_pad, const NetWiimote& nw) /* ON(CPU) */;
-	#endif
 	void OnData(Packet&& packet) ON(NET);
 	void OnDisconnect(int reason) ON(NET);
-	void SendPacket(Packet&& packet);
 	void DoDirectConnect(const ENetAddress& addr);
 
-	PlayerId		m_pid;
 	std::map<PlayerId, Player>	m_players GUARDED_BY(m_crit);
 	std::unique_ptr<ENetHostClient> m_host_client;
 	Common::Event m_have_dialog_event;

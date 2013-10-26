@@ -438,14 +438,16 @@ void CSIDevice_AMBaseboard::EnqueueLocalData()
 {
 	SReport PadStatus;
 	memset(&PadStatus, 0, sizeof(PadStatus));
-	Pad::GetStatus(ISIDevice::m_iDeviceNumber, &PadStatus);
+	Pad::GetStatus(GetLocalIndex(), &PadStatus);
 	g_SISyncClass.EnqueueLocalReport(GetLocalIndex(), PadStatus);
 }
 
 // Not really used on GC-AM
 bool CSIDevice_AMBaseboard::GetData(u32& _Hi, u32& _Low)
 {
-	m_CurrentPadStatus = g_SISyncClass.DequeueReport<SReport>(ISIDevice::m_iDeviceNumber);
+	g_SISyncClass.DequeueReport<SReport>(ISIDevice::m_iDeviceNumber, [=](SReport&& report) {
+		m_CurrentPadStatus = report;
+	});
 	_Low = 0;
 	_Hi  = 0x00800000;
 

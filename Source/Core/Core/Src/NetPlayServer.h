@@ -14,6 +14,7 @@
 #include "NetPlayProto.h"
 #include "FifoQueue.h"
 #include "TraversalClient.h"
+#include "IOSync.h"
 
 #include <functional>
 #include <unordered_set>
@@ -31,14 +32,6 @@ public:
 	void SetNetSettings(const NetSettings &settings) /* ON(GUI) */;
 
 	bool StartGame(const std::string &path) /* ON(GUI) */;
-
-#if 0
-	void GetPadMapping(PadMapping map[]) /* ON(GUI) */;
-	void SetPadMapping(const PadMapping map[]) /* ON(GUI) */;
-
-	void GetWiimoteMapping(PadMapping map[]) /* ON(GUI) */;
-	void SetWiimoteMapping(const PadMapping map[]) /* ON(GUI) */;
-#endif
 
 	void AdjustPadBufferSize(unsigned int size) /* multiple threads */;
 
@@ -62,6 +55,8 @@ private:
 		u32 ping;
 		u32 current_game;
 		bool connected;
+		// Should we not bother with unreliable packets?
+		bool is_localhost;
 	};
 
 	void SendToClients(Packet&& packet, const PlayerId skip_pid = -1) NOT_ON(NET);
@@ -69,10 +64,6 @@ private:
 	MessageId OnConnect(PlayerId pid, Packet& hello) ON(NET);
 	void OnDisconnect(PlayerId pid) ON(NET);
 	void OnData(PlayerId pid, Packet&& packet) ON(NET);
-#if 0
-	void UpdatePadMapping() /* multiple threads */;
-	void UpdateWiimoteMapping() /* multiple threads */;
-#endif
 	void UpdatePings() ON(NET);
 	std::vector<std::pair<std::string, std::string>> GetInterfaceListInternal();
 
@@ -84,10 +75,17 @@ private:
 	bool            m_update_pings;
 	u32		m_current_game;
 	u32				m_target_buffer_size;
-#if 0
-	PadMapping      m_pad_map[4];
-	PadMapping      m_wiimote_map[4];
-#endif
+
+	// Note about disconnects: Imagine a single player plus
+	// spectators.  The client should not have to wait for the
+	// server for each frame.  However, if the server decides to
+	// change the mapping, the client must not desync.
+	// Therefore, in lieu of more complicated solutions,
+	// disconnects that will be a surprise for the disconnected
+	// user (i.e. not a disconnect request or the user
+	// disconnecting) must be scheduled for the far future.
+
+	std::pair<PlayerId, s8> m_device_map[IOSync::Class::NumClasses][IOSync::Class::MaxDeviceIndex];
 
 	std::vector<Client>	m_players;
 	unsigned m_num_players;
