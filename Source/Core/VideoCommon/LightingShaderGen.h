@@ -137,7 +137,7 @@ static void GenerateLightingShader(T& object, LightingUidData& uid_data, int com
 		}
 		else // from color
 		{
-			object.Write("mat = %s[%d];\n", materialsName, j+2);
+			object.Write("mat = float4(%s[%d])/255.0f;\n", materialsName, j+2);
 		}
 
 		uid_data.enablelighting |= xfregs.color[j].enablelighting << j;
@@ -158,7 +158,7 @@ static void GenerateLightingShader(T& object, LightingUidData& uid_data, int com
 			}
 			else // from color
 			{
-				object.Write("lacc = %s[%d];\n", materialsName, j);
+				object.Write("lacc = float4(%s[%d])/255.0f;\n", materialsName, j);
 			}
 		}
 		else
@@ -180,7 +180,7 @@ static void GenerateLightingShader(T& object, LightingUidData& uid_data, int com
 			}
 			else // from color
 			{
-				object.Write("mat.w = %s[%d].w;\n", materialsName, j+2);
+				object.Write("mat.w = float(%s[%d].w) / 255.0f;\n", materialsName, j+2);
 			}
 		}
 
@@ -200,7 +200,7 @@ static void GenerateLightingShader(T& object, LightingUidData& uid_data, int com
 			}
 			else // from color
 			{
-				object.Write("lacc.w = %s[%d].w;\n", materialsName, j);
+				object.Write("lacc.w = float(%s[%d].w) / 255.0f;\n", materialsName, j);
 			}
 		}
 		else

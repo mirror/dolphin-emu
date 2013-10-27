@@ -290,7 +290,7 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 	// For pixel lighting - TODO: Should only be defined when per pixel lighting is enabled!
 	DeclareUniform(out, ApiType, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_PLIGHT_COLORS, "int4", I_PLIGHT_COLORS"[8]");
 	DeclareUniform(out, ApiType, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_PLIGHTS, "float4", I_PLIGHTS"[32]");
-	DeclareUniform(out, ApiType, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_PMATERIALS, "float4", I_PMATERIALS"[4]");
+	DeclareUniform(out, ApiType, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_PMATERIALS, "int4", I_PMATERIALS"[4]");
 
 	if (g_ActiveConfig.backend_info.bSupportsGLSLUBO)
 		out.Write("};\n");
