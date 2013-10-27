@@ -14,6 +14,12 @@
 #elif __has_include(<mutex>) && !ANDROID && !defined(THREAD_SAFETY_ANNOTATIONS)
 // Clang + libc++
 #include <mutex>
+
+#elif _MSC_VER >= 1700
+
+// The standard implementation is included since VS2012
+#include <mutex>
+
 #else
 
 // partial <mutex> implementation for win32/pthread
