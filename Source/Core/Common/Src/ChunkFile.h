@@ -39,7 +39,10 @@ struct LinkedListItem : public T
 };
 
 // Like std::vector<u8> but without initialization to 0 and some extra methods.
-class PWBuffer : public NonCopyable
+class PWBuffer
+#ifndef _WIN32
+	: public NonCopyable
+#endif
 {
 public:
 	static struct _NoCopy {} NoCopy;
@@ -80,6 +83,19 @@ public:
 	{
 		return PWBuffer(m_Data, m_Size);
 	}
+#ifdef _WIN32
+	// Get rid of this crap when we switch to VC2013.
+	PWBuffer(const PWBuffer& buffer)
+	{
+		init();
+		append(buffer.data(), buffer.size());
+	}
+	void operator=(const PWBuffer& buffer)
+	{
+		clear();
+		append(buffer.data(), buffer.size());
+	}
+#endif
 	void swap(PWBuffer& other)
 	{
 		std::swap(m_Data, other.m_Data);
@@ -103,7 +119,7 @@ public:
 		}
 	}
 	void clear() { resize(0); }
-	void append(void* inData, size_t _size)
+	void append(const void* inData, size_t _size)
 	{
 		size_t old = m_Size;
 		resize(old + _size);
