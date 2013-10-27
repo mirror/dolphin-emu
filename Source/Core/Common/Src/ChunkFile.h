@@ -15,6 +15,7 @@
 // - Zero backwards/forwards compatibility
 // - Serialization code for anything complex has to be manually written.
 
+#include <algorithm>
 #include <map>
 #include <set>
 #include <vector>
@@ -160,8 +161,9 @@ private:
 class Packet;
 
 // ewww
-#if _LIBCPP_VERSION
-#define IsTriviallyCopyable(T) std::is_trivially_copyable<T>::value
+#if _LIBCPP_VERSION || defined(_WIN32)
+// is_pod is needed due to a VS2013 bug: https://connect.microsoft.com/VisualStudio/feedback/details/806233
+#define IsTriviallyCopyable(T) (std::is_trivially_copyable<T>::value || std::is_pod<T>::value)
 #elif __GNUC__
 #define IsTriviallyCopyable(T) std::has_trivial_copy_constructor<T>::value
 #elif defined(_WIN32)
