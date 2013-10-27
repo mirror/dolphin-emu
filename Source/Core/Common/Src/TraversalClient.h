@@ -8,6 +8,7 @@
 #include "TraversalProto.h"
 #include "enet/enet.h"
 #include <functional>
+#include <memory>
 #include <list>
 #include "Timer.h"
 #include "ChunkFile.h"
