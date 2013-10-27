@@ -77,8 +77,9 @@ public:
 	void CreateThread();
 	void Reset();
 
-	void BroadcastPacket(Packet&& packet, ENetPeer* except = NULL, bool queued = false) ON(NET);
+	void BroadcastPacket(Packet&& packet, ENetPeer* except = NULL) ON(NET);
 	void SendPacket(ENetPeer* peer, Packet&& packet) ON(NET);
+	void MaybeProcessPacketQueue() ON(NET);
 	void ProcessPacketQueue() ON(NET);
 
 	TraversalClientClient* m_Client;
@@ -88,14 +89,15 @@ protected:
 private:
 	struct OutgoingPacketInfo
 	{
-		OutgoingPacketInfo(Packet&& packet, ENetPeer* except, u16 seq)
-		: m_Packet(std::move(packet)), m_Except(except), m_DidSendReliably(false), m_NumSends(0), m_GlobalSequenceNumber(seq) {}
+		OutgoingPacketInfo(Packet&& packet, ENetPeer* except, u16 seq, u64 ticker)
+		: m_Packet(std::move(packet)), m_Except(except), m_DidSendReliably(false), m_NumSends(0), m_GlobalSequenceNumber(seq), m_Ticker(ticker) {}
 
 		Packet m_Packet;
 		ENetPeer* m_Except;
 		bool m_DidSendReliably;
 		int m_NumSends;
 		u16 m_GlobalSequenceNumber;
+		u64 m_Ticker;
 	};
 
 	struct PeerInfo
@@ -105,6 +107,7 @@ private:
 		u16 m_IncomingSequenceNumber;
 		u16 m_OutgoingSequenceNumber;
 		u16 m_GlobalSeqToSeq[65536];
+		u64 m_ConnectTicker;
 	};
 
 	void ThreadFunc() /* ON(NET) */;
@@ -121,6 +124,7 @@ private:
 	Common::Timer m_SendTimer ACCESS_ON(NET);
 	std::vector<PeerInfo> m_PeerInfo ACCESS_ON(NET);
 	u16 m_GlobalSequenceNumber ACCESS_ON(NET);
+	u64 m_GlobalTicker ACCESS_ON(NET);
 };
 
 class TraversalClient : public ENetHostClient

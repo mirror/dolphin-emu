@@ -82,7 +82,7 @@ void BackendNetPlay::ConnectLocalDevice(int classId, int localIndex, PWBuffer&& 
 	pac.W((PlayerId) 0); // dummy
 	pac.W((u8) 0); // dummy
 	pac.vec->append(buf);
-	m_Client->SendPacket(std::move(pac), /*queued=*/true);
+	m_Client->SendPacket(std::move(pac));
 }
 
 void BackendNetPlay::DisconnectLocalDevice(int classId, int localIndex)
@@ -95,7 +95,7 @@ void BackendNetPlay::DisconnectLocalDevice(int classId, int localIndex)
 	pac.W((u8) classId);
 	pac.W((u8) localIndex);
 	pac.W((u8) 0); // flags
-	m_Client->SendPacket(std::move(pac), /*queued=*/true);
+	m_Client->SendPacket(std::move(pac));
 }
 
 void BackendNetPlay::EnqueueLocalReport(int classId, int localIndex, PWBuffer&& buf)
@@ -114,7 +114,7 @@ void BackendNetPlay::EnqueueLocalReport(int classId, int localIndex, PWBuffer&& 
 	pac.vec->append(buf);
 	// server won't send our own reports back to us
 	ProcessPacket(pac.vec->copy());
-	m_Client->SendPacket(std::move(pac), /*queued=*/true);
+	m_Client->SendPacket(std::move(pac));
 }
 
 Packet BackendNetPlay::DequeueReport(int classId, int index, bool* keepGoing)

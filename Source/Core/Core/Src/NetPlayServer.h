@@ -59,8 +59,8 @@ private:
 		//bool is_localhost;
 	};
 
-	void SendToClients(Packet&& packet, const PlayerId skip_pid = -1, bool queued = false) NOT_ON(NET);
-	void SendToClientsOnThread(Packet&& packet, const PlayerId skip_pid = -1, bool queued = false) ON(NET);
+	void SendToClients(Packet&& packet, const PlayerId skip_pid = -1) NOT_ON(NET);
+	void SendToClientsOnThread(Packet&& packet, const PlayerId skip_pid = -1) ON(NET);
 	MessageId OnConnect(PlayerId pid, Packet& hello) ON(NET);
 	void OnDisconnect(PlayerId pid) ON(NET);
 	void UpdatePings() ON(NET);

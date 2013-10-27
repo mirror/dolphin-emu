@@ -98,7 +98,7 @@ public:
 	virtual void OnConnectReady(ENetAddress addr) override ON(NET);
 	virtual void OnConnectFailed(u8 reason) override ON(NET);
 
-	void SendPacket(Packet&& packet, bool queued = false);
+	void SendPacket(Packet&& packet);
 	void OnPacketErrorFromIOSync();
 
 	std::function<void(NetPlayClient*)> m_state_callback;

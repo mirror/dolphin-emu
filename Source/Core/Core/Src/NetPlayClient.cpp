@@ -96,12 +96,12 @@ void NetPlayClient::SetDialog(NetPlayUI* dialog)
 	m_have_dialog_event.Set();
 }
 
-void NetPlayClient::SendPacket(Packet&& packet, bool queued)
+void NetPlayClient::SendPacket(Packet&& packet)
 {
 	CopyAsMove<Packet> tmp(std::move(packet));
 	g_TraversalClient->RunOnThread([=]() mutable {
 		ASSUME_ON(NET);
-		m_host_client->BroadcastPacket(std::move(*tmp), NULL, queued);
+		m_host_client->BroadcastPacket(std::move(*tmp), NULL);
 	});
 }
 

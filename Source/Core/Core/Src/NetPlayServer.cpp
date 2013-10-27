@@ -470,7 +470,7 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 
 			if (m_device_map[classId][index].first == pid)
 			{
-				SendToClientsOnThread(std::move(packet), pid, /*queued=*/true);
+				SendToClientsOnThread(std::move(packet), pid);
 			}
 			else
 			{
@@ -573,7 +573,7 @@ bool NetPlayServer::StartGame(const std::string &path)
 	return true;
 }
 
-void NetPlayServer::SendToClients(Packet&& packet, const PlayerId skip_pid, bool queued)
+void NetPlayServer::SendToClients(Packet&& packet, const PlayerId skip_pid)
 {
 	CopyAsMove<Packet> tmp(std::move(packet));
 	g_TraversalClient->RunOnThread([=]() mutable {
@@ -583,9 +583,9 @@ void NetPlayServer::SendToClients(Packet&& packet, const PlayerId skip_pid, bool
 }
 
 
-void NetPlayServer::SendToClientsOnThread(Packet&& packet, const PlayerId skip_pid, bool queued)
+void NetPlayServer::SendToClientsOnThread(Packet&& packet, const PlayerId skip_pid)
 {
-	g_TraversalClient->BroadcastPacket(std::move(packet), skip_pid >= m_host->peerCount ? NULL : &m_host->peers[skip_pid], queued);
+	g_TraversalClient->BroadcastPacket(std::move(packet), skip_pid >= m_host->peerCount ? NULL : &m_host->peers[skip_pid]);
 }
 
 void NetPlayServer::SetDialog(NetPlayUI* dialog)

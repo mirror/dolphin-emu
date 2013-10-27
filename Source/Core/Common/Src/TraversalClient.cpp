@@ -131,23 +131,18 @@ void ENetHostClient::Reset()
 	m_Client = NULL;
 }
 
-void ENetHostClient::BroadcastPacket(Packet&& packet, ENetPeer* except, bool queued)
+void ENetHostClient::BroadcastPacket(Packet&& packet, ENetPeer* except)
 {
-	if (queued && packet.vec->size() < MaxShortPacketLength)
+	if (packet.vec->size() < MaxShortPacketLength)
 	{
 		u16 seq = m_GlobalSequenceNumber++;
-		m_OutgoingPacketInfo.push_back(OutgoingPacketInfo(std::move(packet), except, seq));
+		m_OutgoingPacketInfo.push_back(OutgoingPacketInfo(std::move(packet), except, seq, m_GlobalTicker++));
 		size_t peer = 0;
 		for (auto it = m_PeerInfo.begin(); it != m_PeerInfo.end(); ++it, ++peer)
 		{
 			if (&m_Host->peers[peer] == except)
 				continue;
 			(*it).m_GlobalSeqToSeq[seq] = (*it).m_OutgoingSequenceNumber++;
-		}
-		if (m_SendTimer.GetTimeDifference() > 6)
-		{
-			ProcessPacketQueue();
-			m_SendTimer.Update();
 		}
 	}
 	else
@@ -195,6 +190,15 @@ void ENetHostClient::SendPacket(ENetPeer* peer, Packet&& packet)
 	ENetUtil::SendPacket(peer, std::move(container));
 }
 
+void ENetHostClient::MaybeProcessPacketQueue()
+{
+	if (m_SendTimer.GetTimeDifference() > 6)
+	{
+		ProcessPacketQueue();
+		m_SendTimer.Update();
+	}
+}
+
 void ENetHostClient::ProcessPacketQueue()
 {
 	// The idea is that we send packets n-1 times unreliably and n times
@@ -226,7 +230,8 @@ void ENetHostClient::ProcessPacketQueue()
 			OutgoingPacketInfo& info = *it;
 			if (info.m_Except == peer)
 				continue;
-			// XXX - fix situation where someone connects while this is queued
+			if (pi.m_ConnectTicker > info.m_Ticker)
+				continue;
 			p.W(pi.m_GlobalSeqToSeq[info.m_GlobalSequenceNumber]);
 			p.Do((PointerWrap&) info.m_Packet);
 			info.m_DidSendReliably = info.m_DidSendReliably || needReliable;
@@ -257,7 +262,7 @@ void ENetHostClient::ThreadFunc()
 			PanicAlert("enet_socket_get_address failed.");
 			continue;
 		}
-		int count = enet_host_service(m_Host, &event, m_Host->connectedPeers > 0 ? 10 : 300);
+		int count = enet_host_service(m_Host, &event, m_Host->connectedPeers > 0 ? 5 : 300);
 		if (count < 0)
 		{
 			PanicAlert("enet_host_service failed... do something about this.");
@@ -282,12 +287,14 @@ void ENetHostClient::ThreadFunc()
 				m_PeerInfo[pid].m_IncomingPackets.clear();
 				m_PeerInfo[pid].m_IncomingSequenceNumber = 0;
 				m_PeerInfo[pid].m_OutgoingSequenceNumber = 0;
+				m_PeerInfo[pid].m_ConnectTicker = m_GlobalTicker++;
 				}
 				/* fall through */
 			default:
 				m_Client->OnENetEvent(&event);
 			}
 		}
+		MaybeProcessPacketQueue();
 	}
 }
 
