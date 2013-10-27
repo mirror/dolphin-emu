@@ -83,15 +83,16 @@ void PixelShaderManager::SetConstants(u32 components)
 			// they always seems to be larger than 256 so my theory is :
 			// they are the coefficients from the center to the border of the screen
 			// so to simplify I use the hi coefficient as K in the shader taking 256 as the scale
-			constants.fog[2][0] = ScreenSpaceCenter;
-			constants.fog[2][1] = (float)Renderer::EFBToScaledX((int)(2.0f * xfregs.viewport.wd));
-			constants.fog[2][2] = bpmem.fogRange.K[4].HI / 256.0f;
+			// TODO: Shouldn't this be EFBToScaledXf?
+			constants.fog[1][0] = ScreenSpaceCenter;
+			constants.fog[1][1] = (float)Renderer::EFBToScaledX((int)(2.0f * xfregs.viewport.wd));
+			constants.fog[1][2] = bpmem.fogRange.K[4].HI / 256.0f;
 		}
 		else
 		{
-			constants.fog[2][0] = 0;
-			constants.fog[2][1] = 1;
-			constants.fog[2][2] = 1;
+			constants.fog[1][0] = 0;
+			constants.fog[1][1] = 1;
+			constants.fog[1][2] = 1;
 		}
 		dirty = true;
 
@@ -272,9 +273,9 @@ void PixelShaderManager::SetTexCoordChanged(u8 texmapid)
 
 void PixelShaderManager::SetFogColorChanged()
 {
-	constants.fog[0][0] = bpmem.fog.color.r / 255.0f;
-	constants.fog[0][1] = bpmem.fog.color.g / 255.0f;
-	constants.fog[0][2] = bpmem.fog.color.b / 255.0f;
+	constants.fogcolor[0] = bpmem.fog.color.r;
+	constants.fogcolor[1] = bpmem.fog.color.g;
+	constants.fogcolor[2] = bpmem.fog.color.b;
 	dirty = true;
 }
 
@@ -289,10 +290,10 @@ void PixelShaderManager::SetFogParamChanged()
 	}
 	else
 	{
-		constants.fog[1][0] = 0;
-		constants.fog[1][1] = 1;
-		constants.fog[1][2] = 0;
-		constants.fog[1][3] = 1;
+		constants.fog[0][0] = 0;
+		constants.fog[0][1] = 1;
+		constants.fog[0][2] = 0;
+		constants.fog[0][3] = 1;
 	}
 	dirty = true;
 }
