@@ -153,7 +153,6 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 	if (packet.failure)
 		return OnDisconnect(InvalidPacket);
 
-	size_t offset;
 	switch (mid)
 	{
 	case NP_MSG_PLAYER_JOIN :
@@ -237,7 +236,6 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 			packet.Do(m_delay);
 			if (packet.failure)
 				return OnDisconnect(InvalidPacket);
-			offset = 0;
 			if (!m_backend)
 				break;
 			/* fall through */

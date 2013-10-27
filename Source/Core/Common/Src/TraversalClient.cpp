@@ -333,7 +333,6 @@ void ENetHostClient::OnReceive(ENetEvent* event, Packet&& packet)
 				goto skip;
 			}
 
-			Packet sub;
 			packet.Do(buf);
 			if (packet.failure)
 				goto failure;

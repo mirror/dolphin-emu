@@ -185,7 +185,7 @@ void BackendNetPlay::ProcessIncomingPackets()
 
 void BackendNetPlay::ProcessPacket(Packet&& p)
 {
-	MessageId packetType;
+	MessageId packetType = 0;
 	u8 classId, index, flags;
 	p.Do(packetType);
 	if (packetType != NP_MSG_PAD_BUFFER)

@@ -132,10 +132,10 @@ public:
 	}
 	u8* release_data()
 	{
-		u8* data = m_Data;
+		u8* _data = m_Data;
 		m_Data = NULL;
 		m_Size = m_Capacity = 0;
-		return data;
+		return _data;
 	}
 	u8* data() { return m_Data; }
 	const u8* data() const { return m_Data; }
