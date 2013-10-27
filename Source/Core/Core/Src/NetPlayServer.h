@@ -38,6 +38,7 @@ public:
 	void SetDialog(NetPlayUI* dialog);
 
 	virtual void OnENetEvent(ENetEvent*) override ON(NET);
+	virtual void OnData(ENetEvent* event, Packet&& packet) ON(NET);
 	virtual void OnTraversalStateChanged() override ON(NET);
 	virtual void OnConnectReady(ENetAddress addr) override {}
 	virtual void OnConnectFailed(u8 reason) override ON(NET) {}
@@ -55,15 +56,13 @@ private:
 		u32 ping;
 		u32 current_game;
 		bool connected;
-		// Should we not bother with unreliable packets?
-		bool is_localhost;
+		//bool is_localhost;
 	};
 
-	void SendToClients(Packet&& packet, const PlayerId skip_pid = -1) NOT_ON(NET);
-	void SendToClientsOnThread(Packet&& packet, const PlayerId skip_pid = -1) ON(NET);
+	void SendToClients(Packet&& packet, const PlayerId skip_pid = -1, bool queued = false) NOT_ON(NET);
+	void SendToClientsOnThread(Packet&& packet, const PlayerId skip_pid = -1, bool queued = false) ON(NET);
 	MessageId OnConnect(PlayerId pid, Packet& hello) ON(NET);
 	void OnDisconnect(PlayerId pid) ON(NET);
-	void OnData(PlayerId pid, Packet&& packet) ON(NET);
 	void UpdatePings() ON(NET);
 	std::vector<std::pair<std::string, std::string>> GetInterfaceListInternal();
 

@@ -9,17 +9,30 @@
 #include "enet/enet.h"
 #include <functional>
 #include <list>
+#include "Timer.h"
+#include "ChunkFile.h"
 
 DEFINE_THREAD_HAT(NET);
 
 #define MAX_CLIENTS 200
 
-#include "ChunkFile.h"
+static inline void DumpBuf(PWBuffer& buf)
+{
+	printf("+00:");
+	int c = 0;
+	for (size_t i = 0; i < buf.size(); i++)
+	{
+		printf(" %02x", buf.data()[i]);
+		if (++c % 16 == 0)
+			printf("\n+%02x:", c);
+	}
+	printf("\n");
+}
+
 namespace ENetUtil
 {
 	ENetPacket* MakeENetPacket(Packet&& pac, enet_uint32 flags);
-	void BroadcastPacket(ENetHost* host, Packet&& pac) ON(NET);
-	void SendPacket(ENetPeer* peer, Packet&& pac) ON(NET);
+	void SendPacket(ENetPeer* peer, Packet&& pac, bool reliable = true) ON(NET);
 	Packet MakePacket(ENetPacket* epacket);
 	void Wakeup(ENetHost* host);
 	int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event) /* ON(NET) */;
@@ -42,7 +55,8 @@ private:
 class TraversalClientClient
 {
 public:
-	virtual void OnENetEvent(ENetEvent*) ON(NET) = 0;
+	virtual void OnENetEvent(ENetEvent* event) ON(NET) = 0;
+	virtual void OnData(ENetEvent* event, Packet&& packet) ON(NET) = 0;
 	virtual void OnTraversalStateChanged() ON(NET) = 0;
 	virtual void OnConnectReady(ENetAddress addr) ON(NET) = 0;
 	virtual void OnConnectFailed(u8 reason) ON(NET) = 0;
@@ -51,18 +65,50 @@ public:
 class ENetHostClient
 {
 public:
+	enum
+	{
+		MaxPacketSends = 4,
+		MaxShortPacketLength = 128
+	};
+
 	ENetHostClient(size_t peerCount, u16 port, bool isTraversalClient = false);
 	~ENetHostClient();
 	void RunOnThread(std::function<void()> func) NOT_ON(NET);
 	void CreateThread();
 	void Reset();
 
+	void BroadcastPacket(Packet&& packet, ENetPeer* except = NULL, bool queued = false) ON(NET);
+	void SendPacket(ENetPeer* peer, Packet&& packet) ON(NET);
+	void ProcessPacketQueue() ON(NET);
+
 	TraversalClientClient* m_Client;
 	ENetHost* m_Host;
 protected:
 	virtual void HandleResends() ON(NET) {}
 private:
+	struct OutgoingPacketInfo
+	{
+		OutgoingPacketInfo(Packet&& packet, ENetPeer* except, u16 seq)
+		: m_Packet(std::move(packet)), m_Except(except), m_DidSendReliably(false), m_NumSends(0), m_GlobalSequenceNumber(seq) {}
+
+		Packet m_Packet;
+		ENetPeer* m_Except;
+		bool m_DidSendReliably;
+		int m_NumSends;
+		u16 m_GlobalSequenceNumber;
+	};
+
+	struct PeerInfo
+	{
+		std::deque<PWBuffer> m_IncomingPackets;
+		// the sequence number of the first element of m_IncomingPackets
+		u16 m_IncomingSequenceNumber;
+		u16 m_OutgoingSequenceNumber;
+		u16 m_GlobalSeqToSeq[65536];
+	};
+
 	void ThreadFunc() /* ON(NET) */;
+	void OnReceive(ENetEvent* event, Packet&& packet) ON(NET);
 
 	Common::FifoQueue<std::function<void()>, false> m_RunQueue;
 	std::mutex m_RunQueueWriteLock;
@@ -70,6 +116,11 @@ private:
 	Common::Event m_ResetEvent;
 	bool m_ShouldEndThread ACCESS_ON(NET);
 	bool m_isTraversalClient;
+
+	std::deque<OutgoingPacketInfo> m_OutgoingPacketInfo ACCESS_ON(NET);
+	Common::Timer m_SendTimer ACCESS_ON(NET);
+	std::vector<PeerInfo> m_PeerInfo ACCESS_ON(NET);
+	u16 m_GlobalSequenceNumber ACCESS_ON(NET);
 };
 
 class TraversalClient : public ENetHostClient
@@ -104,7 +155,7 @@ public:
 protected:
 	virtual void HandleResends() ON(NET);
 private:
-	struct OutgoingPacketInfo
+	struct OutgoingTraversalPacketInfo
 	{
 		TraversalPacket packet;
 		int tries;
@@ -112,15 +163,15 @@ private:
 	};
 
 	void HandleServerPacket(TraversalPacket* packet) ON(NET);
-	void ResendPacket(OutgoingPacketInfo* info) ON(NET);
-	TraversalRequestId SendPacket(const TraversalPacket& packet) ON(NET);
+	void ResendPacket(OutgoingTraversalPacketInfo* info) ON(NET);
+	TraversalRequestId SendTraversalPacket(const TraversalPacket& packet) ON(NET);
 	void OnFailure(int reason) ON(NET);
 	static int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event) /* ON(NET) */;
 	void HandlePing() ON(NET);
 
 	TraversalRequestId m_ConnectRequestId;
 	bool m_PendingConnect;
-	std::list<OutgoingPacketInfo> m_OutgoingPackets ACCESS_ON(NET);
+	std::list<OutgoingTraversalPacketInfo> m_OutgoingTraversalPackets ACCESS_ON(NET);
 	ENetAddress m_ServerAddress;
 	enet_uint32 m_PingTime;
 	std::string m_Server;

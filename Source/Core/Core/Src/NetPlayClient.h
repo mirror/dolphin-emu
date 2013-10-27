@@ -92,13 +92,13 @@ public:
 
 	void SetDialog(NetPlayUI* dialog);
 
-	virtual void OnENetEvent(ENetEvent*) override ON(NET);
+	virtual void OnENetEvent(ENetEvent* event) override ON(NET);
+	virtual void OnData(ENetEvent* event, Packet&& packet) override ON(NET);
 	virtual void OnTraversalStateChanged() override ON(NET);
 	virtual void OnConnectReady(ENetAddress addr) override ON(NET);
 	virtual void OnConnectFailed(u8 reason) override ON(NET);
 
-	// temporarily public, to replace with GetPacketToSendLater	
-	void SendPacket(Packet&& packet);
+	void SendPacket(Packet&& packet, bool queued = false);
 	void OnPacketErrorFromIOSync();
 
 	std::function<void(NetPlayClient*)> m_state_callback;
@@ -128,12 +128,12 @@ protected:
 	bool m_is_recording;
 
 private:
-	void OnData(Packet&& packet) ON(NET);
 	void OnDisconnect(int reason) ON(NET);
 	void DoDirectConnect(const ENetAddress& addr);
 
 	std::map<PlayerId, Player>	m_players GUARDED_BY(m_crit);
-	std::unique_ptr<ENetHostClient> m_host_client;
+	std::unique_ptr<ENetHostClient> m_host_client_store;
+	ENetHostClient* m_host_client;
 	Common::Event m_have_dialog_event;
 };
 

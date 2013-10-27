@@ -74,7 +74,6 @@ BackendNetPlay::BackendNetPlay(NetPlayClient* client, u32 delay)
 void BackendNetPlay::ConnectLocalDevice(int classId, int localIndex, PWBuffer&& buf)
 {
 	WARN_LOG(NETPLAY, "Local connection class %d device %d", classId, localIndex);
-	//Packet* pac = m_Client->GetPacketToSendLater();
 	Packet pac;
 	pac.W((MessageId) NP_MSG_CONNECT_DEVICE);
 	pac.W((u8) classId);
@@ -83,7 +82,7 @@ void BackendNetPlay::ConnectLocalDevice(int classId, int localIndex, PWBuffer&& 
 	pac.W((PlayerId) 0); // dummy
 	pac.W((u8) 0); // dummy
 	pac.vec->append(buf);
-	m_Client->SendPacket(std::move(pac));
+	m_Client->SendPacket(std::move(pac), /*queued=*/true);
 }
 
 void BackendNetPlay::DisconnectLocalDevice(int classId, int localIndex)
@@ -91,24 +90,16 @@ void BackendNetPlay::DisconnectLocalDevice(int classId, int localIndex)
 	WARN_LOG(NETPLAY, "Local disconnection class %d device %d", classId, localIndex);
 	g_Classes[classId]->SetIndex(-1, localIndex);
 
-	//Packet* pac = m_Client->GetPacketToSendLater();
 	Packet pac;
 	pac.W((MessageId) NP_MSG_DISCONNECT_DEVICE);
 	pac.W((u8) classId);
 	pac.W((u8) localIndex);
 	pac.W((u8) 0); // flags
-	m_Client->SendPacket(std::move(pac));
+	m_Client->SendPacket(std::move(pac), /*queued=*/true);
 }
 
 void BackendNetPlay::EnqueueLocalReport(int classId, int localIndex, PWBuffer&& buf)
 {
-	/*
-	printf("sending ...");
-	for (int i = 0; i < buf.size(); i++)
-		printf("%02x ", *(u8 *) (buf.data() + i));
-	printf("\n");
-	*/
-	//Packet* pac = m_Client->GetPacketToSendLater();
 	int ri = g_Classes[classId]->GetRemoteIndex(localIndex);
 	if (ri == -1)
 		return;
@@ -123,7 +114,7 @@ void BackendNetPlay::EnqueueLocalReport(int classId, int localIndex, PWBuffer&& 
 	pac.vec->append(buf);
 	// server won't send our own reports back to us
 	ProcessPacket(pac.vec->copy());
-	m_Client->SendPacket(std::move(pac));
+	m_Client->SendPacket(std::move(pac), /*queued=*/true);
 }
 
 Packet BackendNetPlay::DequeueReport(int classId, int index, bool* keepGoing)
@@ -132,6 +123,7 @@ Packet BackendNetPlay::DequeueReport(int classId, int index, bool* keepGoing)
 	const bool& isConnected = g_Classes[classId]->IsConnected(index);
 	while (1)
 	{
+		//printf("dev=%llu past=%llu\n", deviceInfo.m_SubframeId, m_PastSubframeId);
 		if (!isConnected || deviceInfo.m_SubframeId > m_PastSubframeId)
 		{
 			*keepGoing = false;
@@ -150,6 +142,7 @@ Packet BackendNetPlay::DequeueReport(int classId, int index, bool* keepGoing)
 				return PWBuffer();
 			}
 			deviceInfo.m_SubframeId += skippedFrames;
+			//printf("--> dev=%llu past=%llu ql=%zd\n", deviceInfo.m_SubframeId, m_PastSubframeId, queue.size());
 			*keepGoing = deviceInfo.m_SubframeId < m_PastSubframeId;
 			Packet q = std::move(p);
 			queue.pop_front();

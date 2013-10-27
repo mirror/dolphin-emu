@@ -50,7 +50,8 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 	{
 		// Direct or local connection.  Don't use TraversalClient.
 		m_direct_connection = true;
-		m_host_client.reset(new ENetHostClient(/*peerCount=*/1, /*port=*/0));
+		m_host_client_store.reset(new ENetHostClient(/*peerCount=*/1, /*port=*/0));
+		m_host_client = m_host_client_store.get();
 		if (!m_host_client->m_Host)
 			return;
 		m_host_client->m_Client = this;
@@ -71,6 +72,7 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 		EnsureTraversalClient(SConfig::GetInstance().m_LocalCoreStartupParameter.strNetPlayCentralServer, 0);
 		if (!g_TraversalClient)
 			return;
+		m_host_client = g_TraversalClient.get();
 		// If we were disconnected in the background, reconnect.
 		if (g_TraversalClient->m_State == TraversalClient::Failure)
 			g_TraversalClient->ReconnectToServer();
@@ -94,12 +96,12 @@ void NetPlayClient::SetDialog(NetPlayUI* dialog)
 	m_have_dialog_event.Set();
 }
 
-void NetPlayClient::SendPacket(Packet&& packet)
+void NetPlayClient::SendPacket(Packet&& packet, bool queued)
 {
 	CopyAsMove<Packet> tmp(std::move(packet));
 	g_TraversalClient->RunOnThread([=]() mutable {
 		ASSUME_ON(NET);
-		ENetUtil::BroadcastPacket(m_host, std::move(*tmp));
+		m_host_client->BroadcastPacket(std::move(*tmp), NULL, queued);
 	});
 }
 
@@ -111,7 +113,7 @@ void NetPlayClient::OnPacketErrorFromIOSync()
 	});
 }
 
-void NetPlayClient::OnData(Packet&& packet)
+void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 {
 	if (m_state == WaitingForHelloResponse)
 	{
@@ -303,14 +305,16 @@ void NetPlayClient::OnData(Packet&& packet)
 			u32 ping_key = 0;
 			packet.Do(ping_key);
 			if (packet.failure)
+			{
 				return OnDisconnect(InvalidPacket);
+			}
 
 			Packet pong;
 			pong.W((MessageId)NP_MSG_PONG);
 			pong.W(ping_key);
 
 			std::lock_guard<std::recursive_mutex> lk(m_crit);
-			ENetUtil::BroadcastPacket(m_host, std::move(pong));
+			m_host_client->BroadcastPacket(std::move(pong));
 		}
 		break;
 
@@ -371,7 +375,7 @@ void NetPlayClient::OnENetEvent(ENetEvent* event)
 		hello.W(std::string(NETPLAY_VERSION));
 		hello.W(std::string(netplay_dolphin_ver));
 		hello.W(m_local_name);
-		ENetUtil::BroadcastPacket(m_host, std::move(hello));
+		m_host_client->BroadcastPacket(std::move(hello));
 		m_state = WaitingForHelloResponse;
 		if (m_state_callback)
 			m_state_callback(this);
@@ -379,9 +383,6 @@ void NetPlayClient::OnENetEvent(ENetEvent* event)
 		}
 	case ENET_EVENT_TYPE_DISCONNECT:
 		OnDisconnect(ReceivedENetDisconnect);
-		break;
-	case ENET_EVENT_TYPE_RECEIVE:
-		OnData(ENetUtil::MakePacket(event->packet));
 		break;
 	default:
 		break;

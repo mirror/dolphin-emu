@@ -15,19 +15,15 @@ inline ENetPacket* ENetUtil::MakeENetPacket(Packet&& pac, enet_uint32 flags)
 	return packet;
 }
 
-void ENetUtil::BroadcastPacket(ENetHost* host, Packet&& pac)
+void ENetUtil::SendPacket(ENetPeer* peer, Packet&& pac, bool reliable)
 {
-	enet_host_broadcast(host, 0, MakeENetPacket(std::move(pac), ENET_PACKET_FLAG_RELIABLE));
-}
-
-void ENetUtil::SendPacket(ENetPeer* peer, Packet&& pac)
-{
-	enet_peer_send(peer, 0, MakeENetPacket(std::move(pac), ENET_PACKET_FLAG_RELIABLE));
+	enet_peer_send(peer, 0, MakeENetPacket(std::move(pac), reliable ? ENET_PACKET_FLAG_RELIABLE : ENET_PACKET_FLAG_UNSEQUENCED));
 }
 
 Packet ENetUtil::MakePacket(ENetPacket* epacket)
 {
-	Packet pac(PWBuffer(epacket->data, epacket->dataLength));
+	Packet pac(PWBuffer(epacket->data, epacket->dataLength, PWBuffer::NoCopy));
+	epacket->data = NULL;
 	enet_packet_destroy(epacket);
 	return pac;
 }
@@ -74,6 +70,8 @@ static void GetRandomishBytes(u8* buf, size_t size)
 ENetHostClient::ENetHostClient(size_t peerCount, u16 port, bool isTraversalClient)
 {
 	m_isTraversalClient = isTraversalClient;
+	m_GlobalSequenceNumber = 0;
+
 	ENetAddress addr = { ENET_HOST_ANY, port };
 	m_Host = enet_host_create(
 		&addr, // address
@@ -133,6 +131,113 @@ void ENetHostClient::Reset()
 	m_Client = NULL;
 }
 
+void ENetHostClient::BroadcastPacket(Packet&& packet, ENetPeer* except, bool queued)
+{
+	if (queued && packet.vec->size() < MaxShortPacketLength)
+	{
+		u16 seq = m_GlobalSequenceNumber++;
+		m_OutgoingPacketInfo.push_back(OutgoingPacketInfo(std::move(packet), except, seq));
+		size_t peer = 0;
+		for (auto it = m_PeerInfo.begin(); it != m_PeerInfo.end(); ++it, ++peer)
+		{
+			if (&m_Host->peers[peer] == except)
+				continue;
+			(*it).m_GlobalSeqToSeq[seq] = (*it).m_OutgoingSequenceNumber++;
+		}
+		if (m_SendTimer.GetTimeDifference() > 6)
+		{
+			ProcessPacketQueue();
+			m_SendTimer.Update();
+		}
+	}
+	else
+	{
+		Packet container;
+		container.W((u16) 0);
+		container.W((PointerWrap&) packet);
+
+		// avoid copying
+		ENetPacket* epacket = NULL;
+
+		for (ENetPeer* peer = m_Host->peers, * end = &m_Host->peers[m_Host->peerCount]; peer != end; peer++)
+		{
+			if (peer->state != ENET_PEER_STATE_CONNECTED)
+				continue;
+			if (peer == except)
+				continue;
+			u16 seq = m_PeerInfo[peer - m_Host->peers].m_OutgoingSequenceNumber++;
+			if (!epacket)
+			{
+				epacket = ENetUtil::MakeENetPacket(std::move(container), ENET_PACKET_FLAG_RELIABLE);
+			}
+			else
+			{
+				u16* oseqp = (u16 *) epacket->data;
+				if (*oseqp != seq)
+				{
+					epacket = enet_packet_create(epacket->data, epacket->dataLength, ENET_PACKET_FLAG_RELIABLE);
+				}
+			}
+			u16* oseqp = (u16 *) epacket->data;
+			*oseqp = seq;
+			enet_peer_send(peer, 0, epacket);
+		}
+		if (epacket && epacket->referenceCount == 0)
+			enet_packet_destroy(epacket);
+	}
+}
+
+void ENetHostClient::SendPacket(ENetPeer* peer, Packet&& packet)
+{
+	Packet container;
+	container.W((u16) m_PeerInfo[peer - m_Host->peers].m_OutgoingSequenceNumber++);
+	container.Do((PointerWrap&) packet);
+	ENetUtil::SendPacket(peer, std::move(container));
+}
+
+void ENetHostClient::ProcessPacketQueue()
+{
+	// The idea is that we send packets n-1 times unreliably and n times
+	// reliably.
+	bool needReliable = false;
+	int numToRemove = 0;
+	size_t totalSize = 0;
+	for (auto it = m_OutgoingPacketInfo.rbegin(); it != m_OutgoingPacketInfo.rend(); ++it)
+	{
+		OutgoingPacketInfo& info = *it;
+		totalSize += info.m_Packet.vec->size();
+		if (++info.m_NumSends == MaxPacketSends || totalSize >= MaxShortPacketLength)
+		{
+			if (!info.m_DidSendReliably)
+				needReliable = true;
+			numToRemove++;
+		}
+	}
+	// this can occasionally cause packets to be sent unnecessarily
+	// reliably
+	for (ENetPeer* peer = m_Host->peers, * end = &m_Host->peers[m_Host->peerCount]; peer != end; peer++)
+	{
+		if (peer->state != ENET_PEER_STATE_CONNECTED)
+			continue;
+		Packet p;
+		auto& pi = m_PeerInfo[peer - m_Host->peers];
+		for (auto it = m_OutgoingPacketInfo.begin(); it != m_OutgoingPacketInfo.end(); ++it)
+		{
+			OutgoingPacketInfo& info = *it;
+			if (info.m_Except == peer)
+				continue;
+			// XXX - fix situation where someone connects while this is queued
+			p.W(pi.m_GlobalSeqToSeq[info.m_GlobalSequenceNumber]);
+			p.Do((PointerWrap&) info.m_Packet);
+			info.m_DidSendReliably = info.m_DidSendReliably || needReliable;
+		}
+		if (p.vec->size())
+			ENetUtil::SendPacket(peer, std::move(p), needReliable);
+	}
+	while (numToRemove--)
+		m_OutgoingPacketInfo.pop_front();
+}
+
 void ENetHostClient::ThreadFunc()
 {
 	ASSUME_ON(NET);
@@ -163,7 +268,92 @@ void ENetHostClient::ThreadFunc()
 
 		// Even if there was nothing, forward it as a wakeup.
 		if (m_Client)
-			m_Client->OnENetEvent(&event);
+		{
+			switch (event.type)
+			{
+			case ENET_EVENT_TYPE_RECEIVE:
+				OnReceive(&event, ENetUtil::MakePacket(event.packet));
+				break;
+			case ENET_EVENT_TYPE_CONNECT:
+				{
+				size_t pid = event.peer - m_Host->peers;
+				if (pid >= m_PeerInfo.size())
+					m_PeerInfo.resize(pid + 1);
+				m_PeerInfo[pid].m_IncomingPackets.clear();
+				m_PeerInfo[pid].m_IncomingSequenceNumber = 0;
+				m_PeerInfo[pid].m_OutgoingSequenceNumber = 0;
+				}
+				/* fall through */
+			default:
+				m_Client->OnENetEvent(&event);
+			}
+		}
+	}
+}
+
+void ENetHostClient::OnReceive(ENetEvent* event, Packet&& packet)
+{
+	auto& pi = m_PeerInfo[event->peer - m_Host->peers];
+#if 0
+	printf("OnReceive isn=%x\n", pi.m_IncomingSequenceNumber);
+	DumpBuf(*packet.vec);
+#endif
+	auto& incomingPackets = pi.m_IncomingPackets;
+	u16 seq;
+
+	while (packet.vec->size() > packet.readOff)
+	{
+		{
+			packet.Do(seq);
+			if (packet.failure)
+				goto failure;
+
+			s16 diff = (s16) (seq - pi.m_IncomingSequenceNumber);
+			if (diff < 0)
+			{
+				// assume a duplicate of something we already have
+				goto skip;
+			}
+
+			while (incomingPackets.size() <= (size_t) diff)
+				incomingPackets.push_back(PWBuffer());
+
+			PWBuffer& buf = incomingPackets[diff];
+			if (!buf.empty())
+			{
+				// another type of duplicate
+				goto skip;
+			}
+
+			Packet sub;
+			packet.Do(buf);
+			if (packet.failure)
+				goto failure;
+			continue;
+		}
+
+		skip:
+		{
+			u32 size;
+			packet.Do(size);
+			if (packet.vec->size() - packet.readOff < size)
+				goto failure;
+			packet.readOff += size;
+			continue;
+		}
+
+		failure:
+		{
+			// strange
+			WARN_LOG(NETPLAY, "Failure splitting packet - truncation?");
+		}
+	}
+
+	while (!incomingPackets.empty() && !incomingPackets[0].empty())
+	{
+		m_Client->OnData(event, std::move(incomingPackets.front()));
+		incomingPackets.pop_front();
+		pi.m_IncomingSequenceNumber++;
 	}
 }
 
@@ -198,7 +388,7 @@ void TraversalClient::ReconnectToServer()
 	hello.helloFromClient.protoVersion = TraversalProtoVersion;
 	RunOnThread([=]() {
 		ASSUME_ON(NET);
-		SendPacket(hello);
+		SendTraversalPacket(hello);
 		if (m_Client)
 			m_Client->OnTraversalStateChanged();
 	});
@@ -234,7 +424,7 @@ void TraversalClient::ConnectToClient(const std::string& host)
 	TraversalPacket packet = {0};
 	packet.type = TraversalPacketConnectPlease;
 	memcpy(packet.connectPlease.hostId.data(), host.c_str(), host.size());
-	m_ConnectRequestId = SendPacket(packet);
+	m_ConnectRequestId = SendTraversalPacket(packet);
 	m_PendingConnect = true;
 }
 
@@ -271,11 +461,11 @@ void TraversalClient::HandleServerPacket(TraversalPacket* packet)
 			OnFailure(ServerForgotAboutUs);
 			break;
 		}
-		for (auto it = m_OutgoingPackets.begin(); it != m_OutgoingPackets.end(); ++it)
+		for (auto it = m_OutgoingTraversalPackets.begin(); it != m_OutgoingTraversalPackets.end(); ++it)
 		{
 			if (it->packet.requestId == packet->requestId)
 			{
-				m_OutgoingPackets.erase(it);
+				m_OutgoingTraversalPackets.erase(it);
 				break;
 			}
 		}
@@ -359,7 +549,7 @@ void TraversalClient::OnFailure(int reason)
 		m_Client->OnTraversalStateChanged();
 }
 
-void TraversalClient::ResendPacket(OutgoingPacketInfo* info)
+void TraversalClient::ResendPacket(OutgoingTraversalPacketInfo* info)
 {
 	info->sendTime = enet_time_get();
 	info->tries++;
@@ -373,14 +563,14 @@ void TraversalClient::ResendPacket(OutgoingPacketInfo* info)
 void TraversalClient::HandleResends()
 {
 	enet_uint32 now = enet_time_get();
-	for (auto it = m_OutgoingPackets.begin(); it != m_OutgoingPackets.end(); ++it)
+	for (auto it = m_OutgoingTraversalPackets.begin(); it != m_OutgoingTraversalPackets.end(); ++it)
 	{
 		if (now - it->sendTime >= (u32) (300 * it->tries))
 		{
 			if (it->tries >= 5)
 			{
 				OnFailure(ResendTimeout);
-				m_OutgoingPackets.clear();
+				m_OutgoingTraversalPackets.clear();
 				break;
 			}
 			else
@@ -400,19 +590,19 @@ void TraversalClient::HandlePing()
 		TraversalPacket ping = {0};
 		ping.type = TraversalPacketPing;
 		ping.ping.hostId = m_HostId;
-		SendPacket(ping);
+		SendTraversalPacket(ping);
 		m_PingTime = now;
 	}
 }
 
-TraversalRequestId TraversalClient::SendPacket(const TraversalPacket& packet)
+TraversalRequestId TraversalClient::SendTraversalPacket(const TraversalPacket& packet)
 {
-	OutgoingPacketInfo info;
+	OutgoingTraversalPacketInfo info;
 	info.packet = packet;
 	GetRandomishBytes((u8*) &info.packet.requestId, sizeof(info.packet.requestId));
 	info.tries = 0;
-	m_OutgoingPackets.push_back(info);
-	ResendPacket(&m_OutgoingPackets.back());
+	m_OutgoingTraversalPackets.push_back(info);
+	ResendPacket(&m_OutgoingTraversalPackets.back());
 	return info.packet.requestId;
 }
 

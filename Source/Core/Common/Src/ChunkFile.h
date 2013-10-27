@@ -42,9 +42,16 @@ struct LinkedListItem : public T
 class PWBuffer : public NonCopyable
 {
 public:
+	static struct _NoCopy {} NoCopy;
+
 	PWBuffer()
 	{
 		init();
+	}
+	PWBuffer(void* inData, size_t _size, _NoCopy&)
+	{
+		m_Data = (u8*) inData;
+		m_Size = m_Capacity = _size;
 	}
 	PWBuffer(void* inData, size_t _size)
 	{
@@ -134,6 +141,7 @@ private:
 	size_t m_Size;
 	size_t m_Capacity;
 };
+class Packet;
 
 // ewww
 #if _LIBCPP_VERSION
@@ -258,6 +266,13 @@ public:
 		{
 			DoContainer(x);
 		}
+	}
+
+	void Do(PointerWrap& x)
+	{
+		x.mode = mode;
+		x.readOff = 0;
+		Do(*x.vec);
 	}
 
 	void Do(PWBuffer& x)
