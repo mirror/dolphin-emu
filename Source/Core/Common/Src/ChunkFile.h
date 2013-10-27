@@ -40,7 +40,7 @@ struct LinkedListItem : public T
 
 // Like std::vector<u8> but without initialization to 0 and some extra methods.
 class PWBuffer
-#ifndef _WIN32
+#if !defined(__APPLE__)
 	: public NonCopyable
 #endif
 {
@@ -83,7 +83,7 @@ public:
 	{
 		return PWBuffer(m_Data, m_Size);
 	}
-#ifdef _WIN32
+#if !defined(__APPLE__)
 	// Get rid of this crap when we switch to VC2013.
 	PWBuffer(const PWBuffer& buffer)
 	{
