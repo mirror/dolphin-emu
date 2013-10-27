@@ -71,6 +71,7 @@ ENetHostClient::ENetHostClient(size_t peerCount, u16 port, bool isTraversalClien
 {
 	m_isTraversalClient = isTraversalClient;
 	m_GlobalSequenceNumber = 0;
+	m_GlobalTicker = 0;
 
 	ENetAddress addr = { ENET_HOST_ANY, port };
 	m_Host = enet_host_create(
