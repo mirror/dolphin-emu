@@ -127,8 +127,9 @@ void VideoConfig::GameIniLoad()
 	// XXX: Again, bad place to put OSD messages at (see delroth's comment above)
 	// XXX: This will add an OSD message for each projection hack value... meh
 #define CHECK_SETTING(section, key, var) do { \
-		decltype(var) temp = var; \
-		if (iniFile.Get(section, key, &var) && var != temp) { \
+		auto temp = var; \
+		if (iniFile.Get(section, key, &temp) && var != temp) { \
+			var = temp; \
 			char buf[256]; \
 			snprintf(buf, sizeof(buf), "Note: Option \"%s\" is overridden by game ini.", key); \
 			OSD::AddMessage(buf, 7500); \
