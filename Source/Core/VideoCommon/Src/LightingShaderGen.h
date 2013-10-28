@@ -59,8 +59,9 @@ static void GenerateLightShader(T& object, LightingUidData& uid_data, int index,
 			case LIGHTDIF_SIGN:
 			case LIGHTDIF_CLAMP:
 				object.Write("ldir = normalize(" LIGHT_POS".xyz - pos.xyz);\n", LIGHT_POS_PARAMS(lightsName, index));
-				object.Write("lacc.%s += int%s(%sdot(ldir, _norm0)) * " LIGHT_COL");\n",
-					swizzle, swizzle_components, chan.diffusefunc != LIGHTDIF_SIGN ? "max(0.0," :"(", LIGHT_COL_PARAMS(lightsColName, index, swizzle));
+				object.Write("lacc.%s += int%s(%sdot(ldir, _norm0)) * float%s(" LIGHT_COL"));\n",
+					swizzle, swizzle_components, chan.diffusefunc != LIGHTDIF_SIGN ? "max(0.0," :"(", 
+					swizzle_components, LIGHT_COL_PARAMS(lightsColName, index, swizzle));
 				break;
 			default: _assert_(0);
 		}
@@ -92,14 +93,16 @@ static void GenerateLightShader(T& object, LightingUidData& uid_data, int index,
 		switch (chan.diffusefunc)
 		{
 			case LIGHTDIF_NONE:
-				object.Write("lacc.%s += int%s(attn * " LIGHT_COL");\n", swizzle, swizzle_components, LIGHT_COL_PARAMS(lightsColName, index, swizzle));
+				object.Write("lacc.%s += int%s(attn * float%s(" LIGHT_COL"));\n", 
+						swizzle, swizzle_components, 
+						swizzle_components, LIGHT_COL_PARAMS(lightsColName, index, swizzle));
 				break;
 			case LIGHTDIF_SIGN:
 			case LIGHTDIF_CLAMP:
-				object.Write("lacc.%s += int%s(attn * %sdot(ldir, _norm0)) * " LIGHT_COL");\n",
+				object.Write("lacc.%s += int%s(attn * %sdot(ldir, _norm0)) * float%s(" LIGHT_COL"));\n",
 					swizzle, swizzle_components,
 					chan.diffusefunc != LIGHTDIF_SIGN ? "max(0.0," :"(",
-					LIGHT_COL_PARAMS(lightsColName, index, swizzle));
+					swizzle_components, LIGHT_COL_PARAMS(lightsColName, index, swizzle));
 				break;
 			default: _assert_(0);
 		}
