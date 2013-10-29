@@ -240,8 +240,7 @@ void BackendNetPlay::ProcessPacket(Packet&& p)
 		{
 		u32 delay;
 		p.Do(delay);
-		// XXX - it should be possible to have a half-frame delay.
-		m_Delay = delay * 2;
+		m_Delay = delay;
 	break;
 		}
 	default:
