@@ -186,9 +186,11 @@ void ENetHostClient::BroadcastPacket(Packet&& packet, ENetPeer* except)
 void ENetHostClient::SendPacket(ENetPeer* peer, Packet&& packet)
 {
 	Packet container;
-	container.W((u16) m_PeerInfo[peer - m_Host->peers].m_OutgoingSequenceNumber++);
+	auto& pi = m_PeerInfo[peer - m_Host->peers];
+	container.W((u16) pi.m_OutgoingSequenceNumber++);
 	container.Do((PointerWrap&) packet);
 	ENetUtil::SendPacket(peer, std::move(container));
+	pi.m_SentPackets++;
 }
 
 void ENetHostClient::MaybeProcessPacketQueue()
@@ -238,10 +240,46 @@ void ENetHostClient::ProcessPacketQueue()
 			info.m_DidSendReliably = info.m_DidSendReliably || needReliable;
 		}
 		if (p.vec->size())
+		{
 			ENetUtil::SendPacket(peer, std::move(p), needReliable);
+			pi.m_SentPackets++;
+		}
 	}
 	while (numToRemove--)
 		m_OutgoingPacketInfo.pop_front();
+}
+
+void ENetHostClient::PrintStats()
+{
+#if 1
+	if (m_StatsTimer.GetTimeDifference() > 5000)
+	{
+		m_StatsTimer.Update();
+		for (ENetPeer* peer = m_Host->peers, * end = &m_Host->peers[m_Host->peerCount]; peer != end; peer++)
+		{
+			if (peer->state != ENET_PEER_STATE_CONNECTED)
+				continue;
+			auto& pi = m_PeerInfo[peer - m_Host->peers];
+			char ip[64] = "?";
+			enet_address_get_host_ip(&peer->address, ip, sizeof(ip));
+			WARN_LOG(NETPLAY, "%speer %u (%s): %f%%+-%f%% packet loss, %u+-%u ms round trip time, %f%% throttle, %u/%u outgoing, %u/%u incoming, %d packets sent since last time\n",
+				!m_isTraversalClient ? "(CLIENT) " : "", // ew
+				(unsigned) peer->incomingPeerID,
+				ip,
+				peer->packetLoss / (float) ENET_PEER_PACKET_LOSS_SCALE,
+				peer->packetLossVariance / (float) ENET_PEER_PACKET_LOSS_SCALE,
+				peer->roundTripTime,
+				peer->roundTripTimeVariance,
+				peer->packetThrottle / (float) ENET_PEER_PACKET_THROTTLE_SCALE,
+				(unsigned) enet_list_size(&peer->outgoingReliableCommands),
+				(unsigned) enet_list_size(&peer->outgoingUnreliableCommands),
+				peer->channels != NULL ? (unsigned) enet_list_size(&peer->channels->incomingReliableCommands) : 0,
+				peer->channels != NULL ? (unsigned) enet_list_size(&peer->channels->incomingUnreliableCommands) : 0,
+				pi.m_SentPackets);
+			pi.m_SentPackets = 0;
+		}
+	}
+#endif
 }
 
 void ENetHostClient::ThreadFunc()
@@ -272,6 +310,8 @@ void ENetHostClient::ThreadFunc()
 
 		HandleResends();
 
+		PrintStats();
+
 		// Even if there was nothing, forward it as a wakeup.
 		if (m_Client)
 		{
@@ -285,10 +325,12 @@ void ENetHostClient::ThreadFunc()
 				size_t pid = event.peer - m_Host->peers;
 				if (pid >= m_PeerInfo.size())
 					m_PeerInfo.resize(pid + 1);
-				m_PeerInfo[pid].m_IncomingPackets.clear();
-				m_PeerInfo[pid].m_IncomingSequenceNumber = 0;
-				m_PeerInfo[pid].m_OutgoingSequenceNumber = 0;
-				m_PeerInfo[pid].m_ConnectTicker = m_GlobalTicker++;
+				auto& pi = m_PeerInfo[pid];
+				pi.m_IncomingPackets.clear();
+				pi.m_IncomingSequenceNumber = 0;
+				pi.m_OutgoingSequenceNumber = 0;
+				pi.m_ConnectTicker = m_GlobalTicker++;
+				pi.m_SentPackets = 0;
 				}
 				/* fall through */
 			default:

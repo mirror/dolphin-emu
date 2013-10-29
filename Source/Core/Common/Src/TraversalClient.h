@@ -82,6 +82,7 @@ public:
 	void SendPacket(ENetPeer* peer, Packet&& packet) ON(NET);
 	void MaybeProcessPacketQueue() ON(NET);
 	void ProcessPacketQueue() ON(NET);
+	void PrintStats() ON(NET);
 
 	TraversalClientClient* m_Client;
 	ENetHost* m_Host;
@@ -109,6 +110,7 @@ private:
 		u16 m_OutgoingSequenceNumber;
 		u16 m_GlobalSeqToSeq[65536];
 		u64 m_ConnectTicker;
+		int m_SentPackets;
 	};
 
 	void ThreadFunc() /* ON(NET) */;
@@ -123,6 +125,7 @@ private:
 
 	std::deque<OutgoingPacketInfo> m_OutgoingPacketInfo ACCESS_ON(NET);
 	Common::Timer m_SendTimer ACCESS_ON(NET);
+	Common::Timer m_StatsTimer ACCESS_ON(NET);
 	std::vector<PeerInfo> m_PeerInfo ACCESS_ON(NET);
 	u16 m_GlobalSequenceNumber ACCESS_ON(NET);
 	u64 m_GlobalTicker ACCESS_ON(NET);
