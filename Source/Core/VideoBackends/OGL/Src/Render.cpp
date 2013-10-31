@@ -33,7 +33,6 @@
 #include "RasterFont.h"
 #include "VertexShaderGen.h"
 #include "DLCache.h"
-#include "PixelShaderManager.h"
 #include "ProgramShaderCache.h"
 #include "VertexShaderManager.h"
 #include "VertexLoaderManager.h"
@@ -386,6 +385,7 @@ Renderer::Renderer()
 	g_ogl_config.bSupportCoverageMSAA = false; // XXX: GLES3 spec has MSAA
 	g_ogl_config.bSupportSampleShading = false; 
 	g_ogl_config.bSupportOGL31 = false; 
+	g_ogl_config.bSupportViewportFloat = false;
 	if (DriverDetails::HasBug(DriverDetails::BUG_ISTEGRA) || DriverDetails::HasBug(DriverDetails::BUG_ISPOWERVR))
 		g_ogl_config.eSupportedGLSLVersion = GLSLES2;
 	else
@@ -496,6 +496,7 @@ Renderer::Renderer()
 	g_ogl_config.bSupportCoverageMSAA = GLEW_NV_framebuffer_multisample_coverage;
 	g_ogl_config.bSupportSampleShading = GLEW_ARB_sample_shading;
 	g_ogl_config.bSupportOGL31 = GLEW_VERSION_3_1;
+	g_ogl_config.bSupportViewportFloat = GLEW_ARB_viewport_array;
 
 	if(strstr(g_ogl_config.glsl_version, "1.00") || strstr(g_ogl_config.glsl_version, "1.10") || strstr(g_ogl_config.glsl_version, "1.20"))
 	{
@@ -1091,7 +1092,7 @@ u32 Renderer::AccessEFB(EFBAccessType type, u32 x, u32 y, u32 poke_data)
 }
 
 // Called from VertexShaderManager
-void Renderer::UpdateViewport(Matrix44& vpCorrection)
+void Renderer::UpdateViewport()
 {
 	// reversed gxsetviewport(xorig, yorig, width, height, nearz, farz)
 	// [0] = width/2
@@ -1105,12 +1106,12 @@ void Renderer::UpdateViewport(Matrix44& vpCorrection)
 	int scissorYOff = bpmem.scissorOffset.y * 2;
 
 	// TODO: ceil, floor or just cast to int?
-	int X = EFBToScaledX((int)ceil(xfregs.viewport.xOrig - xfregs.viewport.wd - (float)scissorXOff));
-	int Y = EFBToScaledY((int)ceil((float)EFB_HEIGHT - xfregs.viewport.yOrig + xfregs.viewport.ht + (float)scissorYOff));
-	int Width = EFBToScaledX((int)ceil(2.0f * xfregs.viewport.wd));
-	int Height = EFBToScaledY((int)ceil(-2.0f * xfregs.viewport.ht));
-	double GLNear = (xfregs.viewport.farZ - xfregs.viewport.zRange) / 16777216.0f;
-	double GLFar = xfregs.viewport.farZ / 16777216.0f;
+	float X = EFBToScaledXf(xfregs.viewport.xOrig - xfregs.viewport.wd - (float)scissorXOff);
+	float Y = EFBToScaledYf((float)EFB_HEIGHT - xfregs.viewport.yOrig + xfregs.viewport.ht + (float)scissorYOff);
+	float Width = EFBToScaledXf(2.0f * xfregs.viewport.wd);
+	float Height = EFBToScaledYf(-2.0f * xfregs.viewport.ht);
+	float GLNear = (xfregs.viewport.farZ - xfregs.viewport.zRange) / 16777216.0f;
+	float GLFar = xfregs.viewport.farZ / 16777216.0f;
 	if (Width < 0)
 	{
 		X += Width;
@@ -1122,11 +1123,15 @@ void Renderer::UpdateViewport(Matrix44& vpCorrection)
 		Height *= -1;
 	}
 
-	// OpenGL does not require any viewport correct
-	Matrix44::LoadIdentity(vpCorrection);
-
 	// Update the view port
-	glViewport(X, Y, Width, Height);
+	if(g_ogl_config.bSupportViewportFloat)
+	{
+		glViewportIndexedf(0, X, Y, Width, Height);
+	}
+	else
+	{
+		glViewport(ceil(X), ceil(Y), ceil(Width), ceil(Height));
+	}
 	glDepthRangef(GLNear, GLFar);
 }
 
@@ -1655,7 +1660,7 @@ void Renderer::RestoreAPIState()
 	SetDepthMode();
 	SetBlendMode(true);
 	SetLogicOpMode();
-	VertexShaderManager::SetViewportChanged();
+	UpdateViewport();
 
 #ifndef USE_GLES3
 	glPolygonMode(GL_FRONT_AND_BACK, g_ActiveConfig.bWireFrame ? GL_LINE : GL_FILL);

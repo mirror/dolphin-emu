@@ -33,6 +33,20 @@
 #define NO_WARN_UNINIT_POINTER(data)
 #endif
 
+// ewww
+#if _LIBCPP_VERSION
+#define IsTriviallyCopyable(T) std::is_trivially_copyable<T>::value
+#elif __GNUC__
+#define IsTriviallyCopyable(T) std::has_trivial_copy_constructor<T>::value
+#elif _MSC_VER >= 1800
+// work around bug
+#define IsTriviallyCopyable(T) (std::is_trivially_copyable<T>::value || std::is_pod<T>::value)
+#elif defined(_MSC_VER)
+#define IsTriviallyCopyable(T) std::has_trivial_copy<T>::value
+#else
+#error No version of is_trivially_copyable
+#endif
+
 template <class T>
 struct LinkedListItem : public T
 {
@@ -160,18 +174,6 @@ private:
 };
 class Packet;
 
-// ewww
-#if _LIBCPP_VERSION || defined(_WIN32)
-// is_pod is needed due to a VS2013 bug: https://connect.microsoft.com/VisualStudio/feedback/details/806233
-#define IsTriviallyCopyable(T) (std::is_trivially_copyable<T>::value || std::is_pod<T>::value)
-#elif __GNUC__
-#define IsTriviallyCopyable(T) std::has_trivial_copy_constructor<T>::value
-#elif defined(_WIN32)
-#define IsTriviallyCopyable(T) std::has_trivial_copy<T>::value
-#else
-#error No version of is_trivially_copyable
-#endif
-
 // Wrapper class
 class PointerWrap
 {
@@ -248,6 +250,10 @@ public:
 			break;
 
 		case MODE_WRITE:
+<<<<<<< HEAD
+=======
+		case MODE_MEASURE:
+>>>>>>> master
 		case MODE_VERIFY:
 			for (auto itr = x.begin(); itr != x.end(); ++itr)
 			{

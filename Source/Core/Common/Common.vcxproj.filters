@@ -51,12 +51,6 @@
     <ClInclude Include="Src\x64ABI.h" />
     <ClInclude Include="Src\x64Analyzer.h" />
     <ClInclude Include="Src\x64Emitter.h" />
-    <ClInclude Include="Src\Crypto\aes.h">
-      <Filter>Crypto</Filter>
-    </ClInclude>
-    <ClInclude Include="Src\Crypto\aes_locl.h">
-      <Filter>Crypto</Filter>
-    </ClInclude>
     <ClInclude Include="Src\Crypto\tools.h">
       <Filter>Crypto</Filter>
     </ClInclude>
@@ -99,12 +93,6 @@
     <ClCompile Include="Src\x64CPUDetect.cpp" />
     <ClCompile Include="Src\x64Emitter.cpp" />
     <ClCompile Include="Src\x64FPURoundMode.cpp" />
-    <ClCompile Include="Src\Crypto\aes_cbc.cpp">
-      <Filter>Crypto</Filter>
-    </ClCompile>
-    <ClCompile Include="Src\Crypto\aes_core.cpp">
-      <Filter>Crypto</Filter>
-    </ClCompile>
     <ClCompile Include="Src\Crypto\bn.cpp">
       <Filter>Crypto</Filter>
     </ClCompile>

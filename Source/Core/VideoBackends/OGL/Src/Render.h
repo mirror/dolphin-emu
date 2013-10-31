@@ -27,6 +27,7 @@ extern struct VideoConfig {
 	bool bSupportSampleShading;
 	GLSL_VERSION eSupportedGLSLVersion;
 	bool bSupportOGL31;
+	bool bSupportViewportFloat;
 	
 	const char *gl_vendor;
 	const char *gl_renderer;
@@ -77,7 +78,7 @@ public:
 
 	void ReinterpretPixelData(unsigned int convtype);
 
-	void UpdateViewport(Matrix44& vpCorrection);
+	void UpdateViewport();
 
 	bool SaveScreenshot(const std::string &filename, const TargetRectangle &rc);
 
