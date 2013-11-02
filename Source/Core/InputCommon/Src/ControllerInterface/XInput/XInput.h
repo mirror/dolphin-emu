@@ -1,23 +1,33 @@
+// XInput suffers a similar issue as XAudio2. Since Win8, it is part of the OS.
+// However, unlike XAudio2 they have not made the API incompatible - so we just
+// compile against the latest version and fall back to dynamically loading the
+// old DLL.
+
 #ifndef _CIFACE_XINPUT_H_
 #define _CIFACE_XINPUT_H_
 
-#include "../ControllerInterface.h"
+#include "../Device.h"
 
 #define NOMINMAX
 #include <Windows.h>
 #include <XInput.h>
+
+#ifndef XINPUT_DEVSUBTYPE_FLIGHT_STICK
+#error You are building this module against the wrong version of DirectX. You probably need to remove DXSDK_DIR from your include path and/or _WIN32_WINNT is wrong.
+#endif
 
 namespace ciface
 {
 namespace XInput
 {
 
-void Init(DeviceList& devices);
+void Init(std::vector<Core::Device*>& devices);
+void DeInit();
 
-class Device : public ControllerInterface::Device
+class Device : public Core::Device
 {
 private:
-	class Button : public Input
+	class Button : public Core::Device::Input
 	{
 	public:
 		std::string GetName() const;
@@ -28,7 +38,7 @@ private:
 		u8 m_index;
 	};
 
-	class Axis : public Input
+	class Axis : public Core::Device::Input
 	{
 	public:
 		std::string GetName() const;
@@ -40,7 +50,7 @@ private:
 		const u8 m_index;
 	};
 
-	class Trigger : public Input
+	class Trigger : public Core::Device::Input
 	{
 	public:
 		std::string GetName() const;
@@ -52,7 +62,7 @@ private:
 		const u8 m_index;
 	};
 
-	class Motor : public Output
+	class Motor : public Core::Device::Output
 	{
 	public:
 		std::string GetName() const;

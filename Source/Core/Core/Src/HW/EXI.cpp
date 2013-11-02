@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "Common.h"
 #include "ChunkFile.h"
@@ -25,6 +12,7 @@
 
 #include "EXI.h"
 #include "Sram.h"
+#include "../Movie.h"
 SRAM g_SRAM;
 
 namespace ExpansionInterface
@@ -44,7 +32,12 @@ void Init()
 	for (u32 i = 0; i < NUM_CHANNELS; i++)
 		g_Channels[i] = new CEXIChannel(i);
 
-	g_Channels[0]->AddDevice(SConfig::GetInstance().m_EXIDevice[0],	0); // SlotA
+	if (Movie::IsPlayingInput() && Movie::IsUsingMemcard() && Movie::IsConfigSaved())
+		g_Channels[0]->AddDevice(EXIDEVICE_MEMORYCARD,	0); // SlotA
+	else if(Movie::IsPlayingInput() && !Movie::IsUsingMemcard() && Movie::IsConfigSaved())
+		g_Channels[0]->AddDevice(EXIDEVICE_NONE,		0); // SlotA
+	else
+		g_Channels[0]->AddDevice(SConfig::GetInstance().m_EXIDevice[0],	0); // SlotA
 	g_Channels[0]->AddDevice(EXIDEVICE_MASKROM,						1);
 	g_Channels[0]->AddDevice(SConfig::GetInstance().m_EXIDevice[2],	2); // Serial Port 1
 	g_Channels[1]->AddDevice(SConfig::GetInstance().m_EXIDevice[1],	0); // SlotB

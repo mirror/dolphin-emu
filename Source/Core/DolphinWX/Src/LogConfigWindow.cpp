@@ -1,28 +1,13 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "LogConfigWindow.h"
 #include "LogManager.h"
 #include "ConsoleListener.h"
 #include "LogWindow.h"
 #include "FileUtil.h"
-
-#define _connect_macro_(b, f, c, s) \
-	(b)->Connect(wxID_ANY, (c), wxCommandEventHandler(f), (wxObject*)0, (wxEvtHandler*)s)
+#include "WxUtils.h"
 
 LogConfigWindow::LogConfigWindow(wxWindow* parent, CLogWindow *log_window, wxWindowID id)
 	: wxPanel(parent, id, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL, _("Log Configuration"))
@@ -53,31 +38,31 @@ void LogConfigWindow::CreateGUIControls()
 	m_verbosity = new wxRadioBox(this, wxID_ANY, _("Verbosity"),
 			wxDefaultPosition, wxDefaultSize, wxLevelsUse, 0,
 			wxRA_SPECIFY_ROWS, wxDefaultValidator);
-	_connect_macro_(m_verbosity, LogConfigWindow::OnVerbosityChange, wxEVT_COMMAND_RADIOBOX_SELECTED, this);
+	m_verbosity->Bind(wxEVT_COMMAND_RADIOBOX_SELECTED, &LogConfigWindow::OnVerbosityChange, this);
 
 	// Options
 	m_writeFileCB = new wxCheckBox(this, wxID_ANY, _("Write to File"));
-	_connect_macro_(m_writeFileCB, LogConfigWindow::OnWriteFileChecked, wxEVT_COMMAND_CHECKBOX_CLICKED, this);
+	m_writeFileCB->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &LogConfigWindow::OnWriteFileChecked, this);
 	m_writeConsoleCB = new wxCheckBox(this, wxID_ANY, _("Write to Console"));
-	_connect_macro_(m_writeConsoleCB, LogConfigWindow::OnWriteConsoleChecked, wxEVT_COMMAND_CHECKBOX_CLICKED, this);
+	m_writeConsoleCB->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &LogConfigWindow::OnWriteConsoleChecked, this);
 	m_writeWindowCB = new wxCheckBox(this, wxID_ANY, _("Write to Window"));
-	_connect_macro_(m_writeWindowCB, LogConfigWindow::OnWriteWindowChecked, wxEVT_COMMAND_CHECKBOX_CLICKED, this);
+	m_writeWindowCB->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &LogConfigWindow::OnWriteWindowChecked, this);
 	m_writeDebuggerCB = NULL;
 #ifdef _MSC_VER
 	if (IsDebuggerPresent())
 	{
 		m_writeDebuggerCB = new wxCheckBox(this, wxID_ANY, _("Write to Debugger"));
-		_connect_macro_(m_writeDebuggerCB, LogConfigWindow::OnWriteDebuggerChecked, wxEVT_COMMAND_CHECKBOX_CLICKED, this);
+		m_writeDebuggerCB->Bind(wxEVT_COMMAND_CHECKBOX_CLICKED, &LogConfigWindow::OnWriteDebuggerChecked, this);
 	}
 #endif
 
 	wxButton *btn_toggle_all = new wxButton(this, wxID_ANY, _("Toggle All Log Types"),
 			wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
-	_connect_macro_(btn_toggle_all, LogConfigWindow::OnToggleAll, wxEVT_COMMAND_BUTTON_CLICKED, this);
+	btn_toggle_all->Bind(wxEVT_COMMAND_BUTTON_CLICKED, &LogConfigWindow::OnToggleAll, this);
 	m_checks = new wxCheckListBox(this, wxID_ANY);
-	_connect_macro_(m_checks, LogConfigWindow::OnLogCheck, wxEVT_COMMAND_CHECKLISTBOX_TOGGLED, this);
+	m_checks->Bind(wxEVT_COMMAND_CHECKLISTBOX_TOGGLED, &LogConfigWindow::OnLogCheck, this);
 	for (int i = 0; i < LogTypes::NUMBER_OF_LOGS; i++)
-		m_checks->Append(wxString::FromAscii(m_LogManager->GetFullName((LogTypes::LOG_TYPE)i)));
+		m_checks->Append(StrToWxStr(m_LogManager->GetFullName((LogTypes::LOG_TYPE)i)));
 
 	// Sizers
 	wxStaticBoxSizer* sbOutputs = new wxStaticBoxSizer(wxVERTICAL, this, _("Logger Outputs"));
@@ -113,12 +98,20 @@ void LogConfigWindow::LoadSettings()
 	IniFile ini;
 	ini.Load(File::GetUserPath(F_LOGGERCONFIG_IDX));
 
+	// Retrieve the verbosity value from the config ini file.
 	int verbosity;
 	ini.Get("Options", "Verbosity", &verbosity, 0);
-	if (verbosity < 1) verbosity = 1;
-	if (verbosity > MAX_LOGLEVEL) verbosity = MAX_LOGLEVEL;
+	
+	// Ensure the verbosity level is valid.
+	if (verbosity < 1)
+		verbosity = 1;
+	if (verbosity > MAX_LOGLEVEL)
+		verbosity = MAX_LOGLEVEL;
+	
+	// Actually set the logging verbosity.
 	m_verbosity->SetSelection(verbosity - 1);
 
+	// Get the logger output settings from the config ini file.
 	ini.Get("Options", "WriteToFile", &m_writeFile, false);
 	m_writeFileCB->SetValue(m_writeFile);
 	ini.Get("Options", "WriteToConsole", &m_writeConsole, true);
@@ -136,11 +129,17 @@ void LogConfigWindow::LoadSettings()
 	{
 		m_writeDebugger = false;
 	}
+
+	// Run through all of the log types and check each checkbox for each logging type
+	// depending on its set value within the config ini.
 	for (int i = 0; i < LogTypes::NUMBER_OF_LOGS; ++i)
 	{
 		bool log_enabled;
 		ini.Get("Logs", m_LogManager->GetShortName((LogTypes::LOG_TYPE)i), &log_enabled, true);
-		if (log_enabled) enableAll = false;
+		
+		if (log_enabled)
+			enableAll = false;
+		
 		m_checks->Check(i, log_enabled);
 	}
 }
@@ -150,7 +149,10 @@ void LogConfigWindow::SaveSettings()
 	IniFile ini;
 	ini.Load(File::GetUserPath(F_LOGGERCONFIG_IDX));
 
+	// Save the verbosity level.
 	ini.Set("Options", "Verbosity", m_verbosity->GetSelection() + 1);
+
+	// Save the enabled/disabled states of the logger outputs to the config ini.
 	ini.Set("Options", "WriteToFile", m_writeFile);
 	ini.Set("Options", "WriteToConsole", m_writeConsole);
 	ini.Set("Options", "WriteToWindow", m_writeWindow);
@@ -158,16 +160,28 @@ void LogConfigWindow::SaveSettings()
 	if (IsDebuggerPresent())
 		ini.Set("Options", "WriteToDebugger", m_writeDebugger);
 #endif
+
+	// Save all enabled/disabled states of the log types to the config ini.
 	for (int i = 0; i < LogTypes::NUMBER_OF_LOGS; ++i)
+	{
 		ini.Set("Logs", m_LogManager->GetShortName((LogTypes::LOG_TYPE)i), m_checks->IsChecked(i));
+	}
+
 	ini.Save(File::GetUserPath(F_LOGGERCONFIG_IDX));
 }
 
+// If the verbosity changes while logging
 void LogConfigWindow::OnVerbosityChange(wxCommandEvent& event)
 {
+	// Get the new verbosity
 	int v = m_verbosity->GetSelection() + 1;
+	
+	// Set all log types to that verbosity level
 	for (int i = 0; i < LogTypes::NUMBER_OF_LOGS; i++)
+	{
 		m_LogManager->SetLogLevel((LogTypes::LOG_TYPE)i, (LogTypes::LOG_LEVELS)v);
+	}
+
 	event.Skip();
 }
 

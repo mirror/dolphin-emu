@@ -1,19 +1,7 @@
-// Copyright (C) 2003 Dolphin Project.
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
 #include "GCMemcard.h"
 #include "ColorUtil.h"
 static void ByteSwap(u8 *valueA, u8 *valueB)
@@ -23,48 +11,13 @@ static void ByteSwap(u8 *valueA, u8 *valueB)
 	*valueB = tmp;
 }
 
-void decode5A3image(u32* dst, u16* src, int width, int height)
-{
-	for (int y = 0; y < height; y += 4)
-	{
-		for (int x = 0; x < width; x += 4)
-		{
-			for (int iy = 0; iy < 4; iy++, src += 4)
-			{
-				for (int ix = 0; ix < 4; ix++)
-				{
-					u32 RGBA = ColorUtil::Decode5A3(Common::swap16(src[ix]));
-					dst[(y + iy) * width + (x + ix)] = RGBA;
-				}
-			}
-		}
-	}
-}
-
-void decodeCI8image(u32* dst, u8* src, u16* pal, int width, int height)
-{
-	for (int y = 0; y < height; y += 4)
-	{
-		for (int x = 0; x < width; x += 8)
-		{
-			for (int iy = 0; iy < 4; iy++, src += 8)
-			{
-				u32 *tdst = dst+(y+iy)*width+x;
-				for (int ix = 0; ix < 8; ix++)
-				{
-					// huh, this seems wrong. CI8, not 5A3, no?
-					tdst[ix] = ColorUtil::Decode5A3(Common::swap16(pal[src[ix]]));
-				}
-			}
-		}
-	}
-}
-
 GCMemcard::GCMemcard(const char *filename, bool forceCreation, bool sjis)
 	: m_valid(false)
 	, m_fileName(filename)
-{ 
-	File::IOFile mcdFile(m_fileName, "r+b");
+{
+	// Currently there is a string freeze. instead of adding a new message about needing r/w
+	// open file read only, if write is denied the error will be reported at that point
+	File::IOFile mcdFile(m_fileName, "rb");
 	if (!mcdFile.IsOpen())
 	{
 		if (!forceCreation && !AskYesNoT("\"%s\" does not exist.\n Create a new 16MB Memcard?", filename))
@@ -227,7 +180,12 @@ GCMemcard::GCMemcard(const char *filename, bool forceCreation, bool sjis)
 	}
 
 	mcdFile.Close();
+	
+	initDirBatPointers();
+}
 
+void GCMemcard::initDirBatPointers() 
+{
 	if (BE16(dir.UpdateCounter) > (BE16(dir_backup.UpdateCounter)))
 	{
 		CurrentDir = &dir;
@@ -265,7 +223,7 @@ bool GCMemcard::Save()
 	mcdFile.WriteBytes(&dir_backup, BLOCK_SIZE);
 	mcdFile.WriteBytes(&bat, BLOCK_SIZE);
 	mcdFile.WriteBytes(&bat_backup, BLOCK_SIZE);
-	for (int i = 0; i < maxBlock - MC_FST_BLOCKS; ++i)
+	for (unsigned int i = 0; i < maxBlock - MC_FST_BLOCKS; ++i)
 	{
 		mcdFile.WriteBytes(mc_data_blocks[i].block, BLOCK_SIZE);
 	}
@@ -303,19 +261,24 @@ u32  GCMemcard::TestChecksums() const
 	u32 results = 0;
 
 	calc_checksumsBE((u16*)&hdr, 0xFE , &csum, &csum_inv);
-	if ((hdr.Checksum != csum) || (hdr.Checksum_Inv != csum_inv)) results |= 1;
+	if ((hdr.Checksum != csum) || (hdr.Checksum_Inv != csum_inv))
+		results |= 1;
 
 	calc_checksumsBE((u16*)&dir, 0xFFE, &csum, &csum_inv);
-	if ((dir.Checksum != csum) || (dir.Checksum_Inv != csum_inv)) results |= 2;
+	if ((dir.Checksum != csum) || (dir.Checksum_Inv != csum_inv))
+		results |= 2;
 
 	calc_checksumsBE((u16*)&dir_backup, 0xFFE, &csum, &csum_inv);
-	if ((dir_backup.Checksum != csum) || (dir_backup.Checksum_Inv != csum_inv)) results |= 4;
+	if ((dir_backup.Checksum != csum) || (dir_backup.Checksum_Inv != csum_inv))
+		results |= 4;
 
 	calc_checksumsBE((u16*)(((u8*)&bat)+4), 0xFFE, &csum, &csum_inv);
-	if ((bat.Checksum != csum) || (bat.Checksum_Inv != csum_inv)) results |= 8;
+	if ((bat.Checksum != csum) || (bat.Checksum_Inv != csum_inv))
+		results |= 8;
 
 	calc_checksumsBE((u16*)(((u8*)&bat_backup)+4), 0xFFE, &csum, &csum_inv);
-	if ((bat_backup.Checksum != csum) || (bat_backup.Checksum_Inv != csum_inv)) results |= 16;
+	if ((bat_backup.Checksum != csum) || (bat_backup.Checksum_Inv != csum_inv))
+		results |= 16;
 
 	return results;
 }
@@ -352,7 +315,6 @@ u8 GCMemcard::GetFileIndex(u8 fileNumber) const
 {
 	if (m_valid)
 	{
-
 		u8 j = 0;
 		for (u8 i = 0; i < DIRLEN; i++)
 		{
@@ -399,6 +361,7 @@ bool GCMemcard::GCI_FileName(u8 index, std::string &filename) const
 {
 	if (!m_valid || index > DIRLEN || (BE32(CurrentDir->Dir[index].Gamecode) == 0xFFFFFFFF))
 		return false;
+
 	filename = std::string((char*)CurrentDir->Dir[index].Gamecode, 4) + '_' + (char*)CurrentDir->Dir[index].Filename + ".gci";
 	return true;
 }
@@ -410,6 +373,7 @@ std::string GCMemcard::DEntry_GameCode(u8 index) const
 {
 	if (!m_valid || index > DIRLEN)
 		return "";
+
 	return std::string((const char*)CurrentDir->Dir[index].Gamecode, 4);
 }
 
@@ -432,7 +396,6 @@ std::string GCMemcard::DEntry_BIFlags(u8 index) const
 		flags.push_back((x & 0x80) ? '1' : '0');
 		x = x << 1;
 	}
-	flags.push_back(0);
 	return flags;
 }
 
@@ -440,6 +403,7 @@ std::string GCMemcard::DEntry_FileName(u8 index) const
 {
 	if (!m_valid || index > DIRLEN)
 		return "";
+
 	return std::string((const char*)CurrentDir->Dir[index].Filename, DENTRY_STRLEN);
 }
 
@@ -447,6 +411,7 @@ u32 GCMemcard::DEntry_ModTime(u8 index) const
 {
 	if (!m_valid || index > DIRLEN)
 		return 0xFFFFFFFF;
+
 	return BE32(CurrentDir->Dir[index].ModTime);
 }
 
@@ -454,6 +419,7 @@ u32 GCMemcard::DEntry_ImageOffset(u8 index) const
 {
 	if (!m_valid || index > DIRLEN)
 		return 0xFFFFFFFF;
+
 	return BE32(CurrentDir->Dir[index].ImageOffset);
 }
 
@@ -461,6 +427,7 @@ std::string GCMemcard::DEntry_IconFmt(u8 index) const
 {
 	if (!m_valid || index > DIRLEN)
 		return "";
+
 	int x = CurrentDir->Dir[index].IconFmt[0];
 	std::string format;
 	for(int i = 0; i < 16; i++)
@@ -469,27 +436,35 @@ std::string GCMemcard::DEntry_IconFmt(u8 index) const
 		format.push_back((x & 0x80) ? '1' : '0');
 		x = x << 1;
 	}
-	format.push_back(0);
 	return format;
 }
 
-u16 GCMemcard::DEntry_AnimSpeed(u8 index) const
+std::string GCMemcard::DEntry_AnimSpeed(u8 index) const
 {
 	if (!m_valid || index > DIRLEN)
-		return 0xFF;
-	return BE16(CurrentDir->Dir[index].AnimSpeed);
+		return "";
+
+	int x = CurrentDir->Dir[index].AnimSpeed[0];
+	std::string speed;
+	for(int i = 0; i < 16; i++)
+	{
+		if (i == 8) x = CurrentDir->Dir[index].AnimSpeed[1];
+		speed.push_back((x & 0x80) ? '1' : '0');
+		x = x << 1;
+	}
+	return speed;
 }
 
 std::string GCMemcard::DEntry_Permissions(u8 index) const
 {
 	if (!m_valid || index > DIRLEN)
 		return "";
+
 	u8 Permissions = CurrentDir->Dir[index].Permissions;
 	std::string permissionsString;
 	permissionsString.push_back((Permissions & 16) ? 'x' : 'M');
 	permissionsString.push_back((Permissions &  8) ? 'x' : 'C');
 	permissionsString.push_back((Permissions &  4) ? 'P' : 'x');
-	permissionsString.push_back(0);
 	return permissionsString;
 }
 
@@ -497,6 +472,7 @@ u8 GCMemcard::DEntry_CopyCounter(u8 index) const
 {
 	if (!m_valid || index > DIRLEN)
 		return 0xFF;
+
 	return CurrentDir->Dir[index].CopyCounter;
 }
 
@@ -524,6 +500,7 @@ u32 GCMemcard::DEntry_CommentsAddress(u8 index) const
 {
 	if (!m_valid || index > DIRLEN)
 		return 0xFFFF;
+
 	return BE32(CurrentDir->Dir[index].CommentsAddr);
 }
 
@@ -560,6 +537,7 @@ bool GCMemcard::GetDEntry(u8 index, DEntry &dest) const
 {
 	if (!m_valid || index > DIRLEN)
 		return false;
+
 	dest = CurrentDir->Dir[index];
 	return true;
 }
@@ -568,6 +546,7 @@ u16 GCMemcard::BlockAlloc::GetNextBlock(u16 Block) const
 {
 	if ((Block < MC_FST_BLOCKS) || (Block > 4091))
 		return 0;
+
 	return Common::swap16(Map[Block-MC_FST_BLOCKS]);
 }
 
@@ -578,7 +557,8 @@ u16 GCMemcard::BlockAlloc::NextFreeBlock(u16 StartingBlock) const
 		for (u16 i = StartingBlock; i < BAT_SIZE; ++i)
 			if (Map[i-MC_FST_BLOCKS] == 0)
 				return i;
-		for (u16 i = 0; i < StartingBlock; ++i)
+
+		for (u16 i = MC_FST_BLOCKS; i < StartingBlock; ++i)
 			if (Map[i-MC_FST_BLOCKS] == 0)
 				return i;
 	}
@@ -600,7 +580,7 @@ bool GCMemcard::BlockAlloc::ClearBlocks(u16 FirstBlock, u16 BlockCount)
 		{
 			return false;
 		}
-		for (int i = 0; i < length; ++i)
+		for (unsigned int i = 0; i < length; ++i)
 			Map[blocks.at(i)-MC_FST_BLOCKS] = 0;
 		FreeBlocks = BE16(BE16(FreeBlocks) + BlockCount);
 
@@ -616,7 +596,7 @@ u32 GCMemcard::GetSaveData(u8 index,  std::vector<GCMBlock> & Blocks) const
 
 	u16 block = DEntry_FirstBlock(index);
 	u16 BlockCount = DEntry_BlockCount(index);
-	u16 memcardSize = BE16(hdr.SizeMb) * MBIT_TO_BLOCKS;
+	//u16 memcardSize = BE16(hdr.SizeMb) * MBIT_TO_BLOCKS;
 
 	if ((block == 0xFFFF) || (BlockCount == 0xFFFF))
 	{
@@ -660,12 +640,10 @@ u32 GCMemcard::ImportFile(DEntry& direntry, std::vector<GCMBlock> &saveBlocks)
 	Directory UpdatedDir = *CurrentDir;
 	
 	// find first free dir entry
-	int index = -1;
 	for (int i=0; i < DIRLEN; i++)
 	{
 		if (BE32(UpdatedDir.Dir[i].Gamecode) == 0xFFFFFFFF)
 		{
-			index = i;
 			UpdatedDir.Dir[i] = direntry;
 			*(u16*)&UpdatedDir.Dir[i].FirstBlock = BE16(firstBlock);
 			UpdatedDir.Dir[i].CopyCounter = UpdatedDir.Dir[i].CopyCounter+1;
@@ -687,6 +665,8 @@ u32 GCMemcard::ImportFile(DEntry& direntry, std::vector<GCMBlock> &saveBlocks)
 
 	int fileBlocks = BE16(direntry.BlockCount);
 
+	FZEROGX_MakeSaveGameValid(direntry, saveBlocks);
+	PSO_MakeSaveGameValid(direntry, saveBlocks);
 
 	BlockAlloc UpdatedBat = *CurrentBat;
 	u16 nextBlock;
@@ -876,7 +856,7 @@ u32 GCMemcard::ImportGciInternal(FILE* gcih, const char *inputFile, const std::s
 	std::vector<GCMBlock> saveData;
 	saveData.reserve(size);
 
-	for (int i = 0; i < size; ++i)
+	for (unsigned int i = 0; i < size; ++i)
 	{
 		GCMBlock b;
 		gci.ReadBytes(b.block, BLOCK_SIZE);
@@ -989,7 +969,7 @@ u32 GCMemcard::ExportGci(u8 index, const char *fileName, const std::string &dire
 		return NOMEMCARD;
 	}
 	gci.Seek(DENTRY_SIZE + offset, SEEK_SET);
-	for (int i = 0; i < size; ++i)
+	for (unsigned int i = 0; i < size; ++i)
 	{
 		gci.WriteBytes(saveData[i].block, BLOCK_SIZE);
 	}
@@ -1066,13 +1046,13 @@ bool GCMemcard::ReadBannerRGBA8(u8 index, u32* buffer) const
 		u8  *pxdata  = (u8* )(mc_data_blocks[DataBlock].block + DataOffset);
 		u16 *paldata = (u16*)(mc_data_blocks[DataBlock].block + DataOffset + pixels);
 
-		decodeCI8image(buffer, pxdata, paldata, 96, 32);
+		ColorUtil::decodeCI8image(buffer, pxdata, paldata, 96, 32);
 	}
 	else
 	{
 		u16 *pxdata = (u16*)(mc_data_blocks[DataBlock].block + DataOffset);
 
-		decode5A3image(buffer, pxdata, 96, 32);
+		ColorUtil::decode5A3image(buffer, pxdata, 96, 32);
 	}
 	return true;
 }
@@ -1084,15 +1064,18 @@ u32 GCMemcard::ReadAnimRGBA8(u8 index, u32* buffer, u8 *delays) const
 
 	// To ensure only one type of icon is used
 	// Sonic Heroes it the only game I have seen that tries to use a CI8 and RGB5A3 icon
-	int fmtCheck = 0; 
+	//int fmtCheck = 0; 
 
 	int formats = BE16(CurrentDir->Dir[index].IconFmt);
 	int fdelays  = BE16(CurrentDir->Dir[index].AnimSpeed);
 
 	int flags = CurrentDir->Dir[index].BIFlags;
-	// Timesplitters 2 is the only game that I see this in
+	// Timesplitters 2 and 3 is the only game that I see this in
 	// May be a hack
-	if (flags == 0xFB) flags = ~flags;
+	//if (flags == 0xFB) flags = ~flags;
+	// Batten Kaitos has 0x65 as flag too. Everything but the first 3 bytes seems irrelevant.
+	// Something similar happens with Wario Ware Inc. AnimSpeed
+
 	int bnrFormat = (flags&3);
 
 	u32 DataOffset = BE32(CurrentDir->Dir[index].ImageOffset);
@@ -1108,7 +1091,6 @@ u32 GCMemcard::ReadAnimRGBA8(u8 index, u32* buffer, u8 *delays) const
 	switch (bnrFormat)
 	{
 	case 1:
-	case 3:
 		animData += 96*32 + 2*256; // image+palette
 		break;
 	case 2:
@@ -1120,55 +1102,91 @@ u32 GCMemcard::ReadAnimRGBA8(u8 index, u32* buffer, u8 *delays) const
 	u8* data[8];
 	int frames = 0;
 
-
 	for (int i = 0; i < 8; i++)
 	{
 		fmts[i] = (formats >> (2*i))&3;
-		delays[i] = ((fdelays >> (2*i))&3) << 2;
+		delays[i] = ((fdelays >> (2*i))&3);
 		data[i] = animData;
 
-		if (!fmtCheck) fmtCheck = fmts[i];
-		if (fmtCheck == fmts[i])
+		if (!delays[i])
+		{
+			//First icon_speed = 0 indicates there aren't any more icons
+			break;
+		}
+		//If speed is set there is an icon (it can be a "blank frame")
+		frames++;
+		if (fmts[i] != 0)
 		{
 			switch (fmts[i])
 			{
 			case CI8SHARED: // CI8 with shared palette
 				animData += 32*32;
-				frames++;
 				break;
 			case RGB5A3: // RGB5A3
 				animData += 32*32*2;
-				frames++;
 				break;
 			case CI8: // CI8 with own palette
 				animData += 32*32 + 2*256;
-				frames++;
 				break;
 			}
 		}
 	}
 
 	u16* sharedPal = (u16*)(animData);
+	int j = 0;
 
 	for (int i = 0; i < 8; i++)
 	{
 
-		if (fmtCheck == fmts[i])
+		if (!delays[i])
+		{
+			//First icon_speed = 0 indicates there aren't any more icons
+			break;
+		}
+		if (fmts[i] != 0)
 		{
 			switch (fmts[i])
 			{
 			case CI8SHARED: // CI8 with shared palette
-				decodeCI8image(buffer,data[i],sharedPal,32,32);
+				ColorUtil::decodeCI8image(buffer,data[i],sharedPal,32,32);
 				buffer += 32*32;
 				break;
 			case RGB5A3: // RGB5A3
-				decode5A3image(buffer, (u16*)(data[i]), 32, 32);
+				ColorUtil::decode5A3image(buffer, (u16*)(data[i]), 32, 32);
+				buffer += 32*32;
 				break;
 			case CI8: // CI8 with own palette
 				u16 *paldata = (u16*)(data[i] + 32*32);
-				decodeCI8image(buffer, data[i], paldata, 32, 32);
+				ColorUtil::decodeCI8image(buffer, data[i], paldata, 32, 32);
 				buffer += 32*32;
 				break;
+			}
+		}
+		else
+		{
+			//Speed is set but there's no actual icon
+			//This is used to reduce animation speed in Pikmin and Luigi's Mansion for example
+			//These "blank frames" show the next icon
+			for(j=i; j<8;++j)
+			{
+				if (fmts[j] != 0)
+				{
+					switch (fmts[j])
+					{
+					case CI8SHARED: // CI8 with shared palette
+						ColorUtil::decodeCI8image(buffer,data[j],sharedPal,32,32);
+						break;
+					case RGB5A3: // RGB5A3
+						ColorUtil::decode5A3image(buffer, (u16*)(data[j]), 32, 32);
+						buffer += 32*32;
+						break;
+					case CI8: // CI8 with own palette
+						u16 *paldata = (u16*)(data[j] + 32*32);
+						ColorUtil::decodeCI8image(buffer, data[j], paldata, 32, 32);
+						buffer += 32*32;
+						break;
+					}
+				}
 			}
 		}
 	}
@@ -1225,7 +1243,8 @@ bool GCMemcard::Format(bool sjis, u16 SizeMb)
 		GCMBlock b;
 		mc_data_blocks.push_back(b);
 	}
-
+	
+	initDirBatPointers();
 	m_valid = true;
 
 	return Save();
@@ -1265,4 +1284,138 @@ void GCMemcard::FormatInternal(GCMC_Header &GCP)
 	p_bat->LastAllocated = p_bat_backup->LastAllocated = BE16(4);
 	calc_checksumsBE((u16*)p_bat+2, 0xFFE, &p_bat->Checksum, &p_bat->Checksum_Inv);
 	calc_checksumsBE((u16*)p_bat_backup+2, 0xFFE, &p_bat_backup->Checksum, &p_bat_backup->Checksum_Inv);
+}
+
+void GCMemcard::CARD_GetSerialNo(u32 *serial1,u32 *serial2)
+{
+	u32 serial[8];
+
+	for (int i = 0; i < 8; i++)
+	{
+		memcpy(&serial[i], (u8 *) &hdr+(i*4), 4);
+	}
+
+	*serial1 = serial[0]^serial[2]^serial[4]^serial[6];
+	*serial2 = serial[1]^serial[3]^serial[5]^serial[7];
+}
+
+
+/*************************************************************/
+/* FZEROGX_MakeSaveGameValid                                 */
+/* (use just before writing a F-Zero GX system .gci file)    */
+/*                                                           */
+/* Parameters:                                               */
+/*    direntry:   [Description needed]                       */
+/*    FileBuffer: [Description needed]                       */
+/*                                                           */
+/* Returns: Error code                                       */
+/*************************************************************/
+
+s32 GCMemcard::FZEROGX_MakeSaveGameValid(DEntry& direntry, std::vector<GCMBlock> &FileBuffer)
+{
+	u32 i,j;
+	u32 serial1,serial2;
+	u16 chksum = 0xFFFF;
+	int block = 0;
+
+	// check for F-Zero GX system file
+	if (strcmp((char*)direntry.Filename,"f_zero.dat")!=0) return 0;
+
+	// get encrypted destination memory card serial numbers
+	CARD_GetSerialNo(&serial1,&serial2);
+
+	// set new serial numbers
+	*(u16*)&FileBuffer[1].block[0x0066] = BE16(BE32(serial1) >> 16);
+	*(u16*)&FileBuffer[3].block[0x1580] = BE16(BE32(serial2) >> 16);
+	*(u16*)&FileBuffer[1].block[0x0060] = BE16(BE32(serial1) & 0xFFFF);
+	*(u16*)&FileBuffer[1].block[0x0200] = BE16(BE32(serial2) & 0xFFFF);
+
+	// calc 16-bit checksum
+	for (i=0x02;i<0x8000;i++)
+	{				
+		chksum ^= (FileBuffer[block].block[i-(block*0x2000)]&0xFF);
+		for (j=8; j > 0; j--)
+		{
+			if (chksum&1) chksum = (chksum>>1)^0x8408;
+			else chksum >>= 1;
+		}
+		if (!(i%0x2000)) block ++;
+	}
+
+	// set new checksum
+	*(u16*)&FileBuffer[0].block[0x00] = BE16(~chksum);
+
+	return 1;
+}
+
+/***********************************************************/
+/* PSO_MakeSaveGameValid                                   */
+/* (use just before writing a PSO system .gci file)        */
+/*                                                         */
+/* Parameters:                                             */
+/*    direntry:   [Description needed]                     */
+/*    FileBuffer: [Description needed]                     */
+/*                                                         */
+/* Returns: Error code                                     */
+/***********************************************************/
+
+s32 GCMemcard::PSO_MakeSaveGameValid(DEntry& direntry, std::vector<GCMBlock> &FileBuffer)
+{
+	u32 i,j;
+	u32 chksum;
+	u32 crc32LUT[256];
+	u32 serial1,serial2;
+	u32 pso3offset = 0x00;
+
+	// check for PSO1&2 system file
+	if (strcmp((char*)direntry.Filename,"PSO_SYSTEM")!=0)
+	{
+		// check for PSO3 system file
+		if (strcmp((char*)direntry.Filename,"PSO3_SYSTEM")==0)
+		{
+			// PSO3 data block size adjustment
+			pso3offset = 0x10;
+		}
+		else
+		{
+			// nothing to do
+			return 0;
+		}
+	}
+
+	// get encrypted destination memory card serial numbers
+	CARD_GetSerialNo(&serial1,&serial2);
+
+	// set new serial numbers
+	*(u32*)&FileBuffer[1].block[0x0158] = serial1;
+	*(u32*)&FileBuffer[1].block[0x015C] = serial2;
+
+	// generate crc32 LUT
+	for (i=0; i < 256; i++)
+	{
+		chksum = i;
+		for (j=8; j > 0; j--)
+		{
+			if (chksum & 1)
+				chksum = (chksum>>1)^0xEDB88320;
+			else
+				chksum >>= 1;
+		}
+
+		crc32LUT[i] = chksum;
+	}
+
+	// PSO initial crc32 value
+	chksum = 0xDEBB20E3;
+
+	// calc 32-bit checksum
+	for (i=0x004C; i < 0x0164+pso3offset; i++)
+	{
+		chksum = ((chksum>>8)&0xFFFFFF)^crc32LUT[(chksum^FileBuffer[1].block[i])&0xFF];
+	}
+
+	// set new checksum
+	*(u32*)&FileBuffer[1].block[0x0048] = BE32(chksum^0xFFFFFFFF);
+
+	return 1;
 }

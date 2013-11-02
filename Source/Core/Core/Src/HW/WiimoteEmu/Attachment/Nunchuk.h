@@ -1,3 +1,7 @@
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
+
 #ifndef NUNCHUCK_H
 #define NUNCHUCK_H
 
@@ -11,7 +15,7 @@ namespace WiimoteEmu
 class Nunchuk : public Attachment
 {
 public:
-	Nunchuk(UDPWrapper * wrp);
+	Nunchuk(UDPWrapper * wrp, WiimoteEmu::ExtensionReg& _reg);
 
 	virtual void GetState( u8* const data, const bool focus );
 

@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 // WARNING - THIS LIBRARY IS NOT THREAD SAFE!!!
 
@@ -120,7 +107,7 @@ struct OpArg
 		scale = (u8)_scale;
 		offsetOrBaseReg = (u16)rmReg;
 		indexReg = (u16)scaledReg;
-		//if scale == 0 never mind offseting
+		//if scale == 0 never mind offsetting
 		offset = _offset;
 	}
 	void WriteRex(XEmitter *emit, int opBits, int bits, int customOp = -1) const;
@@ -650,29 +637,22 @@ public:
 	void ABI_CallFunctionAC(void *func, const Gen::OpArg &arg1, u32 param2);
 	void ABI_CallFunctionA(void *func, const Gen::OpArg &arg1);
 
-	// Pass a register as a paremeter.
+	// Pass a register as a parameter.
 	void ABI_CallFunctionR(void *func, Gen::X64Reg reg1);
-	void ABI_CallFunctionRR(void *func, Gen::X64Reg reg1, Gen::X64Reg reg2);
+	void ABI_CallFunctionRR(void *func, Gen::X64Reg reg1, Gen::X64Reg reg2, bool noProlog = false);
 
 	// A function that doesn't have any control over what it will do to regs,
 	// such as the dispatcher, should be surrounded by these.
 	void ABI_PushAllCalleeSavedRegsAndAdjustStack();
 	void ABI_PopAllCalleeSavedRegsAndAdjustStack();
 
-	// A function that doesn't know anything about it's surroundings, should
-	// be surrounded by these to establish a safe environment, where it can roam free.
-	// An example is a backpatch injected function.
-	void ABI_PushAllCallerSavedRegsAndAdjustStack();
-	void ABI_PopAllCallerSavedRegsAndAdjustStack();
+	// A more flexible version of the above.
+	void ABI_PushRegistersAndAdjustStack(u32 mask, bool noProlog);
+	void ABI_PopRegistersAndAdjustStack(u32 mask, bool noProlog);
 
-	unsigned int ABI_GetAlignedFrameSize(unsigned int frameSize);
-	void ABI_AlignStack(unsigned int frameSize);
-	void ABI_RestoreStack(unsigned int frameSize);
-
-	// Sets up a __cdecl function.
-	// Only x64 really needs the parameter count.
-	void ABI_EmitPrologue(int maxCallParams);
-	void ABI_EmitEpilogue(int maxCallParams);
+	unsigned int ABI_GetAlignedFrameSize(unsigned int frameSize, bool noProlog = false);
+	void ABI_AlignStack(unsigned int frameSize, bool noProlog = false);
+	void ABI_RestoreStack(unsigned int frameSize, bool noProlog = false);
 
 	#ifdef _M_IX86
 	inline int ABI_GetNumXMMRegs() { return 8; }
@@ -757,7 +737,7 @@ public:
 		region_size = 0;
 	}
 
-	bool IsInCodeSpace(u8 *ptr)
+	bool IsInSpace(u8 *ptr)
 	{
 		return ptr >= region && ptr < region + region_size;
 	}
@@ -766,7 +746,7 @@ public:
 	// Start over if you need to change the code (call FreeCodeSpace(), AllocCodeSpace()).
 	void WriteProtect()
 	{
-		WriteProtectMemory(region, region_size, true);		
+		WriteProtectMemory(region, region_size, true);
 	}
 
 	void ResetCodePtr()

@@ -1,33 +1,21 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #ifndef _LOG_H_
 #define _LOG_H_
 
-#define	NOTICE_LEVEL  1  // VERY important information that is NOT errors. Like startup and OSReports.
-#define	ERROR_LEVEL   2  // Critical errors 
-#define	WARNING_LEVEL 3  // Something is suspicious.
-#define	INFO_LEVEL    4  // General information.
-#define	DEBUG_LEVEL   5  // Detailed debugging - might make things slow.
+#define NOTICE_LEVEL  1  // VERY important information that is NOT errors. Like startup and OSReports.
+#define ERROR_LEVEL   2  // Critical errors 
+#define WARNING_LEVEL 3  // Something is suspicious.
+#define INFO_LEVEL    4  // General information.
+#define DEBUG_LEVEL   5  // Detailed debugging - might make things slow.
 
 namespace LogTypes
 {
 
-enum LOG_TYPE {
+enum LOG_TYPE
+{
 	ACTIONREPLAY,
 	AUDIO,
 	AUDIO_INTERFACE,
@@ -44,6 +32,7 @@ enum LOG_TYPE {
 	DVDINTERFACE,
 	DYNA_REC,
 	EXPANSIONINTERFACE,
+	GDB_STUB,
 	POWERPC,
 	GPFIFO,
 	OSHLE,
@@ -64,8 +53,11 @@ enum LOG_TYPE {
 	WII_IPC_DVD,
 	WII_IPC_ES,
 	WII_IPC_FILEIO,
+	WII_IPC_HID,
 	WII_IPC_HLE,
 	WII_IPC_NET,
+	WII_IPC_WC24,
+	WII_IPC_SSL,
 	WII_IPC_SD,
 	WII_IPC_STM,
 	WII_IPC_WIIMOTE,
@@ -76,12 +68,13 @@ enum LOG_TYPE {
 };
 
 // FIXME: should this be removed?
-enum LOG_LEVELS {
-	LNOTICE = NOTICE_LEVEL,
-	LERROR = ERROR_LEVEL,
+enum LOG_LEVELS
+{
+	LNOTICE  = NOTICE_LEVEL,
+	LERROR   = ERROR_LEVEL,
 	LWARNING = WARNING_LEVEL,
-	LINFO = INFO_LEVEL,
-	LDEBUG = DEBUG_LEVEL,
+	LINFO    = INFO_LEVEL,
+	LDEBUG   = DEBUG_LEVEL,
 };
 
 #define LOGTYPES_LEVELS LogTypes::LOG_LEVELS

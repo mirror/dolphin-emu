@@ -1,27 +1,8 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "Common.h"
-
-#include "../../Core.h"
-#include "../PowerPC.h"
-#include "../PPCTables.h"
-#include "x64Emitter.h"
-#include "../../HW/GPFifo.h"
 
 #include "Jit.h"
 #include "JitRegCache.h"
@@ -42,7 +23,7 @@ const double GC_ALIGNED16(psZeroZero[2]) = {0.0, 0.0};
 void Jit64::ps_mr(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -57,7 +38,7 @@ void Jit64::ps_mr(UGeckoInstruction inst)
 void Jit64::ps_sel(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 
 	if (inst.Rc) {
 		Default(inst); return;
@@ -82,7 +63,7 @@ void Jit64::ps_sel(UGeckoInstruction inst)
 void Jit64::ps_sign(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -119,7 +100,7 @@ void Jit64::ps_sign(UGeckoInstruction inst)
 void Jit64::ps_rsqrte(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -158,32 +139,27 @@ void Jit64::tri_op(int d, int a, int b, bool reversible, void (XEmitter::*op)(X6
 		fpr.BindToRegister(d, true);
 		(this->*op)(fpr.RX(d), fpr.R(b));
 	}
-	else if (d == b && reversible)
+	else if (d == b)
 	{
-		fpr.BindToRegister(d, true);
-		(this->*op)(fpr.RX(d), fpr.R(a));
+		if (reversible)
+		{
+			fpr.BindToRegister(d, true);
+			(this->*op)(fpr.RX(d), fpr.R(a));
+		}
+		else
+		{
+			MOVAPD(XMM0, fpr.R(b));
+			fpr.BindToRegister(d, false);
+			MOVAPD(fpr.RX(d), fpr.R(a));
+			(this->*op)(fpr.RX(d), Gen::R(XMM0));
+		}
 	}
-	else if (a != d && b != d) 
+	else
 	{
 		//sources different from d, can use rather quick solution
 		fpr.BindToRegister(d, false);
 		MOVAPD(fpr.RX(d), fpr.R(a));
 		(this->*op)(fpr.RX(d), fpr.R(b));
-	}
-	else if (b != d)
-	{
-		fpr.BindToRegister(d, false);
-		MOVAPD(XMM0, fpr.R(b));
-		MOVAPD(fpr.RX(d), fpr.R(a));
-		(this->*op)(fpr.RX(d), Gen::R(XMM0));
-	}
-	else //Other combo, must use two temps :(
-	{
-		MOVAPD(XMM0, fpr.R(a));
-		MOVAPD(XMM1, fpr.R(b));
-		fpr.BindToRegister(d, false);
-		(this->*op)(XMM0, Gen::R(XMM1));
-		MOVAPD(fpr.RX(d), Gen::R(XMM0));
 	}
 	ForceSinglePrecisionP(fpr.RX(d));
 	fpr.UnlockAll();
@@ -192,7 +168,7 @@ void Jit64::tri_op(int d, int a, int b, bool reversible, void (XEmitter::*op)(X6
 void Jit64::ps_arith(UGeckoInstruction inst)
 {		
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -212,7 +188,7 @@ void Jit64::ps_arith(UGeckoInstruction inst)
 void Jit64::ps_sum(UGeckoInstruction inst)
 {	
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	// TODO: (inst.SUBOP5 == 10) breaks Sonic Colours (black screen) 
 	if (inst.Rc || (inst.SUBOP5 == 10)) {
 		Default(inst); return;
@@ -254,7 +230,7 @@ void Jit64::ps_sum(UGeckoInstruction inst)
 void Jit64::ps_muls(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -293,7 +269,7 @@ void Jit64::ps_muls(UGeckoInstruction inst)
 void Jit64::ps_mergeXX(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -330,7 +306,7 @@ void Jit64::ps_mergeXX(UGeckoInstruction inst)
 void Jit64::ps_maddXX(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(Paired)
+	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}

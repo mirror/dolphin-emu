@@ -1,17 +1,10 @@
-#include "../ControllerInterface.h"
-
-#ifdef CIFACE_USE_DINPUT
 
 #include "DInput.h"
 
-#include <StringUtil.h>
+#include "StringUtil.h"
 
-#ifdef CIFACE_USE_DINPUT_JOYSTICK
-	#include "DInputJoystick.h"
-#endif
-#ifdef CIFACE_USE_DINPUT_KBM
-	#include "DInputKeyboardMouse.h"
-#endif
+#include "DInputJoystick.h"
+#include "DInputKeyboardMouse.h"
 
 #pragma comment(lib, "Dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
@@ -41,38 +34,28 @@ BOOL CALLBACK DIEnumDevicesCallback(LPCDIDEVICEINSTANCE lpddi, LPVOID pvRef)
 
 std::string GetDeviceName(const LPDIRECTINPUTDEVICE8 device)
 {
-	std::string out;
-
-	DIPROPSTRING str;
-	ZeroMemory(&str, sizeof(str));
+	DIPROPSTRING str = {};
 	str.diph.dwSize = sizeof(str);
 	str.diph.dwHeaderSize = sizeof(str.diph);
 	str.diph.dwHow = DIPH_DEVICE;
 
+	std::string result;
 	if (SUCCEEDED(device->GetProperty(DIPROP_PRODUCTNAME, &str.diph)))
 	{
-		const int size = WideCharToMultiByte(CP_UTF8, 0, str.wsz, -1, NULL, 0, NULL, NULL);
-		char* const data = new char[size];
-		if (size == WideCharToMultiByte(CP_UTF8, 0, str.wsz, -1, data, size, NULL, NULL))
-			out.assign(data);
-		delete[] data;
+		result = StripSpaces(UTF16ToUTF8(str.wsz));
 	}
 
-	return StripSpaces(out);
+	return result;
 }
 
-void Init(std::vector<ControllerInterface::Device*>& devices, HWND hwnd)
+void Init(std::vector<Core::Device*>& devices, HWND hwnd)
 {
 	IDirectInput8* idi8;
 	if (FAILED(DirectInput8Create(GetModuleHandle(NULL), DIRECTINPUT_VERSION, IID_IDirectInput8, (LPVOID*)&idi8, NULL)))
 		return;
 
-#ifdef CIFACE_USE_DINPUT_KBM
 	InitKeyboardMouse(idi8, devices, hwnd);
-#endif
-#ifdef CIFACE_USE_DINPUT_JOYSTICK
 	InitJoystick(idi8, devices, hwnd);
-#endif
 
 	idi8->Release();
 
@@ -80,5 +63,3 @@ void Init(std::vector<ControllerInterface::Device*>& devices, HWND hwnd)
 
 }
 }
-
-#endif

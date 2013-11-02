@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 /*
 For a more general explanation of the IR, see IR.cpp.
@@ -37,22 +24,10 @@ The register allocation is linear scan allocation.
 #pragma warning(disable:4146)   // unary minus operator applied to unsigned type, result still unsigned
 #endif
 
-#include "IR.h"
-#include "../PPCTables.h"
-#include "../../CoreTiming.h"
-#include "Thunk.h"
-#include "../../HW/Memmap.h"
-#include "JitILAsm.h"
 #include "JitIL.h"
-#include "../../HW/GPFifo.h"
-#include "../../ConfigManager.h"
-#include "x64Emitter.h"
 #include "../../../../Common/Src/CPUDetect.h"
 #include "MathUtil.h"
-#include "../../Core.h"
 #include "HW/ProcessorInterface.h"
-
-static ThunkManager thunks;
 
 using namespace IREmitter;
 using namespace Gen;
@@ -69,9 +44,6 @@ struct RegInfo {
 	InstLoc fregs[MAX_NUMBER_OF_REGS];
 	unsigned numSpills;
 	unsigned numFSpills;
-	bool MakeProfile;
-	bool UseProfile;
-	unsigned numProfiledLoads;
 	unsigned exitNumber;
 
 	RegInfo(JitIL* j, InstLoc f, unsigned insts) : Jit(j), FirstI(f), IInfo(insts), lastUsed(insts) {
@@ -81,14 +53,29 @@ struct RegInfo {
 		}
 		numSpills = 0;
 		numFSpills = 0;
-		numProfiledLoads = 0;
 		exitNumber = 0;
-		MakeProfile = UseProfile = false;
 	}
 
 	private:
 		RegInfo(RegInfo&); // DO NOT IMPLEMENT
 };
+
+static u32 regsInUse(RegInfo& R) {
+#ifdef _M_X64
+	u32 result = 0;
+	for (unsigned i = 0; i < MAX_NUMBER_OF_REGS; i++)
+	{
+		if (R.regs[i] != 0)
+			result |= (1 << i);
+		if (R.fregs[i] != 0)
+			result |= (1 << (16 + i));
+	}
+	return result;
+#else
+	// not needed
+	return 0;
+#endif
+}
 
 static void regMarkUse(RegInfo& R, InstLoc I, InstLoc Op, unsigned OpNum) {
 	unsigned& info = R.IInfo[Op - R.FirstI];
@@ -102,7 +89,6 @@ static unsigned regReadUse(RegInfo& R, InstLoc I) {
 }
 
 static unsigned SlotSet[1000];
-static unsigned ProfiledLoads[1000];
 static u8 GC_ALIGNED16(FSlotSet[16*1000]);
 
 static OpArg regLocForSlot(RegInfo& RI, unsigned slot) {
@@ -436,47 +422,15 @@ static void regMarkMemAddress(RegInfo& RI, InstLoc I, InstLoc AI, unsigned OpNum
 	regMarkUse(RI, I, AI, OpNum);
 }
 
-static void regClearDeadMemAddress(RegInfo& RI, InstLoc I, InstLoc AI, unsigned OpNum) {
-	if (!(RI.IInfo[I - RI.FirstI] & (2 << OpNum)))
-		return;
-	if (isImm(*AI)) {
-		unsigned addr = RI.Build->GetImmValue(AI);	
-		if (Memory::IsRAMAddress(addr)) {
-			return;
-		}
-	}
-	InstLoc AddrBase;
-	if (getOpcode(*AI) == Add && isImm(*getOp2(AI))) {
-		AddrBase = getOp1(AI);
-	} else {
-		AddrBase = AI;
-	}
-	regClearInst(RI, AddrBase);
-}
-
 // in 64-bit build, this returns a completely bizarre address sometimes!
-static OpArg regBuildMemAddress(RegInfo& RI, InstLoc I, InstLoc AI,
-				unsigned OpNum,	unsigned Size, X64Reg* dest,
-				bool Profiled,
-				unsigned ProfileOffset = 0) {
+static std::pair<OpArg, u32> regBuildMemAddress(RegInfo& RI, InstLoc I,
+				InstLoc AI, unsigned OpNum,	unsigned Size, X64Reg* dest) {
 	if (isImm(*AI)) {
-		unsigned addr = RI.Build->GetImmValue(AI);	
+		unsigned addr = RI.Build->GetImmValue(AI);
 		if (Memory::IsRAMAddress(addr)) {
 			if (dest)
 				*dest = regFindFreeReg(RI);
-#ifdef _M_IX86
-			// 32-bit
-			if (Profiled) 
-				return M((void*)((u8*)Memory::base + (addr & Memory::MEMVIEW32_MASK)));
-			return M((void*)addr);
-#else
-			// 64-bit
-			if (Profiled) {
-				RI.Jit->LEA(32, EAX, M((void*)addr));
-				return MComplex(RBX, EAX, SCALE_1, 0);
-			}
-			return M((void*)addr);
-#endif
+			return std::make_pair(Imm32(addr), 0);
 		}
 	}
 	unsigned offset;
@@ -509,84 +463,16 @@ static OpArg regBuildMemAddress(RegInfo& RI, InstLoc I, InstLoc AI,
 		baseReg = regEnsureInReg(RI, AddrBase);
 	}
 
-	if (Profiled) {
-		// (Profiled mode isn't the default, at least for the moment)
-#ifdef _M_IX86
-		return MDisp(baseReg, (u32)Memory::base + offset + ProfileOffset);
-#else
-		RI.Jit->LEA(32, EAX, MDisp(baseReg, offset));
-		return MComplex(RBX, EAX, SCALE_1, 0);
-#endif
-	}
-	return MDisp(baseReg, offset);
+	return std::make_pair(R(baseReg), offset);
 }
 
 static void regEmitMemLoad(RegInfo& RI, InstLoc I, unsigned Size) {
-	if (RI.UseProfile) {
-		unsigned curLoad = ProfiledLoads[RI.numProfiledLoads++];
-		if (!(curLoad & 0x0C000000)) {
-			X64Reg reg;
-			OpArg addr = regBuildMemAddress(RI, I, getOp1(I), 1,
-							Size, &reg, true,
-							-(curLoad & 0xC0000000));
-			RI.Jit->MOVZX(32, Size, reg, addr);
-			RI.Jit->BSWAP(Size, reg);
-			if (regReadUse(RI, I))
-				RI.regs[reg] = I;
-			return;
-		} 
-	}
 	X64Reg reg;
-	OpArg addr = regBuildMemAddress(RI, I, getOp1(I), 1, Size, &reg, false);
-	RI.Jit->LEA(32, ECX, addr);
-	if (RI.MakeProfile) {
-		RI.Jit->MOV(32, M(&ProfiledLoads[RI.numProfiledLoads++]), R(ECX));
-	}
-	u32 mem_mask = 0;
+	auto info = regBuildMemAddress(RI, I, getOp1(I), 1, Size, &reg);
 
-	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bMMU || SConfig::GetInstance().m_LocalCoreStartupParameter.iTLBHack)
-		mem_mask = 0x20000000;
-
-	RI.Jit->TEST(32, R(ECX), Imm32(0x0C000000 | mem_mask));
-	FixupBranch argh = RI.Jit->J_CC(CC_Z);
-
-	// Slow safe read using Memory::Read_Ux routines
-#ifdef _M_IX86  // we don't allocate EAX on x64 so no reason to save it.
-	if (reg != EAX) {
-		RI.Jit->PUSH(32, R(EAX));
-	}
-#endif
-	switch (Size)
-	{
-	case 32: RI.Jit->ABI_CallFunctionR(thunks.ProtectFunction((void *)&Memory::Read_U32, 1), ECX); break;
-	case 16: RI.Jit->ABI_CallFunctionR(thunks.ProtectFunction((void *)&Memory::Read_U16_ZX, 1), ECX); break;
-	case 8:  RI.Jit->ABI_CallFunctionR(thunks.ProtectFunction((void *)&Memory::Read_U8_ZX, 1), ECX);  break;
-	}
-	if (reg != EAX) {
-		RI.Jit->MOV(32, R(reg), R(EAX));
-#ifdef _M_IX86
-		RI.Jit->POP(32, R(EAX));
-#endif
-	}
-	FixupBranch arg2 = RI.Jit->J();
-	RI.Jit->SetJumpTarget(argh);
-	RI.Jit->UnsafeLoadRegToReg(ECX, reg, Size, 0, false);
-	RI.Jit->SetJumpTarget(arg2);
+	RI.Jit->SafeLoadToReg(reg, info.first, Size, info.second, regsInUse(RI), false);
 	if (regReadUse(RI, I))
 		RI.regs[reg] = I;
-}
-
-static OpArg regSwappedImmForConst(RegInfo& RI, InstLoc I, unsigned Size) {
-	unsigned imm = RI.Build->GetImmValue(I);
-	if (Size == 32) {
-		imm = Common::swap32(imm);
-		return Imm32(imm);
-	} else if (Size == 16) {
-		imm = Common::swap16(imm);
-		return Imm16(imm);
-	} else {
-		return Imm8(imm);
-	}
 }
 
 static OpArg regImmForConst(RegInfo& RI, InstLoc I, unsigned Size) {
@@ -601,53 +487,18 @@ static OpArg regImmForConst(RegInfo& RI, InstLoc I, unsigned Size) {
 }
 
 static void regEmitMemStore(RegInfo& RI, InstLoc I, unsigned Size) {
-	if (RI.UseProfile) {
-		unsigned curStore = ProfiledLoads[RI.numProfiledLoads++];
-		if (!(curStore & 0x0C000000)) {
-			OpArg addr = regBuildMemAddress(RI, I, getOp2(I), 2,
-							Size, 0, true,
-							-(curStore & 0xC0000000));
-			if (isImm(*getOp1(I))) {
-				RI.Jit->MOV(Size, addr, regSwappedImmForConst(RI, getOp1(I), Size));
-			} else {
-				RI.Jit->MOV(32, R(ECX), regLocForInst(RI, getOp1(I)));
-				RI.Jit->BSWAP(Size, ECX);
-				RI.Jit->MOV(Size, addr, R(ECX));
-			}
-			if (RI.IInfo[I - RI.FirstI] & 4)
-				regClearInst(RI, getOp1(I));
-			return;
-		} else if ((curStore & 0xFFFFF000) == 0xCC008000) {
-			regSpill(RI, EAX);
-			if (isImm(*getOp1(I))) {
-				RI.Jit->MOV(Size, R(ECX), regSwappedImmForConst(RI, getOp1(I), Size));
-			} else { 
-				RI.Jit->MOV(32, R(ECX), regLocForInst(RI, getOp1(I)));
-				RI.Jit->BSWAP(Size, ECX);
-			}
-			RI.Jit->MOV(32, R(EAX), M(&GPFifo::m_gatherPipeCount));
-			RI.Jit->MOV(Size, MDisp(EAX, (u32)(u64)GPFifo::m_gatherPipe), R(ECX));
-			RI.Jit->ADD(32, R(EAX), Imm8(Size >> 3));
-			RI.Jit->MOV(32, M(&GPFifo::m_gatherPipeCount), R(EAX));
-			RI.Jit->js.fifoBytesThisBlock += Size >> 3;
-			if (RI.IInfo[I - RI.FirstI] & 4)
-				regClearInst(RI, getOp1(I));
-			regClearDeadMemAddress(RI, I, getOp2(I), 2);
-			return;
-		}
-	}
-	OpArg addr = regBuildMemAddress(RI, I, getOp2(I), 2, Size, 0, false);
-	RI.Jit->LEA(32, ECX, addr);
+	auto info = regBuildMemAddress(RI, I, getOp2(I), 2, Size, 0);
+	if (info.first.IsImm())
+		RI.Jit->MOV(32, R(ECX), info.first);
+	else
+		RI.Jit->LEA(32, ECX, MDisp(info.first.GetSimpleReg(), info.second));
 	regSpill(RI, EAX);
 	if (isImm(*getOp1(I))) {
 		RI.Jit->MOV(Size, R(EAX), regImmForConst(RI, getOp1(I), Size));
 	} else {
 		RI.Jit->MOV(32, R(EAX), regLocForInst(RI, getOp1(I)));
 	}
-	if (RI.MakeProfile) {
-		RI.Jit->MOV(32, M(&ProfiledLoads[RI.numProfiledLoads++]), R(ECX));
-	}
-	RI.Jit->SafeWriteRegToReg(EAX, ECX, Size, 0);
+	RI.Jit->SafeWriteRegToReg(EAX, ECX, Size, 0, regsInUse(RI));
 	if (RI.IInfo[I - RI.FirstI] & 4)
 		regClearInst(RI, getOp1(I));
 }
@@ -700,18 +551,6 @@ static void regEmitICmpInst(RegInfo& RI, InstLoc I, CCFlags flag) {
 }
 
 static void regWriteExit(RegInfo& RI, InstLoc dest) {
-	if (RI.MakeProfile) {
-		if (isImm(*dest)) {
-			RI.Jit->MOV(32, M(&PC), Imm32(RI.Build->GetImmValue(dest)));
-		} else {
-			RI.Jit->MOV(32, R(EAX), regLocForInst(RI, dest));
-			RI.Jit->MOV(32, M(&PC), R(EAX));
-		}
-		RI.Jit->Cleanup();
-		RI.Jit->SUB(32, M(&CoreTiming::downcount), Imm32(RI.Jit->js.downcountAmount));
-		RI.Jit->JMP(((JitIL *)jit)->asm_routines.doReJit, true);
-		return;
-	}
 	if (isImm(*dest)) {
 		RI.Jit->WriteExit(RI.Build->GetImmValue(dest), RI.exitNumber++);
 	} else {
@@ -725,12 +564,10 @@ static bool checkIsSNAN() {
 	return MathUtil::IsSNAN(isSNANTemp[0][0]) || MathUtil::IsSNAN(isSNANTemp[1][0]);
 }
 
-static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, bool UseProfile, bool MakeProfile) {
+static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit) {
 	//printf("Writing block: %x\n", js.blockStart);
 	RegInfo RI(Jit, ibuild->getFirstInst(), ibuild->getNumInsts());
 	RI.Build = ibuild;
-	RI.UseProfile = UseProfile;
-	RI.MakeProfile = MakeProfile;
 	// Pass to compute liveness
 	ibuild->StartBackPass();
 	for (unsigned int index = (unsigned int)RI.IInfo.size() - 1; index != -1U; --index) {
@@ -1335,9 +1172,7 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, bool UseProfile, bool Mak
 			int addr_scale = SCALE_8;
 #endif
 			Jit->MOV(32, R(ECX), regLocForInst(RI, getOp1(I)));
-			Jit->ABI_AlignStack(0);
 			Jit->CALLptr(MScaled(EDX, addr_scale, (u32)(u64)(((JitIL *)jit)->asm_routines.pairedLoadQuantized)));
-			Jit->ABI_RestoreStack(0);
 			Jit->MOVAPD(reg, R(XMM0));
 			RI.fregs[reg] = I;
 			regNormalRegClear(RI, I);
@@ -1352,7 +1187,7 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, bool UseProfile, bool Mak
 				Jit->MOV(32, R(EAX), loc1);
 			}
 			Jit->MOV(32, R(ECX), regLocForInst(RI, getOp2(I)));
-			RI.Jit->SafeWriteRegToReg(EAX, ECX, 32, 0);
+			RI.Jit->SafeWriteRegToReg(EAX, ECX, 32, 0, regsInUse(RI));
 			if (RI.IInfo[I - RI.FirstI] & 4)
 				fregClearInst(RI, getOp1(I));
 			if (RI.IInfo[I - RI.FirstI] & 8)
@@ -1365,7 +1200,7 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, bool UseProfile, bool Mak
 			// if SafeWriteRegToReg() is modified.
 			u32 mem_mask = Memory::ADDR_MASK_HW_ACCESS;
 			if (Core::g_CoreStartupParameter.bMMU ||
-				Core::g_CoreStartupParameter.iTLBHack) {
+				Core::g_CoreStartupParameter.bTLBHack) {
 				mem_mask |= Memory::ADDR_MASK_MEM1;
 			}
 #ifdef ENABLE_MEM_CHECK
@@ -1415,12 +1250,12 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, bool UseProfile, bool Mak
 				Jit->PSRLQ(XMM0, 32);
 				Jit->MOVD_xmm(R(EAX), XMM0);
 				Jit->MOV(32, R(ECX), address);
-				RI.Jit->SafeWriteRegToReg(EAX, ECX, 32, 0);
+				RI.Jit->SafeWriteRegToReg(EAX, ECX, 32, 0, regsInUse(RI));
 
 				Jit->MOVAPD(XMM0, value);
 				Jit->MOVD_xmm(R(EAX), XMM0);
 				Jit->MOV(32, R(ECX), address);
-				RI.Jit->SafeWriteRegToReg(EAX, ECX, 32, 4);
+				RI.Jit->SafeWriteRegToReg(EAX, ECX, 32, 4, regsInUse(RI));
 			Jit->SetJumpTarget(exit);
 
 			if (RI.IInfo[I - RI.FirstI] & 4)
@@ -1442,9 +1277,7 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, bool UseProfile, bool Mak
 #endif
 			Jit->MOV(32, R(ECX), regLocForInst(RI, getOp2(I)));
 			Jit->MOVAPD(XMM0, fregLocForInst(RI, getOp1(I)));
-			Jit->ABI_AlignStack(0);
 			Jit->CALLptr(MScaled(EDX, addr_scale, (u32)(u64)(((JitIL *)jit)->asm_routines.pairedStoreQuantized)));
-			Jit->ABI_RestoreStack(0);
 			if (RI.IInfo[I - RI.FirstI] & 4)
 				fregClearInst(RI, getOp1(I));
 			if (RI.IInfo[I - RI.FirstI] & 8)
@@ -1922,20 +1755,9 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, bool UseProfile, bool Mak
 
 			// Remove the invalid instruction from the icache, forcing a recompile
 #ifdef _M_IX86
-			if (InstLoc & JIT_ICACHE_VMEM_BIT)
-				Jit->MOV(32, M((jit->GetBlockCache()->GetICacheVMEM() + (InstLoc & JIT_ICACHE_MASK))), Imm32(JIT_ICACHE_INVALID_WORD));
-			else if (InstLoc & JIT_ICACHE_EXRAM_BIT)
-				Jit->MOV(32, M((jit->GetBlockCache()->GetICacheEx() + (InstLoc & JIT_ICACHEEX_MASK))), Imm32(JIT_ICACHE_INVALID_WORD));
-			else
-				Jit->MOV(32, M((jit->GetBlockCache()->GetICache() + (InstLoc & JIT_ICACHE_MASK))), Imm32(JIT_ICACHE_INVALID_WORD));
-
+			Jit->MOV(32, M(jit->GetBlockCache()->GetICachePtr(InstLoc)), Imm32(JIT_ICACHE_INVALID_WORD));
 #else
-			if (InstLoc & JIT_ICACHE_VMEM_BIT)
-				Jit->MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICacheVMEM() + (InstLoc & JIT_ICACHE_MASK)));
-			else if (InstLoc & JIT_ICACHE_EXRAM_BIT)
-				Jit->MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICacheEx() + (InstLoc & JIT_ICACHEEX_MASK)));
-			else
-				Jit->MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICache() + (InstLoc & JIT_ICACHE_MASK)));
+			Jit->MOV(64, R(RAX), ImmPtr(jit->GetBlockCache()->GetICachePtr(InstLoc)));
 			Jit->MOV(32, MatR(RAX), Imm32(JIT_ICACHE_INVALID_WORD));
 #endif
 			Jit->WriteExceptionExit();
@@ -1997,20 +1819,10 @@ static void DoWriteCode(IRBuilder* ibuild, JitIL* Jit, bool UseProfile, bool Mak
 		}
 	}
 
-	//if (!RI.MakeProfile && RI.numSpills)
-	//	printf("Block: %x, numspills %d\n", Jit->js.blockStart, RI.numSpills);
-	
 	Jit->WriteExit(jit->js.curBlock->exitAddress[0], 0);
 	Jit->UD2();
 }
 
 void JitIL::WriteCode() {
-	DoWriteCode(&ibuild, this, false, SConfig::GetInstance().m_LocalCoreStartupParameter.bJITProfiledReJIT);
-}
-
-void ProfiledReJit() {
-	jit->SetCodePtr(jit->js.rewriteStart);
-	DoWriteCode(&((JitIL *)jit)->ibuild, (JitIL *)jit, true, false);
-	jit->js.curBlock->codeSize = (int)(jit->GetCodePtr() - jit->js.rewriteStart);
-	jit->GetBlockCache()->FinalizeBlock(jit->js.curBlock->blockNum, jit->jo.enableBlocklink, jit->js.curBlock->normalEntry);
+	DoWriteCode(&ibuild, this);
 }

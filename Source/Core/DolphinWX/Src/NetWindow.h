@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #ifndef _NETWINDOW_H_
 #define _NETWINDOW_H_
@@ -36,7 +23,7 @@
 
 #include "FifoQueue.h"
 
-#include "NetPlay.h"
+#include "NetPlayClient.h"
 
 enum
 {
@@ -55,12 +42,17 @@ private:
 	void OnHost(wxCommandEvent& event);
 	void OnQuit(wxCommandEvent& event);
 
+	void MakeNetPlayDiag(int port, const std::string &game, bool is_hosting);
+
 	wxTextCtrl		*m_nickname_text,
 		*m_host_port_text,
 		*m_connect_port_text,
 		*m_connect_ip_text;
 
 	wxListBox*		m_game_lbox;
+#ifdef USE_UPNP
+	wxCheckBox*		m_upnp_chk;
+#endif
 
 	const CGameListCtrl* const m_game_list;
 };
@@ -75,7 +67,6 @@ public:
 	Common::FifoQueue<std::string>	chat_msgs;
 
 	void OnStart(wxCommandEvent& event);
-	void OnStop(wxCommandEvent& event);
 
 	// implementation of NetPlayUI methods
 	void BootGame(const std::string& filename);
@@ -90,23 +81,29 @@ public:
 
 	static NetPlayDiag *&GetInstance() { return npd; };
 
+	bool IsRecording();
+
 private:
     DECLARE_EVENT_TABLE()
 
 	void OnChat(wxCommandEvent& event);
 	void OnQuit(wxCommandEvent& event);
-	void OnPadBuffHelp(wxCommandEvent& event);
 	void OnThread(wxCommandEvent& event);
 	void OnChangeGame(wxCommandEvent& event);
 	void OnAdjustBuffer(wxCommandEvent& event);
 	void OnConfigPads(wxCommandEvent& event);
+	void GetNetSettings(NetSettings &settings);
+	std::string FindGame();
 
 	wxListBox*		m_player_lbox;
 	wxTextCtrl*		m_chat_text;
 	wxTextCtrl*		m_chat_msg_text;
+	wxCheckBox*		m_memcard_write;
+	wxCheckBox*		m_record_chkbox;
 
 	std::string		m_selected_game;
 	wxButton*		m_game_btn;
+	wxButton*		m_start_btn;
 
 	std::vector<int>	m_playerids;
 
@@ -130,14 +127,21 @@ private:
 class PadMapDiag : public wxDialog
 {
 public:
-	PadMapDiag(wxWindow* const parent, int map[]);
+	PadMapDiag(wxWindow* const parent, PadMapping map[], PadMapping wiimotemap[], std::vector<const Player *>& player_list);
 
 private:
 	void OnAdjust(wxCommandEvent& event);
 
-	wxChoice*	m_map_cbox[4];
-	int* const	m_mapping;
+	wxChoice*	m_map_cbox[8];
+	PadMapping* const m_mapping;
+	PadMapping* const m_wiimapping;
+	std::vector<const Player *>& m_player_list;
 };
+
+namespace NetPlay
+{
+	void StopGame();
+}
 
 #endif // _NETWINDOW_H_
 

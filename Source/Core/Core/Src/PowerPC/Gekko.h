@@ -1,21 +1,9 @@
-// Copyright (C) 2003 Dolphin Project.
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
 // Gekko related unions, structs, ...
-//
 
 #ifndef _GEKKO_H
 #define _GEKKO_H
@@ -35,17 +23,25 @@ union UGeckoInstruction
 
 	struct
 	{
+		// Record bit
+		// 1, if the condition register should be updated by this instruction
 		u32 Rc		:	1;
 		u32 SUBOP10	:	10;
+		// Source GPR
 		u32 RB		:	5;
+		// Source or destination GPR
 		u32 RA		:	5;
+		// Destination GPR
 		u32 RD		:	5;
+		// Primary opcode
 		u32 OPCD	:	6;
-	}; // changed
+	};
 	struct
 	{
+		// Immediate, signed 16-bit
 		signed SIMM_16	:	16;
 		u32 			:	5;
+		// Conditions on which to trap
 		u32 TO			:	5;
 		u32 OPCD_2		:	6;
 	};
@@ -55,11 +51,13 @@ union UGeckoInstruction
 		u32			:	10;
 		u32 		:	5;
 		u32 		:	5;
+		// Source GPR
 		u32 RS		:	5;
 		u32 OPCD_3	:	6;
 	};
 	struct
 	{
+		// Immediate, unsigned 16-bit
 		u32 UIMM	:	16;
 		u32 		:	5;
 		u32 		:	5;
@@ -67,8 +65,13 @@ union UGeckoInstruction
 	};
 	struct
 	{
+		// Link bit
+		// 1, if branch instructions should put the address of the next instruction into the link register
 		u32 LK		:	1;
+		// Absolute address bit
+		// 1, if the immediate field represents an absolute address
 		u32 AA		:	1;
+		// Immediate, signed 24-bit
 		u32 LI		:	24;
 		u32 OPCD_5	:	6;
 	};
@@ -76,8 +79,11 @@ union UGeckoInstruction
 	{     
 		u32 LK_2	:	1;
 		u32 AA_2	:	1;
+		// Branch displacement, signed 14-bit (right-extended by 0b00)
 		u32 BD		:	14;
+		// Branch condition
 		u32 BI		:	5;
+		// Conditional branch control
 		u32 BO		:	5;
 		u32 OPCD_6	:	6;
 	};
@@ -95,8 +101,10 @@ union UGeckoInstruction
 		u32			:	11;
 		u32 RB_2	:	5;
 		u32 RA_2	:	5;
+		// ?
 		u32 L		:	1;
 		u32 		:	1;
+		// Destination field in CR or FPSCR
 		u32 CRFD	:	3;
 		u32 OPCD_8	:	6;
 	};
@@ -114,7 +122,7 @@ union UGeckoInstruction
 		u32 UIMM_2	:	16;
 		u32 RA_4	:	5;
 		u32 L_3		:	1;
-		u32 dummy2	:	1;
+		u32 		:	1;
 		u32 CRFD_3	:	3;
 		u32 OPCD_A	:	6;
 	};
@@ -125,13 +133,14 @@ union UGeckoInstruction
 		u32 RB_5	:	5;
 		u32 RA_5	:	5;
 		u32 L_4		:	1;
-		u32 dummy3	:	1;
+		u32 		:	1;
 		u32 CRFD_4	:	3;
 		u32 OPCD_B	:	6;
 	};
 	struct
 	{
 		u32			:	16;
+		// Segment register
 		u32 SR		:	4;
 		u32 		:	1;
 		u32 RS_2	:	5;
@@ -143,6 +152,7 @@ union UGeckoInstruction
 	{
 		u32 Rc_4	:	1;
 		u32 SUBOP5	:	5;
+		// ?
 		u32 RC		:	5;
 		u32			:	5;
 		u32 RA_6	:	5;
@@ -152,7 +162,9 @@ union UGeckoInstruction
 
 	struct
 	{	u32			:	10;
+		// Overflow enable
 		u32 OE		:	1;
+		// Special-purpose register
 		u32 SPR		:	10;
 		u32			:	11;
 	};
@@ -160,7 +172,9 @@ union UGeckoInstruction
 	{
 		u32			:	10;
 		u32 OE_3	:	1;
+		// Upper special-purpose register
 		u32 SPRU	:	5;
+		// Lower special-purpose register
 		u32 SPRL	:	5;
 		u32			:	11;
 	};
@@ -169,8 +183,11 @@ union UGeckoInstruction
 	struct
 	{
 		u32 Rc_3	:	1;
+		// Mask end
 		u32 ME		:	5;
+		// Mask begin
 		u32 MB		:	5;
+		// Shift amount
 		u32 SH		:	5;
 		u32			:	16;
 	};
@@ -179,8 +196,11 @@ union UGeckoInstruction
 	struct 
 	{
 		u32			:	11;
+		// Source bit in the CR
 		u32 CRBB	:	5;
+		// Source bit in the CR
 		u32 CRBA	:	5;
+		// Destination bit in the CR
 		u32 CRBD	:	5;
 		u32			:	6;
 	};
@@ -189,6 +209,7 @@ union UGeckoInstruction
 	struct 
 	{
 		u32			:	11;
+		// Time base register
 		u32 TBR		:	10;
 		u32			:	11;
 	};
@@ -196,7 +217,9 @@ union UGeckoInstruction
 	struct 
 	{
 		u32			:	11;
+		// Upper time base register
 		u32 TBRU	:	5;
+		// Lower time base register
 		u32 TBRL	:	5;
 		u32			:	11;
 	};
@@ -204,50 +227,56 @@ union UGeckoInstruction
 	struct 
 	{
 		u32			:	18;
+		// Source field in the CR or FPSCR
 		u32 CRFS	:	3;
 		u32 		:	2;
 		u32 CRFD_5	:	3;
 		u32			:	6;
 	};
 
-	// float
 	struct 
 	{
 		u32			:	12;
+		// Field mask, identifies the CR fields to be updated by mtcrf
 		u32 CRM		:	8;
 		u32			:	1;
+		// Destination FPR
 		u32 FD		:	5;
 		u32			:	6;
 	};
 	struct 
 	{
 		u32			:	6;
+		// Source FPR
 		u32 FC		:	5;
+		// Source FPR
 		u32 FB		:	5;
+		// Source FPR
 		u32 FA		:	5;
+		// Source FPR
 		u32 FS		:	5;
 		u32			:	6;
-	};
-	struct 
-	{
-		u32 OFS		:	16;
-		u32			:	16;
 	};
 	struct
 	{
 		u32			:	17;
+		// Field mask, identifies the FPSCR fields to be updated by mtfsf
 		u32 FM		:	8;
 		u32			:	7;
 	};
 
-	// paired
+	// paired single quantized load/store
 	struct 
 	{
 		u32			:	7;
+		// Graphics quantization register to use
 		u32 Ix		:	3;
+		// 0: paired single, 1: scalar
 		u32 Wx		:	1;
 		u32			:	1;
+		// Graphics quantization register to use
 		u32 I		:	3;
+		// 0: paired single, 1: scalar
 		u32 W		:	1;
 		u32			:	16;
 	};
@@ -260,7 +289,8 @@ union UGeckoInstruction
 
 	struct 
 	{
-		u32 dummyX	:   11;
+		u32 		:   11;
+		// Number of bytes to use in lswi/stswi (0 means 32 bytes)
 		u32 NB		: 5;
 	};
 };
@@ -359,32 +389,59 @@ union UReg_FPSCR
 {
 	struct
 	{
+		// Rounding mode (towards: nearest, zero, +inf, -inf)
 		u32 RN		:	2;
+		// Non-IEEE mode enable (aka flush-to-zero)
 		u32 NI		:	1;
+		// Inexact exception enable
 		u32 XE		:	1;
+		// IEEE division by zero exception enable
 		u32 ZE		:	1;
+		// IEEE underflow exception enable
 		u32 UE		:	1;
+		// IEEE overflow exception enable
 		u32 OE		:	1;
+		// Invalid operation exception enable
 		u32 VE		:	1;
+		// Invalid operation exception for integer conversion (sticky)
 		u32 VXCVI	:	1;
+		// Invalid operation exception for square root (sticky)
 		u32 VXSQRT	:	1;
+		// Invalid operation exception for software request (sticky)
 		u32 VXSOFT	:	1;
+		// reserved
 		u32			:	1;
+		// Floating point result flags (not sticky)
 		u32 FPRF	:	5;
+		// Fraction inexact (not sticky)
 		u32 FI		:	1;
+		// Fraction rounded (not sticky)
 		u32 FR		:	1;
+		// Invalid operation exception for invalid comparison (sticky)
 		u32 VXVC	:	1;
+		// Invalid operation exception for inf * 0 (sticky)
 		u32 VXIMZ	:	1;
+		// Invalid operation exception for 0 / 0 (sticky)
 		u32 VXZDZ	:	1;
+		// Invalid operation exception for int / inf (sticky)
 		u32 VXIDI	:	1;
+		// Invalid operation exception for inf - inf (sticky)
 		u32 VXISI	:	1;
+		// Invalid operation exception for SNaN (sticky)
 		u32 VXSNAN	:	1;
+		// Inexact exception (sticky)
 		u32 XX		:	1;
+		// Division by zero exception (sticky)
 		u32 ZX		:	1;
+		// Underflow exception (sticky)
 		u32 UX		:	1;
+		// Overflow exception (sticky)
 		u32 OX		:	1;
+		// Invalid operation exception summary (not sticky)
 		u32 VX		:	1;
+		// Enabled exception summary (not sticky)
 		u32 FEX		:	1;
+		// Exception summary (sticky)
 		u32 FX		:	1;
 	};
 	u32 Hex;

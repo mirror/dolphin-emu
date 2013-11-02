@@ -2,7 +2,6 @@
 #define _DEBUGINTERFACE_H
 
 #include <string>
-#include <string.h>
 
 class DebugInterface
 {
@@ -30,7 +29,7 @@ public:
 	virtual void step() {}
 	virtual void runToBreakpoint() {}
 	virtual void breakNow() {}
-	virtual void insertBLR(unsigned int /*address*/, unsigned int) {}
+	virtual void insertBLR(unsigned int /*address*/, unsigned int /*value*/) {}
 	virtual void showJitResults(unsigned int /*address*/) {};
 	virtual int getColor(unsigned int /*address*/){return 0xFFFFFFFF;}
 	virtual std::string getDescription(unsigned int /*address*/) = 0;

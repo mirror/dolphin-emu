@@ -1,26 +1,15 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "FifoDataFile.h"
 #include "FifoPlayer.h"
 
 #include "Common.h"
+#include "ConfigManager.h"
+#include "Core.h"
 #include "CoreTiming.h"
-#include "Thread.h"
+#include "Host.h"
 
 #include "HW/GPFifo.h"
 #include "HW/Memmap.h"
@@ -28,7 +17,6 @@
 #include "PowerPC/PowerPC.h"
 
 #include "BPMemory.h"
-#include "CommandProcessor.h"
 
 FifoPlayer::~FifoPlayer()
 {
@@ -83,10 +71,18 @@ bool FifoPlayer::Play()
 		{
 			if (m_CurrentFrame >= m_FrameRangeEnd)
 			{
-				m_CurrentFrame = m_FrameRangeStart;
+				if (m_Loop)
+				{
+					m_CurrentFrame = m_FrameRangeStart;
 
-				CoreTiming::downcount = 0;
-				CoreTiming::Advance();
+					CoreTiming::downcount = 0;
+					CoreTiming::Advance();
+				}
+				else
+				{
+					PowerPC::Stop();
+					Host_Message(WM_USER_STOP);
+				}
 			}
 			else
 			{
@@ -96,40 +92,7 @@ bool FifoPlayer::Play()
 				if (m_EarlyMemoryUpdates && m_CurrentFrame == m_FrameRangeStart)
 					WriteAllMemoryUpdates();
 
-				// Stop Fifo processing until we've written the new frame
-				WriteCP(CommandProcessor::CTRL_REGISTER, 0x10);  // disable read & breakpoints, enable GP link
-
-				// Write frame data
-				WriteFrame(m_File->GetFrame(m_CurrentFrame), m_FrameInfo[m_CurrentFrame]);
-
-				// Enable frame processing and break when done
-				u16 write_ptr_lo = ReadCP(CommandProcessor::FIFO_WRITE_POINTER_LO);
-				u16 write_ptr_hi = ReadCP(CommandProcessor::FIFO_WRITE_POINTER_HI);
-				WriteCP(CommandProcessor::FIFO_BP_LO, write_ptr_lo);
-				WriteCP(CommandProcessor::FIFO_BP_HI, write_ptr_hi);
-				WriteCP(CommandProcessor::CTRL_REGISTER, 0x13);  // enable read, breakpoints & GP link
-
-				// If necessary, wait until GP has reached the breakpoint to prevent fifo overflows
-				// TODO: Can this be done any better? Dual core mode is slower than single core mode even with these conditions..
-				if (m_CurrentFrame < m_FrameRangeEnd)
-				{
-					// Check if FIFO would be overflown when writing the next frame
-					u32 CPRWDistance = (ReadCP(CommandProcessor::FIFO_RW_DISTANCE_HI)<<16) | ReadCP(CommandProcessor::FIFO_RW_DISTANCE_LO);
-					CPRWDistance += m_File->GetFrame(m_CurrentFrame+1).fifoDataSize + CommandProcessor::GATHER_PIPE_SIZE;
-					u32 CPFifoBase = (ReadCP(CommandProcessor::FIFO_BASE_HI)<<16) | ReadCP(CommandProcessor::FIFO_BASE_LO);
-					u32 CPFifoEnd = (ReadCP(CommandProcessor::FIFO_END_HI)<<16) | ReadCP(CommandProcessor::FIFO_END_LO);
-
-					bool bWait = (CPRWDistance > CPFifoEnd - CPFifoBase);
-					while (bWait && (ReadCP(CommandProcessor::FIFO_READ_POINTER_LO) != write_ptr_lo ||
-									ReadCP(CommandProcessor::FIFO_READ_POINTER_HI) != write_ptr_hi))
-					{
-						Common::YieldCPU();
-						CoreTiming::Advance(); // Process scheduled events (esp. PixelEngine::SetFinish!)
-
-						if (PowerPC::GetState() == PowerPC::CPU_POWERDOWN)
-							break;
-					}
-				}
+				WriteFrame(m_File->GetFrame(m_CurrentFrame), m_FrameInfo[m_CurrentFrame]);		
 
 				++m_CurrentFrame;
 			}
@@ -198,6 +161,7 @@ FifoPlayer::FifoPlayer() :
 	m_FrameWrittenCb(NULL),
 	m_File(NULL)
 {
+	m_Loop = SConfig::GetInstance().m_LocalCoreStartupParameter.bLoopFifoReplay;
 }
 
 void FifoPlayer::WriteFrame(const FifoFrameInfo &frame, const AnalyzedFrameInfo &info)
@@ -229,7 +193,7 @@ void FifoPlayer::WriteFrame(const FifoFrameInfo &frame, const AnalyzedFrameInfo 
 			WriteFramePart(position, info.objectStarts[objectNum], memoryUpdate, frame, info);
 
 			position = info.objectEnds[objectNum];
-			++objectNum;		
+			++objectNum;
 		}
 
 		// Write objects in draw range
@@ -325,7 +289,7 @@ void FifoPlayer::WriteFifo(u8 *data, u32 start, u32 end)
 		u32 burstEnd = std::min(written + 255, lastBurstEnd);
 
 		while (written < burstEnd)
-			GPFifo::FastWrite8(data[written++]);			
+			GPFifo::FastWrite8(data[written++]);
 
 		GPFifo::Write8(data[written++], 0);
 
@@ -420,11 +384,6 @@ void FifoPlayer::LoadMemory()
 		LoadXFReg(i, regs[i]);
 
 	FlushWGP();
-}
-
-u16 FifoPlayer::ReadCP(u32 address)
-{
-    return Memory::Read_U16(0xCC000000 | address);
 }
 
 void FifoPlayer::WriteCP(u32 address, u16 value)

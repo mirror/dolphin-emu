@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include <windows.h>
 
@@ -21,7 +8,6 @@
 #include "EmuWindow.h"
 #include "Fifo.h"
 #include "VertexShaderManager.h"
-#include "RenderBase.h"
 #include "VideoBackendBase.h"
 #include "Core.h"
 #include "Host.h"
@@ -55,71 +41,26 @@ HWND GetParentWnd()
 	return m_hParent;
 }
 
-// ---------------------------------------------------------------------
-// KeyDown events
-// -------------
-void OnKeyDown(WPARAM wParam)
-{
-	switch (LOWORD( wParam ))
-	{
-	case '3': // OSD keys
-	case '4':
-	case '5':
-	case '6':
-	case '7':
-		if (g_Config.bOSDHotKey)
-			OSDMenu(wParam);
-		break;
-	}
-}
-// ---------------------------------------------------------------------
-
 void FreeLookInput( UINT iMsg, WPARAM wParam )
 {
-	static float debugSpeed = 1.0f;
 	static bool mouseLookEnabled = false;
 	static bool mouseMoveEnabled = false;
 	static float lastMouse[2];
-	POINT point;	
+	POINT point;
+
 	switch(iMsg)
 	{
-	case WM_USER_KEYDOWN:
-	case WM_KEYDOWN:
-		switch (LOWORD(wParam))
-		{
-		case '9':
-			debugSpeed /= 2.0f;
-			break;
-		case '0':
-			debugSpeed *= 2.0f;
-			break;
-		case 'W':
-			VertexShaderManager::TranslateView(0.0f, debugSpeed);
-			break;
-		case 'S':
-			VertexShaderManager::TranslateView(0.0f, -debugSpeed);
-			break;
-		case 'A':
-			VertexShaderManager::TranslateView(debugSpeed, 0.0f);
-			break;
-		case 'D':
-			VertexShaderManager::TranslateView(-debugSpeed, 0.0f);
-			break;
-		case 'R':
-			VertexShaderManager::ResetView();
-			break;
-		}
-		break;
-
 	case WM_MOUSEMOVE:
-		if (mouseLookEnabled) {
+		if (mouseLookEnabled)
+		{
 			GetCursorPos(&point);
 			VertexShaderManager::RotateView((point.x - lastMouse[0]) / 200.0f, (point.y - lastMouse[1]) / 200.0f);
 			lastMouse[0] = (float)point.x;
 			lastMouse[1] = (float)point.y;
 		}
 
-		if (mouseMoveEnabled) {
+		if (mouseMoveEnabled)
+		{
 			GetCursorPos(&point);
 			VertexShaderManager::TranslateView((point.x - lastMouse[0]) / 50.0f, (point.y - lastMouse[1]) / 50.0f);
 			lastMouse[0] = (float)point.x;
@@ -133,7 +74,7 @@ void FreeLookInput( UINT iMsg, WPARAM wParam )
 		lastMouse[1] = (float)point.y;
 		mouseLookEnabled= true;
 		break;
-	case WM_MBUTTONDOWN:		
+	case WM_MBUTTONDOWN:
 		GetCursorPos(&point);
 		lastMouse[0] = (float)point.x;
 		lastMouse[1] = (float)point.y;
@@ -173,8 +114,8 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam )
 		s_sizing = false;
 		break;
 
-	/* Post the mouse events to the main window, it's nessesary because in difference to the
-	   keyboard inputs these events only appear here, not in the parent window or any other WndProc()*/
+	/* Post the mouse events to the main window, it's necessary, because the difference between the
+	   keyboard inputs is that these events only appear here, not in the parent window or any other WndProc()*/
 	case WM_LBUTTONDOWN:
 		if(g_ActiveConfig.backend_info.bSupports3DVision && g_ActiveConfig.b3DVision)
 		{
@@ -200,15 +141,6 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam )
 		break;
 
 	case WM_USER:
-		if (wParam == WM_USER_KEYDOWN)
-		{
-			OnKeyDown(lParam);
-			FreeLookInput((u32)wParam, lParam);
-		}
-		else if (wParam == WIIMOTE_DISCONNECT)
-		{
-			PostMessage(m_hParent, WM_USER, wParam, lParam);
-		}
 		break;
 
 	// Called when a screensaver wants to show up while this window is active
@@ -236,51 +168,6 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam )
 		return DefWindowProc(hWnd, iMsg, wParam, lParam);
 	}
 	return 0;
-}
-
-// ---------------------------------------------------------------------
-// OSD Menu
-// -------------
-// Let's begin with 3 since 1 and 2 are default Wii keys
-// -------------
-void OSDMenu(WPARAM wParam)
-{
-	switch( LOWORD( wParam ))
-	{
-	case '3':
-		OSDChoice = 1;
-		// Toggle native resolution
-		g_Config.iEFBScale = g_Config.iEFBScale + 1;
-		if (g_Config.iEFBScale > 7) g_Config.iEFBScale = 0;
-		break;
-	case '4':
-		OSDChoice = 2;
-		// Toggle aspect ratio
-		g_Config.iAspectRatio = (g_Config.iAspectRatio + 1) & 3;
-		break;
-	case '5':
-		OSDChoice = 3;
-		// Toggle EFB copy
-		if (!g_Config.bEFBCopyEnable)
-		{
-			g_Config.bEFBCopyEnable = true;
-			g_Config.bCopyEFBToTexture = false;
-		}
-		else if (!g_Config.bCopyEFBToTexture)
-		{
-			g_Config.bCopyEFBToTexture = true;
-		}
-		else
-		{
-			g_Config.bEFBCopyEnable = false;
-			g_Config.bCopyEFBToTexture = false;
-		}
-		break;
-	case '6':
-		OSDChoice = 4;
-		g_Config.bDisableFog = !g_Config.bDisableFog;
-		break;
-	}
 }
 
 HWND OpenWindow(HWND parent, HINSTANCE hInstance, int width, int height, const TCHAR *title)

@@ -1,23 +1,11 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "VolumeWiiCrypted.h"
+#include "VolumeGC.h"
 #include "StringUtil.h"
-#include "Crypto/sha1.h"
+#include <polarssl/sha1.h>
 
 namespace DiscIO
 {
@@ -30,7 +18,8 @@ CVolumeWiiCrypted::CVolumeWiiCrypted(IBlobReader* _pReader, u64 _VolumeOffset,
 	dataOffset(0x20000),
 	m_LastDecryptedBlockOffset(-1)
 {
-	AES_set_decrypt_key(_pVolumeKey, 128, &m_AES_KEY);
+	m_AES_ctx = new aes_context;
+	aes_setkey_dec(m_AES_ctx, _pVolumeKey, 128);
 	m_pBuffer = new u8[0x8000];
 }
 
@@ -41,6 +30,8 @@ CVolumeWiiCrypted::~CVolumeWiiCrypted()
 	m_pReader = NULL;
 	delete[] m_pBuffer;
 	m_pBuffer = NULL;
+	delete m_AES_ctx;
+	m_AES_ctx = NULL;
 }
 
 bool CVolumeWiiCrypted::RAWRead( u64 _Offset, u64 _Length, u8* _pBuffer ) const
@@ -79,7 +70,7 @@ bool CVolumeWiiCrypted::Read(u64 _ReadOffset, u64 _Length, u8* _pBuffer) const
 		if (m_LastDecryptedBlockOffset != Block)
 		{
 			memcpy(IV, m_pBuffer + 0x3d0, 16);
-			AES_cbc_encrypt(m_pBuffer + 0x400, m_LastDecryptedBlock, 0x7C00, &m_AES_KEY, IV, AES_DECRYPT);
+			aes_crypt_cbc(m_AES_ctx, AES_DECRYPT, 0x7C00, IV, m_pBuffer + 0x400, m_LastDecryptedBlock); 
 
 			m_LastDecryptedBlockOffset = Block;
 		}
@@ -168,21 +159,17 @@ std::string CVolumeWiiCrypted::GetMakerID() const
 	return makerID;
 }
 
-std::string CVolumeWiiCrypted::GetName() const
+std::vector<std::string> CVolumeWiiCrypted::GetNames() const
 {
-	if (m_pReader == NULL)
-	{
-		return std::string();
-	}
+	std::vector<std::string> names;
+	
+	auto const string_decoder = CVolumeGC::GetStringDecoder(GetCountry());
 
-	char name[0xFF];
+	char name[0xFF] = {};
+	if (m_pReader != NULL && Read(0x20, 0x60, (u8*)&name))
+		names.push_back(string_decoder(name));
 
-	if (!Read(0x20, 0x60, (u8*)&name))
-	{
-		return std::string();
-	}
-
-	return name;
+	return names;
 }
 
 u32 CVolumeWiiCrypted::GetFSTSize() const
@@ -233,6 +220,18 @@ u64 CVolumeWiiCrypted::GetSize() const
 	}
 }
 
+u64 CVolumeWiiCrypted::GetRawSize() const
+{
+	if (m_pReader)
+	{
+		return m_pReader->GetRawSize();
+	}
+	else
+	{
+		return 0;
+	}
+}
+
 bool CVolumeWiiCrypted::CheckIntegrity() const
 {
 	// Get partition data size
@@ -254,7 +253,8 @@ bool CVolumeWiiCrypted::CheckIntegrity() const
 			NOTICE_LOG(DISCIO, "Integrity Check: fail at cluster %d: could not read metadata", clusterID);
 			return false;
 		}
-		AES_cbc_encrypt(clusterMDCrypted, clusterMD, 0x400, &m_AES_KEY, IV, AES_DECRYPT);
+		aes_crypt_cbc(m_AES_ctx, AES_DECRYPT, 0x400, IV, clusterMDCrypted, clusterMD); 
+
 
 		// Some clusters have invalid data and metadata because they aren't
 		// meant to be read by the game (for example, holes between files). To

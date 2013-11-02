@@ -1,86 +1,93 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include <list>
 
 #include "Common.h"
 
+#include "ConfigManager.h"
 #include "OnScreenDisplay.h"
 #include "RenderBase.h"
 #include "Timer.h"
 
+#include <map>
+#include <string>
+
 namespace OSD
 {
 
-struct MESSAGE
+struct Message
 {
-	MESSAGE() {}
-	MESSAGE(const char* p, u32 dw) {
-		strncpy(str, p, 255);
-		str[255] = '\0';
-		dwTimeStamp = dw;
-	}
-	char str[256];
-	u32 dwTimeStamp;
+    Message() {}
+    Message(const std::string& s, u32 ts) : str(s), timestamp(ts) {}
+
+	std::string str;
+	u32 timestamp;
 };
 
-static std::list<MESSAGE> s_listMsgs;
+static std::multimap<CallbackType, Callback> s_callbacks;
+static std::list<Message> s_msgList;
 
-void AddMessage(const char* pstr, u32 ms)
+void AddMessage(const std::string& str, u32 ms)
 {
-	s_listMsgs.push_back(MESSAGE(pstr, Common::Timer::GetTimeMs() + ms));
+	s_msgList.push_back(Message(str, Common::Timer::GetTimeMs() + ms));
 }
 
 void DrawMessages()
 {
-	if (s_listMsgs.size() > 0)
+	if(!SConfig::GetInstance().m_LocalCoreStartupParameter.bOnScreenDisplayMessages)
+		return;
+
+	int left = 25, top = 15;
+	auto it = s_msgList.begin();
+	while (it != s_msgList.end())
 	{
-		int left = 25, top = 15;
-		std::list<MESSAGE>::iterator it = s_listMsgs.begin();
-		while (it != s_listMsgs.end()) 
+		int time_left = (int)(it->timestamp - Common::Timer::GetTimeMs());
+		u32 alpha = 255;
+
+		if (time_left < 1024)
 		{
-			int time_left = (int)(it->dwTimeStamp - Common::Timer::GetTimeMs());
-			int alpha = 255;
-
-			if (time_left < 1024)
-			{
-				alpha = time_left >> 2;
-				if (time_left < 0) alpha = 0;
-			}
-
-			alpha <<= 24;
-
-			g_renderer->RenderText(it->str, left+1, top+1, 0x000000|alpha);
-			g_renderer->RenderText(it->str, left, top, 0xffff30|alpha);
-			top += 15;
-
-			if (time_left <= 0)
-				it = s_listMsgs.erase(it);
-			else
-				++it;
+			alpha = time_left >> 2;
+			if (time_left < 0)
+				alpha = 0;
 		}
+
+		alpha <<= 24;
+
+		g_renderer->RenderText(it->str.c_str(), left + 1, top + 1, 0x000000 | alpha);
+		g_renderer->RenderText(it->str.c_str(), left, top, 0xffff30 | alpha);
+		top += 15;
+
+		if (time_left <= 0)
+			it = s_msgList.erase(it);
+		else
+			++it;
 	}
 }
 
 void ClearMessages()
 {
-	std::list<MESSAGE>::iterator it = s_listMsgs.begin();
-	while (it != s_listMsgs.end()) 
-		it = s_listMsgs.erase(it);
+	s_msgList.clear();
+}
+
+// On-Screen Display Callbacks
+void AddCallback(CallbackType type, Callback cb)
+{
+	s_callbacks.insert(std::pair<CallbackType, Callback>(type, cb));
+}
+
+void DoCallbacks(CallbackType type)
+{
+	auto it_bounds = s_callbacks.equal_range(type);
+	for (auto it = it_bounds.first; it != it_bounds.second; ++it)
+	{
+		it->second();
+	}
+
+	// Wipe all callbacks on shutdown
+	if (type == OSD_SHUTDOWN)
+		s_callbacks.clear();
 }
 
 }  // namespace

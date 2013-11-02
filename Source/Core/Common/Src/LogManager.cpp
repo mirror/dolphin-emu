@@ -1,22 +1,12 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include <algorithm>
 
+#ifdef ANDROID
+#include "Host.h"
+#endif
 #include "LogManager.h"
 #include "ConsoleListener.h"
 #include "Timer.h"
@@ -42,9 +32,9 @@ LogManager::LogManager()
 	m_Log[LogTypes::MASTER_LOG]			= new LogContainer("*",				"Master Log");
 	m_Log[LogTypes::BOOT]				= new LogContainer("BOOT",			"Boot");
 	m_Log[LogTypes::COMMON]				= new LogContainer("COMMON",		"Common");
-	m_Log[LogTypes::DISCIO]				= new LogContainer("DIO",	    	"Disc IO");
+	m_Log[LogTypes::DISCIO]				= new LogContainer("DIO",			"Disc IO");
 	m_Log[LogTypes::FILEMON]			= new LogContainer("FileMon",		"File Monitor");
-	m_Log[LogTypes::PAD]		        = new LogContainer("PAD",			"Pad");
+	m_Log[LogTypes::PAD]				= new LogContainer("PAD",			"Pad");
 	m_Log[LogTypes::PIXELENGINE]		= new LogContainer("PE",			"PixelEngine");
 	m_Log[LogTypes::COMMANDPROCESSOR]	= new LogContainer("CP",			"CommandProc");
 	m_Log[LogTypes::VIDEOINTERFACE]		= new LogContainer("VI",			"VideoInt");
@@ -57,20 +47,22 @@ LogManager::LogManager()
 	m_Log[LogTypes::DVDINTERFACE]		= new LogContainer("DVD",			"DVDInterface");
 	m_Log[LogTypes::GPFIFO]				= new LogContainer("GP",			"GPFifo");
 	m_Log[LogTypes::EXPANSIONINTERFACE]	= new LogContainer("EXI",			"ExpansionInt");
+	m_Log[LogTypes::GDB_STUB]			= new LogContainer("GDB_STUB",		"GDB Stub");
 	m_Log[LogTypes::AUDIO_INTERFACE]	= new LogContainer("AI",			"AudioInt");
 	m_Log[LogTypes::POWERPC]			= new LogContainer("PowerPC",		"IBM CPU");
 	m_Log[LogTypes::OSHLE]				= new LogContainer("HLE",			"HLE");
-	m_Log[LogTypes::DSPHLE]			    = new LogContainer("DSPHLE",		"DSP HLE");
-	m_Log[LogTypes::DSPLLE]			    = new LogContainer("DSPLLE",		"DSP LLE");
-	m_Log[LogTypes::DSP_MAIL]		    = new LogContainer("DSPMails",		"DSP Mails");
-	m_Log[LogTypes::VIDEO]			    = new LogContainer("Video",			"Video Backend");
-	m_Log[LogTypes::AUDIO]			    = new LogContainer("Audio",			"Audio Emulator");
+	m_Log[LogTypes::DSPHLE]				= new LogContainer("DSPHLE",		"DSP HLE");
+	m_Log[LogTypes::DSPLLE]				= new LogContainer("DSPLLE",		"DSP LLE");
+	m_Log[LogTypes::DSP_MAIL]			= new LogContainer("DSPMails",		"DSP Mails");
+	m_Log[LogTypes::VIDEO]				= new LogContainer("Video",			"Video Backend");
+	m_Log[LogTypes::AUDIO]				= new LogContainer("Audio",			"Audio Emulator");
 	m_Log[LogTypes::DYNA_REC]			= new LogContainer("JIT",			"Dynamic Recompiler");
 	m_Log[LogTypes::CONSOLE]			= new LogContainer("CONSOLE",		"Dolphin Console");
-	m_Log[LogTypes::OSREPORT]			= new LogContainer("OSREPORT",		"OSReport");			
-	m_Log[LogTypes::WIIMOTE]			= new LogContainer("Wiimote",		"Wiimote");			
+	m_Log[LogTypes::OSREPORT]			= new LogContainer("OSREPORT",		"OSReport");
+	m_Log[LogTypes::WIIMOTE]			= new LogContainer("Wiimote",		"Wiimote");
 	m_Log[LogTypes::WII_IOB]			= new LogContainer("WII_IOB",		"WII IO Bridge");
 	m_Log[LogTypes::WII_IPC]			= new LogContainer("WII_IPC",		"WII IPC");
+	m_Log[LogTypes::WII_IPC_HID]		= new LogContainer("WII_IPC_HID",	"WII IPC HID");
 	m_Log[LogTypes::WII_IPC_HLE]		= new LogContainer("WII_IPC_HLE",	"WII IPC HLE");
 	m_Log[LogTypes::WII_IPC_DVD]		= new LogContainer("WII_IPC_DVD",	"WII IPC DVD");
 	m_Log[LogTypes::WII_IPC_ES]			= new LogContainer("WII_IPC_ES",	"WII IPC ES");
@@ -78,8 +70,10 @@ LogManager::LogManager()
 	m_Log[LogTypes::WII_IPC_SD]			= new LogContainer("WII_IPC_SD",	"WII IPC SD");
 	m_Log[LogTypes::WII_IPC_STM]		= new LogContainer("WII_IPC_STM",	"WII IPC STM");
 	m_Log[LogTypes::WII_IPC_NET]		= new LogContainer("WII_IPC_NET",	"WII IPC NET");
+	m_Log[LogTypes::WII_IPC_WC24]		= new LogContainer("WII_IPC_WC24",	"WII IPC WC24");
+	m_Log[LogTypes::WII_IPC_SSL]		= new LogContainer("WII_IPC_SSL",	"WII IPC SSL");
 	m_Log[LogTypes::WII_IPC_WIIMOTE]	= new LogContainer("WII_IPC_WIIMOTE","WII IPC WIIMOTE");
-	m_Log[LogTypes::ACTIONREPLAY]		= new LogContainer("ActionReplay",	"ActionReplay");	
+	m_Log[LogTypes::ACTIONREPLAY]		= new LogContainer("ActionReplay",	"ActionReplay");
 	m_Log[LogTypes::MEMCARD_MANAGER]	= new LogContainer("MemCard Manager", "MemCard Manager");
 	m_Log[LogTypes::NETPLAY]			= new LogContainer("NETPLAY",		"Netplay");
 
@@ -113,6 +107,7 @@ LogManager::~LogManager()
 
 	delete m_fileLog;
 	delete m_consoleLog;
+	delete m_debuggerLog;
 }
 
 void LogManager::Log(LogTypes::LOG_LEVELS level, LogTypes::LOG_TYPE type, 
@@ -132,7 +127,9 @@ void LogManager::Log(LogTypes::LOG_LEVELS level, LogTypes::LOG_TYPE type,
 		Common::Timer::GetTimeFormatted().c_str(),
 		file, line, level_to_char[(int)level],
 		log->GetShortName(), temp);
-
+#ifdef ANDROID
+	Host_SysMessage(msg);	
+#endif
 	log->Trigger(level, msg);
 }
 
@@ -181,7 +178,7 @@ void LogContainer::Trigger(LogTypes::LOG_LEVELS level, const char *msg)
 
 FileLogListener::FileLogListener(const char *filename)
 {
-	m_logfile.open(filename, std::ios::app);
+	OpenFStream(m_logfile, filename, std::ios::app);
 	SetEnable(true);
 }
 

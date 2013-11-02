@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #ifndef __ISOPROPERTIES_h__
 #define __ISOPROPERTIES_h__
@@ -69,10 +56,10 @@ private:
 	DECLARE_EVENT_TABLE();
 
 	// Core
-	wxCheckBox *CPUThread, *SkipIdle, *MMU, *MMUBAT, *TLBHack;
-	wxCheckBox *VBeam, *FastDiscSpeed, *BlockMerging, *DSPHLE;
+	wxCheckBox *CPUThread, *SkipIdle, *MMU, *DCBZOFF, *TLBHack;
+	wxCheckBox *VBeam, *SyncGPU, *FastDiscSpeed, *BlockMerging, *DSPHLE;
 	// Wii
-	wxCheckBox *EnableProgressiveScan, *EnableWideScreen, *DisableWiimoteSpeaker;
+	wxCheckBox *EnableWideScreen;
 	// Video
 	wxCheckBox *UseZTPSpeedupHack, *PHackEnable, *UseBBox;
 	wxButton *PHSettings;
@@ -98,6 +85,7 @@ private:
 	wxTextCtrl *m_GameID;
 	wxTextCtrl *m_Country;
 	wxTextCtrl *m_MakerID;
+	wxTextCtrl *m_Revision;
 	wxTextCtrl *m_Date;
 	wxTextCtrl *m_FST;
 	wxArrayString arrayStringFor_Lang;
@@ -127,9 +115,10 @@ private:
 		ID_USEDUALCORE,
 		ID_IDLESKIP,
 		ID_MMU,
-		ID_MMUBAT,
+		ID_DCBZOFF,
 		ID_TLBHACK,
 		ID_VBEAM,
+		ID_SYNCGPU,
 		ID_DISCSPEED,
 		ID_MERGEBLOCKS,
 		ID_AUDIO_DSP_HLE,
@@ -139,8 +128,8 @@ private:
 		ID_PHSETTINGS,
 		ID_ENABLEPROGRESSIVESCAN,
 		ID_ENABLEWIDESCREEN,
-		ID_DISABLEWIIMOTESPEAKER,
 		ID_EDITCONFIG,
+		ID_SHOWDEFAULTCONFIG,
 		ID_EMUSTATE,
 		ID_EMU_ISSUES,
 		ID_PATCHES_LIST,
@@ -156,6 +145,7 @@ private:
 		ID_GAMEID,
 		ID_COUNTRY,
 		ID_MAKERID,
+		ID_REVISION,
 		ID_DATE,
 		ID_FST,
 		ID_VERSION,
@@ -174,10 +164,13 @@ private:
 		IDM_BNRSAVEAS
 	};
 
+	void LaunchExternalEditor(const std::string& filename);
+
 	void CreateGUIControls(bool);
 	void OnClose(wxCloseEvent& event);
 	void OnCloseClick(wxCommandEvent& event);
 	void OnEditConfig(wxCommandEvent& event);
+	void OnShowDefaultConfig(wxCommandEvent& event);
 	void ListSelectionChanged(wxCommandEvent& event);
 	void PatchButtonClicked(wxCommandEvent& event);
 	void ActionReplayButtonClicked(wxCommandEvent& event);
@@ -204,13 +197,22 @@ private:
 	void ExportDir(const char* _rFullPath, const char* _rExportFilename,
 			const int partitionNum = 0);
 
-	IniFile GameIni;
-	std::string GameIniFile;
+	IniFile GameIniDefault;
+	IniFile GameIniLocal;
+	std::string GameIniFileDefault;
+	std::string GameIniFileLocal;
+
+	std::set<std::string> DefaultPatches;
+	std::set<std::string> DefaultCheats;
 
 	void LoadGameConfig();
 	void PatchList_Load();
 	void PatchList_Save();
 	void ActionReplayList_Save();
 	void ChangeBannerDetails(int lang);
+
+	long GetElementStyle(const char* section, const char* key);
+	void SetCheckboxValueFromGameini(const char* section, const char* key, wxCheckBox* checkbox);
+	void SaveGameIniValueFrom3StateCheckbox(const char* section, const char* key, wxCheckBox* checkbox);
 };
 #endif

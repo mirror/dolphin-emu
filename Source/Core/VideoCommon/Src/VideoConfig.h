@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 
 // IMPORTANT: UI etc should modify g_Config. Graphics code should read g_ActiveConfig.
@@ -37,22 +24,23 @@
 #define CONF_SAVETARGETS	8
 #define CONF_SAVESHADERS	16
 
-enum MultisampleMode {
-	MULTISAMPLE_OFF,
-	MULTISAMPLE_2X,
-	MULTISAMPLE_4X,
-	MULTISAMPLE_8X,
-	MULTISAMPLE_CSAA_8X,
-	MULTISAMPLE_CSAA_8XQ,
-	MULTISAMPLE_CSAA_16X,
-	MULTISAMPLE_CSAA_16XQ,
-};
-
 enum AspectMode {
 	ASPECT_AUTO = 0,
 	ASPECT_FORCE_16_9 = 1,
 	ASPECT_FORCE_4_3 = 2,
 	ASPECT_STRETCH = 3,
+};
+
+enum EFBScale {
+	SCALE_FORCE_INTEGRAL = -1,
+	SCALE_AUTO,
+	SCALE_AUTO_INTEGRAL,
+	SCALE_1X,
+	SCALE_1_5X,
+	SCALE_2X,
+	SCALE_2_5X,
+	SCALE_3X,
+	SCALE_4X,
 };
 
 class IniFile;
@@ -62,11 +50,11 @@ struct VideoConfig
 {
 	VideoConfig();
 	void Load(const char *ini_file);
-	void GameIniLoad(const char *ini_file);
+	void GameIniLoad();
 	void VerifyValidity();
 	void Save(const char *ini_file);
-	void GameIniSave(const char* default_ini, const char* game_ini);
 	void UpdateProjectionHack();
+	bool IsVSync();
 
 	// General
 	bool bVSync;
@@ -97,12 +85,13 @@ struct VideoConfig
 	bool bTexFmtOverlayEnable;
 	bool bTexFmtOverlayCenter;
 	bool bShowEFBCopyRegions;
-	
+	bool bLogFPSToFile;
+
 	// Render
 	bool bWireFrame;
 	bool bDstAlphaPass;
 	bool bDisableFog;
-	
+
 	// Utility
 	bool bDumpTextures;
 	bool bHiresTextures;
@@ -114,15 +103,15 @@ struct VideoConfig
 	int iAnaglyphStereoSeparation;
 	int iAnaglyphFocalAngle;
 	bool b3DVision;
-	
+
 	// Hacks
 	bool bEFBAccessEnable;
 	bool bDlistCachingEnable;
+	bool bPerfQueriesEnable;
 
 	bool bEFBCopyEnable;
 	bool bEFBCopyCacheEnable;
 	bool bEFBEmulateFormatChanges;
-	bool bOSDHotKey;
 	bool bCopyEFBToTexture;	
 	bool bCopyEFBScaled;
 	int iSafeTextureCache_ColorSamples;
@@ -132,8 +121,8 @@ struct VideoConfig
 	bool bZTPSpeedHack; // The Legend of Zelda: Twilight Princess
 	bool bUseBBox;
 	bool bEnablePixelLighting;
-	bool bEnablePerPixelDepth;
-
+	bool bHackedBufferUpload;
+	bool bFastDepthCalc;
 	int iLog; // CONF_ bits
 	int iSaveTargetId; // TODO: Should be dropped
 
@@ -152,16 +141,28 @@ struct VideoConfig
 	{
 		API_TYPE APIType;
 
-		std::vector<std::string> Adapters; // for D3D9 and D3D11
+		std::vector<std::string> Adapters; // for D3D
 		std::vector<std::string> AAModes;
 		std::vector<std::string> PPShaders; // post-processing shaders
 
-		bool bUseRGBATextures; // used for D3D11 in TextureCache
+		bool bUseRGBATextures; // used for D3D in TextureCache
+		bool bUseMinimalMipCount;
 		bool bSupports3DVision;
-		bool bSupportsDualSourceBlend; // only supported by D3D11 and OpenGL
+		bool bSupportsDualSourceBlend;
 		bool bSupportsFormatReinterpretation;
 		bool bSupportsPixelLighting;
+		bool bSupportsPrimitiveRestart;
+		bool bSupportsSeparateAlphaFunction;
+		bool bSupportsOversizedViewports;
+		bool bSupportsGLSLUBO; // needed by PixelShaderGen, so must stay in VideoCommon
+		bool bSupportsEarlyZ; // needed by PixelShaderGen, so must stay in VideoCommon
 	} backend_info;
+
+	// Utility
+	bool RealXFBEnabled() const { return bUseXFB && bUseRealXFB; }
+	bool VirtualXFBEnabled() const { return bUseXFB && !bUseRealXFB; }
+	bool EFBCopiesToTextureEnabled() const { return bEFBCopyEnable && bCopyEFBToTexture; }
+	bool EFBCopiesToRamEnabled() const { return bEFBCopyEnable && !bCopyEFBToTexture; }
 };
 
 extern VideoConfig g_Config;
@@ -169,7 +170,5 @@ extern VideoConfig g_ActiveConfig;
 
 // Called every frame.
 void UpdateActiveConfig();
-
-void ComputeDrawRectangle(int backbuffer_width, int backbuffer_height, bool flip, TargetRectangle *rc);
 
 #endif  // _VIDEO_CONFIG_H_

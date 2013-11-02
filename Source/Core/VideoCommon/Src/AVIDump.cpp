@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #if defined(__FreeBSD__)
 #define __STDC_CONSTANT_MACROS 1
@@ -102,8 +89,10 @@ bool AVIDump::CreateFile()
 		return false;
 	}
 
-	if (!m_fileCount) {
-		if (!SetCompressionOptions()) {
+	if (!m_fileCount)
+	{
+		if (!SetCompressionOptions())
+		{
 			NOTICE_LOG(VIDEO, "SetCompressionOptions failed");
 			Stop();
 			return false;
@@ -157,9 +146,21 @@ void AVIDump::Stop()
 	NOTICE_LOG(VIDEO, "Stop");
 }
 
-void AVIDump::AddFrame(char *data)
+void AVIDump::AddFrame(const u8* data, int w, int h)
 {
-	AVIStreamWrite(m_streamCompressed, ++m_frameCount, 1, (LPVOID) data, m_bitmap.biSizeImage, AVIIF_KEYFRAME, NULL, &m_byteBuffer);
+	static bool shown_error = false;
+	if ((w != m_bitmap.biWidth || h != m_bitmap.biHeight) && !shown_error)
+	{
+		PanicAlert("You have resized the window while dumping frames.\n"
+			"Nothing sane can be done to handle this.\n"
+			"Your video will likely be broken.");
+		shown_error = true;
+
+		m_bitmap.biWidth = w;
+		m_bitmap.biHeight = h;
+	}
+
+	AVIStreamWrite(m_streamCompressed, ++m_frameCount, 1, const_cast<u8*>(data), m_bitmap.biSizeImage, AVIIF_KEYFRAME, NULL, &m_byteBuffer);
 	m_totalBytes += m_byteBuffer;
 	// Close the recording if the file is more than 2gb
 	// VfW can't properly save files over 2gb in size, but can keep writing to them up to 4gb.
@@ -252,7 +253,7 @@ bool AVIDump::CreateFile()
 	File::CreateFullPath(s_FormatContext->filename);
 
 	if (!(s_FormatContext->oformat = av_guess_format("avi", NULL, NULL)) ||
-			!(s_Stream = av_new_stream(s_FormatContext, 0)))
+			!(s_Stream = avformat_new_stream(s_FormatContext, codec)))
 	{
 		CloseFile();
 		return false;
@@ -269,7 +270,7 @@ bool AVIDump::CreateFile()
 	s_Stream->codec->pix_fmt = g_Config.bUseFFV1 ? PIX_FMT_BGRA : PIX_FMT_YUV420P;
 
 	if (!(codec = avcodec_find_encoder(s_Stream->codec->codec_id)) ||
-			(avcodec_open(s_Stream->codec, codec) < 0))
+			(avcodec_open2(s_Stream->codec, codec, NULL) < 0))
 	{
 		CloseFile();
 		return false;
@@ -298,9 +299,9 @@ bool AVIDump::CreateFile()
 	return true;
 }
 
-void AVIDump::AddFrame(uint8_t *data, int width, int height)
+void AVIDump::AddFrame(const u8* data, int width, int height)
 {
-	avpicture_fill((AVPicture *)s_BGRFrame, data, PIX_FMT_BGR24, width, height);
+	avpicture_fill((AVPicture *)s_BGRFrame, const_cast<u8*>(data), PIX_FMT_BGR24, width, height);
 
 	// Convert image from BGR24 to desired pixel format, and scale to initial
 	// width and height

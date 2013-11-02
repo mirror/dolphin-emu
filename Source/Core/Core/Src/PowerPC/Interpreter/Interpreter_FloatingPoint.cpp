@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include <math.h>
 #include <limits>
@@ -28,14 +15,11 @@
 #undef _interlockedbittestandreset
 #undef _interlockedbittestandset64
 #undef _interlockedbittestandreset64
-#else
-#include <xmmintrin.h>
 #endif
 
-#include "../../Core.h"
 #include "Interpreter.h"
-#include "MathUtil.h"
 #include "Interpreter_FPUtils.h"
+#include "MathUtil.h"
 #include "../LUT_frsqrtex.h"
 
 using namespace MathUtil;
@@ -46,12 +30,11 @@ void UpdateSSEState();
 // Star Wars : Rogue Leader spams that at some point :|
 void Interpreter::Helper_UpdateCR1(double _fValue)
 {
-	// Should just update exception flags, not do any compares.
-	PanicAlert("CR1");
+	SetCRField(1, (FPSCR.FX << 4) | (FPSCR.FEX << 3) | (FPSCR.VX << 2) | FPSCR.OX);
 }
 
 void Interpreter::fcmpo(UGeckoInstruction _inst)
-{	
+{
 	double fa = rPS0(_inst.FA);
 	double fb = rPS0(_inst.FB);
 
@@ -66,7 +49,7 @@ void Interpreter::fcmpo(UGeckoInstruction _inst)
 		compareResult = 1;
 		if (IsSNAN(fa) || IsSNAN(fb))
 		{
-			SetFPException(FPSCR_VXSNAN);			
+			SetFPException(FPSCR_VXSNAN);
 			if (FPSCR.VE == 0)
 				SetFPException(FPSCR_VXVC);
 		}
@@ -82,7 +65,7 @@ void Interpreter::fcmpo(UGeckoInstruction _inst)
 }
 
 void Interpreter::fcmpu(UGeckoInstruction _inst)
-{	
+{
 	double fa = rPS0(_inst.FA);
 	double fb = rPS0(_inst.FB);
 
@@ -96,7 +79,7 @@ void Interpreter::fcmpu(UGeckoInstruction _inst)
 		compareResult = 1; 
 		if (IsSNAN(fa) || IsSNAN(fb))
 		{
-			SetFPException(FPSCR_VXSNAN);			
+			SetFPException(FPSCR_VXSNAN);
 		}
 	}
 	FPSCR.FPRF = compareResult;
@@ -110,7 +93,7 @@ void Interpreter::fctiwx(UGeckoInstruction _inst)
 	u32 value;
 	if (b > (double)0x7fffffff)
 	{
-		value = 0x7fffffff;		
+		value = 0x7fffffff;
 		SetFPException(FPSCR_VXCVI);
 		FPSCR.FI = 0;
 		FPSCR.FR = 0;
@@ -137,11 +120,11 @@ void Interpreter::fctiwx(UGeckoInstruction _inst)
 		case 1: // zero
 			i = (s32)b;
 			break;
-		case 2: // +inf			
+		case 2: // +inf
 			i = (s32)b;
 			if (b - i > 0) i++;
 			break;
-		case 3: // -inf			
+		case 3: // -inf
 			i = (s32)b;
 			if (b - i < 0) i--;
 			break;
@@ -155,7 +138,7 @@ void Interpreter::fctiwx(UGeckoInstruction _inst)
 		}
 		else
 		{
-			SetFI(1);			
+			SetFI(1);
 			FPSCR.FR = fabs(di) > fabs(b);
 		}
 	}	
@@ -231,7 +214,7 @@ void Interpreter::fnabsx(UGeckoInstruction _inst)
 	riPS0(_inst.FD) = riPS0(_inst.FB) | (1ULL << 63);
 	// This is a binary instruction. Does not alter FPSCR
 	if (_inst.Rc) Helper_UpdateCR1(rPS0(_inst.FD));	
-}	
+}
 
 void Interpreter::fnegx(UGeckoInstruction _inst)
 {
@@ -323,9 +306,9 @@ void Interpreter::fdivx(UGeckoInstruction _inst)
 	{
 		rPS0(_inst.FD) = ForceDouble(a / b);
 		if (b == 0.0) 
-		{		
+		{
 			if (a == 0.0)
-			{	
+			{
 				SetFPException(FPSCR_VXZDZ);
 				rPS0(_inst.FD) = PPC_NAN;
 			}
@@ -355,12 +338,12 @@ void Interpreter::fdivsx(UGeckoInstruction _inst)
 	{
 		res = ForceSingle(a / b);
 		if (b == 0.0)
-		{					
+		{
 			if (a == 0.0)
-			{					
+			{
 				SetFPException(FPSCR_VXZDZ);
-				res = PPC_NAN;				
-			}			
+				res = PPC_NAN;
+			}
 			SetFPException(FPSCR_ZX);
 		}
 		else
@@ -409,11 +392,12 @@ void Interpreter::frsqrtex(UGeckoInstruction _inst)
 	{
 		SetFPException(FPSCR_VXSQRT);
 		rPS0(_inst.FD) = PPC_NAN;
-	} 
-	else 
+	}
+	else
 	{
 #ifdef VERY_ACCURATE_FP
-		if (b == 0.0) {
+		if (b == 0.0)
+		{
 			SetFPException(FPSCR_ZX);
 			riPS0(_inst.FD) = 0x7ff0000000000000;
 		}

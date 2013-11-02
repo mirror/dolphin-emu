@@ -1,19 +1,7 @@
-// Copyright (C) 2003 Dolphin Project.
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
 
 // -----------------------------------------------------------------------------------------
 // Partial Action Replay code system implementation.
@@ -26,7 +14,7 @@
 
 // -------------------------------------------------------------------------------------------------------------
 // Code Types:
-// (Unconditonal) Normal Codes (0): this one has subtypes inside
+// (Unconditional) Normal Codes (0): this one has subtypes inside
 // (Conditional) Normal Codes (1 - 7): these just compare values and set the line skip info
 // Zero Codes: any code with no address.  These codes are used to do special operations like memory copy, etc
 // -------------------------------------------------------------------------------------------------------------
@@ -54,7 +42,7 @@ enum
 	ZCODE_ROW	= 0x03, 
 	ZCODE_04	= 0x04,
 
-	// Conditonal Codes
+	// Conditional Codes
 	CONDTIONAL_EQUAL				= 0x01,
 	CONDTIONAL_NOT_EQUAL			= 0x02, 
 	CONDTIONAL_LESS_THAN_SIGNED		= 0x03,
@@ -123,113 +111,121 @@ bool CompareValues(const u32 val1, const u32 val2, const int type);
 
 // ----------------------
 // AR Remote Functions
-void LoadCodes(IniFile &ini, bool forceLoad)
+void LoadCodes(IniFile &globalIni, IniFile &localIni, bool forceLoad)
 {
 	// Parses the Action Replay section of a game ini file.
 	if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableCheats 
 		&& !forceLoad) 
 		return;
 
-	std::vector<std::string> lines;
-	std::vector<std::string> encryptedLines;
-	ARCode currentCode;
 	arCodes.clear();
 
-	if (!ini.GetLines("ActionReplay", lines))
-		return;  // no codes found.
-
-	std::vector<std::string>::const_iterator
-		it = lines.begin(),
-		lines_end = lines.end();
-	for (; it != lines_end; ++it)
+	std::vector<std::string> enabledLines;
+	std::set<std::string> enabledNames;
+	localIni.GetLines("ActionReplay_Enabled", enabledLines);
+	for (auto iter = enabledLines.begin(); iter != enabledLines.end(); ++iter)
 	{
-		const std::string line = *it;
-		
-		if (line.empty())
-			continue;
-
-		std::vector<std::string> pieces;
-
-		// Check if the line is a name of the code
-		if (line[0] == '+' || line[0] == '$')
+		const std::string& line = *iter;
+		if (line.size() != 0 && line[0] == '$')
 		{
-			if (currentCode.ops.size())
-			{
-				arCodes.push_back(currentCode);
-				currentCode.ops.clear();
-			}
-			if (encryptedLines.size())
-			{
-				DecryptARCode(encryptedLines, currentCode.ops);
-				arCodes.push_back(currentCode);
-				currentCode.ops.clear();
-				encryptedLines.clear();
-			}
+			std::string name = line.substr(1, line.size() - 1);
+			enabledNames.insert(name);
+		}
+	}
 
-			if (line.size() > 1)
+	IniFile* inis[] = {&globalIni, &localIni};
+	for (size_t i = 0; i < ArraySize(inis); ++i)
+	{
+		std::vector<std::string> lines;
+		std::vector<std::string> encryptedLines;
+		ARCode currentCode;
+		
+		inis[i]->GetLines("ActionReplay", lines);
+
+		std::vector<std::string>::const_iterator
+			it = lines.begin(),
+			lines_end = lines.end();
+		for (; it != lines_end; ++it)
+		{
+			const std::string line = *it;
+			
+			if (line.empty())
+				continue;
+
+			std::vector<std::string> pieces;
+
+			// Check if the line is a name of the code
+			if (line[0] == '$')
 			{
-				if (line[0] == '+')
+				if (currentCode.ops.size())
 				{
-					currentCode.active = true;
-					currentCode.name = line.substr(2, line.size() - 2);;
-					if (!forceLoad)
-						Core::DisplayMessage("AR code active: " + currentCode.name, 5000);
+					arCodes.push_back(currentCode);
+					currentCode.ops.clear();
+				}
+				if (encryptedLines.size())
+				{
+					DecryptARCode(encryptedLines, currentCode.ops);
+					arCodes.push_back(currentCode);
+					currentCode.ops.clear();
+					encryptedLines.clear();
+				}
+
+				currentCode.name = line.substr(1, line.size() - 1);
+				currentCode.active = enabledNames.find(currentCode.name) != enabledNames.end();
+				currentCode.user_defined = (i == 1);
+			}
+			else
+			{
+				SplitString(line, ' ', pieces);
+
+				// Check if the AR code is decrypted
+				if (pieces.size() == 2 && pieces[0].size() == 8 && pieces[1].size() == 8)
+				{
+					AREntry op;
+					bool success_addr = TryParse(std::string("0x") + pieces[0], &op.cmd_addr);
+					bool success_val = TryParse(std::string("0x") + pieces[1], &op.value);
+					if (!(success_addr | success_val)) {
+						PanicAlertT("Action Replay Error: invalid AR code line: %s", line.c_str());
+						if (!success_addr) PanicAlertT("The address is invalid");
+						if (!success_val) PanicAlertT("The value is invalid");
+					}
+					else
+					{
+						currentCode.ops.push_back(op);
+					}
 				}
 				else
 				{
-					currentCode.active = false;
-					currentCode.name = line.substr(1, line.size() - 1);
+					SplitString(line, '-', pieces);
+					if (pieces.size() == 3 && pieces[0].size() == 4 && pieces[1].size() == 4 && pieces[2].size() == 5) 
+					{
+						// Encrypted AR code
+						// Decryption is done in "blocks", so we must push blocks into a vector,
+						//	then send to decrypt when a new block is encountered, or if it's the last block.
+						encryptedLines.push_back(pieces[0]+pieces[1]+pieces[2]);
+					}
 				}
 			}
-			continue;
 		}
 
-		SplitString(line, ' ', pieces);
-
-		// Check if the AR code is decrypted
-		if (pieces.size() == 2 && pieces[0].size() == 8 && pieces[1].size() == 8)
+		// Handle the last code correctly.
+		if (currentCode.ops.size())
 		{
-			AREntry op;
-			bool success_addr = TryParse(std::string("0x") + pieces[0], &op.cmd_addr);
-   			bool success_val = TryParse(std::string("0x") + pieces[1], &op.value);
-			if (!(success_addr | success_val)) {
-				PanicAlertT("Action Replay Error: invalid AR code line: %s", line.c_str());
-				if (!success_addr) PanicAlertT("The address is invalid");
-				if (!success_val) PanicAlertT("The value is invalid");
-			}
-			else
-				currentCode.ops.push_back(op);
+			arCodes.push_back(currentCode);
 		}
-		else
+		if (encryptedLines.size())
 		{
-			SplitString(line, '-', pieces);
-			if (pieces.size() == 3 && pieces[0].size() == 4 && pieces[1].size() == 4 && pieces[2].size() == 5) 
-			{
-				// Encrypted AR code
-				// Decryption is done in "blocks", so we must push blocks into a vector,
-				//	then send to decrypt when a new block is encountered, or if it's the last block.
-				encryptedLines.push_back(pieces[0]+pieces[1]+pieces[2]);
-			}
+			DecryptARCode(encryptedLines, currentCode.ops);
+			arCodes.push_back(currentCode);
 		}
-	}
-
-	// Handle the last code correctly.
-	if (currentCode.ops.size())
-	{
-		arCodes.push_back(currentCode);
-	}
-	if (encryptedLines.size())
-	{
-		DecryptARCode(encryptedLines, currentCode.ops);
-		arCodes.push_back(currentCode);
 	}
 
 	UpdateActiveList();
 }
 
-void LoadCodes(std::vector<ARCode> &_arCodes, IniFile &ini)
+void LoadCodes(std::vector<ARCode> &_arCodes, IniFile &globalIni, IniFile& localIni)
 {
-	LoadCodes(ini, true);
+	LoadCodes(globalIni, localIni, true);
 	_arCodes = arCodes;
 }
 
@@ -285,7 +281,6 @@ bool RunCode(const ARCode &arcode)
 	// used for conditional codes
 	int skip_count = 0;
 
-	u32 addr_last = 0;
 	u32 val_last = 0;
 
 	current_code = &arcode;
@@ -394,7 +389,6 @@ bool RunCode(const ARCode &arcode)
 					{
 						LogInfo("ZCode: Memory Copy");
 						doMemoryCopy = true;
-						addr_last = addr;
 						val_last = data;
 					}
 					else 
@@ -537,7 +531,7 @@ bool Subtype_RamWriteAndFill(const ARAddr addr, const u32 data)
 
 	case DATATYPE_32BIT_FLOAT:
 	case DATATYPE_32BIT: // Dword write
-		LogInfo("32bit Write");
+		LogInfo("32-bit Write");
 		LogInfo("--------");
 		Memory::Write_U32(data, new_addr);
 		LogInfo("Wrote %08x to address %08x", data, new_addr);
@@ -681,7 +675,8 @@ bool Subtype_MasterCodeAndWriteToCCXXXXXX(const ARAddr addr, const u32 data)
 	// u8  mcode_type = (data & 0xFF0000) >> 16;
 	// u8  mcode_count = (data & 0xFF00) >> 8;
 	// u8  mcode_number = data & 0xFF;
-	PanicAlertT("Action Replay Error: Master Code and Write To CCXXXXXX not implemented (%s)", current_code->name.c_str());
+	PanicAlertT("Action Replay Error: Master Code and Write To CCXXXXXX not implemented (%s)\n"
+		"Master codes are not needed. Do not use master codes.", current_code->name.c_str());
 	return false;
 }
 
@@ -889,7 +884,7 @@ bool ConditionalCode(const ARAddr addr, const u32 data, int* const pSkipCount)
 		// Skip lines until a "00000000 40000000" line is reached
 		case CONDTIONAL_ALL_LINES:
 		case CONDTIONAL_ALL_LINES_UNTIL:
-			*pSkipCount = -addr.subtype;
+			*pSkipCount = -(int) addr.subtype;
 			break;
 
 		default:

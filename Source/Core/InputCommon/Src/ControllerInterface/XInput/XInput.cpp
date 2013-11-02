@@ -1,6 +1,3 @@
-#include "../ControllerInterface.h"
-
-#ifdef CIFACE_USE_XINPUT
 
 #include "XInput.h"
 
@@ -31,13 +28,13 @@ static const struct
 	{ "Thumb R", XINPUT_GAMEPAD_RIGHT_THUMB }
 };
 
-static const char* const named_triggers[] =	
+static const char* const named_triggers[] =
 {
 	"Trigger L",
 	"Trigger R"
 };
 
-static const char* const named_axes[] =	
+static const char* const named_axes[] =
 {
 	"Left X",
 	"Left Y",
@@ -45,18 +42,64 @@ static const char* const named_axes[] =
 	"Right Y"
 };
 
-static const char* const named_motors[] =	
+static const char* const named_motors[] =
 {
 	"Motor L",
 	"Motor R"
 };
 
-void Init(DeviceList& devices)
+static HMODULE hXInput = nullptr;
+
+typedef decltype(&XInputGetCapabilities) XInputGetCapabilities_t;
+typedef decltype(&XInputSetState) XInputSetState_t;
+typedef decltype(&XInputGetState) XInputGetState_t;
+
+static XInputGetCapabilities_t PXInputGetCapabilities = nullptr;
+static XInputSetState_t PXInputSetState = nullptr;
+static XInputGetState_t PXInputGetState = nullptr;
+
+void Init(std::vector<Core::Device*>& devices)
 {
+	if (!hXInput)
+	{
+		// Try for the most recent version we were compiled against (will only work if running on Win8+)
+		hXInput = ::LoadLibrary(XINPUT_DLL);
+		if (!hXInput)
+		{
+			// Drop back to DXSDK June 2010 version. Requires DX June 2010 redist.
+			hXInput = ::LoadLibrary(TEXT("xinput1_3.dll"));
+			if (!hXInput)
+			{
+				return;
+			}
+		}
+
+		PXInputGetCapabilities = (XInputGetCapabilities_t)::GetProcAddress(hXInput, "XInputGetCapabilities");
+		PXInputSetState = (XInputSetState_t)::GetProcAddress(hXInput, "XInputSetState");
+		PXInputGetState = (XInputGetState_t)::GetProcAddress(hXInput, "XInputGetState");
+		if (!PXInputGetCapabilities ||
+			!PXInputSetState ||
+			!PXInputGetState)
+		{
+			::FreeLibrary(hXInput);
+			hXInput = nullptr;
+			return;
+		}
+	}
+	
 	XINPUT_CAPABILITIES caps;
 	for (int i = 0; i != 4; ++i)
-		if (ERROR_SUCCESS == XInputGetCapabilities(i, 0, &caps))
+		if (ERROR_SUCCESS == PXInputGetCapabilities(i, 0, &caps))
 			devices.push_back(new Device(caps, i));
+}
+
+void DeInit()
+{
+	if (hXInput)
+	{
+		::FreeLibrary(hXInput);
+		hXInput = nullptr;
+	}
 }
 
 Device::Device(const XINPUT_CAPABILITIES& caps, u8 index)
@@ -66,17 +109,19 @@ Device::Device(const XINPUT_CAPABILITIES& caps, u8 index)
 	ZeroMemory(&m_current_state_out, sizeof(m_current_state_out));
 
 	// XInputGetCaps seems to always claim all capabilities are supported
-	// but i will leave all this stuff in, incase m$ fixes xinput up a bit
+	// but I will leave all this stuff in, incase m$ fixes xinput up a bit
 
 	// get supported buttons
 	for (int i = 0; i != sizeof(named_buttons)/sizeof(*named_buttons); ++i)
+	{
 		if (named_buttons[i].bitmask & caps.Gamepad.wButtons)
 			AddInput(new Button(i, m_state_in.Gamepad.wButtons));
+	}
 
 	// get supported triggers
 	for (int i = 0; i != sizeof(named_triggers)/sizeof(*named_triggers); ++i)
 	{
-		//BYTE val = (&caps.Gamepad.bLeftTrigger)[i];	// should be max value / msdn lies
+		//BYTE val = (&caps.Gamepad.bLeftTrigger)[i];	// should be max value / MSDN lies
 		if ((&caps.Gamepad.bLeftTrigger)[i])
 			AddInput(new Trigger(i, (&m_state_in.Gamepad.bLeftTrigger)[i], 255 ));
 	}
@@ -84,7 +129,7 @@ Device::Device(const XINPUT_CAPABILITIES& caps, u8 index)
 	// get supported axes
 	for (int i = 0; i != sizeof(named_axes)/sizeof(*named_axes); ++i)
 	{
-		//SHORT val = (&caps.Gamepad.sThumbLX)[i];  // xinput doesnt give the range / msdn is lier
+		//SHORT val = (&caps.Gamepad.sThumbLX)[i];  // xinput doesn't give the range / MSDN is a liar
 		if ((&caps.Gamepad.sThumbLX)[i])
 		{
 			const SHORT& ax = (&m_state_in.Gamepad.sThumbLX)[i];
@@ -113,20 +158,16 @@ void Device::ClearInputState()
 
 std::string Device::GetName() const
 {
-	// why aren't these defined
-	// subtype doesn't seem to work, i tested with 2 diff arcade sticks, both were shown as gamepad
-	// ill leave it in anyway, maybe m$ will fix it
-
 	switch (m_subtype)
 	{
-	case XINPUT_DEVSUBTYPE_GAMEPAD : return "Gamepad"; break;
-	case 0x02 /*XINPUT_DEVSUBTYPE_WHEEL*/ :	return "Wheel"; break;
-	case 0x03 /*XINPUT_DEVSUBTYPE_ARCADE_STICK*/ : return "Arcade Stick"; break;
-	case 0x04 /*XINPUT_DEVSUBTYPE_FLIGHT_STICK*/ : return "Flight Stick"; break;
-	case 0x05 /*XINPUT_DEVSUBTYPE_DANCE_PAD*/ : return "Dance Pad"; break;
-	case 0x06 /*XINPUT_DEVSUBTYPE_GUITAR*/ :	return "Guitar"; break;
-	case 0x08 /*XINPUT_DEVSUBTYPE_DRUM_KIT*/ : return "Drum Kit"; break;
-	default : return "Device"; break;
+	case XINPUT_DEVSUBTYPE_GAMEPAD: return "Gamepad"; break;
+	case XINPUT_DEVSUBTYPE_WHEEL: return "Wheel"; break;
+	case XINPUT_DEVSUBTYPE_ARCADE_STICK: return "Arcade Stick"; break;
+	case XINPUT_DEVSUBTYPE_FLIGHT_STICK: return "Flight Stick"; break;
+	case XINPUT_DEVSUBTYPE_DANCE_PAD: return "Dance Pad"; break;
+	case XINPUT_DEVSUBTYPE_GUITAR: return "Guitar"; break;
+	case XINPUT_DEVSUBTYPE_DRUM_KIT: return "Drum Kit"; break;
+	default: return "Device"; break;
 	}
 }
 
@@ -140,11 +181,11 @@ std::string Device::GetSource() const
 	return "XInput";
 }
 
-// update i/o
+// Update I/O
 
 bool Device::UpdateInput()
 {
-	return (ERROR_SUCCESS == XInputGetState(m_index, &m_state_in));
+	return (ERROR_SUCCESS == PXInputGetState(m_index, &m_state_in));
 }
 
 bool Device::UpdateOutput()
@@ -154,10 +195,12 @@ bool Device::UpdateOutput()
 	if (memcmp(&m_state_out, &m_current_state_out, sizeof(m_state_out)))
 	{
 		m_current_state_out = m_state_out;
-		return (ERROR_SUCCESS == XInputSetState(m_index, &m_state_out));
+		return (ERROR_SUCCESS == PXInputSetState(m_index, &m_state_out));
 	}
 	else
+	{
 		return true;
+	}
 }
 
 // GET name/source/id
@@ -206,5 +249,3 @@ void Device::Motor::SetState(ControlState state)
 
 }
 }
-
-#endif

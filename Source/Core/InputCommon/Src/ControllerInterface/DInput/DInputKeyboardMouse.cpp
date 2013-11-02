@@ -1,12 +1,9 @@
-#include "../ControllerInterface.h"
-
-#ifdef CIFACE_USE_DINPUT_KBM
 
 #include "DInputKeyboardMouse.h"
 #include "DInput.h"
 
 	// (lower would be more sensitive) user can lower sensitivity by setting range
-	// seems decent here ( at 8 ), I dont think anyone would need more sensitive than this
+	// seems decent here ( at 8 ), I don't think anyone would need more sensitive than this
 	// and user can lower it much farther than they would want to with the range
 #define MOUSE_AXIS_SENSITIVITY		8
 
@@ -42,12 +39,12 @@ static const struct
 // lil silly
 static HWND hwnd;
 
-void InitKeyboardMouse(IDirectInput8* const idi8, std::vector<ControllerInterface::Device*>& devices, HWND _hwnd)
+void InitKeyboardMouse(IDirectInput8* const idi8, std::vector<Core::Device*>& devices, HWND _hwnd)
 {
 	hwnd = _hwnd;
 
 	// mouse and keyboard are a combined device, to allow shift+click and stuff
-	// if thats dumb, i will make a VirtualDevice class that just uses ranges of inputs/outputs from other devices
+	// if that's dumb, I will make a VirtualDevice class that just uses ranges of inputs/outputs from other devices
 	// so there can be a separated Keyboard and mouse, as well as combined KeyboardMouse
 
 	LPDIRECTINPUTDEVICE8 kb_device = NULL;
@@ -56,15 +53,19 @@ void InitKeyboardMouse(IDirectInput8* const idi8, std::vector<ControllerInterfac
 	if (SUCCEEDED(idi8->CreateDevice( GUID_SysKeyboard, &kb_device, NULL)))
 	{
 		if (SUCCEEDED(kb_device->SetDataFormat(&c_dfDIKeyboard)))
-		if (SUCCEEDED(kb_device->SetCooperativeLevel(NULL, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE)))
 		{
-			if (SUCCEEDED(idi8->CreateDevice( GUID_SysMouse, &mo_device, NULL )))
+			if (SUCCEEDED(kb_device->SetCooperativeLevel(NULL, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE)))
 			{
-				if (SUCCEEDED(mo_device->SetDataFormat(&c_dfDIMouse2)))
-				if (SUCCEEDED(mo_device->SetCooperativeLevel(NULL, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE)))
+				if (SUCCEEDED(idi8->CreateDevice( GUID_SysMouse, &mo_device, NULL )))
 				{
-					devices.push_back(new KeyboardMouse(kb_device, mo_device));
-					return;
+					if (SUCCEEDED(mo_device->SetDataFormat(&c_dfDIMouse2)))
+					{
+						if (SUCCEEDED(mo_device->SetCooperativeLevel(NULL, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE)))
+						{
+							devices.push_back(new KeyboardMouse(kb_device, mo_device));
+							return;
+						}
+					}
 				}
 			}
 		}
@@ -177,7 +178,7 @@ bool KeyboardMouse::UpdateInput()
 
 	if (SUCCEEDED(kb_hr) && SUCCEEDED(mo_hr))
 	{
-		// need to smooth out the axes, otherwise it doesnt work for shit
+		// need to smooth out the axes, otherwise it doesn't work for shit
 		for (unsigned int i = 0; i < 3; ++i)
 			((&m_state_in.mouse.lX)[i] += (&tmp_mouse.lX)[i]) /= 2;
 
@@ -203,7 +204,9 @@ bool KeyboardMouse::UpdateOutput()
 			memset( this, 0, sizeof(*this) );
 			type = INPUT_KEYBOARD;
 			ki.wVk = key;
-			if (up) ki.dwFlags = KEYEVENTF_KEYUP;
+
+			if (up)
+				ki.dwFlags = KEYEVENTF_KEYUP;
 		}
 	};
 
@@ -245,16 +248,6 @@ std::string KeyboardMouse::GetSource() const
 {
 	return DINPUT_SOURCE_NAME;
 }
-
-//ControlState KeyboardMouse::GetInputState(const ControllerInterface::Device::Input* const input) const
-//{
-//	return (((Input*)input)->GetState(&m_state_in));
-//}
-//
-//void KeyboardMouse::SetOutputState(const ControllerInterface::Device::Output* const output, const ControlState state)
-//{
-//	((Output*)output)->SetState(state, m_state_out);
-//}
 
 // names
 std::string KeyboardMouse::Key::GetName() const
@@ -316,5 +309,3 @@ void KeyboardMouse::Light::SetState(const ControlState state)
 
 }
 }
-
-#endif
