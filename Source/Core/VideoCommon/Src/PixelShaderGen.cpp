@@ -559,10 +559,10 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 		out.Write("zCoord = dot(" I_ZBIAS"[0].xyzw, float4(itextemp.xyzw)/255.0f) + " I_ZBIAS"[1].w %s;\n",
 									(bpmem.ztex2.op == ZTEXTURE_ADD) ? "+ zCoord" : "");
 
-		// U24 overflow emulation
-		out.Write("zCoord = zCoord * (16777215.0/16777216.0);\n");
-		out.Write("zCoord = frac(zCoord);\n");
-		out.Write("zCoord = zCoord * (16777216.0/16777215.0);\n");
+		// U24 overflow emulation - disabled because nonfunctional on Nvidia GPUs.
+//		out.Write("zCoord = zCoord * (16777215.0/16777216.0);\n");
+//		out.Write("zCoord = frac(zCoord);\n");
+//		out.Write("zCoord = zCoord * (16777216.0/16777215.0);\n");
 	}
 
 	if (per_pixel_depth && bpmem.UseLateDepthTest())
