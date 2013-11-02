@@ -1,25 +1,12 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "NANDContentLoader.h"
 
 #include <algorithm>
-#include <cctype> 
-#include "Crypto/aes.h"
+#include <cctype>
+#include <polarssl/aes.h>
 #include "MathUtil.h"
 #include "FileUtil.h"
 #include "Log.h"
@@ -55,7 +42,7 @@ void CSharedContent::UpdateLocation()
 CSharedContent::~CSharedContent()
 {}
 
-std::string CSharedContent::GetFilenameFromSHA1(u8* _pHash)
+std::string CSharedContent::GetFilenameFromSHA1(const u8* _pHash)
 {
 	for (size_t i=0; i<m_Elements.size(); i++)
 	{
@@ -71,7 +58,7 @@ std::string CSharedContent::GetFilenameFromSHA1(u8* _pHash)
 	return "unk";
 }
 
-std::string CSharedContent::AddSharedContent(u8* _pHash)
+std::string CSharedContent::AddSharedContent(const u8* _pHash)
 {
 	std::string szFilename = GetFilenameFromSHA1(_pHash);
 	if (strcasecmp(szFilename.c_str(), "unk") == 0)
@@ -183,8 +170,11 @@ const SNANDContent* CNANDContentLoader::GetContentByIndex(int _Index) const
 {
 	for (size_t i=0; i<m_Content.size(); i++)
 	{
-		if (m_Content[i].m_Index == _Index)
-			return &m_Content[i];
+		const SNANDContent* pContent = &m_Content[i];
+		if (pContent->m_Index == _Index)
+		{
+			return pContent;
+		}
 	}
 	return NULL;
 }
@@ -215,7 +205,7 @@ bool CNANDContentLoader::Initialize(const std::string& _rName)
 	{
 		std::string TMDFileName(m_Path);
 
-		if (File::IsDirectory(TMDFileName))
+		if ('/' == *TMDFileName.rbegin())
 			TMDFileName += "title.tmd";
 		else
 			m_Path = TMDFileName.substr(0, TMDFileName.find("title.tmd"));
@@ -223,8 +213,8 @@ bool CNANDContentLoader::Initialize(const std::string& _rName)
 		File::IOFile pTMDFile(TMDFileName, "rb");
 		if (!pTMDFile)
 		{
-			DEBUG_LOG(DISCIO, "CreateFromDirectory: error opening %s", 
-					  TMDFileName.c_str());
+			WARN_LOG(DISCIO, "CreateFromDirectory: error opening %s",
+					 TMDFileName.c_str());
 			return false;
 		}
 		u32 pTMDSize = (u32)File::GetSize(TMDFileName);
@@ -232,8 +222,7 @@ bool CNANDContentLoader::Initialize(const std::string& _rName)
 		pTMDFile.ReadBytes(pTMD, (size_t)pTMDSize);
 		pTMDFile.Close();
 	}
-	if (!pTMD)
-		return false;
+
 	memcpy(m_TMDView, pTMD + 0x180, TMD_VIEW_SIZE);
 	memcpy(m_TMDHeader, pTMD, TMD_HEADER_SIZE);
 
@@ -260,47 +249,35 @@ bool CNANDContentLoader::Initialize(const std::string& _rName)
 		rContent.m_Size= (u32)Common::swap64(pTMD + 0x01ec + 0x24*i);
 		memcpy(rContent.m_SHA1Hash, pTMD + 0x01f4 + 0x24*i, 20);
 		memcpy(rContent.m_Header, pTMD + 0x01e4 + 0x24*i, 36);
+
 		if (m_isWAD)
 		{
-		u32 RoundedSize = ROUND_UP(rContent.m_Size, 0x40);
-		rContent.m_pData = new u8[RoundedSize];
+			u32 RoundedSize = ROUND_UP(rContent.m_Size, 0x40);
+			rContent.m_pData = new u8[RoundedSize];
 		
-		memset(IV, 0, sizeof IV);
-		memcpy(IV, pTMD + 0x01e8 + 0x24*i, 2);
-		AESDecode(DecryptTitleKey, IV, pDataApp, RoundedSize, rContent.m_pData);
+			memset(IV, 0, sizeof IV);
+			memcpy(IV, pTMD + 0x01e8 + 0x24*i, 2);
+			AESDecode(DecryptTitleKey, IV, pDataApp, RoundedSize, rContent.m_pData);
 
-		pDataApp += RoundedSize;
-		continue;
+			pDataApp += RoundedSize;
+			continue;
 		}
 
-		rContent.m_pData = NULL;		 
-		char szFilename[1024];
+		rContent.m_pData = NULL;
 
 		if (rContent.m_Type & 0x8000)  // shared app
 		{
-			std::string Filename = CSharedContent::AccessInstance().GetFilenameFromSHA1(rContent.m_SHA1Hash);
-			strcpy(szFilename, Filename.c_str());
+			rContent.m_Filename = CSharedContent::AccessInstance().GetFilenameFromSHA1(rContent.m_SHA1Hash);
 		}
 		else
-			sprintf(szFilename, "%s/%08x.app", m_Path.c_str(), rContent.m_ContentID);
-
-		INFO_LOG(DISCIO, "NANDContentLoader: load %s", szFilename);
-
-		File::IOFile pFile(szFilename, "rb");
-		if (pFile)
 		{
-			const u64 ContentSize = File::GetSize(szFilename);
-			rContent.m_pData = new u8[(u32)ContentSize];
+			rContent.m_Filename = StringFromFormat("%s/%08x.app", m_Path.c_str(), rContent.m_ContentID);
+		}
 
-			_dbg_assert_msg_(BOOT, rContent.m_Size==ContentSize, "TMDLoader: Incorrect filesize (%s %i).  Your NAND dump may be corrupt.", szFilename, i);
-
-			pFile.ReadBytes(rContent.m_pData, (size_t)ContentSize);
-		} 
-		else 
+		// Be graceful about incorrect tmds.
+		if (File::Exists(rContent.m_Filename))
 		{
-			ERROR_LOG(DISCIO, "NANDContentLoader: error opening %s", szFilename);
-			delete [] pTMD;
-			return false;
+			rContent.m_Size = (u32) File::GetSize(rContent.m_Filename);
 		}
 	}
 
@@ -309,10 +286,10 @@ bool CNANDContentLoader::Initialize(const std::string& _rName)
 }
 void CNANDContentLoader::AESDecode(u8* _pKey, u8* _IV, u8* _pSrc, u32 _Size, u8* _pDest)
 {
-	AES_KEY AESKey;
+	aes_context AES_ctx;
 
-	AES_set_decrypt_key(_pKey, 128, &AESKey);
-	AES_cbc_encrypt(_pSrc, _pDest, _Size, &AESKey, _IV, AES_DECRYPT);
+	aes_setkey_dec(&AES_ctx, _pKey, 128);
+	aes_crypt_cbc(&AES_ctx, AES_DECRYPT, _Size, _IV, _pSrc, _pDest);
 }
 
 void CNANDContentLoader::GetKeyFromTicket(u8* pTicket, u8* pTicketKey)
@@ -503,7 +480,7 @@ u64 CNANDContentManager::Install_WiiWAD(std::string &fileName)
 	
 	for (u32 i = 0; i < ContentLoader.GetContentSize(); i++)
 	{
-		SNANDContent Content = ContentLoader.GetContent()[i];
+		const SNANDContent& Content = ContentLoader.GetContent()[i];
 
 		pTMDFile.WriteBytes(Content.m_Header, INANDContentLoader::CONTENT_HEADER_SIZE);
 

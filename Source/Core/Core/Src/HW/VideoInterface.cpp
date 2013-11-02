@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "Common.h"
 #include "ChunkFile.h"
@@ -68,12 +55,12 @@ static u32 TicksPerFrame = 0;
 static u32 s_lineCount = 0;
 static u32 s_upperFieldBegin = 0;
 static u32 s_lowerFieldBegin = 0;
-static int fields = 2;
+static int fields = 1;
 
 void DoState(PointerWrap &p)
 {
-	p.Do(m_VerticalTimingRegister);
-	p.Do(m_DisplayControlRegister);
+	p.DoPOD(m_VerticalTimingRegister);
+	p.DoPOD(m_DisplayControlRegister);
 	p.Do(m_HTiming0);
 	p.Do(m_HTiming1);
 	p.Do(m_VBlankTimingOdd);
@@ -89,7 +76,7 @@ void DoState(PointerWrap &p)
 	p.DoArray(m_InterruptRegister, 4);
 	p.DoArray(m_LatchRegister, 2);
 	p.Do(m_HorizontalStepping);
-	p.Do(m_HorizontalScaling);
+	p.DoPOD(m_HorizontalScaling);
 	p.Do(m_FilterCoefTables);
 	p.Do(m_UnkAARegister);
 	p.Do(m_Clock);
@@ -144,8 +131,8 @@ void Preset(bool _bNTSC)
 	m_HorizontalStepping.FbSteps = 40;
 	m_HorizontalStepping.FieldSteps = 40;
 
-	m_HBeamPos = 1;
-	m_VBeamPos = 1;
+	m_HBeamPos = -1; // NTSC-U N64 VC games check for a non-zero HBeamPos
+	m_VBeamPos = 0; // RG4JC0 checks for a zero VBeamPos
 
 	// 54MHz, capable of progressive scan
 	m_Clock = Core::g_CoreStartupParameter.bProgressive;
@@ -181,7 +168,7 @@ void Init()
 	m_BorderHBlank.Hex = 0;
 	memset(&m_FilterCoefTables, 0, sizeof(m_FilterCoefTables));
 
-	fields = Core::g_CoreStartupParameter.bVBeam ? 1 : 2;
+	fields = 1;
 
 	m_DTVStatus.ntsc_j = Core::g_CoreStartupParameter.bForceNTSCJ;
 
@@ -304,11 +291,11 @@ void Read16(u16& _uReturnValue, const u32 _iAddress)
 		break;
 
 	case VI_VERTICAL_BEAM_POSITION:
-    	_uReturnValue = m_VBeamPos;
+		_uReturnValue = m_VBeamPos;
 		return;
 
 	case VI_HORIZONTAL_BEAM_POSITION:
-        _uReturnValue = m_HBeamPos;
+		_uReturnValue = m_HBeamPos;
 		return;
 
 	// RETRACE STUFF ...
@@ -407,11 +394,11 @@ void Read16(u16& _uReturnValue, const u32 _iAddress)
 
 	case VI_UNK_AA_REG_HI:
 		_uReturnValue = (m_UnkAARegister & 0xffff0000) >> 16;
-		WARN_LOG(VIDEOINTERFACE, "(r16) unknown AA reg, not sure what it does :)");
+		WARN_LOG(VIDEOINTERFACE, "(r16) unknown AA register, not sure what it does :)");
 		break;
 	case VI_UNK_AA_REG_LO:
 		_uReturnValue = m_UnkAARegister & 0x0000ffff;
-		WARN_LOG(VIDEOINTERFACE, "(r16) unknown AA reg, not sure what it does :)");
+		WARN_LOG(VIDEOINTERFACE, "(r16) unknown AA register, not sure what it does :)");
 		break;
 
 	case VI_CLOCK:
@@ -434,7 +421,7 @@ void Read16(u16& _uReturnValue, const u32 _iAddress)
 		break;
 
 	default:
-		ERROR_LOG(VIDEOINTERFACE, "(r16) unk reg %x", _iAddress & 0xfff);
+		ERROR_LOG(VIDEOINTERFACE, "(r16) unknown reg %x", _iAddress & 0xfff);
 		_uReturnValue = 0x0;
 		break;
 	}
@@ -659,11 +646,11 @@ void Write16(const u16 _iValue, const u32 _iAddress)
 
 	case VI_UNK_AA_REG_HI:
 		m_UnkAARegister = (m_UnkAARegister & 0x0000ffff) | (u32)(_iValue << 16);
-		WARN_LOG(VIDEOINTERFACE, "(w16) to unknown AA reg, not sure what it does :)");
+		WARN_LOG(VIDEOINTERFACE, "(w16) to unknown AA register, not sure what it does :)");
 		break;
 	case VI_UNK_AA_REG_LO:
 		m_UnkAARegister = (m_UnkAARegister & 0xffff0000) | _iValue;
-		WARN_LOG(VIDEOINTERFACE, "(w16) to unknown AA reg, not sure what it does :)");
+		WARN_LOG(VIDEOINTERFACE, "(w16) to unknown AA register, not sure what it does :)");
 		break;
 
 	case VI_CLOCK:
@@ -686,7 +673,7 @@ void Write16(const u16 _iValue, const u32 _iAddress)
 		break;
 
 	default:
-		ERROR_LOG(VIDEOINTERFACE, "(w16) %04x to unk reg %x", _iValue, _iAddress & 0xfff);
+		ERROR_LOG(VIDEOINTERFACE, "(w16) %04x to unknown register %x", _iValue, _iAddress & 0xfff);
 		break;
 	}
 }
@@ -746,40 +733,50 @@ u32 GetXFBAddressBottom()
 
 void UpdateParameters()
 {
-    switch (m_DisplayControlRegister.FMT)
-    {
-    case 0: // NTSC
+	fields = m_DisplayControlRegister.NIN ? 2 : 1;
+
+	switch (m_DisplayControlRegister.FMT)
+	{
+	case 0: // NTSC
 		TargetRefreshRate = NTSC_FIELD_RATE;
-		TicksPerFrame = SystemTimers::GetTicksPerSecond() / (NTSC_FIELD_RATE / fields);
+		TicksPerFrame = SystemTimers::GetTicksPerSecond() / NTSC_FIELD_RATE;
 		s_lineCount = NTSC_LINE_COUNT;
 		s_upperFieldBegin = NTSC_UPPER_BEGIN;
 		s_lowerFieldBegin = NTSC_LOWER_BEGIN;
 		break;
 
-    case 2: // PAL-M
+	case 2: // PAL-M
 		TargetRefreshRate = NTSC_FIELD_RATE;
-		TicksPerFrame = SystemTimers::GetTicksPerSecond() / (NTSC_FIELD_RATE / fields);
+		TicksPerFrame = SystemTimers::GetTicksPerSecond() / NTSC_FIELD_RATE;
 		s_lineCount = PAL_LINE_COUNT;
 		s_upperFieldBegin = PAL_UPPER_BEGIN;
 		s_lowerFieldBegin = PAL_LOWER_BEGIN;
-        break;
+		break;
 
-    case 1: // PAL
+	case 1: // PAL
 		TargetRefreshRate = PAL_FIELD_RATE;
-		TicksPerFrame = SystemTimers::GetTicksPerSecond() / (PAL_FIELD_RATE / fields);
+		TicksPerFrame = SystemTimers::GetTicksPerSecond() / PAL_FIELD_RATE;
 		s_lineCount = PAL_LINE_COUNT;
 		s_upperFieldBegin = PAL_UPPER_BEGIN;
 		s_lowerFieldBegin = PAL_LOWER_BEGIN;
-        break;
+		break;
 
 	case 3: // Debug
 		PanicAlert("Debug video mode not implemented");
 		break;
 
-    default:
-        PanicAlert("Unknown Video Format - CVideoInterface");
-        break;
-    }
+	default:
+		PanicAlert("Unknown Video Format - CVideoInterface");
+		break;
+	}
+}
+
+int GetNumFields()
+{
+	if (Core::g_CoreStartupParameter.bVBeamSpeedHack)
+		return (2 / fields);
+	else
+		return 1;
 }
 
 unsigned int GetTicksPerLine()
@@ -790,7 +787,10 @@ unsigned int GetTicksPerLine()
 	}
 	else
 	{
-		return TicksPerFrame / (s_lineCount * fields);
+		if (Core::g_CoreStartupParameter.bVBeamSpeedHack)
+			return TicksPerFrame / s_lineCount;
+		else
+			return TicksPerFrame / (s_lineCount / (2 / fields)) ;
 	}
 }
 
@@ -803,22 +803,38 @@ static void BeginField(FieldType field)
 {
 	u32 fbWidth = m_HorizontalStepping.FieldSteps * 16;
 	u32 fbHeight = (m_HorizontalStepping.FbSteps / m_HorizontalStepping.FieldSteps) * m_VerticalTimingRegister.ACV;
+	u32 xfbAddr;
 
-	// TODO: Are the "Bottom Field" and "Top Field" registers actually more
-	// like "First Field" and "Second Field" registers? There's an important
-	// difference because NTSC and PAL have opposite field orders.
+	// NTSC and PAL have opposite field orders.
+	if (m_DisplayControlRegister.FMT == 1) // PAL
+	{
+		// But the PAL ports of some games are poorly programmed and don't use correct ordering.
+		// Zelda: Wind Waker and Simpsons Hit & Run are exampes of this, there are probally more.
+		// PAL Wind Waker also runs at 30fps instead of 25.
+		if(field == FieldType::FIELD_PROGRESSIVE || GetXFBAddressBottom() != (GetXFBAddressTop() - 1280))
+		{
+			WARN_LOG(VIDEOINTERFACE, "PAL game is trying to use incorrect (NTSC) field ordering");
+			// Lets kindly fix this for them.
+			xfbAddr = GetXFBAddressTop();
 
-	u32 xfbAddr = (field == FIELD_LOWER) ? GetXFBAddressBottom() : GetXFBAddressTop();
+			// TODO: PAL Simpsons Hit & Run now has a green line at the bottom when Real XFB is used.
+			// Might be a bug later on in our code, or a bug in the actual game.
+		} else {
+			xfbAddr = GetXFBAddressBottom();
+		}
+	} else {
+		xfbAddr = GetXFBAddressTop();
+	}
 
 	static const char* const fieldTypeNames[] = { "Progressive", "Upper", "Lower" };
 
-	DEBUG_LOG(VIDEOINTERFACE, "(VI->BeginField): addr: %.08X | FieldSteps %u | FbSteps %u | ACV %u | Field %s",
-		xfbAddr, m_HorizontalStepping.FieldSteps, m_HorizontalStepping.FbSteps, m_VerticalTimingRegister.ACV,
-		fieldTypeNames[field]
-	);
+	DEBUG_LOG(VIDEOINTERFACE,
+			  "(VI->BeginField): Address: %.08X | FieldSteps %u | FbSteps %u | ACV %u | Field %s",
+			  xfbAddr, m_HorizontalStepping.FieldSteps,m_HorizontalStepping.FbSteps,
+			  m_VerticalTimingRegister.ACV, fieldTypeNames[field]);
 
 	if (xfbAddr)
-		g_video_backend->Video_BeginField(xfbAddr, field, fbWidth, fbHeight);
+		g_video_backend->Video_BeginField(xfbAddr, fbWidth, fbHeight);
 }
 
 static void EndField()
@@ -831,39 +847,27 @@ static void EndField()
 // Run when: When a frame is scanned (progressive/interlace)
 void Update()
 {
-	u16 NewVBeamPos = 0;
-
 	if (m_DisplayControlRegister.NIN)
 	{
 		// Progressive
-		NewVBeamPos = s_lineCount + 1;
 		if (m_VBeamPos == 1)
 			BeginField(FIELD_PROGRESSIVE);
 	}
 	else if (m_VBeamPos == s_upperFieldBegin)
 	{
 		// Interlace Upper
-		NewVBeamPos = s_lineCount * 2;
 		BeginField(FIELD_UPPER);
 	}
 	else if (m_VBeamPos == s_lowerFieldBegin)
 	{
 		// Interlace Lower
-		NewVBeamPos = s_lineCount;
 		BeginField(FIELD_LOWER);
 	}
 
-	if (m_DisplayControlRegister.NIN)
+	if (m_VBeamPos == s_upperFieldBegin + m_VerticalTimingRegister.ACV)
 	{
-		// Progressive
-		if (m_VBeamPos == s_lineCount)
-			EndField();
-	}
-	else if (m_VBeamPos == s_upperFieldBegin + m_VerticalTimingRegister.ACV)
-	{
-		// Interlace Upper.  Do not EndField (swapBuffer) at the end of the upper field.
-		if (Core::g_CoreStartupParameter.bVBeam)
-			EndField();
+		// Interlace Upper.
+		EndField();
 	}
 	else if (m_VBeamPos == s_lowerFieldBegin + m_VerticalTimingRegister.ACV)
 	{
@@ -871,8 +875,8 @@ void Update()
 		EndField();
 	}
 
-	if (++m_VBeamPos > s_lineCount)
-		m_VBeamPos = (NewVBeamPos > s_lineCount || Core::g_CoreStartupParameter.bVBeam) ? 1 : NewVBeamPos;
+	if (++m_VBeamPos > s_lineCount * fields)
+		m_VBeamPos = 1;
 
 	for (int i = 0; i < 4; i++)
 	{

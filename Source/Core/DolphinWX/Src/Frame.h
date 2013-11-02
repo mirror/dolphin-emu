@@ -1,20 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
-
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #ifndef __FRAME_H_
 #define __FRAME_H_
@@ -28,6 +14,10 @@
 #include <wx/tooltip.h>
 #include <string>
 #include <vector>
+
+#ifdef __APPLE__
+#include <Cocoa/Cocoa.h>
+#endif
 
 #include "CDUtils.h"
 #include "Debugger/CodeWindow.h"
@@ -84,10 +74,12 @@ class CRenderFrame : public wxFrame
 			long style = wxDEFAULT_FRAME_STYLE | wxNO_FULL_REPAINT_ON_RESIZE);
 
 	private:
+		void OnDropFiles(wxDropFilesEvent& event);
 		#ifdef _WIN32
 			// Receive WndProc messages
 			WXLRESULT MSWWindowProc(WXUINT nMsg, WXWPARAM wParam, WXLPARAM lParam);
 		#endif
+
 };
 
 class CFrame : public CRenderFrame
@@ -116,11 +108,11 @@ public:
 		#endif
 	}
 
-	// These have to be public		
+	// These have to be public
 	CCodeWindow* g_pCodeWindow;
 	NetPlaySetupDiag* g_NetPlaySetupDiag;
 	wxCheatsWindow* g_CheatsWindow;
-	TASInputDlg* g_TASInputDlg;
+	TASInputDlg* g_TASInputDlg[4];
 
 	void InitBitmaps();
 	void DoPause();
@@ -130,7 +122,7 @@ public:
 	void UpdateGameList();
 	void ToggleLogWindow(bool bShow);
 	void ToggleLogConfigWindow(bool bShow);
-	void ToggleConsole(bool bShow);		
+	void ToggleConsole(bool bShow);
 	void PostEvent(wxCommandEvent& event);
 	void StatusBarMessage(const char * Text, ...);
 	void ClearStatusBar();
@@ -205,18 +197,8 @@ private:
 		Toolbar_ConfigGFX,
 		Toolbar_ConfigDSP,
 		Toolbar_ConfigPAD,
-		Toolbar_Wiimote,			
-		Toolbar_Help,
+		Toolbar_Wiimote,
 		EToolbar_Max
-	};
-
-	enum EBitmapsThemes
-	{
-		BOOMY,
-		VISTA,
-		XPLASTIK,
-		KDE,
-		THEMES_MAX
 	};
 
 	wxBitmap m_Bitmaps[EToolbar_Max];
@@ -297,6 +279,8 @@ private:
 	void OnRecordExport(wxCommandEvent& event);
 	void OnRecordReadOnly(wxCommandEvent& event);
 	void OnTASInput(wxCommandEvent& event);
+	void OnTogglePauseMovie(wxCommandEvent& event);
+	void OnShowLag(wxCommandEvent& event);
 	void OnChangeDisc(wxCommandEvent& event);
 	void OnScreenshot(wxCommandEvent& event);
 	void OnActive(wxActivateEvent& event);
@@ -306,12 +290,13 @@ private:
 	void OnLoadStateFromFile(wxCommandEvent& event);
 	void OnSaveStateToFile(wxCommandEvent& event);
 	void OnLoadLastState(wxCommandEvent& event);
+	void OnSaveFirstState(wxCommandEvent& event);
 	void OnUndoLoadState(wxCommandEvent& event);
 	void OnUndoSaveState(wxCommandEvent& event);
-		
+
 	void OnFrameSkip(wxCommandEvent& event);
 	void OnFrameStep(wxCommandEvent& event);
-		
+
 	void OnConfigMain(wxCommandEvent& event); // Options
 	void OnConfigGFX(wxCommandEvent& event);
 	void OnConfigDSP(wxCommandEvent& event);
@@ -335,11 +320,12 @@ private:
 	void OnKeyUp(wxKeyEvent& event);
 
 	void OnMouse(wxMouseEvent& event); // Mouse
-		
+
 	void OnHostMessage(wxCommandEvent& event);
 
 	void OnMemcard(wxCommandEvent& event); // Misc
 	void OnImportSave(wxCommandEvent& event);
+	void OnExportAllSaves(wxCommandEvent& event);
 
 	void OnNetPlay(wxCommandEvent& event);
 
@@ -365,6 +351,7 @@ void OnAfterLoadCallback();
 
 // For TASInputDlg
 void TASManipFunction(SPADStatus *PadStatus, int controllerID);
+bool TASInputHasFocus();
 
 #endif  // __FRAME_H_
 

@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 // ========================
 // See comments in Jit.cpp.
@@ -32,37 +19,35 @@
 #ifndef _JIT64_H
 #define _JIT64_H
 
-#include "../PPCAnalyst.h"
-#include "../JitCommon/JitCache.h"
-#include "../JitCommon/Jit_Util.h"
-#include "JitRegCache.h"
-#include "x64Emitter.h"
-#include "x64Analyzer.h"
 #include "../JitCommon/JitBackpatch.h"
 #include "../JitCommon/JitBase.h"
+#include "../JitCommon/JitCache.h"
+#include "../JitCommon/Jit_Util.h"
+#include "../PowerPC.h"
+#include "../PPCAnalyst.h"
+#include "../PPCTables.h"
+#include "../../Core.h"
+#include "../../CoreTiming.h"
+#include "../../ConfigManager.h"
+#include "../../HW/Memmap.h"
+#include "../../HW/GPFifo.h"
 #include "JitAsm.h"
+#include "JitRegCache.h"
+#include "x64ABI.h"
+#include "x64Analyzer.h"
+#include "x64Emitter.h"
 
 // Use these to control the instruction selection
 // #define INSTRUCTION_START Default(inst); return;
 // #define INSTRUCTION_START PPCTables::CountInstruction(inst);
 #define INSTRUCTION_START
 
-#define JITDISABLE(type) \
+#define JITDISABLE(setting) \
 	if (Core::g_CoreStartupParameter.bJITOff || \
-	Core::g_CoreStartupParameter.bJIT##type##Off) \
+	Core::g_CoreStartupParameter.setting) \
 	{Default(inst); return;}
 
-#define MEMCHECK_START \
-	FixupBranch memException; \
-	if (js.memcheck) \
-	{ TEST(32, M((void *)&PowerPC::ppcState.Exceptions), Imm32(EXCEPTION_DSI)); \
-	memException = J_CC(CC_NZ); }
-
-#define MEMCHECK_END \
-	if (js.memcheck) \
-		SetJumpTarget(memException);
-
-class Jit64 : public JitBase
+class Jit64 : public Jitx86Base
 {
 private:
 	GPRRegCache gpr;
@@ -84,6 +69,8 @@ public:
 
 	void Jit(u32 em_address);
 	const u8* DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buffer, JitBlock *b);
+
+	u32 RegistersInUse();
 
 	JitBlockCache *GetBlockCache() { return &blocks; }
 
@@ -244,7 +231,5 @@ public:
 
 	void icbi(UGeckoInstruction inst);
 };
-
-void ProfiledReJit();
 
 #endif // _JIT64_H

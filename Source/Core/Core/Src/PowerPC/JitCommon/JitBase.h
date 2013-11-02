@@ -1,19 +1,6 @@
-// Copyright (C) 2010 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #ifndef _JITBASE_H
 #define _JITBASE_H
@@ -22,22 +9,27 @@
 //#define JIT_LOG_GPR     // Enables logging of the PPC general purpose regs
 //#define JIT_LOG_FPR     // Enables logging of the PPC floating point regs
 
-#include "../CPUCoreBase.h"
-#include "JitCache.h"
-#include "Jit_Util.h"  // for EmuCodeBlock
-#include "JitBackpatch.h"  // for EmuCodeBlock
 #include "JitAsmCommon.h"
+#include "JitCache.h"
+#include "Jit_Util.h"      // for EmuCodeBlock
+#include "JitBackpatch.h"  // for EmuCodeBlock
+#include "x64ABI.h"
+#include "x64Analyzer.h"
+#include "x64Emitter.h"
+#include "../CPUCoreBase.h"
+#include "../PowerPC.h"
+#include "../PPCAnalyst.h"
+#include "../PPCTables.h"
+#include "../../Core.h"
+#include "../../CoreTiming.h"
+#include "../../HW/GPFifo.h"
+#include "../../HW/Memmap.h"
 
 #include <set>
 
-#define JIT_OPCODE 0
-
-class JitBase : public CPUCoreBase, public EmuCodeBlock
+class JitBase : public CPUCoreBase
 {
 protected:
-	JitBlockCache blocks;
-	TrampolineCache trampolines;
-
 	struct JitOptions
 	{
 		bool optimizeStack;
@@ -85,14 +77,29 @@ public:
 	// This should probably be removed from public:
 	JitOptions jo;
 	JitState js;
-
-	JitBlockCache *GetBlockCache() { return &blocks; }
+	
+	virtual JitBaseBlockCache *GetBlockCache() = 0;
 
 	virtual void Jit(u32 em_address) = 0;
 
-	const u8 *BackPatch(u8 *codePtr, int accessType, u32 em_address, void *ctx);
+	virtual	const u8 *BackPatch(u8 *codePtr, u32 em_address, void *ctx) = 0;
 
-	virtual const CommonAsmRoutines *GetAsmRoutines() = 0;
+	virtual const CommonAsmRoutinesBase *GetAsmRoutines() = 0;
+
+	virtual bool IsInCodeSpace(u8 *ptr) = 0;
+};
+
+class Jitx86Base : public JitBase, public EmuCodeBlock
+{
+protected:
+	JitBlockCache blocks;
+	TrampolineCache trampolines;	
+public:
+	JitBlockCache *GetBlockCache() { return &blocks; }
+	
+	const u8 *BackPatch(u8 *codePtr, u32 em_address, void *ctx);
+
+	bool IsInCodeSpace(u8 *ptr) { return IsInSpace(ptr); }
 };
 
 extern JitBase *jit;

@@ -21,10 +21,13 @@ volatile u32 s_swapRequested = false;
 u32 s_efbAccessRequested = false;
 volatile u32 s_FifoShuttingDown = false;
 
+std::condition_variable s_perf_query_cond;
+std::mutex s_perf_query_lock;
+static volatile bool s_perf_query_requested;
+
 static volatile struct
 {
 	u32 xfbAddr;
-	FieldType field;
 	u32 fbWidth;
 	u32 fbHeight;
 } s_beginFieldArgs;
@@ -69,7 +72,7 @@ void VideoFifo_CheckSwapRequest()
 		if (Common::AtomicLoadAcquire(s_swapRequested))
 		{
 			EFBRectangle rc;
-			g_renderer->Swap(s_beginFieldArgs.xfbAddr, s_beginFieldArgs.field, s_beginFieldArgs.fbWidth, s_beginFieldArgs.fbHeight,rc);
+			g_renderer->Swap(s_beginFieldArgs.xfbAddr, s_beginFieldArgs.fbWidth, s_beginFieldArgs.fbHeight,rc);
 			Common::AtomicStoreRelease(s_swapRequested, false);
 		}
 	}
@@ -94,14 +97,13 @@ void VideoFifo_CheckSwapRequestAt(u32 xfbAddr, u32 fbWidth, u32 fbHeight)
 }
 
 // Run from the CPU thread (from VideoInterface.cpp)
-void VideoBackendHardware::Video_BeginField(u32 xfbAddr, FieldType field, u32 fbWidth, u32 fbHeight)
+void VideoBackendHardware::Video_BeginField(u32 xfbAddr, u32 fbWidth, u32 fbHeight)
 {
 	if (s_BackendInitialized && g_ActiveConfig.bUseXFB)
 	{
 		if (!SConfig::GetInstance().m_LocalCoreStartupParameter.bCPUThread)
 			VideoFifo_CheckSwapRequest();
 		s_beginFieldArgs.xfbAddr = xfbAddr;
-		s_beginFieldArgs.field = field;
 		s_beginFieldArgs.fbWidth = fbWidth;
 		s_beginFieldArgs.fbHeight = fbHeight;
 	}
@@ -169,6 +171,43 @@ u32 VideoBackendHardware::Video_AccessEFB(EFBAccessType type, u32 x, u32 y, u32 
 	return 0;
 }
 
+static bool QueryResultIsReady()
+{
+	return !s_perf_query_requested || s_FifoShuttingDown;
+}
+
+void VideoFifo_CheckPerfQueryRequest()
+{
+	if (s_perf_query_requested)
+	{
+		g_perf_query->FlushResults();
+		
+		{
+		std::lock_guard<std::mutex> lk(s_perf_query_lock);
+		s_perf_query_requested = false;
+		}
+		
+		s_perf_query_cond.notify_one();
+	}
+}
+
+u32 VideoBackendHardware::Video_GetQueryResult(PerfQueryType type)
+{
+	// TODO: Is this check sane?
+	if (!g_perf_query->IsFlushed())
+	{
+		if (SConfig::GetInstance().m_LocalCoreStartupParameter.bCPUThread)
+		{
+			s_perf_query_requested = true;
+			std::unique_lock<std::mutex> lk(s_perf_query_lock);
+			s_perf_query_cond.wait(lk, QueryResultIsReady);
+		}
+		else
+			g_perf_query->FlushResults();
+	}
+
+	return g_perf_query->GetQueryResult(type);
+}
 
 void VideoBackendHardware::InitializeShared()
 {
@@ -176,15 +215,26 @@ void VideoBackendHardware::InitializeShared()
 
 	s_swapRequested = 0;
 	s_efbAccessRequested = 0;
+	s_perf_query_requested = false;
 	s_FifoShuttingDown = 0;
 	memset((void*)&s_beginFieldArgs, 0, sizeof(s_beginFieldArgs));
 	memset(&s_accessEFBArgs, 0, sizeof(s_accessEFBArgs));
 	s_AccessEFBResult = 0;
+	m_invalid = false;
 }
 
 // Run from the CPU thread
 void VideoBackendHardware::DoState(PointerWrap& p)
 {
+	bool software = false;
+	p.Do(software);
+
+	if (p.GetMode() == PointerWrap::MODE_READ && software == true)
+	{
+		// change mode to abort load of incompatible save state.
+		p.SetMode(PointerWrap::MODE_VERIFY);
+	}
+
 	VideoCommon_DoState(p);
 	p.DoMarker("VideoCommon");
 
@@ -198,13 +248,23 @@ void VideoBackendHardware::DoState(PointerWrap& p)
 	// Refresh state.
 	if (p.GetMode() == PointerWrap::MODE_READ)
 	{
-		BPReload();
+		m_invalid = true;
 		RecomputeCachedArraybases();
 
 		// Clear all caches that touch RAM
 		// (? these don't appear to touch any emulation state that gets saved. moved to on load only.)
-		TextureCache::Invalidate(false);
 		VertexLoaderManager::MarkAllDirty();
+	}
+}
+
+void VideoBackendHardware::CheckInvalidState()
+{
+	if (m_invalid)
+	{
+		m_invalid = false;
+		
+		BPReload();
+		TextureCache::Invalidate();
 	}
 }
 
@@ -223,6 +283,7 @@ void VideoFifo_CheckAsyncRequest()
 {
 	VideoFifo_CheckSwapRequest();
 	VideoFifo_CheckEFBAccess();
+	VideoFifo_CheckPerfQueryRequest();
 }
 
 void VideoBackendHardware::Video_GatherPipeBursted()

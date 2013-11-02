@@ -1,25 +1,11 @@
-// Copyright (C) 2003 Dolphin Project.
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
-
-#include "Common.h"
-#include "MathUtil.h"
 #include "CommonPaths.h"
-#include "VolumeDirectory.h"
 #include "FileBlob.h"
+#include "MathUtil.h"
+#include "VolumeDirectory.h"
 
 namespace DiscIO
 {
@@ -207,11 +193,10 @@ std::string CVolumeDirectory::GetMakerID() const
 	return "VOID";
 }
 
-std::string CVolumeDirectory::GetName() const
+std::vector<std::string> CVolumeDirectory::GetNames() const
 {
 	_dbg_assert_(DVDINTERFACE, m_diskHeader);
-	std::string name = (char*)(m_diskHeader + 0x20);
-	return name;
+	return std::vector<std::string>(1, (char*)(m_diskHeader + 0x20));
 }
 
 void CVolumeDirectory::SetName(std::string _Name)
@@ -241,6 +226,10 @@ u64 CVolumeDirectory::GetSize() const
 	return 0;
 }
 
+u64 CVolumeDirectory::GetRawSize() const
+{
+	return GetSize();
+}
 
 std::string CVolumeDirectory::ExtractDirectoryName(const std::string& _rDirectory)
 {
@@ -466,7 +455,7 @@ void CVolumeDirectory::WriteEntry(const File::FSTEntry& entry, u32& fstOffset, u
 	if(entry.isDirectory)
 	{
 		u32 myOffset = fstOffset;
-		u32 myEntryNum = myOffset / ENTRY_SIZE;		
+		u32 myEntryNum = myOffset / ENTRY_SIZE;
 		WriteEntryData(fstOffset, DIRECTORY_ENTRY, nameOffset, parentEntryNum, (u32)(myEntryNum + entry.size + 1));
 		WriteEntryName(nameOffset, entry.virtualName);
 
@@ -494,8 +483,7 @@ static u32 ComputeNameSize(const File::FSTEntry& parentEntry)
 {
 	u32 nameSize = 0;
 	const std::vector<File::FSTEntry>& children = parentEntry.children;
-	for (std::vector<File::FSTEntry>::const_iterator it = children.begin();
-		it != children.end(); ++it)
+	for (auto it = children.cbegin(); it != children.cend(); ++it)
 	{
 		const File::FSTEntry& entry = *it;
 		if (entry.isDirectory)

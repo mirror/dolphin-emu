@@ -1,22 +1,42 @@
-// Copyright (C) 2003 Dolphin Project.
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
-
+#include <xaudio2.h>
 #include "AudioCommon.h"
 #include "XAudio2Stream.h"
+
+#ifndef XAUDIO2_DLL
+#error You are building this module against the wrong version of DirectX. You probably need to remove DXSDK_DIR from your include path.
+#endif
+
+struct StreamingVoiceContext : public IXAudio2VoiceCallback
+{
+private:
+	CMixer* const m_mixer;
+	Common::Event& m_sound_sync_event;
+	IXAudio2SourceVoice* m_source_voice;
+	std::unique_ptr<BYTE[]> xaudio_buffer;
+
+	void SubmitBuffer(PBYTE buf_data);
+
+public:
+	StreamingVoiceContext(IXAudio2 *pXAudio2, CMixer *pMixer, Common::Event& pSyncEvent);
+
+	~StreamingVoiceContext();
+
+	void StreamingVoiceContext::Stop();
+	void StreamingVoiceContext::Play();
+
+	STDMETHOD_(void, OnVoiceError) (THIS_ void* pBufferContext, HRESULT Error) {}
+	STDMETHOD_(void, OnVoiceProcessingPassStart) (UINT32) {}
+	STDMETHOD_(void, OnVoiceProcessingPassEnd) () {}
+	STDMETHOD_(void, OnBufferStart) (void*) {}
+	STDMETHOD_(void, OnLoopEnd) (void*) {}
+	STDMETHOD_(void, OnStreamEnd) () {}
+
+	STDMETHOD_(void, OnBufferEnd) (void* context);
+};
 
 const int NUM_BUFFERS = 3;
 const int SAMPLES_PER_BUFFER = 96;
@@ -95,21 +115,67 @@ void StreamingVoiceContext::OnBufferEnd(void* context)
 
 	if (!m_source_voice || !context)
 		return;
-	
+
 	//m_sound_sync_event->Wait(); // sync
 	//m_sound_sync_event->Spin(); // or tight sync
-		
+
 	m_mixer->Mix(static_cast<short*>(context), SAMPLES_PER_BUFFER);
 	SubmitBuffer(static_cast<BYTE*>(context));
+}
+
+HMODULE XAudio2::m_xaudio2_dll = nullptr;
+typedef decltype(&XAudio2Create) XAudio2Create_t;
+void *XAudio2::PXAudio2Create = nullptr;
+
+bool XAudio2::InitLibrary()
+{
+	if (m_xaudio2_dll)
+	{
+		return true;
+	}
+
+	m_xaudio2_dll = ::LoadLibrary(XAUDIO2_DLL);
+	if (!m_xaudio2_dll)
+	{
+		return false;
+	}
+
+	if (!PXAudio2Create)
+	{
+		PXAudio2Create = (XAudio2Create_t)::GetProcAddress(m_xaudio2_dll, "XAudio2Create");
+		if (!PXAudio2Create)
+		{
+			::FreeLibrary(m_xaudio2_dll);
+			m_xaudio2_dll = nullptr;
+			return false;
+		}
+	}
+
+	return true;
+}
+
+XAudio2::XAudio2(CMixer *mixer)
+	: SoundStream(mixer)
+	, m_mastering_voice(nullptr)
+	, m_volume(1.0f)
+	, m_cleanup_com(SUCCEEDED(CoInitializeEx(NULL, COINIT_MULTITHREADED)))
+{
+}
+
+XAudio2::~XAudio2()
+{
+	Stop();
+	if (m_cleanup_com)
+		CoUninitialize();
 }
 
 bool XAudio2::Start()
 {
 	HRESULT hr;
 
-	// callback dosent seem to run on a speecific cpu anyways
+	// callback doesn't seem to run on a specific cpu anyways
 	IXAudio2* xaudptr;
-	if (FAILED(hr = XAudio2Create(&xaudptr, 0, XAUDIO2_DEFAULT_PROCESSOR)))
+	if (FAILED(hr = ((XAudio2Create_t)PXAudio2Create)(&xaudptr, 0, XAUDIO2_DEFAULT_PROCESSOR)))
 	{
 		PanicAlertT("XAudio2 init failed: %#X", hr);
 		Stop();
@@ -183,6 +249,13 @@ void XAudio2::Stop()
 		m_mastering_voice->DestroyVoice();
 		m_mastering_voice = nullptr;
 	}
-	
+
 	m_xaudio2.reset();	// release interface
+
+	if (m_xaudio2_dll)
+	{
+		::FreeLibrary(m_xaudio2_dll);
+		m_xaudio2_dll = nullptr;
+		PXAudio2Create = nullptr;
+	}
 }

@@ -12,7 +12,7 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official SVN repository and contact information can be found at
+// Official Git repository and contact information can be found at
 // http://code.google.com/p/dolphin-emu/
 
 #ifndef _MEMMAP_H
@@ -55,6 +55,7 @@ extern u8 *base;
 extern u8 *m_pRAM;
 extern u8 *m_pEXRAM;
 extern u8 *m_pL1Cache;
+extern u8 *m_pVirtualFakeVMEM;
 
 enum
 {
@@ -69,16 +70,16 @@ enum
 	FAKEVMEM_MASK	= FAKEVMEM_SIZE - 1,
 	L1_CACHE_SIZE	= 0x40000,
 	L1_CACHE_MASK	= L1_CACHE_SIZE - 1,
-	EFB_SIZE	    = 0x200000,
-	EFB_MASK	    = EFB_SIZE - 1,
-	IO_SIZE         = 0x10000,
-	EXRAM_SIZE      = 0x4000000,
-	EXRAM_MASK      = EXRAM_SIZE - 1,
+	EFB_SIZE		= 0x200000,
+	EFB_MASK		= EFB_SIZE - 1,
+	IO_SIZE			= 0x10000,
+	EXRAM_SIZE		= 0x4000000,
+	EXRAM_MASK		= EXRAM_SIZE - 1,
 
 	ADDR_MASK_HW_ACCESS	= 0x0c000000,
 	ADDR_MASK_MEM1		= 0x20000000,
 
-#ifdef _M_IX86
+#ifndef _M_X64
 	MEMVIEW32_MASK  = 0x3FFFFFFF,
 #endif
 };
@@ -102,27 +103,22 @@ void WriteUnchecked_U32(const u32 _Data, const u32 _Address);
 void InitHWMemFuncs();
 void InitHWMemFuncsWii();
 
-bool IsRAMAddress(const u32 addr, bool allow_locked_cache = false);
+bool IsRAMAddress(const u32 addr, bool allow_locked_cache = false, bool allow_fake_vmem = false);
 writeFn32 GetHWWriteFun32(const u32 _Address);
 
 inline u8* GetCachePtr() {return m_pL1Cache;}
 inline u8* GetMainRAMPtr() {return m_pRAM;}
 inline u32 ReadFast32(const u32 _Address)
 {
-#ifdef _M_IX86
-	return Common::swap32(*(u32 *)(base + (_Address & MEMVIEW32_MASK)));  // ReadUnchecked_U32(_Address);
-#elif defined(_M_X64)
+#if defined(_M_X64)
 	return Common::swap32(*(u32 *)(base + _Address));
+#else
+	return Common::swap32(*(u32 *)(base + (_Address & MEMVIEW32_MASK)));  // ReadUnchecked_U32(_Address);
 #endif
 }
 
 // used by interpreter to read instructions, uses iCache
 u32 Read_Opcode(const u32 _Address);
-// used by JIT to read instructions
-u32 Read_Opcode_JIT(const u32 _Address);
-// used by JIT. uses iCacheJIT. Reads in the "Locked cache" mode
-u32 Read_Opcode_JIT_LC(const u32 _Address);
-void Write_Opcode_JIT(const u32 _Address, const u32 _Value);
 // this is used by Debugger a lot. 
 // For now, just reads from memory!
 u32 Read_Instruction(const u32 _Address);
@@ -140,6 +136,10 @@ u16 Read_U16(const u32 _Address);
 u32 Read_U32(const u32 _Address);
 u64 Read_U64(const u32 _Address);
 
+// Useful helper functions, used by ARM JIT
+float Read_F32(const u32 _Address);
+double Read_F64(const u32 _Address);
+
 // used by JIT. Return zero-extended 32bit values
 u32 Read_U8_ZX(const u32 _Address);
 u32 Read_U16_ZX(const u32 _Address);
@@ -156,10 +156,13 @@ void Write_U16_Swap(const u16 _Data, const u32 _Address);
 void Write_U32_Swap(const u32 _Data, const u32 _Address);
 void Write_U64_Swap(const u64 _Data, const u32 _Address);
 
+// Useful helper functions, used by ARM JIT
+void Write_F64(const double _Data, const u32 _Address);
+
 void WriteHW_U32(const u32 _Data, const u32 _Address);
 void GetString(std::string& _string, const u32 _Address);
 
-void WriteBigEData(const u8 *_pData, const u32 _Address, const u32 size);
+void WriteBigEData(const u8 *_pData, const u32 _Address, const size_t size);
 void ReadBigEData(u8 *_pDest, const u32 _Address, const u32 size);
 u8* GetPointer(const u32 _Address);
 void DMA_LCToMemory(const u32 _iMemAddr, const u32 _iCacheAddr, const u32 _iNumBlocks);

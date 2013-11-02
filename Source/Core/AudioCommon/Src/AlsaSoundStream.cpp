@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include <functional>
 
@@ -88,7 +75,7 @@ bool AlsaSound::AlsaInit()
 	snd_pcm_hw_params_t *hwparams;
 	snd_pcm_uframes_t buffer_size,buffer_size_max;
 	unsigned int periods;
-	
+
 	err = snd_pcm_open(&handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
 	if (err < 0) 
 	{
@@ -97,7 +84,7 @@ bool AlsaSound::AlsaInit()
 	}
 
 	snd_pcm_hw_params_alloca(&hwparams);
-	
+
 	err = snd_pcm_hw_params_any(handle, hwparams);
 	if (err < 0) 
 	{
@@ -111,8 +98,8 @@ bool AlsaSound::AlsaInit()
 		ERROR_LOG(AUDIO, "Access type not available: %s\n", snd_strerror(err));
 		return false;
 	}
-	
-    err = snd_pcm_hw_params_set_format(handle, hwparams, SND_PCM_FORMAT_S16_LE);
+
+	err = snd_pcm_hw_params_set_format(handle, hwparams, SND_PCM_FORMAT_S16_LE);
 	if (err < 0) 
 	{
 		ERROR_LOG(AUDIO, "Sample format not available: %s\n", snd_strerror(err));
@@ -126,14 +113,14 @@ bool AlsaSound::AlsaInit()
 		ERROR_LOG(AUDIO, "Rate not available: %s\n", snd_strerror(err));
 		return false;
 	}
-	
-    err = snd_pcm_hw_params_set_channels(handle, hwparams, 2);
+
+	err = snd_pcm_hw_params_set_channels(handle, hwparams, 2);
 	if (err < 0) 
 	{
 		ERROR_LOG(AUDIO, "Channels count not available: %s\n", snd_strerror(err));
 		return false;
 	}
-	
+
 	periods = BUFFER_SIZE_MAX / FRAME_COUNT_MIN;
 	err = snd_pcm_hw_params_set_periods_max(handle, hwparams, &periods, &dir);
 	if (err < 0) 
@@ -153,10 +140,10 @@ bool AlsaSound::AlsaInit()
 	err = snd_pcm_hw_params(handle, hwparams);
 	if (err < 0) 
 	{
-	    ERROR_LOG(AUDIO, "Unable to install hw params: %s\n", snd_strerror(err));
+		ERROR_LOG(AUDIO, "Unable to install hw params: %s\n", snd_strerror(err));
 		return false;
 	}
-    
+
 	err = snd_pcm_hw_params_get_buffer_size(hwparams, &buffer_size);
 	if (err < 0) 
 	{
@@ -176,10 +163,10 @@ bool AlsaSound::AlsaInit()
 	frames_to_deliver = buffer_size / periods;
 	//limit the minimum size. pulseaudio advertises a minimum of 32 samples.
 	if (frames_to_deliver < FRAME_COUNT_MIN)
-	    frames_to_deliver = FRAME_COUNT_MIN;
+		frames_to_deliver = FRAME_COUNT_MIN;
 	//it is probably a bad idea to try to send more than one buffer of data
 	if ((unsigned int)frames_to_deliver > buffer_size)
-	    frames_to_deliver = buffer_size;
+		frames_to_deliver = buffer_size;
 	NOTICE_LOG(AUDIO, "ALSA gave us a %ld sample \"hardware\" buffer with %d periods. Will send %d samples per fragments.\n", buffer_size, periods, frames_to_deliver);
 
 	snd_pcm_sw_params_alloca(&swparams);
@@ -187,21 +174,21 @@ bool AlsaSound::AlsaInit()
 	err = snd_pcm_sw_params_current(handle, swparams);
 	if (err < 0) 
 	{
-	    ERROR_LOG(AUDIO, "cannot init sw params: %s\n", snd_strerror(err));
+		ERROR_LOG(AUDIO, "cannot init sw params: %s\n", snd_strerror(err));
 		return false;
 	}
-	
+
 	err = snd_pcm_sw_params_set_start_threshold(handle, swparams, 0U);
 	if (err < 0) 
 	{
-	    ERROR_LOG(AUDIO, "cannot set start thresh: %s\n", snd_strerror(err));
+		ERROR_LOG(AUDIO, "cannot set start thresh: %s\n", snd_strerror(err));
 		return false;
 	}
-	
+
 	err = snd_pcm_sw_params(handle, swparams);
 	if (err < 0) 
 	{
-	    ERROR_LOG(AUDIO, "cannot set sw params: %s\n", snd_strerror(err));
+		ERROR_LOG(AUDIO, "cannot set sw params: %s\n", snd_strerror(err));
 		return false;
 	}
 

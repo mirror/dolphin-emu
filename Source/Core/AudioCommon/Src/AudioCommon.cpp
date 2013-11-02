@@ -1,62 +1,70 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "AudioCommon.h"
 #include "FileUtil.h"
 #include "Mixer.h"
 #include "NullSoundStream.h"
 #include "DSoundStream.h"
+#include "XAudio2_7Stream.h"
 #include "XAudio2Stream.h"
 #include "AOSoundStream.h"
 #include "AlsaSoundStream.h"
 #include "CoreAudioSoundStream.h"
 #include "OpenALStream.h"
 #include "PulseAudioStream.h"
+#include "OpenSLESStream.h"
+#include "../../Core/Src/Movie.h"
+#include "../../Core/Src/ConfigManager.h"
+
+// This shouldn't be a global, at least not here.
+SoundStream *soundStream = nullptr;
 
 namespace AudioCommon 
 {	
-	SoundStream *InitSoundStream(CMixer *mixer, void *hWnd) 
+	SoundStream *InitSoundStream(CMixer *mixer) 
 	{
 		// TODO: possible memleak with mixer
 
-		std::string backend = ac_Config.sBackend;
-		if (backend == BACKEND_OPENAL           && OpenALStream::isValid()) 
+		std::string backend = SConfig::GetInstance().sBackend;
+		if (backend == BACKEND_OPENAL           && OpenALStream::isValid())
 			soundStream = new OpenALStream(mixer);
-		else if (backend == BACKEND_NULLSOUND   && NullSound::isValid()) 
-			soundStream = new NullSound(mixer, hWnd);
-		else if (backend == BACKEND_DIRECTSOUND && DSound::isValid()) 
-			soundStream = new DSound(mixer, hWnd);
-		else if (backend == BACKEND_XAUDIO2     && XAudio2::isValid()) 
-			soundStream = new XAudio2(mixer);
-		else if (backend == BACKEND_AOSOUND     && AOSound::isValid()) 
+		else if (backend == BACKEND_NULLSOUND   && NullSound::isValid())
+			soundStream = new NullSound(mixer);
+		else if (backend == BACKEND_DIRECTSOUND && DSound::isValid())
+			soundStream = new DSound(mixer);
+		else if (backend == BACKEND_XAUDIO2)
+		{
+			if (XAudio2::isValid())
+				soundStream = new XAudio2(mixer);
+			else if (XAudio2_7::isValid())
+				soundStream = new XAudio2_7(mixer);
+		}
+		else if (backend == BACKEND_AOSOUND     && AOSound::isValid())
 			soundStream = new AOSound(mixer);
 		else if (backend == BACKEND_ALSA        && AlsaSound::isValid())
 			soundStream = new AlsaSound(mixer);
-		else if (backend == BACKEND_COREAUDIO   && CoreAudioSound::isValid()) 
+		else if (backend == BACKEND_COREAUDIO   && CoreAudioSound::isValid())
 			soundStream = new CoreAudioSound(mixer);
 		else if (backend == BACKEND_PULSEAUDIO  && PulseAudio::isValid())
 			soundStream = new PulseAudio(mixer);
-
-		if (soundStream != NULL)
+		else if (backend == BACKEND_OPENSLES && OpenSLESStream::isValid())
+			soundStream = new OpenSLESStream(mixer);
+		
+		if (!soundStream && NullSound::isValid())
 		{
-			ac_Config.Update();
+			WARN_LOG(DSPHLE, "Could not initialize backend %s, using %s instead.",
+				backend.c_str(), BACKEND_NULLSOUND);
+			soundStream = new NullSound(mixer);
+		}
+
+		if (soundStream)
+		{
+			UpdateSoundStream();
 			if (soundStream->Start())
 			{
-				if (ac_Config.m_DumpAudio)
+				if (SConfig::GetInstance().m_DumpAudio)
 				{
 					std::string audio_file_name = File::GetUserPath(D_DUMPAUDIO_IDX) + "audiodump.wav";
 					File::CreateFullPath(audio_file_name);
@@ -67,11 +75,12 @@ namespace AudioCommon
 			}
 			PanicAlertT("Could not initialize backend %s.", backend.c_str());
 		}
+
 		PanicAlertT("Sound backend %s is not valid.", backend.c_str());
 
 		delete soundStream;
-		soundStream = NULL;
-		return NULL;
+		soundStream = nullptr;
+		return nullptr;
 	}
 
 	void ShutdownSoundStream() 
@@ -81,11 +90,11 @@ namespace AudioCommon
 		if (soundStream) 
 		{
 			soundStream->Stop();
-			if (ac_Config.m_DumpAudio)
+			if (SConfig::GetInstance().m_DumpAudio)
 				soundStream->GetMixer()->StopLogAudio();
 				//soundStream->StopLogAudio();
 			delete soundStream;
-			soundStream = NULL;
+			soundStream = nullptr;
 		}
 
 		INFO_LOG(DSPHLE, "Done shutting down sound stream");	
@@ -95,28 +104,34 @@ namespace AudioCommon
 	{
 		std::vector<std::string> backends;
 
-		if (NullSound::isValid())  
+		if (NullSound::isValid())
 			backends.push_back(BACKEND_NULLSOUND);
-		if (DSound::isValid())  
+		if (DSound::isValid())
 			backends.push_back(BACKEND_DIRECTSOUND);
-		if (XAudio2::isValid())  
+		if (XAudio2_7::isValid() || XAudio2::isValid())
 			backends.push_back(BACKEND_XAUDIO2);
+		if (AOSound::isValid())
+			backends.push_back(BACKEND_AOSOUND);
+		if (AlsaSound::isValid())
+			backends.push_back(BACKEND_ALSA);
+		if (CoreAudioSound::isValid())
+			backends.push_back(BACKEND_COREAUDIO);
+		if (PulseAudio::isValid())
+			backends.push_back(BACKEND_PULSEAUDIO);
 		if (OpenALStream::isValid())
 			backends.push_back(BACKEND_OPENAL);
-		if (AOSound::isValid())   
-			backends.push_back(BACKEND_AOSOUND);
-		if (AlsaSound::isValid()) 
-			backends.push_back(BACKEND_ALSA);
-		if (CoreAudioSound::isValid())       
-			backends.push_back(BACKEND_COREAUDIO);
-		if (PulseAudio::isValid()) 
-			backends.push_back(BACKEND_PULSEAUDIO);
-	   
+		if (OpenSLESStream::isValid())
+			backends.push_back(BACKEND_OPENSLES);
 		return backends;
 	}
 
-	bool UseJIT() {
-		return ac_Config.m_EnableJIT;
+	bool UseJIT() 
+	{
+		if (!Movie::IsDSPHLE() && Movie::IsPlayingInput() && Movie::IsConfigSaved())
+		{
+			return true;
+		}
+		return SConfig::GetInstance().m_EnableJIT;
 	}
 
 	void PauseAndLock(bool doLock, bool unpauseOnUnlock)
@@ -135,6 +150,14 @@ namespace AudioCommon
 				else
 					csMixing.unlock();
 			}
+		}
+	}
+	void UpdateSoundStream()
+	{
+		if (soundStream)
+		{
+			soundStream->GetMixer()->SetThrottle(SConfig::GetInstance().m_Framelimit == 2);
+			soundStream->SetVolume(SConfig::GetInstance().m_Volume);
 		}
 	}
 }

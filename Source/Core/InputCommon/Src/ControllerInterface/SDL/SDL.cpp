@@ -1,38 +1,44 @@
-#include "../ControllerInterface.h"
-
-#ifdef CIFACE_USE_SDL
 
 #include "SDL.h"
 #include <StringUtil.h>
 
+#include <map>
+#include <sstream>
+#include <algorithm>
+
 #ifdef _WIN32
-	#if SDL_VERSION_ATLEAST(1, 3, 0)
-		#pragma comment(lib, "SDL.1.3.lib")
-	#else
-		#pragma comment(lib, "SDL.lib")
-	#endif
+#pragma comment(lib, "SDL2.lib")
 #endif
 
 namespace ciface
 {
 namespace SDL
 {
+	
+std::string GetJoystickName(int index)
+{
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+	return SDL_JoystickNameForIndex(index);
+#else
+	return SDL_JoystickName(index);
+#endif
+}
 
-void Init( std::vector<ControllerInterface::Device*>& devices )
+void Init( std::vector<Core::Device*>& devices )
 {	
 	// this is used to number the joysticks
 	// multiple joysticks with the same name shall get unique ids starting at 0
 	std::map<std::string, int>	name_counts;
 
 	if (SDL_Init( SDL_INIT_FLAGS ) >= 0)
-    {
+	{
 		// joysticks
 		for(int i = 0; i < SDL_NumJoysticks(); ++i)
 		{
 			SDL_Joystick* dev = SDL_JoystickOpen(i);
 			if (dev)
 			{
-				Joystick* js = new Joystick(dev, i, name_counts[SDL_JoystickName(i)]++);
+				Joystick* js = new Joystick(dev, i, name_counts[GetJoystickName(i)]++);
 				// only add if it has some inputs/outputs
 				if (js->Inputs().size() || js->Outputs().size())
 					devices.push_back( js );
@@ -40,7 +46,7 @@ void Init( std::vector<ControllerInterface::Device*>& devices )
 					delete js;
 			}
 		}
-    }
+	}
 }
 
 Joystick::Joystick(SDL_Joystick* const joystick, const int sdl_index, const unsigned int index)
@@ -54,7 +60,7 @@ Joystick::Joystick(SDL_Joystick* const joystick, const int sdl_index, const unsi
 	// "why don't my 360 gamepad triggers/rumble work correctly"
 #ifdef _WIN32
 	// checking the name is probably good (and hacky) enough
-	// but i'll double check with the num of buttons/axes
+	// but I'll double check with the num of buttons/axes
 	std::string lcasename = GetName();
 	std::transform(lcasename.begin(), lcasename.end(), lcasename.begin(), tolower);
 
@@ -86,8 +92,8 @@ Joystick::Joystick(SDL_Joystick* const joystick, const int sdl_index, const unsi
 	for (u8 i = 0; i != SDL_JoystickNumAxes(m_joystick); ++i)
 	{
 		// each axis gets a negative and a positive input instance associated with it
-		AddInput(new Axis(i, m_joystick, -32768));
-		AddInput(new Axis(i, m_joystick, 32767));
+		AddAnalogInputs(new Axis(i, m_joystick, -32768),
+			new Axis(i, m_joystick, 32767));
 	}
 
 #ifdef USE_SDL_HAPTIC
@@ -112,6 +118,29 @@ Joystick::Joystick(SDL_Joystick* const joystick, const int sdl_index, const unsi
 		{
 			m_state_out.push_back(EffectIDState());
 			AddOutput(new RampEffect(m_state_out.back()));
+		}
+
+		// sine effect
+		if (supported_effects & SDL_HAPTIC_SINE)
+		{
+			m_state_out.push_back(EffectIDState());
+			AddOutput(new SineEffect(m_state_out.back()));
+		}
+
+#ifdef SDL_HAPTIC_SQUARE
+		// square effect
+		if (supported_effects & SDL_HAPTIC_SQUARE)
+		{
+			m_state_out.push_back(EffectIDState());
+			AddOutput(new SquareEffect(m_state_out.back()));
+		}
+#endif // defined(SDL_HAPTIC_SQUARE)
+
+		// triangle effect
+		if (supported_effects & SDL_HAPTIC_TRIANGLE)
+		{
+			m_state_out.push_back(EffectIDState());
+			AddOutput(new TriangleEffect(m_state_out.back()));
 		}
 	}
 #endif
@@ -151,7 +180,24 @@ std::string Joystick::RampEffect::GetName() const
 	return "Ramp";
 }
 
-void Joystick::ConstantEffect::SetState(const ControlState state)
+std::string Joystick::SineEffect::GetName() const
+{
+	return "Sine";
+}
+
+#ifdef SDL_HAPTIC_SQUARE
+std::string Joystick::SquareEffect::GetName() const
+{
+	return "Square";
+}
+#endif // defined(SDL_HAPTIC_SQUARE)
+
+std::string Joystick::TriangleEffect::GetName() const
+{
+	return "Triangle";
+}
+
+void Joystick::ConstantEffect::SetState(ControlState state)
 {
 	if (state)
 	{
@@ -159,7 +205,9 @@ void Joystick::ConstantEffect::SetState(const ControlState state)
 		m_effect.effect.constant.length = SDL_HAPTIC_INFINITY;
 	}
 	else
+	{
 		m_effect.effect.type = 0;
+	}
 
 	const Sint16 old = m_effect.effect.constant.level;
 	m_effect.effect.constant.level = state * 0x7FFF;
@@ -167,7 +215,7 @@ void Joystick::ConstantEffect::SetState(const ControlState state)
 		m_effect.changed = true;
 }
 
-void Joystick::RampEffect::SetState(const ControlState state)
+void Joystick::RampEffect::SetState(ControlState state)
 {
 	if (state)
 	{
@@ -175,11 +223,81 @@ void Joystick::RampEffect::SetState(const ControlState state)
 		m_effect.effect.ramp.length = SDL_HAPTIC_INFINITY;
 	}
 	else
+	{
 		m_effect.effect.type = 0;
-	
+	}
+
 	const Sint16 old = m_effect.effect.ramp.start;
 	m_effect.effect.ramp.start = state * 0x7FFF;
 	if (old != m_effect.effect.ramp.start)
+		m_effect.changed = true;
+}
+
+void Joystick::SineEffect::SetState(ControlState state)
+{
+	if (state)
+	{
+		m_effect.effect.type = SDL_HAPTIC_SINE;
+		m_effect.effect.periodic.length = 250;
+	}
+	else
+	{
+		m_effect.effect.type = 0;
+	}
+
+	const Sint16 old = m_effect.effect.periodic.magnitude;
+	m_effect.effect.periodic.period = 5;
+	m_effect.effect.periodic.magnitude = state * 0x5000;
+	m_effect.effect.periodic.attack_length = 0;
+	m_effect.effect.periodic.fade_length = 500;
+
+	if (old != m_effect.effect.periodic.magnitude)
+		m_effect.changed = true;
+}
+
+#ifdef SDL_HAPTIC_SQUARE
+void Joystick::SquareEffect::SetState(ControlState state)
+{
+	if (state)
+	{
+		m_effect.effect.type = SDL_HAPTIC_SQUARE;
+		m_effect.effect.periodic.length = 250;
+	}
+	else
+	{
+		m_effect.effect.type = 0;
+	}
+
+	const Sint16 old = m_effect.effect.periodic.magnitude;
+	m_effect.effect.periodic.period = 5;
+	m_effect.effect.periodic.magnitude = state * 0x5000;
+	m_effect.effect.periodic.attack_length = 0;
+	m_effect.effect.periodic.fade_length = 100;
+
+	if (old != m_effect.effect.periodic.magnitude)
+		m_effect.changed = true;
+}
+#endif // defined(SDL_HAPTIC_SQUARE)
+
+void Joystick::TriangleEffect::SetState(ControlState state)
+{
+	if (state)
+	{
+		m_effect.effect.type = SDL_HAPTIC_TRIANGLE;
+		m_effect.effect.periodic.length = 250;
+	}
+	else
+	{
+		m_effect.effect.type = 0;
+	}
+
+	const Sint16 old = m_effect.effect.periodic.magnitude;
+	m_effect.effect.periodic.period = 5;
+	m_effect.effect.periodic.magnitude = state * 0x5000;
+	m_effect.effect.periodic.attack_length = 0;
+	m_effect.effect.periodic.fade_length = 100;
+
+	if (old != m_effect.effect.periodic.magnitude)
 		m_effect.changed = true;
 }
 #endif
@@ -211,7 +329,9 @@ bool Joystick::UpdateOutput()
 			else	// effect is already uploaded
 			{
 				if (i->effect.type)	// if ouputstate >0
+				{
 					SDL_HapticUpdateEffect(m_haptic, i->id, &i->effect);	// update the effect
+				}
 				else
 				{
 					SDL_HapticStopEffect(m_haptic, i->id);	// else, stop and remove the effect
@@ -229,7 +349,7 @@ bool Joystick::UpdateOutput()
 
 std::string Joystick::GetName() const
 {
-	return StripSpaces(SDL_JoystickName(m_sdl_index));
+	return StripSpaces(GetJoystickName(m_sdl_index));
 }
 
 std::string Joystick::GetSource() const
@@ -282,5 +402,3 @@ ControlState Joystick::Hat::GetState() const
 
 }
 }
-
-#endif

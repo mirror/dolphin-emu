@@ -1,19 +1,6 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "Boot.h"
 #include "../PowerPC/PowerPC.h"
@@ -31,6 +18,8 @@
 #include "Volume.h"
 #include "VolumeCreator.h"
 #include "CommonPaths.h"
+
+#include <memory>
 
 static u32 state_checksum(u32 *buf, int len)
 {
@@ -104,9 +93,17 @@ bool CBoot::Boot_WiiWAD(const char* _pFilename)
 
 	WII_IPC_HLE_Interface::SetDefaultContentFile(_pFilename);
 
-	CDolLoader DolLoader(pContent->m_pData, pContent->m_Size);
-	DolLoader.Load();
-	PC = DolLoader.GetEntryPoint() | 0x80000000;
+	std::unique_ptr<CDolLoader> pDolLoader;
+	if (pContent->m_pData)
+	{
+		pDolLoader.reset(new CDolLoader(pContent->m_pData, pContent->m_Size));
+	}
+	else
+	{
+		pDolLoader.reset(new CDolLoader(pContent->m_Filename.c_str()));
+	}
+	pDolLoader->Load();
+	PC = pDolLoader->GetEntryPoint() | 0x80000000;
 
 	// Pass the "#002 check"
 	// Apploader should write the IOS version and revision to 0x3140, and compare it
@@ -121,7 +118,7 @@ bool CBoot::Boot_WiiWAD(const char* _pFilename)
 	// Load patches and run startup patches
 	const DiscIO::IVolume* pVolume = DiscIO::CreateVolumeFromFilename(_pFilename);
 	if (pVolume != NULL)
-		PatchEngine::LoadPatches(pVolume->GetUniqueID().c_str());
+		PatchEngine::LoadPatches();
 
 	return true;
 }

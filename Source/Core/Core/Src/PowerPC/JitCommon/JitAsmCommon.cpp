@@ -1,37 +1,16 @@
-// Copyright (C) 2003 Dolphin Project.
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
+#include "JitAsmCommon.h"
+#include "JitBase.h"
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
-
-#include "ABI.h"
-#include "Thunk.h"
 #include "CPUDetect.h"
-#include "x64Emitter.h"
-
-#include "../../HW/Memmap.h"
-
-#include "../PowerPC.h"
-#include "../../CoreTiming.h"
 #include "MemoryUtil.h"
 
-#include "ABI.h"
-#include "../JitCommon/JitCache.h"
 
-#include "../../HW/GPFifo.h"
-#include "../../Core.h"
-#include "JitAsmCommon.h"
+#define QUANTIZED_REGS_TO_SAVE (ABI_ALL_CALLEE_SAVED & ~((1 << RAX) | (1 << RCX) | (1 << RDX) | \
+                                                         (1 << XMM0) | (1 << XMM1)))
 
 using namespace Gen;
 
@@ -154,17 +133,14 @@ static const float GC_ALIGNED16(m_one[]) = {1.0f, 0.0f, 0.0f, 0.0f};
 // I don't know whether the overflow actually happens in any games
 // but it potentially can cause problems, so we need some clamping
 
-#ifdef _M_X64
-// TODO(ector): Improve 64-bit version
-static void WriteDual32(u64 value, u32 address)
+static void WriteDual32(u32 address)
 {
-	Memory::Write_U32((u32)(value >> 32), address);
-	Memory::Write_U32((u32)value, address + 4);
+	Memory::Write_U64(*(u64 *) psTemp, address);
 }
-#endif
 
 // See comment in header for in/outs.
-void CommonAsmRoutines::GenQuantizedStores() {
+void CommonAsmRoutines::GenQuantizedStores()
+{
 	const u8* storePairedIllegal = AlignCode4();
 	UD2();
 	const u8* storePairedFloat = AlignCode4();
@@ -172,20 +148,22 @@ void CommonAsmRoutines::GenQuantizedStores() {
 #ifdef _M_X64
 	SHUFPS(XMM0, R(XMM0), 1);
 	MOVQ_xmm(M(&psTemp[0]), XMM0);
-	MOV(64, R(RAX), M(&psTemp[0]));
 	TEST(32, R(ECX), Imm32(0x0C000000));
-	FixupBranch too_complex = J_CC(CC_NZ);
+	FixupBranch too_complex = J_CC(CC_NZ, true);
+	MOV(64, R(RAX), M(&psTemp[0]));
 	BSWAP(64, RAX);
 	MOV(64, MComplex(RBX, RCX, SCALE_1, 0), R(RAX));
-	FixupBranch skip_complex = J();
+	FixupBranch skip_complex = J(true);
 	SetJumpTarget(too_complex);
-	ABI_CallFunctionRR(thunks.ProtectFunction((void *)&WriteDual32, 2), RAX, RCX); 
+	ABI_PushRegistersAndAdjustStack(QUANTIZED_REGS_TO_SAVE, true);
+	ABI_CallFunctionR((void *)&WriteDual32, RCX);
+	ABI_PopRegistersAndAdjustStack(QUANTIZED_REGS_TO_SAVE, true);
 	SetJumpTarget(skip_complex);
 	RET();
 #else
-	MOVQ_xmm(M(&psTemp[0]), XMM0);
 	TEST(32, R(ECX), Imm32(0x0C000000));
-	FixupBranch argh = J_CC(CC_NZ);
+	FixupBranch argh = J_CC(CC_NZ, true);
+	MOVQ_xmm(M(&psTemp[0]), XMM0);
 	MOV(32, R(EAX), M(&psTemp));
 	BSWAP(32, EAX);
 	AND(32, R(ECX), Imm32(Memory::MEMVIEW32_MASK));
@@ -193,13 +171,13 @@ void CommonAsmRoutines::GenQuantizedStores() {
 	MOV(32, R(EAX), M(((char*)&psTemp) + 4));
 	BSWAP(32, EAX);
 	MOV(32, MDisp(ECX, 4+(u32)Memory::base), R(EAX));
-	FixupBranch arg2 = J();
+	FixupBranch arg2 = J(true);
 	SetJumpTarget(argh);
-	MOV(32, R(EAX), M(((char*)&psTemp)));
-	ABI_CallFunctionRR(thunks.ProtectFunction((void *)&Memory::Write_U32, 2), EAX, ECX); 
-	MOV(32, R(EAX), M(((char*)&psTemp)+4));
-	ADD(32, R(ECX), Imm32(4));
-	ABI_CallFunctionRR(thunks.ProtectFunction((void *)&Memory::Write_U32, 2), EAX, ECX); 
+	SHUFPS(XMM0, R(XMM0), 1);
+	MOVQ_xmm(M(&psTemp[0]), XMM0);
+	ABI_PushRegistersAndAdjustStack(QUANTIZED_REGS_TO_SAVE, true);
+	ABI_CallFunctionR((void *)&WriteDual32, ECX);
+	ABI_PopRegistersAndAdjustStack(QUANTIZED_REGS_TO_SAVE, true);
 	SetJumpTarget(arg2);
 	RET();
 #endif
@@ -218,8 +196,8 @@ void CommonAsmRoutines::GenQuantizedStores() {
 	PACKSSDW(XMM0, R(XMM0));
 	PACKUSWB(XMM0, R(XMM0));
 	MOVD_xmm(R(EAX), XMM0);
-	SafeWriteRegToReg(AX, ECX, 16, 0, false);
-	
+	SafeWriteRegToReg(AX, ECX, 16, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_SWAP | SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+
 	RET();
 
 	const u8* storePairedS8 = AlignCode4();
@@ -237,8 +215,8 @@ void CommonAsmRoutines::GenQuantizedStores() {
 	PACKSSWB(XMM0, R(XMM0));
 	MOVD_xmm(R(EAX), XMM0);
 
-	SafeWriteRegToReg(AX, ECX, 16, 0, false);
-	
+	SafeWriteRegToReg(AX, ECX, 16, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_SWAP | SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+
 	RET();
 
 	const u8* storePairedU16 = AlignCode4();
@@ -263,8 +241,8 @@ void CommonAsmRoutines::GenQuantizedStores() {
 	MOV(16, R(AX), M((char*)psTemp + 4));
 
 	BSWAP(32, EAX);
-	SafeWriteRegToReg(EAX, ECX, 32, 0, false);
-	
+	SafeWriteRegToReg(EAX, ECX, 32, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_SWAP | SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+
 	RET();
 
 	const u8* storePairedS16 = AlignCode4();
@@ -283,8 +261,8 @@ void CommonAsmRoutines::GenQuantizedStores() {
 	MOVD_xmm(R(EAX), XMM0);
 	BSWAP(32, EAX);
 	ROL(32, R(EAX), Imm8(16));
-	SafeWriteRegToReg(EAX, ECX, 32, 0, false);
-	
+	SafeWriteRegToReg(EAX, ECX, 32, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_SWAP | SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+
 	RET();
 
 	pairedStoreQuantized = reinterpret_cast<const u8**>(const_cast<u8*>(AlignCode16()));
@@ -301,13 +279,14 @@ void CommonAsmRoutines::GenQuantizedStores() {
 }
 
 // See comment in header for in/outs.
-void CommonAsmRoutines::GenQuantizedSingleStores() {
+void CommonAsmRoutines::GenQuantizedSingleStores()
+{
 	const u8* storeSingleIllegal = AlignCode4();
 	UD2();
 
 	// Easy!
 	const u8* storeSingleFloat = AlignCode4();
-	SafeWriteFloatToReg(XMM0, ECX);
+	SafeWriteFloatToReg(XMM0, ECX, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
 	RET();
 	/*
 	if (cpu_info.bSSSE3) {
@@ -315,11 +294,11 @@ void CommonAsmRoutines::GenQuantizedSingleStores() {
 		// TODO: SafeWriteFloat
 		MOVSS(M(&psTemp[0]), XMM0);
 		MOV(32, R(EAX), M(&psTemp[0]));
-		SafeWriteRegToReg(EAX, ECX, 32, 0, false);
+		SafeWriteRegToReg(EAX, ECX, 32, 0, SAFE_WRITE_NO_SWAP | SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
 	} else {
 		MOVSS(M(&psTemp[0]), XMM0);
 		MOV(32, R(EAX), M(&psTemp[0]));
-		SafeWriteRegToReg(EAX, ECX, 32, 0, true);
+		SafeWriteRegToReg(EAX, ECX, 32, 0, SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
 	}*/
 
 	const u8* storeSingleU8 = AlignCode4();  // Used by MKWii
@@ -330,7 +309,7 @@ void CommonAsmRoutines::GenQuantizedSingleStores() {
 	MAXSS(XMM0, R(XMM1));
 	MINSS(XMM0, M((void *)&m_255));
 	CVTTSS2SI(EAX, R(XMM0));
-	SafeWriteRegToReg(AL, ECX, 8, 0, true);
+	SafeWriteRegToReg(AL, ECX, 8, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
 	RET();
 
 	const u8* storeSingleS8 = AlignCode4();
@@ -340,7 +319,7 @@ void CommonAsmRoutines::GenQuantizedSingleStores() {
 	MAXSS(XMM0, M((void *)&m_m128));
 	MINSS(XMM0, M((void *)&m_127));
 	CVTTSS2SI(EAX, R(XMM0));
-	SafeWriteRegToReg(AL, ECX, 8, 0, true);
+	SafeWriteRegToReg(AL, ECX, 8, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
 	RET();
 
 	const u8* storeSingleU16 = AlignCode4();  // Used by MKWii
@@ -351,7 +330,7 @@ void CommonAsmRoutines::GenQuantizedSingleStores() {
 	MAXSS(XMM0, R(XMM1));
 	MINSS(XMM0, M((void *)&m_65535));
 	CVTTSS2SI(EAX, R(XMM0));
-	SafeWriteRegToReg(EAX, ECX, 16, 0, true);
+	SafeWriteRegToReg(EAX, ECX, 16, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
 	RET();
 
 	const u8* storeSingleS16 = AlignCode4();
@@ -361,7 +340,7 @@ void CommonAsmRoutines::GenQuantizedSingleStores() {
 	MAXSS(XMM0, M((void *)&m_m32768));
 	MINSS(XMM0, M((void *)&m_32767));
 	CVTTSS2SI(EAX, R(XMM0));
-	SafeWriteRegToReg(EAX, ECX, 16, 0, true);
+	SafeWriteRegToReg(EAX, ECX, 16, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
 	RET();
 
 	singleStoreQuantized = reinterpret_cast<const u8**>(const_cast<u8*>(AlignCode16()));
@@ -377,7 +356,8 @@ void CommonAsmRoutines::GenQuantizedSingleStores() {
 	singleStoreQuantized[7] = storeSingleS16;
 }
 
-void CommonAsmRoutines::GenQuantizedLoads() {
+void CommonAsmRoutines::GenQuantizedLoads()
+{
 	const u8* loadPairedIllegal = AlignCode4();
 	UD2();
 
@@ -440,7 +420,7 @@ void CommonAsmRoutines::GenQuantizedLoads() {
 		AND(32, R(ECX), Imm32(Memory::MEMVIEW32_MASK));
 		MOV(32, R(EAX), MDisp(ECX, (u32)Memory::base));
 		BSWAP(32, EAX);
-		MOVD_xmm(XMM0, M(&psTemp[0]));
+		MOVD_xmm(XMM0, R(EAX));
 		UNPCKLPS(XMM0, M((void*)m_one));
 #endif
 	}

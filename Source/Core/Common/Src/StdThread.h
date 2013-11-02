@@ -5,12 +5,25 @@
 #define GCC_VER(x,y,z)	((x) * 10000 + (y) * 100 + (z))
 #define GCC_VERSION GCC_VER(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__)
 
+#ifndef __has_include
+#define __has_include(s) 0
+#endif
+
 #if GCC_VERSION >= GCC_VER(4,4,0) && __GXX_EXPERIMENTAL_CXX0X__
 // GCC 4.4 provides <thread>
 #ifndef _GLIBCXX_USE_SCHED_YIELD
 #define _GLIBCXX_USE_SCHED_YIELD
 #endif
 #include <thread>
+#elif __has_include(<thread>) && !ANDROID
+// Clang + libc++
+#include <thread>
+
+#elif _MSC_VER >= 1700
+
+// The standard implementation is included since VS2012
+#include <thread>
+
 #else
 
 // partial std::thread implementation for win32/pthread
@@ -88,7 +101,7 @@ public:
 		{
 			return !(*this == rhs);
 		}
-		
+
 		bool operator<(const id& rhs) const
 		{
 			return m_thread < rhs.m_thread;

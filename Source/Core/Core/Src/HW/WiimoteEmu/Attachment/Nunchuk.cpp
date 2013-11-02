@@ -1,3 +1,7 @@
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
+
 #include "Nunchuk.h"
 
 #include "UDPWrapper.h"
@@ -27,7 +31,8 @@ static const u8 nunchuk_button_bitmasks[] =
 	Nunchuk::BUTTON_Z,
 };
 
-Nunchuk::Nunchuk(UDPWrapper *wrp) : Attachment(_trans("Nunchuk")) , m_udpWrap(wrp)
+Nunchuk::Nunchuk(UDPWrapper *wrp, WiimoteEmu::ExtensionReg& _reg)
+	: Attachment(_trans("Nunchuk"), _reg) , m_udpWrap(wrp)
 {
 	// buttons
 	groups.push_back(m_buttons = new Buttons("Buttons"));
@@ -51,9 +56,9 @@ Nunchuk::Nunchuk(UDPWrapper *wrp) : Attachment(_trans("Nunchuk")) , m_udpWrap(wr
 
 	// set up register
 	// calibration
-	memcpy(&reg[0x20], nunchuck_calibration, sizeof(nunchuck_calibration));
+	memcpy(&calibration, nunchuck_calibration, sizeof(nunchuck_calibration));
 	// id
-	memcpy(&reg[0xfa], nunchuck_id, sizeof(nunchuck_id));
+	memcpy(&id, nunchuck_id, sizeof(nunchuck_id));
 
 	// this should get set to 0 on disconnect, but it isn't, o well
 	memset(m_shake_step, 0, sizeof(m_shake_step));
@@ -64,10 +69,45 @@ void Nunchuk::GetState(u8* const data, const bool focus)
 	wm_extension* const ncdata = (wm_extension*)data;
 	ncdata->bt = 0;
 
-	// stick / not using calibration data for stick, o well
-	m_stick->GetState(&ncdata->jx, &ncdata->jy, 0x80, focus ? 127 : 0);
-	
+	// stick
+	ControlState state[2];
+	m_stick->GetState(&state[0], &state[1], 0, 1);
+
+	nu_cal &cal = *(nu_cal*)&reg.calibration;
+	nu_js cal_js[2];
+	cal_js[0] = *&cal.jx;
+	cal_js[1] = *&cal.jy;
+
+	for (int i = 0; i < 2; i++) {
+		ControlState &s = *&state[i];
+		nu_js c = *&cal_js[i];
+		if (s < 0)
+			s = s * abs(c.min - c.center) + c.center;
+		else if (s > 0)
+			s = s * abs(c.max - c.center) + c.center;
+		else
+			s = c.center;
+	}
+
+	ncdata->jx = u8(trim(state[0]));
+	ncdata->jy = u8(trim(state[1]));
+
+	if (ncdata->jx != cal.jx.center || ncdata->jy != cal.jy.center)
+	{
+		if (ncdata->jy == cal.jy.center)
+			ncdata->jy = cal.jy.center + 1;
+		if (ncdata->jx == cal.jx.center)
+			ncdata->jx = cal.jx.center + 1;
+	}
+
+	if (!focus)
+	{
+		ncdata->jx = cal.jx.center;
+		ncdata->jy = cal.jy.center;
+	}
+
 	AccelData accel;
+	accel_cal* calib = (accel_cal*)&reg.calibration[0];
 
 	// tilt
 	EmulateTilt(&accel, m_tilt, focus);
@@ -77,7 +117,7 @@ void Nunchuk::GetState(u8* const data, const bool focus)
 		// swing
 		EmulateSwing(&accel, m_swing);
 		// shake
-		EmulateShake(&accel, m_shake, m_shake_step);
+		EmulateShake(&accel, calib, m_shake, m_shake_step);
 		// buttons
 		m_buttons->GetState(&ncdata->bt, nunchuk_button_bitmasks);
 	}
@@ -115,7 +155,6 @@ void Nunchuk::GetState(u8* const data, const bool focus)
 	}
 
 	wm_accel* dt = (wm_accel*)&ncdata->ax;
-	accel_cal* calib = (accel_cal*)&reg[0x20];
 	dt->x = u8(trim(accel.x * (calib->one_g.x - calib->zero_g.x) + calib->zero_g.x));
 	dt->y = u8(trim(accel.y * (calib->one_g.y - calib->zero_g.y) + calib->zero_g.y));
 	dt->z = u8(trim(accel.z * (calib->one_g.z - calib->zero_g.z) + calib->zero_g.z));

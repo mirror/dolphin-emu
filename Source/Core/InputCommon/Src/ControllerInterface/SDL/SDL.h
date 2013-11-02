@@ -1,27 +1,19 @@
 #ifndef _CIFACE_SDL_H_
 #define _CIFACE_SDL_H_
 
-#include "../ControllerInterface.h"
+#include "../Device.h"
 
 #include <list>
 
-#ifdef _WIN32
-	#include <SDL.h>
-#else
-	#include <SDL/SDL.h>
-#endif
+#include <SDL.h>
 
 #if SDL_VERSION_ATLEAST(1, 3, 0)
 	#define USE_SDL_HAPTIC
 #endif
 
 #ifdef USE_SDL_HAPTIC
+	#include <SDL_haptic.h>
 	#define SDL_INIT_FLAGS	SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC
-	#ifdef _WIN32
-		#include <SDL_haptic.h>
-	#else
-		#include <SDL/SDL_haptic.h>
-	#endif
 #else
 	#define SDL_INIT_FLAGS	SDL_INIT_JOYSTICK
 #endif
@@ -31,9 +23,9 @@ namespace ciface
 namespace SDL
 {
 
-void Init( std::vector<ControllerInterface::Device*>& devices );
+void Init( std::vector<Core::Device*>& devices );
 
-class Joystick : public ControllerInterface::Device
+class Joystick : public Core::Device
 {
 private:
 
@@ -48,7 +40,7 @@ private:
 	};
 #endif
 
-	class Button : public Input
+	class Button : public Core::Device::Input
 	{
 	public:
 		std::string GetName() const;
@@ -59,7 +51,7 @@ private:
 		 const u8 m_index;
 	};
 
-	class Axis : public Input
+	class Axis : public Core::Device::Input
 	{
 	public:
 		std::string GetName() const;
@@ -89,7 +81,7 @@ private:
 	public:
 		std::string GetName() const;
 		ConstantEffect(EffectIDState& effect) : m_effect(effect) {}
-		void SetState(const ControlState state);
+		void SetState(ControlState state);
 	private:
 		EffectIDState& m_effect;
 	};
@@ -99,7 +91,39 @@ private:
 	public:
 		std::string GetName() const;
 		RampEffect(EffectIDState& effect) : m_effect(effect) {}
-		void SetState(const ControlState state);
+		void SetState(ControlState state);
+	private:
+		EffectIDState& m_effect;
+	};
+
+	class SineEffect : public Output
+	{
+	public:
+		std::string GetName() const;
+		SineEffect(EffectIDState& effect) : m_effect(effect) {}
+		void SetState(ControlState state);
+	private:
+		EffectIDState& m_effect;
+	};
+
+#ifdef SDL_HAPTIC_SQUARE
+	class SquareEffect : public Output
+	{
+	public:
+		std::string GetName() const;
+		SquareEffect(EffectIDState& effect) : m_effect(effect) {}
+		void SetState(ControlState state);
+	private:
+		EffectIDState& m_effect;
+	};
+#endif // defined(SDL_HAPTIC_SQUARE)
+
+	class TriangleEffect : public Output
+	{
+	public:
+		std::string GetName() const;
+		TriangleEffect(EffectIDState& effect) : m_effect(effect) {}
+		void SetState(ControlState state);
 	private:
 		EffectIDState& m_effect;
 	};

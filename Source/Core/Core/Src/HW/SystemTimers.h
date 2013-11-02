@@ -12,13 +12,13 @@
 // A copy of the GPL 2.0 should have been included with the program.
 // If not, see http://www.gnu.org/licenses/
 
-// Official SVN repository and contact information can be found at
+// Official Git repository and contact information can be found at
 // http://code.google.com/p/dolphin-emu/
 
 #ifndef _SYSTEMTIMERS_H
 #define _SYSTEMTIMERS_H
 
-#include "Common.h"
+#include "CommonTypes.h"
 
 namespace SystemTimers
 {

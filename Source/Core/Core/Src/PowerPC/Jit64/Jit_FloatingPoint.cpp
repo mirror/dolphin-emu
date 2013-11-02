@@ -1,26 +1,8 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include "Common.h"
-
-#include "../../Core.h"
-#include "../PowerPC.h"
-#include "../PPCTables.h"
-#include "x64Emitter.h"
 
 #include "Jit.h"
 #include "JitRegCache.h"
@@ -38,32 +20,27 @@ void Jit64::fp_tri_op(int d, int a, int b, bool reversible, bool dupe, void (XEm
 		fpr.BindToRegister(d, true);
 		(this->*op)(fpr.RX(d), fpr.R(b));
 	}
-	else if (d == b && reversible)
+	else if (d == b)
 	{
-		fpr.BindToRegister(d, true);
-		(this->*op)(fpr.RX(d), fpr.R(a));
+		if (reversible)
+		{
+			fpr.BindToRegister(d, true);
+			(this->*op)(fpr.RX(d), fpr.R(a));
+		}
+		else
+		{
+			MOVSD(XMM0, fpr.R(b));
+			fpr.BindToRegister(d, !dupe);
+			MOVSD(fpr.RX(d), fpr.R(a));
+			(this->*op)(fpr.RX(d), Gen::R(XMM0));
+		}
 	}
-	else if (a != d && b != d) 
+	else
 	{
 		// Sources different from d, can use rather quick solution
 		fpr.BindToRegister(d, !dupe);
 		MOVSD(fpr.RX(d), fpr.R(a));
 		(this->*op)(fpr.RX(d), fpr.R(b));
-	}
-	else if (b != d)
-	{
-		fpr.BindToRegister(d, !dupe);
-		MOVSD(XMM0, fpr.R(b));
-		MOVSD(fpr.RX(d), fpr.R(a));
-		(this->*op)(fpr.RX(d), Gen::R(XMM0));
-	}
-	else // Other combo, must use two temps :(
-	{
-		MOVSD(XMM0, fpr.R(a));
-		MOVSD(XMM1, fpr.R(b));
-		fpr.BindToRegister(d, !dupe);
-		(this->*op)(XMM0, Gen::R(XMM1));
-		MOVSD(fpr.RX(d), Gen::R(XMM0));
 	}
 	if (dupe)
 	{
@@ -88,15 +65,10 @@ static const double one_const = 1.0f;
 void Jit64::fp_arith_s(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(FloatingPoint)
+	JITDISABLE(bJITFloatingPointOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
-
-	// Causing problems for GC - Starfox Assault (invisible boss at the end of level 1)
-	if (inst.SUBOP5 == 21) {
-		Default(inst); return;
-	}	
 
 	if (inst.SUBOP5 == 26) {
 		// frsqrtex
@@ -137,7 +109,7 @@ void Jit64::fp_arith_s(UGeckoInstruction inst)
 void Jit64::fmaddXX(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(FloatingPoint)
+	JITDISABLE(bJITFloatingPointOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -194,7 +166,7 @@ void Jit64::fmaddXX(UGeckoInstruction inst)
 void Jit64::fsign(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(FloatingPoint)
+	JITDISABLE(bJITFloatingPointOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -225,7 +197,7 @@ void Jit64::fsign(UGeckoInstruction inst)
 void Jit64::fmrx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(FloatingPoint)
+	JITDISABLE(bJITFloatingPointOff)
 	if (inst.Rc) {
 		Default(inst); return;
 	}
@@ -241,7 +213,7 @@ void Jit64::fmrx(UGeckoInstruction inst)
 void Jit64::fcmpx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
-	JITDISABLE(FloatingPoint)
+	JITDISABLE(bJITFloatingPointOff)
 	if (jo.fpAccurateFcmp) {
 		Default(inst); return; // turn off from debugger
 	}

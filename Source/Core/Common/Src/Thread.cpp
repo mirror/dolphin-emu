@@ -1,21 +1,7 @@
-// Copyright (C) 2003 Dolphin Project.
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
-
-#include "Setup.h"
 #include "Thread.h"
 #include "Common.h"
 
@@ -60,7 +46,7 @@ void SleepCurrentThread(int ms)
 {
 	Sleep(ms);
 }
-	
+
 void SwitchCurrentThread()
 {
 	SwitchToThread();
@@ -102,18 +88,18 @@ void SetCurrentThreadName(const char* szThreadName)
 #else // !WIN32, so must be POSIX threads
 
 void SetThreadAffinity(std::thread::native_handle_type thread, u32 mask)
-{                
+{
 #ifdef __APPLE__
 	thread_policy_set(pthread_mach_thread_np(thread),
 		THREAD_AFFINITY_POLICY, (integer_t *)&mask, 1);
-#elif defined __linux__ || defined BSD4_4
+#elif (defined __linux__ || defined BSD4_4) && !(defined ANDROID)
 	cpu_set_t cpu_set;
 	CPU_ZERO(&cpu_set);
-                
+
 	for (int i = 0; i != sizeof(mask) * 8; ++i)
 		if ((mask >> i) & 1)
 			CPU_SET(i, &cpu_set);
-                
+
 	pthread_setaffinity_np(thread, sizeof(cpu_set), &cpu_set);
 #endif
 }
@@ -123,42 +109,25 @@ void SetCurrentThreadAffinity(u32 mask)
 	SetThreadAffinity(pthread_self(), mask);
 }
 
-static pthread_key_t threadname_key;
-static pthread_once_t threadname_key_once = PTHREAD_ONCE_INIT;
-
 void SleepCurrentThread(int ms)
 {
 	usleep(1000 * ms);
 }
-	
+
 void SwitchCurrentThread()
 {
 	usleep(1000 * 1);
 }
 
-static void FreeThreadName(void* threadname)
-{
-	free(threadname);
-}
-
-static void ThreadnameKeyAlloc()
-{
-	pthread_key_create(&threadname_key, FreeThreadName);
-}
-
 void SetCurrentThreadName(const char* szThreadName)
 {
-	pthread_once(&threadname_key_once, ThreadnameKeyAlloc);
-
-	void* threadname;
-	if ((threadname = pthread_getspecific(threadname_key)) != NULL)
-		free(threadname);
-
-	pthread_setspecific(threadname_key, strdup(szThreadName));
-
-	INFO_LOG(COMMON, "%s(%s)\n", __FUNCTION__, szThreadName);
+#ifdef __APPLE__
+	pthread_setname_np(szThreadName);
+#else
+	pthread_setname_np(pthread_self(), szThreadName);
+#endif
 }
 
 #endif
-	
+
 } // namespace Common
