@@ -355,6 +355,7 @@ void CWII_IPC_HLE_Device_hid::ConvertEndpointToWii(WiiHIDEndpointDescriptor *des
 
 void CWII_IPC_HLE_Device_hid::FillOutDevices(u32 BufferOut, u32 BufferOutSize)
 {
+	#if defined(__LIBUSB__) || defined(_WIN32)
     const SCoreStartupParameter& _CoreParameter =
         SConfig::GetInstance().m_LocalCoreStartupParameter;
 
@@ -364,6 +365,7 @@ void CWII_IPC_HLE_Device_hid::FillOutDevices(u32 BufferOut, u32 BufferOutSize)
         Memory::Write_U32(0xFFFFFFFF, BufferOut);
         return;
     }
+	#endif
 
 	static u16 check = 1;
 	int OffsetBuffer = BufferOut;

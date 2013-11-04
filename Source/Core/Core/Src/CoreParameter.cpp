@@ -62,7 +62,9 @@ void SCoreStartupParameter::LoadDefaults()
 	#ifdef USE_GDBSTUB
 	iGDBPort = -1;
 	#endif
+	#if defined(__LIBUSB__) || defined(_WIN32)
 	bUSBHIDEnabled = true;
+	#endif
 
 	iCPUCore = 1;
 	bCPUThread = false;
