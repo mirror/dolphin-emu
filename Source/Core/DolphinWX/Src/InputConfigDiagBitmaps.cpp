@@ -103,24 +103,24 @@ void InputConfigDialog::UpdateBitmaps(wxTimerEvent& WXUNUSED(event))
 						// polygon offset
 						float max
 							, diagonal
-							, box = 64
-							, d_of = box / 256.0
-							, x_of = box / 2.0;
+							, box = 64.0f
+							, d_of = box / 256.0f
+							, x_of = box / 2.0f;
 
 						if (strcmp((*g)->control_group->name, "Main Stick") == 0)
 						{
-							max = (87.0f / 127.0f) * 100;
-							diagonal = (55.0f / 127.0f) * 100.0;
+							max = (87.0f / 127.0f) * 100.0f;
+							diagonal = (55.0f / 127.0f) * 100.0f;
 						}
 						else if (strcmp((*g)->control_group->name,"C-Stick") == 0)
 						{
-							max = (74.0f / 127.0f) * 100;
-							diagonal = (46.0f / 127.0f) * 100;
+							max = (74.0f / 127.0f) * 100.0f;
+							diagonal = (46.0f / 127.0f) * 100.0f;
 						}
 						else
 						{
-							max = (82.0f / 127.0f) * 100;
-							diagonal = (58.0f / 127.0f) * 100;
+							max = (82.0f / 127.0f) * 100.0f;
+							diagonal = (58.0f / 127.0f) * 100.0f;
 						}
 
 						// polygon corners

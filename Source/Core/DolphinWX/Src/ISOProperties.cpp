@@ -1014,19 +1014,19 @@ void CISOProperties::LoadGameConfig()
 	// First set values from default gameini, then apply values from local gameini
 	int iTemp;
 	GameIniDefault.Get("Video", "ProjectionHack", &iTemp);
-	PHackEnable->SetValue(iTemp);
+	PHackEnable->SetValue(iTemp != 0);
 	if (GameIniLocal.Get("Video", "ProjectionHack", &iTemp))
-		PHackEnable->SetValue(iTemp);
+		PHackEnable->SetValue(iTemp != 0);
 
 	GameIniDefault.Get("Video", "PH_SZNear", &PHack_Data.PHackSZNear);
 	if (GameIniLocal.GetIfExists("Video", "PH_SZNear", &iTemp))
-		PHack_Data.PHackSZNear = iTemp;
+		PHack_Data.PHackSZNear = iTemp != 0;
 	GameIniDefault.Get("Video", "PH_SZFar", &PHack_Data.PHackSZFar);
 	if (GameIniLocal.GetIfExists("Video", "PH_SZFar", &iTemp))
-		PHack_Data.PHackSZFar = iTemp;
+		PHack_Data.PHackSZFar = iTemp != 0;
 	GameIniDefault.Get("Video", "PH_ExtraParam", &PHack_Data.PHackExP);
 	if (GameIniLocal.GetIfExists("Video", "PH_ExtraParam", &iTemp))
-		PHack_Data.PHackExP = iTemp;
+		PHack_Data.PHackExP = iTemp != 0;
 
 	std::string sTemp;
 	GameIniDefault.Get("Video", "PH_ZNear", &PHack_Data.PHZNear);
