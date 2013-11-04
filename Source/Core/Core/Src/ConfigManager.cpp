@@ -171,6 +171,9 @@ void SConfig::SaveSettings()
 	#ifdef USE_GDBSTUB
 	ini.Set("General", "GDBPort", m_LocalCoreStartupParameter.iGDBPort);
 	#endif
+	#if defined(__LIBUSB__) || defined(_WIN32)
+	ini.Set("General", "USBHIDEnabled", m_LocalCoreStartupParameter.bUSBHIDEnabled);
+	#endif
 
 	// Interface
 	ini.Set("Interface", "ConfirmStop",			m_LocalCoreStartupParameter.bConfirmStop);
@@ -298,6 +301,9 @@ void SConfig::LoadSettings()
 		ini.Get("General", "ShowLag", &m_ShowLag, false);
 		#ifdef USE_GDBSTUB
 		ini.Get("General", "GDBPort", &(m_LocalCoreStartupParameter.iGDBPort), -1);
+		#endif
+		#if defined(__LIBUSB__) || defined(_WIN32)
+		ini.Get("General", "USBHIDEnabled", &(m_LocalCoreStartupParameter.bUSBHIDEnabled), true);
 		#endif
 
 		m_ISOFolder.clear();

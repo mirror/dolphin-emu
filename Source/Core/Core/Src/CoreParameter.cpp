@@ -62,6 +62,7 @@ void SCoreStartupParameter::LoadDefaults()
 	#ifdef USE_GDBSTUB
 	iGDBPort = -1;
 	#endif
+	bUSBHIDEnabled = true;
 
 	iCPUCore = 1;
 	bCPUThread = false;

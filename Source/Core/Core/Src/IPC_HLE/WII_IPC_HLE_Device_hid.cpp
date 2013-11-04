@@ -8,6 +8,7 @@
 #include "WII_IPC_HLE.h"
 #include "WII_IPC_HLE_Device_hid.h"
 #include "errno.h"
+#include "ConfigManager.h"
 
 #define MAX_DEVICE_DEVNUM 256
 static u64 hidDeviceAliases[MAX_DEVICE_DEVNUM];
@@ -354,6 +355,16 @@ void CWII_IPC_HLE_Device_hid::ConvertEndpointToWii(WiiHIDEndpointDescriptor *des
 
 void CWII_IPC_HLE_Device_hid::FillOutDevices(u32 BufferOut, u32 BufferOutSize)
 {
+    const SCoreStartupParameter& _CoreParameter =
+        SConfig::GetInstance().m_LocalCoreStartupParameter;
+
+    if (!_CoreParameter.bUSBHIDEnabled)
+    {
+        // Pretend we have no devices.
+        Memory::Write_U32(0xFFFFFFFF, BufferOut);
+        return;
+    }
+
 	static u16 check = 1;
 	int OffsetBuffer = BufferOut;
 	int OffsetStart = 0;

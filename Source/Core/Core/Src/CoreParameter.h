@@ -91,6 +91,11 @@ struct SCoreStartupParameter
 	#ifdef USE_GDBSTUB
 	int  iGDBPort;
 	#endif
+	#if defined(__LIBUSB__) || defined(_WIN32)
+	bool bUSBHIDEnabled;
+	#endif
+
+
 	bool bAutomaticStart;
 	bool bBootToPause;
 
