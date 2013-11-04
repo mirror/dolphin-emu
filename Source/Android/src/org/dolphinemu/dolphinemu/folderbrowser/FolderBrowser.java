@@ -7,14 +7,13 @@
 package org.dolphinemu.dolphinemu.folderbrowser;
 
 import android.app.Activity;
-import android.app.Fragment;
+import android.app.ListFragment;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.ListView;
 
 import java.io.File;
@@ -25,7 +24,7 @@ import org.dolphinemu.dolphinemu.R;
 import org.dolphinemu.dolphinemu.gamelist.GameListActivity;
 
 /**
- * A basic folder browser {@link Fragment} that allows
+ * A basic folder browser {@link ListFragment} that allows
  * the user to select ISOs/ROMs for playing within the
  * emulator.
  * <p>
@@ -36,52 +35,56 @@ import org.dolphinemu.dolphinemu.gamelist.GameListActivity;
  * Note that this file browser does not display files 
  * or directories that are hidden
  */
-public final class FolderBrowser extends Fragment
+public final class FolderBrowser extends ListFragment
 {
 	private Activity m_activity;
 	private FolderBrowserAdapter adapter;
-	private ListView mDrawerList;
-	private View rootView;
+	private ListView mFolderBrowserList;
+	private ListView rootView;
 	private static File currentDir = null;
 
 	// Populates the FolderView with the given currDir's contents.
 	private void Fill(File currDir)
 	{
-		m_activity.setTitle(getString(R.string.current_dir) + currDir.getName());
+		m_activity.setTitle(String.format(getString(R.string.current_dir), currDir.getName()));
 		File[] dirs = currDir.listFiles();
-		List<FolderBrowserItem>dir = new ArrayList<FolderBrowserItem>();
-		List<FolderBrowserItem>fls = new ArrayList<FolderBrowserItem>();
+		List<FolderBrowserItem> dir = new ArrayList<FolderBrowserItem>();
+		List<FolderBrowserItem> fls = new ArrayList<FolderBrowserItem>();
 
 		// Supported extensions to filter by
 		Set<String> validExts = new HashSet<String>(Arrays.asList(".dff", ".dol", ".elf", ".gcm", ".gcz", ".iso", ".wad", ".wbfs"));
 
-		// Search for any directories or files within the current dir.
-		for(File entry : dirs)
+		// If dirs is null, then we don't have access permissions to the selected folder.
+		if (dirs != null)
 		{
-			try
+			// Search for any directories or files within the current dir.
+			for(File entry : dirs)
 			{
-				String entryName = entry.getName();
-				boolean hasExtension = (entryName.lastIndexOf(".") != -1);
-
-				// Skip hidden folders/files.
-				if (!entry.isHidden())
+				try
 				{
-					if(entry.isDirectory())
+					String entryName = entry.getName();
+					boolean hasExtension = (entryName.lastIndexOf(".") != -1);
+	
+					// Skip hidden folders/files.
+					if (!entry.isHidden())
 					{
-						dir.add(new FolderBrowserItem(entryName, entry.getAbsolutePath()));
-					}
-					else if (entry.isFile() && hasExtension)
-					{
-						if (validExts.contains(entryName.toLowerCase().substring(entryName.lastIndexOf('.'))))
+						if(entry.isDirectory())
 						{
-							fls.add(new FolderBrowserItem(entryName, getString(R.string.file_size)+entry.length(), entry.getAbsolutePath()));
+							dir.add(new FolderBrowserItem(entryName, entry.getAbsolutePath()));
+						}
+						else if (entry.isFile() && hasExtension)
+						{
+							if (validExts.contains(entryName.toLowerCase().substring(entryName.lastIndexOf('.'))))
+							{
+								fls.add(new FolderBrowserItem(entryName, String.format(getString(R.string.file_size), entry.length()), entry.getAbsolutePath()));
+							}
 						}
 					}
 				}
-			}
-			catch (Exception ex)
-			{
-				Log.e("FolderBrowser", ex.toString());
+				catch (Exception ex)
+				{
+					Log.e("FolderBrowser", ex.toString());
+				}
 			}
 		}
 
@@ -94,9 +97,23 @@ public final class FolderBrowser extends Fragment
 			dir.add(0, new FolderBrowserItem("..", getString(R.string.parent_directory), currDir.getParent()));
 
 		adapter = new FolderBrowserAdapter(m_activity, R.layout.gamelist_folderbrowser_list, dir);
-		mDrawerList = (ListView) rootView.findViewById(R.id.gamelist);
-		mDrawerList.setAdapter(adapter);
-		mDrawerList.setOnItemClickListener(mMenuItemClickListener);
+		mFolderBrowserList = (ListView) rootView.findViewById(R.id.gamelist);
+		mFolderBrowserList.setAdapter(adapter);
+	}
+
+	@Override
+	public void onListItemClick(ListView lv, View v, int position, long id)
+	{
+		FolderBrowserItem item = adapter.getItem(position);
+		if(item.isDirectory())
+		{
+			currentDir = new File(item.getPath());
+			Fill(currentDir);
+		}
+		else
+		{
+			FolderSelected();
+		}
 	}
 
 	@Override
@@ -105,28 +122,11 @@ public final class FolderBrowser extends Fragment
 		if(currentDir == null)
 			currentDir = new File(Environment.getExternalStorageDirectory().getPath());
 
-		rootView = inflater.inflate(R.layout.gamelist_listview, container, false);
+		rootView = (ListView) inflater.inflate(R.layout.gamelist_listview, container, false);
 
 		Fill(currentDir);
-		return mDrawerList;
+		return mFolderBrowserList;
 	}
-
-	private final AdapterView.OnItemClickListener mMenuItemClickListener = new AdapterView.OnItemClickListener()
-	{
-		public void onItemClick(AdapterView<?> parent, View view, int position, long id)
-		{
-			FolderBrowserItem item = adapter.getItem(position);
-			if(item.isDirectory())
-			{
-				currentDir = new File(item.getPath());
-				Fill(currentDir);
-			}
-			else
-			{
-				FolderSelected();
-			}
-		}
-	};
 
 	@Override
 	public void onAttach(Activity activity)

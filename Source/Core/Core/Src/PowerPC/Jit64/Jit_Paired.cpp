@@ -4,12 +4,6 @@
 
 #include "Common.h"
 
-#include "../../Core.h"
-#include "../PowerPC.h"
-#include "../PPCTables.h"
-#include "x64Emitter.h"
-#include "../../HW/GPFifo.h"
-
 #include "Jit.h"
 #include "JitRegCache.h"
 
@@ -96,7 +90,7 @@ void Jit64::ps_sign(UGeckoInstruction inst)
 
 	switch (inst.SUBOP10)
 	{
-	case 40: //neg 
+	case 40: //neg
 		XORPD(fpr.RX(d), M((void*)&psSignBits));
 		break;
 	case 136: //nabs
@@ -152,39 +146,34 @@ void Jit64::tri_op(int d, int a, int b, bool reversible, void (XEmitter::*op)(X6
 		fpr.BindToRegister(d, true);
 		(this->*op)(fpr.RX(d), fpr.R(b));
 	}
-	else if (d == b && reversible)
+	else if (d == b)
 	{
-		fpr.BindToRegister(d, true);
-		(this->*op)(fpr.RX(d), fpr.R(a));
+		if (reversible)
+		{
+			fpr.BindToRegister(d, true);
+			(this->*op)(fpr.RX(d), fpr.R(a));
+		}
+		else
+		{
+			MOVAPD(XMM0, fpr.R(b));
+			fpr.BindToRegister(d, false);
+			MOVAPD(fpr.RX(d), fpr.R(a));
+			(this->*op)(fpr.RX(d), Gen::R(XMM0));
+		}
 	}
-	else if (a != d && b != d) 
+	else
 	{
 		//sources different from d, can use rather quick solution
 		fpr.BindToRegister(d, false);
 		MOVAPD(fpr.RX(d), fpr.R(a));
 		(this->*op)(fpr.RX(d), fpr.R(b));
 	}
-	else if (b != d)
-	{
-		fpr.BindToRegister(d, false);
-		MOVAPD(XMM0, fpr.R(b));
-		MOVAPD(fpr.RX(d), fpr.R(a));
-		(this->*op)(fpr.RX(d), Gen::R(XMM0));
-	}
-	else //Other combo, must use two temps :(
-	{
-		MOVAPD(XMM0, fpr.R(a));
-		MOVAPD(XMM1, fpr.R(b));
-		fpr.BindToRegister(d, false);
-		(this->*op)(XMM0, Gen::R(XMM1));
-		MOVAPD(fpr.RX(d), Gen::R(XMM0));
-	}
 	ForceSinglePrecisionP(fpr.RX(d));
 	fpr.UnlockAll();
 }
 
 void Jit64::ps_arith(UGeckoInstruction inst)
-{		
+{
 	INSTRUCTION_START
 	JITDISABLE(bJITPairedOff)
 	if (inst.Rc) {
@@ -193,7 +182,7 @@ void Jit64::ps_arith(UGeckoInstruction inst)
 	switch (inst.SUBOP5)
 	{
 	case 18: tri_op(inst.FD, inst.FA, inst.FB, false, &XEmitter::DIVPD); break; //div
-	case 20: tri_op(inst.FD, inst.FA, inst.FB, false, &XEmitter::SUBPD); break; //sub 
+	case 20: tri_op(inst.FD, inst.FA, inst.FB, false, &XEmitter::SUBPD); break; //sub
 	case 21: tri_op(inst.FD, inst.FA, inst.FB, true,  &XEmitter::ADDPD); break; //add
 	case 23: Default(inst); break; //sel
 	case 24: Default(inst); break; //res
@@ -204,10 +193,10 @@ void Jit64::ps_arith(UGeckoInstruction inst)
 }
 
 void Jit64::ps_sum(UGeckoInstruction inst)
-{	
+{
 	INSTRUCTION_START
 	JITDISABLE(bJITPairedOff)
-	// TODO: (inst.SUBOP5 == 10) breaks Sonic Colours (black screen) 
+	// TODO: (inst.SUBOP5 == 10) breaks Sonic Colours (black screen)
 	if (inst.Rc || (inst.SUBOP5 == 10)) {
 		Default(inst); return;
 	}
@@ -233,7 +222,7 @@ void Jit64::ps_sum(UGeckoInstruction inst)
 		MOVAPD(XMM1, fpr.R(b));
 		SHUFPD(XMM1, R(XMM1), 5); // copy higher to lower
 		ADDPD(XMM0, R(XMM1)); // sum lowers
-		MOVAPD(XMM1, fpr.R(c));  
+		MOVAPD(XMM1, fpr.R(c));
 		UNPCKLPD(XMM1, R(XMM0)); // merge
 		MOVAPD(fpr.R(d), XMM1);
 		break;
@@ -299,7 +288,7 @@ void Jit64::ps_mergeXX(UGeckoInstruction inst)
 	MOVAPD(XMM0, fpr.R(a));
 	switch (inst.SUBOP10)
 	{
-	case 528: 
+	case 528:
 		UNPCKLPD(XMM0, fpr.R(b)); //unpck is faster than shuf
 		break; //00
 	case 560:

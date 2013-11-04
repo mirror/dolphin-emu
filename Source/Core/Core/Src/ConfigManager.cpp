@@ -2,21 +2,20 @@
 // Licensed under GPLv2
 // Refer to the license.txt file included.
 
-#include <string>
-
 #include "Common.h"
 #include "CommonPaths.h"
-#include "IniFile.h"
 #include "ConfigManager.h"
+#include "IniFile.h"
 #include "FileUtil.h"
 #include "NANDContentLoader.h"
 
 SConfig* SConfig::m_Instance;
 
-static const struct {
-	const char*	IniText;
-	const int	DefaultKey;
-	const int	DefaultModifier;
+static const struct
+{
+	const char* IniText;
+	const int   DefaultKey;
+	const int   DefaultModifier;
 } g_HKData[] = {
 #ifdef __APPLE__
 	{ "Open",		79 /* 'O' */,		2 /* wxMOD_CMD */ },
@@ -172,8 +171,8 @@ void SConfig::SaveSettings()
 	#ifdef USE_GDBSTUB
 	ini.Set("General", "GDBPort", m_LocalCoreStartupParameter.iGDBPort);
 	#endif
-	
-	// Interface		
+
+	// Interface
 	ini.Set("Interface", "ConfirmStop",			m_LocalCoreStartupParameter.bConfirmStop);
 	ini.Set("Interface", "UsePanicHandlers",	m_LocalCoreStartupParameter.bUsePanicHandlers);
 	ini.Set("Interface", "OnScreenDisplayMessages",	m_LocalCoreStartupParameter.bOnScreenDisplayMessages);
@@ -189,7 +188,7 @@ void SConfig::SaveSettings()
 	ini.Set("Interface", "ShowLogWindow",		m_InterfaceLogWindow);
 	ini.Set("Interface", "ShowLogConfigWindow",	m_InterfaceLogConfigWindow);
 	ini.Set("Interface", "ShowConsole",			m_InterfaceConsole);
-	ini.Set("Interface", "ThemeName",			m_LocalCoreStartupParameter.theme_name);
+	ini.Set("Interface", "ThemeName40",			m_LocalCoreStartupParameter.theme_name);
 
 	// Hotkeys
 	for (int i = 0; i < NUM_HOTKEYS; i++)
@@ -342,7 +341,7 @@ void SConfig::LoadSettings()
 		ini.Get("Interface", "ShowLogWindow",		&m_InterfaceLogWindow,							false);
 		ini.Get("Interface", "ShowLogConfigWindow",	&m_InterfaceLogConfigWindow,					false);
 		ini.Get("Interface", "ShowConsole",			&m_InterfaceConsole,							false);
-		ini.Get("Interface", "ThemeName",			&m_LocalCoreStartupParameter.theme_name,		"Boomy");
+		ini.Get("Interface", "ThemeName40",			&m_LocalCoreStartupParameter.theme_name,		"Clean");
 
 		// Hotkeys
 		for (int i = 0; i < NUM_HOTKEYS; i++)
@@ -409,7 +408,6 @@ void SConfig::LoadSettings()
 		ini.Get("Core", "SlotB",		(int*)&m_EXIDevice[1], EXIDEVICE_NONE);
 		ini.Get("Core", "SerialPort1",	(int*)&m_EXIDevice[2], EXIDEVICE_NONE);
 		ini.Get("Core", "BBA_MAC",		&m_bba_mac);
-		ini.Get("Core", "ProfiledReJIT",&m_LocalCoreStartupParameter.bJITProfiledReJIT,			false);
 		ini.Get("Core", "TimeProfiling",&m_LocalCoreStartupParameter.bJITILTimeProfiling,		false);
 		ini.Get("Core", "OutputIR",		&m_LocalCoreStartupParameter.bJITILOutputIR,			false);
 		char sidevicenum[16];
@@ -426,7 +424,7 @@ void SConfig::LoadSettings()
 		ini.Get("Core", "RunCompareServer",	&m_LocalCoreStartupParameter.bRunCompareServer,	false);
 		ini.Get("Core", "RunCompareClient",	&m_LocalCoreStartupParameter.bRunCompareClient,	false);
 		ini.Get("Core", "MMU",				&m_LocalCoreStartupParameter.bMMU,				false);
-		ini.Get("Core", "TLBHack",			&m_LocalCoreStartupParameter.iTLBHack,			0);
+		ini.Get("Core", "TLBHack",			&m_LocalCoreStartupParameter.bTLBHack,			false);
 		ini.Get("Core", "BBDumpPort",		&m_LocalCoreStartupParameter.iBBDumpPort,		-1);
 		ini.Get("Core", "VBeam",			&m_LocalCoreStartupParameter.bVBeamSpeedHack,			false);
 		ini.Get("Core", "SyncGPU",			&m_LocalCoreStartupParameter.bSyncGPU,			false);

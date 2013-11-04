@@ -9,7 +9,7 @@
 
 // Call sequence: This file has one of the first function called when a game is booted,
 // the boot sequence in the code is:
-  
+
 // DolphinWX:    FrameTools.cpp         StartGame
 // Core          BootManager.cpp        BootCore
 //               Core.cpp               Init                     Thread creation
@@ -23,7 +23,7 @@
 #include <string>
 #include <vector>
 
-#include "Common.h"
+#include "CommonTypes.h"
 #include "CommonPaths.h"
 #include "IniFile.h"
 #include "BootManager.h"
@@ -45,10 +45,11 @@ namespace BootManager
 struct ConfigCache
 {
 	bool valid, bCPUThread, bSkipIdle, bEnableFPRF, bMMU, bDCBZOFF, m_EnableJIT, bDSPThread,
-		bVBeamSpeedHack, bSyncGPU, bFastDiscSpeed, bMergeBlocks, bDSPHLE, bHLE_BS2;
-	int iTLBHack, iCPUCore;
+		bVBeamSpeedHack, bSyncGPU, bFastDiscSpeed, bMergeBlocks, bDSPHLE, bHLE_BS2, bTLBHack, bUseFPS;
+	int iCPUCore, Volume;
+	unsigned int framelimit;
 	TEXIDevices m_EXIDevice[2];
-	std::string strBackend;
+	std::string strBackend, sBackend;
 };
 static ConfigCache config_cache;
 
@@ -75,14 +76,17 @@ bool BootCore(const std::string& _rFilename)
 
 	// Load game specific settings
 	std::string unique_id = StartUp.GetUniqueID();
+	std::string revision_specific = StartUp.m_strRevisionSpecificUniqueID;
 	StartUp.m_strGameIniDefault = File::GetSysDirectory() + GAMESETTINGS_DIR DIR_SEP + unique_id + ".ini";
+	if (revision_specific != "")
+		StartUp.m_strGameIniDefaultRevisionSpecific = File::GetSysDirectory() + GAMESETTINGS_DIR DIR_SEP + revision_specific + ".ini";
+	else
+		StartUp.m_strGameIniDefaultRevisionSpecific = "";
 	StartUp.m_strGameIniLocal = File::GetUserPath(D_GAMESETTINGS_IDX) + unique_id + ".ini";
 
 	if (unique_id.size() == 6)
 	{
-		IniFile game_ini;
-		game_ini.Load(StartUp.m_strGameIniDefault);
-		game_ini.Load(StartUp.m_strGameIniLocal, true);
+		IniFile game_ini = StartUp.LoadGameIni();
 
 		config_cache.valid = true;
 		config_cache.bCPUThread = StartUp.bCPUThread;
@@ -91,7 +95,7 @@ bool BootCore(const std::string& _rFilename)
 		config_cache.bEnableFPRF = StartUp.bEnableFPRF;
 		config_cache.bMMU = StartUp.bMMU;
 		config_cache.bDCBZOFF = StartUp.bDCBZOFF;
-		config_cache.iTLBHack = StartUp.iTLBHack;
+		config_cache.bTLBHack = StartUp.bTLBHack;
 		config_cache.bVBeamSpeedHack = StartUp.bVBeamSpeedHack;
 		config_cache.bSyncGPU = StartUp.bSyncGPU;
 		config_cache.bFastDiscSpeed = StartUp.bFastDiscSpeed;
@@ -103,13 +107,17 @@ bool BootCore(const std::string& _rFilename)
 		config_cache.bDSPThread = StartUp.bDSPThread;
 		config_cache.m_EXIDevice[0] = SConfig::GetInstance().m_EXIDevice[0];
 		config_cache.m_EXIDevice[1] = SConfig::GetInstance().m_EXIDevice[1];
+		config_cache.Volume = SConfig::GetInstance().m_Volume;
+		config_cache.sBackend = SConfig::GetInstance().sBackend;
+		config_cache.framelimit = SConfig::GetInstance().m_Framelimit;
+		config_cache.bUseFPS = SConfig::GetInstance().b_UseFPS;
 
 		// General settings
 		game_ini.Get("Core", "CPUThread",			&StartUp.bCPUThread, StartUp.bCPUThread);
 		game_ini.Get("Core", "SkipIdle",			&StartUp.bSkipIdle, StartUp.bSkipIdle);
 		game_ini.Get("Core", "EnableFPRF",			&StartUp.bEnableFPRF, StartUp.bEnableFPRF);
 		game_ini.Get("Core", "MMU",					&StartUp.bMMU, StartUp.bMMU);
-		game_ini.Get("Core", "TLBHack",				&StartUp.iTLBHack, StartUp.iTLBHack);
+		game_ini.Get("Core", "TLBHack",				&StartUp.bTLBHack, StartUp.bTLBHack);
 		game_ini.Get("Core", "DCBZ",				&StartUp.bDCBZOFF, StartUp.bDCBZOFF);
 		game_ini.Get("Core", "VBeam",				&StartUp.bVBeamSpeedHack, StartUp.bVBeamSpeedHack);
 		game_ini.Get("Core", "SyncGPU",				&StartUp.bSyncGPU, StartUp.bSyncGPU);
@@ -120,6 +128,11 @@ bool BootCore(const std::string& _rFilename)
 		game_ini.Get("Core", "GFXBackend", &StartUp.m_strVideoBackend, StartUp.m_strVideoBackend.c_str());
 		game_ini.Get("Core", "CPUCore",				&StartUp.iCPUCore, StartUp.iCPUCore);
 		game_ini.Get("Core", "HLE_BS2",				&StartUp.bHLE_BS2, StartUp.bHLE_BS2);
+		game_ini.Get("Core", "FrameLimit",			&SConfig::GetInstance().m_Framelimit, SConfig::GetInstance().m_Framelimit);
+		game_ini.Get("Core", "UseFPS",				&SConfig::GetInstance().b_UseFPS,SConfig::GetInstance().b_UseFPS);
+		game_ini.Get("DSP", "Volume",				&SConfig::GetInstance().m_Volume, SConfig::GetInstance().m_Volume);
+		game_ini.Get("DSP", "EnableJIT",			&SConfig::GetInstance().m_EnableJIT, SConfig::GetInstance().m_EnableJIT);
+		game_ini.Get("DSP", "Backend",				&SConfig::GetInstance().sBackend, SConfig::GetInstance().sBackend.c_str());
 		VideoBackend::ActivateBackend(StartUp.m_strVideoBackend);
 
 		// Wii settings
@@ -128,7 +141,7 @@ bool BootCore(const std::string& _rFilename)
 			// Flush possible changes to SYSCONF to file
 			SConfig::GetInstance().m_SYSCONF->Save();
 		}
-	} 
+	}
 
 	// movie settings
 	if (Movie::IsPlayingInput() && Movie::IsConfigSaved())
@@ -184,7 +197,7 @@ void Stop()
 		StartUp.bEnableFPRF = config_cache.bEnableFPRF;
 		StartUp.bMMU = config_cache.bMMU;
 		StartUp.bDCBZOFF = config_cache.bDCBZOFF;
-		StartUp.iTLBHack = config_cache.iTLBHack;
+		StartUp.bTLBHack = config_cache.bTLBHack;
 		StartUp.bVBeamSpeedHack = config_cache.bVBeamSpeedHack;
 		StartUp.bSyncGPU = config_cache.bSyncGPU;
 		StartUp.bFastDiscSpeed = config_cache.bFastDiscSpeed;
@@ -194,9 +207,13 @@ void Stop()
 		StartUp.m_strVideoBackend = config_cache.strBackend;
 		VideoBackend::ActivateBackend(StartUp.m_strVideoBackend);
 		StartUp.bHLE_BS2 = config_cache.bHLE_BS2;
+		SConfig::GetInstance().m_Framelimit = config_cache.framelimit;
+		SConfig::GetInstance().b_UseFPS = config_cache.bUseFPS;
 		SConfig::GetInstance().m_EnableJIT = config_cache.m_EnableJIT;
 		SConfig::GetInstance().m_EXIDevice[0] = config_cache.m_EXIDevice[0];
 		SConfig::GetInstance().m_EXIDevice[1] = config_cache.m_EXIDevice[1];
+		SConfig::GetInstance().m_Volume = config_cache.Volume;
+		SConfig::GetInstance().sBackend = config_cache.sBackend;
 	}
 }
 

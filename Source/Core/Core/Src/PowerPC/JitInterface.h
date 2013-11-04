@@ -8,7 +8,7 @@
 namespace JitInterface
 {
 	void DoState(PointerWrap &p);
-	
+
 	CPUCoreBase *InitJitCore(int core);
 	void InitTables(int core);
 	CPUCoreBase *GetCore();
@@ -22,17 +22,14 @@ namespace JitInterface
 
 	// used by JIT to read instructions
 	u32 Read_Opcode_JIT(const u32 _Address);
-	// used by JIT. uses iCacheJIT. Reads in the "Locked cache" mode
-	u32 Read_Opcode_JIT_LC(const u32 _Address);
-	void Write_Opcode_JIT(const u32 _Address, const u32 _Value);
 
 	// Clearing CodeCache
 	void ClearCache();
-	
+
 	void ClearSafe();
 
 	void InvalidateICache(u32 address, u32 size);
-	
+
 	void Shutdown();
 }
 extern bool bFakeVMEM;

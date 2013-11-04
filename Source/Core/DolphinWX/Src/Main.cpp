@@ -112,11 +112,11 @@ bool DolphinApp::Initialize(int& c, wxChar **v)
 {
 #if defined HAVE_X11 && HAVE_X11
 	XInitThreads();
-#endif 
+#endif
 	return wxApp::Initialize(c, v);
 }
 
-// The `main program' equivalent that creates the main window and return the main frame 
+// The `main program' equivalent that creates the main window and return the main frame
 
 bool DolphinApp::OnInit()
 {
@@ -190,7 +190,7 @@ bool DolphinApp::OnInit()
 	if (parser.Parse() != 0)
 	{
 		return false;
-	} 
+	}
 
 	UseDebugger = parser.Found(wxT("debugger"));
 	UseLogger = parser.Found(wxT("logger"));
@@ -229,7 +229,7 @@ bool DolphinApp::OnInit()
 
 #ifndef _M_ARM
 	// TODO: if First Boot
-	if (!cpu_info.bSSE2) 
+	if (!cpu_info.bSSE2)
 	{
 		PanicAlertT("Hi,\n\nDolphin requires that your CPU has support for SSE2 extensions.\n"
 				"Unfortunately your CPU does not support them, so Dolphin will not run.\n\n"
@@ -250,7 +250,7 @@ bool DolphinApp::OnInit()
 #endif
 
 	// Copy initial Wii NAND data from Sys to User.
-	File::CopyDir(File::GetSysDirectory() + WII_USER_DIR,
+	File::CopyDir(File::GetSysDirectory() + WII_USER_DIR DIR_SEP,
 	              File::GetUserPath(D_WIIUSER_IDX));
 
 	File::CreateFullPath(File::GetUserPath(D_USER_IDX));
@@ -321,7 +321,7 @@ bool DolphinApp::OnInit()
 	int leftPos = GetSystemMetrics(SM_XVIRTUALSCREEN);
 	int topPos = GetSystemMetrics(SM_YVIRTUALSCREEN);
 	int width =  GetSystemMetrics(SM_CXVIRTUALSCREEN);
-	int height = GetSystemMetrics(SM_CYVIRTUALSCREEN);	
+	int height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 	if ((leftPos + width) < (x + w) || leftPos > x || (topPos + height) < (y + h) || topPos > y)
 		x = y = wxDefaultCoord;
 #elif defined __APPLE__
@@ -407,7 +407,7 @@ void DolphinApp::InitLanguageSupport()
 		m_locale = new wxLocale(language);
 
 #ifdef _WIN32
-		m_locale->AddCatalogLookupPathPrefix(wxT("Languages"));
+		m_locale->AddCatalogLookupPathPrefix(StrToWxStr(File::GetExeDirectory() + DIR_SEP "Languages"));
 #endif
 
 		m_locale->AddCatalog(wxT("dolphin-emu"));
@@ -456,7 +456,7 @@ void DolphinApp::OnFatalException()
 // ------------
 // Talk to GUI
 
-void Host_SysMessage(const char *fmt, ...) 
+void Host_SysMessage(const char *fmt, ...)
 {
 	va_list list;
 	char msg[512];

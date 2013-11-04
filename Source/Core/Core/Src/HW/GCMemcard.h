@@ -37,7 +37,7 @@ enum
 	SAV = 0x80,
 	SAVFAIL,
 	GCS = 0x110,
-	GCSFAIL,	
+	GCSFAIL,
 	FAIL,
 	WRITEFAIL,
 	DELETE_FAIL,
@@ -295,10 +295,10 @@ public:
 	static bool Format(u8 * card_data, bool ascii = true, u16 SizeMb = MemCard2043Mb);
 	static s32 FZEROGX_MakeSaveGameValid(Header& cardheader, DEntry& direntry, std::vector<GCMBlock> &FileBuffer);
 	static s32 PSO_MakeSaveGameValid(Header& cardheader, DEntry& direntry, std::vector<GCMBlock> &FileBuffer);
-	
+
 	u32 TestChecksums() const;
 	bool FixChecksums();
-	
+
 	// get number of file entries in the directory
 	u8 GetNumFiles() const;
 	u8 GetFileIndex(u8 fileNumber) const;

@@ -13,7 +13,7 @@
 	0x20 GetTitleID (ES_GetTitleID) (Input: none, Output: 8 bytes)
 	0x1d GetDataDir (ES_GetDataDir) (Input: 8 bytes, Output: 30 bytes)
 
-	0x1b DiGetTicketView (Input: none, Output: 216 bytes) 
+	0x1b DiGetTicketView (Input: none, Output: 216 bytes)
 	0x16 GetConsumption (Input: 8 bytes, Output: 0 bytes, 4 bytes) // there are two output buffers
 
 	0x12 GetNumTicketViews (ES_GetNumTicketViews) (Input: 8 bytes, Output: 4 bytes)
@@ -23,7 +23,7 @@
 	but only the first two are correctly supported. For the other four we ignore any potential
 	input and only write zero to the out buffer. However, most games only use first two,
 	but some Nintendo developed games use the other ones to:
-	
+
 	0x1b: Mario Galaxy, Mario Kart, SSBB
 	0x16: Mario Galaxy, Mario Kart, SSBB
 	0x12: Mario Kart
@@ -38,7 +38,7 @@
 #include "../PowerPC/PowerPC.h"
 #include "../VolumeHandler.h"
 #include "FileUtil.h"
-#include "Crypto/aes.h"
+#include <polarssl/aes.h>
 #include "ConfigManager.h"
 
 #include "../Boot/Boot_DOL.h"
@@ -56,7 +56,7 @@
 
 std::string CWII_IPC_HLE_Device_es::m_ContentFile;
 
-CWII_IPC_HLE_Device_es::CWII_IPC_HLE_Device_es(u32 _DeviceID, const std::string& _rDeviceName) 
+CWII_IPC_HLE_Device_es::CWII_IPC_HLE_Device_es(u32 _DeviceID, const std::string& _rDeviceName)
 	: IWII_IPC_HLE_Device(_DeviceID, _rDeviceName)
 	, m_pContentLoader(NULL)
 	, m_TitleID(-1)
@@ -86,7 +86,7 @@ u8* CWII_IPC_HLE_Device_es::keyTable[11] = {
 CWII_IPC_HLE_Device_es::~CWII_IPC_HLE_Device_es()
 {}
 
-void CWII_IPC_HLE_Device_es::LoadWAD(const std::string& _rContentFile) 
+void CWII_IPC_HLE_Device_es::LoadWAD(const std::string& _rContentFile)
 {
 	m_ContentFile = _rContentFile;
 }
@@ -152,10 +152,10 @@ void CWII_IPC_HLE_Device_es::DoState(PointerWrap& p)
 	}
 	else
 	{
-		for (auto itr = m_ContentAccessMap.begin(); itr != m_ContentAccessMap.end(); ++itr)
+		for (auto& pair : m_ContentAccessMap)
 		{
-			CFD = itr->first;
-			SContentAccess& Access = itr->second;
+			CFD = pair.first;
+			SContentAccess& Access = pair.second;
 			Position = Access.m_Position;
 			TitleID = Access.m_TitleID;
 			Index = Access.m_pContent->m_Index;
@@ -182,9 +182,9 @@ bool CWII_IPC_HLE_Device_es::Close(u32 _CommandAddress, bool _bForce)
 {
 	// Leave deletion of the INANDContentLoader objects to CNANDContentManager, don't do it here!
 	m_NANDContent.clear();
-	for (auto itr = m_ContentAccessMap.begin(); itr != m_ContentAccessMap.end(); ++itr)
+	for (auto& pair : m_ContentAccessMap)
 	{
-		delete itr->second.m_pFile;
+		delete pair.second.m_pFile;
 	}
 	m_ContentAccessMap.clear();
 	m_pContentLoader = NULL;
@@ -239,7 +239,7 @@ u32 CWII_IPC_HLE_Device_es::OpenTitleContent(u32 CFD, u64 TitleID, u16 Index)
 	return CFD;
 }
 
-bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress) 
+bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 {
 	SIOCtlVBuffer Buffer(_CommandAddress);
 
@@ -271,7 +271,7 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 	case IOCTL_ES_GETDEVICEID:
 		{
 			_dbg_assert_msg_(WII_IPC_ES, Buffer.NumberPayloadBuffer == 1, "IOCTL_ES_GETDEVICEID no out buffer");
-			
+
 			EcWii &ec = EcWii::GetInstance();
 			INFO_LOG(WII_IPC_ES, "IOCTL_ES_GETDEVICEID %08X", ec.getNgId());
 			Memory::Write_U32(ec.getNgId(), Buffer.PayloadBuffer[0].m_Address);
@@ -303,7 +303,7 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 			else
 				Memory::Write_U32((u32)rNANDContent.GetContentSize(), _CommandAddress + 0x4);
 
-			INFO_LOG(WII_IPC_ES, "IOCTL_ES_GETTITLECONTENTSCNT: TitleID: %08x/%08x  content count %i", 
+			INFO_LOG(WII_IPC_ES, "IOCTL_ES_GETTITLECONTENTSCNT: TitleID: %08x/%08x  content count %i",
 				(u32)(TitleID>>32), (u32)TitleID, rNANDContent.IsValid() ? NumberOfPrivateContent : (u32)rNANDContent.GetContentSize());
 
 			return true;
@@ -394,7 +394,7 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 
 			u8* pDest = Memory::GetPointer(Addr);
 
-			if (rContent.m_Position + Size > rContent.m_pContent->m_Size) 
+			if (rContent.m_Position + Size > rContent.m_pContent->m_Size)
 			{
 				Size = rContent.m_pContent->m_Size-rContent.m_Position;
 			}
@@ -590,7 +590,7 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 				{
 					u32 FileSize = (u32)File::GetSize(TicketFilename);
 					_dbg_assert_msg_(WII_IPC_ES, (FileSize % DiscIO::INANDContentLoader::TICKET_SIZE) == 0, "IOCTL_ES_GETVIEWCNT ticket file size seems to be wrong");
-					
+
 					ViewCount = FileSize / DiscIO::INANDContentLoader::TICKET_SIZE;
 					_dbg_assert_msg_(WII_IPC_ES, (ViewCount>0) && (ViewCount<=4), "IOCTL_ES_GETVIEWCNT ticket count seems to be wrong");
 				}
@@ -628,7 +628,7 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 			u32 retVal = 0;
 
 			const DiscIO::INANDContentLoader& Loader = AccessContentDevice(TitleID);
-			
+
 			const u8 *Ticket = Loader.GetTIK();
 			if (Ticket)
 			{
@@ -694,7 +694,7 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 			u32 TMDViewCnt = 0;
 			if (Loader.IsValid())
 			{
-				TMDViewCnt += DiscIO::INANDContentLoader::TMD_VIEW_SIZE; 
+				TMDViewCnt += DiscIO::INANDContentLoader::TMD_VIEW_SIZE;
 				TMDViewCnt += 2; // title version
 				TMDViewCnt += 2; // num entries
 				TMDViewCnt += (u32)Loader.GetContentSize() * (4+2+2+8); // content id, index, type, size
@@ -782,8 +782,9 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 				// Presumably return -1017 when title not installed TODO verify
 				Memory::Write_U32(ES_PARAMTER_SIZE_OR_ALIGNMENT, _CommandAddress + 0x4);
 			}
-				
-		} 
+
+		}
+		break;
 	case IOCTL_ES_GETSTOREDTMDSIZE:
 		{
 			_dbg_assert_msg_(WII_IPC_ES, Buffer.NumberInBuffer == 1, "IOCTL_ES_GETSTOREDTMDSIZE no in buffer");
@@ -797,7 +798,7 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 			if (Loader.IsValid())
 			{
 				TMDCnt += DiscIO::INANDContentLoader::TMD_HEADER_SIZE;
-				TMDCnt += (u32)Loader.GetContentSize() * DiscIO::INANDContentLoader::CONTENT_HEADER_SIZE; 
+				TMDCnt += (u32)Loader.GetContentSize() * DiscIO::INANDContentLoader::CONTENT_HEADER_SIZE;
 			}
 			if(Buffer.NumberPayloadBuffer)
 				Memory::Write_U32(TMDCnt, Buffer.PayloadBuffer[0].m_Address);
@@ -819,7 +820,7 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 			u32 MaxCount = 0;
 			if (Buffer.NumberInBuffer > 1)
 			{
-				// TODO: actually use this param in when writing to the outbuffer :/ 
+				// TODO: actually use this param in when writing to the outbuffer :/
 				MaxCount = Memory::Read_U32(Buffer.InBuffer[1].m_Address);
 			}
 			const DiscIO::INANDContentLoader& Loader = AccessContentDevice(TitleID);
@@ -837,7 +838,7 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 				const std::vector<DiscIO::SNANDContent>& rContent = Loader.GetContent();
 				for (size_t i=0; i<Loader.GetContentSize(); i++)
 				{
-					Memory::WriteBigEData(rContent[i].m_Header, Address, DiscIO::INANDContentLoader::CONTENT_HEADER_SIZE); 
+					Memory::WriteBigEData(rContent[i].m_Header, Address, DiscIO::INANDContentLoader::CONTENT_HEADER_SIZE);
 					Address += DiscIO::INANDContentLoader::CONTENT_HEADER_SIZE;
 				}
 
@@ -859,10 +860,10 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 			u8* newIV		= Memory::GetPointer(Buffer.PayloadBuffer[0].m_Address);
 			u8* destination	= Memory::GetPointer(Buffer.PayloadBuffer[1].m_Address);
 
-			AES_KEY AESKey;
-			AES_set_encrypt_key(keyTable[keyIndex], 128, &AESKey);
+			aes_context AES_ctx;
+			aes_setkey_enc(&AES_ctx, keyTable[keyIndex], 128);
 			memcpy(newIV, IV, 16);
-			AES_cbc_encrypt(source, destination, size, &AESKey, newIV, AES_ENCRYPT);
+			aes_crypt_cbc(&AES_ctx, AES_ENCRYPT, size, newIV, source, destination);
 
 			_dbg_assert_msg_(WII_IPC_ES, keyIndex == 6, "IOCTL_ES_ENCRYPT: Key type is not SD, data will be crap");
 		}
@@ -877,10 +878,10 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 			u8* newIV		= Memory::GetPointer(Buffer.PayloadBuffer[0].m_Address);
 			u8* destination	= Memory::GetPointer(Buffer.PayloadBuffer[1].m_Address);
 
-			AES_KEY AESKey;
-			AES_set_decrypt_key(keyTable[keyIndex], 128, &AESKey);
+			aes_context AES_ctx;
+			aes_setkey_dec(&AES_ctx, keyTable[keyIndex], 128);
 			memcpy(newIV, IV, 16);
-			AES_cbc_encrypt(source, destination, size, &AESKey, newIV, AES_DECRYPT);
+			aes_crypt_cbc(&AES_ctx, AES_DECRYPT, size, newIV, source, destination);
 
 			_dbg_assert_msg_(WII_IPC_ES, keyIndex == 6, "IOCTL_ES_DECRYPT: Key type is not SD, data will be crap");
 		}
@@ -948,9 +949,9 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 				bool* wiiMoteConnected = new bool[size];
 				for (unsigned int i = 0; i < size; i++)
 					wiiMoteConnected[i] = s_Usb->m_WiiMotes[i].IsConnected();
-				
+
 				std::string tContentFile(m_ContentFile.c_str());
-				
+
 				WII_IPC_HLE_Interface::Reset(true);
 				WII_IPC_HLE_Interface::Init();
 				s_Usb = GetUsbPointer();
@@ -966,7 +967,7 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 						s_Usb->m_WiiMotes[i].Activate(false);
 					}
 				}
-				
+
 				delete[] wiiMoteConnected;
 				WII_IPC_HLE_Interface::SetDefaultContentFile(tContentFile);
 			}
@@ -978,7 +979,7 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 			Memory::Write_U16(IOSv, 0x00003140);
 			Memory::Write_U16(0xFFFF, 0x00003142);
 			Memory::Write_U32(Memory::Read_U32(0x00003140), 0x00003188);
-			
+
 			//TODO: provide correct return code when bSuccess= false
 			Memory::Write_U32(0, _CommandAddress + 0x4);
 
@@ -986,16 +987,16 @@ bool CWII_IPC_HLE_Device_es::IOCtlV(u32 _CommandAddress)
 			//					   IOCTL_ES_LAUNCH 0001000248414341 00000001 0001c0fef3df2cfa 00000000 0001000248414341 ffff
 
 			// This is necessary because Reset(true) above deleted this object.  Ew.
-			
+
 			// It seems that the original hardware overwrites the command after it has been
-			// executed. We write 8 which is not any valid command, and what IOS does 
+			// executed. We write 8 which is not any valid command, and what IOS does
 			Memory::Write_U32(8, _CommandAddress);
 			// IOS seems to write back the command that was responded to
 			Memory::Write_U32(7, _CommandAddress + 8);
-			
+
 			// Generate a reply to the IPC command
 			WII_IPC_HLE_Interface::EnqReply(_CommandAddress, 0);
-			
+
 			return false;
 		}
 		break;
@@ -1115,12 +1116,12 @@ u32 CWII_IPC_HLE_Device_es::ES_DIVerify(u8* _pTMD, u32 _sz)
 
 	// TODO: Force the game to save to another location, instead of moving the user's save.
 	if (Movie::IsPlayingInput() && Movie::IsConfigSaved() && Movie::IsStartingFromClearSave())
-	{		
+	{
 		if (File::Exists((savePath + "banner.bin").c_str()))
 		{
 			if (File::Exists((savePath + "../backup/").c_str()))
 			{
-				// The last run of this game must have been to play back a movie, so their save is already backed up. 
+				// The last run of this game must have been to play back a movie, so their save is already backed up.
 				File::DeleteDirRecursively(savePath.c_str());
 			}
 			else

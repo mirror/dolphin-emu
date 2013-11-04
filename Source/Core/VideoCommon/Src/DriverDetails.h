@@ -69,7 +69,7 @@ namespace DriverDetails
 		// Affected devices: Qualcomm/Adreno
 		// Started Version: ? (Noticed on v14)
 		// Ended Version: -1
-		// When compiling a shader, it is important that when it fails, 
+		// When compiling a shader, it is important that when it fails,
 		// you first get the length of the information log prior to grabbing it.
 		// This allows you to allocate an array to store all of the log
 		// Adreno devices /always/ return 0 when querying GL_INFO_LOG_LENGTH
@@ -115,11 +115,33 @@ namespace DriverDetails
 		// Drawing on screen text causes the whole screen to swizzle in a terrible fashion
 		// Clearing the framebuffer causes one to never see a frame.
 		BUG_BROKENSWAP,
+		// Bug: Running on a Tegra 4 device
+		// Affected devices: Nvidia Tegra
+		// Started Version: 4
+		// Ended Version: 5
+		// Tegra 4 hardware limitations don't allow it to support OpenGL ES 3
+		// This is fixed in Tegra 5
+		BUG_ISTEGRA,
+		// Bug: Running on a PowerVR5 device
+		// Affected devices: PowerVR54x
+		// Started Version: 540
+		// Ended Version: 6xxx
+		// PowerVR 5 hardware limitations don't allow it to support OpenGL ES 3
+		// This is fixed in PowerVR6
+		BUG_ISPOWERVR,
+		// Bug: glBufferSubData/glMapBufferRange stalls + OOM
+		// Affected devices: Adreno a3xx/Mali-t6xx
+		// Started Version: -1
+		// Ended Version: -1
+		// Both Adreno and Mali have issues when you call glBufferSubData or glMapBufferRange
+		// The driver stalls in each instance no matter what you do
+		// Apparently Mali and Adreno share code in this regard since it was wrote by the same person.
+		BUG_BROKENBUFFERSTREAM,
 	};
-	
-	// Initializes our internal vendor, device family, and driver version	
+
+	// Initializes our internal vendor, device family, and driver version
 	void Init(Vendor vendor, Driver driver, const double version);
-	
+
 	// Once Vendor and driver version is set, this will return if it has the applicable bug passed to it.
 	bool HasBug(Bug bug);
 }

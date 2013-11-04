@@ -30,10 +30,10 @@ public final class GameListItem implements Comparable<GameListItem>
 	/**
 	 * Constructor.
 	 * 
-	 * @param ctx     The current {@link Context}
-	 * @param name    The name of this GameListItem.
-	 * @param data    The subtitle for this GameListItem
-	 * @param path    The file path for the game represented by this GameListItem.
+	 * @param ctx  The current {@link Context}
+	 * @param name The name of this GameListItem.
+	 * @param data The subtitle for this GameListItem
+	 * @param path The file path for the game represented by this GameListItem.
 	 */
 	public GameListItem(Context ctx, String name, String data, String path)
 	{
@@ -112,6 +112,7 @@ public final class GameListItem implements Comparable<GameListItem>
 		return image;
 	}
 
+	@Override
 	public int compareTo(GameListItem o) 
 	{
 		if (name != null)

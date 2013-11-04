@@ -7,13 +7,12 @@
 package org.dolphinemu.dolphinemu.gamelist;
 
 import android.app.Activity;
-import android.app.Fragment;
+import android.app.ListFragment;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -25,24 +24,23 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.dolphinemu.dolphinemu.EmulationActivity;
 import org.dolphinemu.dolphinemu.NativeLibrary;
 import org.dolphinemu.dolphinemu.R;
+import org.dolphinemu.dolphinemu.emulation.EmulationActivity;
 
 
 /**
- * The {@link Fragment} responsible for displaying the game list.
+ * The {@link ListFragment} responsible for displaying the game list.
  */
-public final class GameListFragment extends Fragment
+public final class GameListFragment extends ListFragment
 {
-	private ListView mMainList;
 	private GameListAdapter mGameAdapter;
 	private static GameListActivity mMe;
 	private OnGameListZeroListener mCallback;
 
 	/**
 	 * Interface that defines how to handle the case
-	 * when there are zero game.
+	 * when there are zero games in the game list.
 	 */
 	public interface OnGameListZeroListener
 	{
@@ -52,15 +50,15 @@ public final class GameListFragment extends Fragment
 		 */
 		void onZeroFiles();
 	}
-	
+
 	/**
-	 * Gets the adapter for this fragment.
-	 * 
-	 * @return the adapter for this fragment.
+	 * Clears all entries from the {@link GameListAdapter}
+	 * backing this GameListFragment.
 	 */
-	public GameListAdapter getAdapter()
+	public void clearGameList()
 	{
-	    return mGameAdapter;
+		mGameAdapter.clear();
+		mGameAdapter.notifyDataSetChanged();
 	}
 
 	private void Fill()
@@ -86,7 +84,7 @@ public final class GameListFragment extends Fragment
 					if (!entry.isHidden() && !entry.isDirectory())
 					{
 						if (exts.contains(entryName.toLowerCase().substring(entryName.lastIndexOf('.'))))
-							fls.add(new GameListItem(mMe, entryName, getString(R.string.file_size)+entry.length(),entry.getAbsolutePath()));
+							fls.add(new GameListItem(mMe, entryName, String.format(getString(R.string.file_size), entry.length()), entry.getAbsolutePath()));
 					}
 				}
 			}
@@ -97,7 +95,7 @@ public final class GameListFragment extends Fragment
 		Collections.sort(fls);
 
 		mGameAdapter = new GameListAdapter(mMe, R.layout.gamelist_folderbrowser_list, fls);
-		mMainList.setAdapter(mGameAdapter);
+		setListAdapter(mGameAdapter);
 
 		if (fls.isEmpty())
 		{
@@ -109,31 +107,25 @@ public final class GameListFragment extends Fragment
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
 	{
 		View rootView = inflater.inflate(R.layout.gamelist_listview, container, false);
-		mMainList = (ListView) rootView.findViewById(R.id.gamelist);
-		mMainList.setOnItemClickListener(mGameItemClickListener);
+		ListView mMainList = (ListView) rootView.findViewById(R.id.gamelist);
 
 		Fill();
 
 		return mMainList;
 	}
-
-	private final AdapterView.OnItemClickListener mGameItemClickListener = new AdapterView.OnItemClickListener()
+	
+	@Override
+	public void onListItemClick(ListView listView, View view, int position, long id)
 	{
-		public void onItemClick(AdapterView<?> parent, View view, int position, long id)
-		{
-			GameListItem item = mGameAdapter.getItem(position);
-			onFileClick(item.getPath());
-		}
-	};
+		GameListItem item = mGameAdapter.getItem(position);
 
-	private void onFileClick(String o)
-	{
-		Toast.makeText(mMe, getString(R.string.file_clicked) + o, Toast.LENGTH_SHORT).show();
+		// Show a toast indicating which game was clicked.
+		Toast.makeText(mMe, String.format(getString(R.string.file_clicked), item.getPath()), Toast.LENGTH_SHORT).show();
 
+		// Start the emulation activity and send the path of the clicked ROM to it.
 		Intent intent = new Intent(mMe, EmulationActivity.class);
-		intent.putExtra("SelectedGame", o);
+		intent.putExtra("SelectedGame", item.getPath());
 		mMe.startActivity(intent);
-		mMe.finish();
 	}
 
 	@Override

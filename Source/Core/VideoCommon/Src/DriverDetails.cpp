@@ -27,17 +27,21 @@ namespace DriverDetails
 	// This is a list of all known bugs for each vendor
 	// We use this to check if the device and driver has a issue
 	BugInfo m_known_bugs[] = {
-		{VENDOR_QUALCOMM,  DRIVER_QUALCOMM_3XX, BUG_NODYNUBOACCESS,     14.0, -1.0, true},
-		{VENDOR_QUALCOMM,  DRIVER_QUALCOMM_3XX, BUG_BROKENCENTROID,     14.0, -1.0, true},
-		{VENDOR_QUALCOMM,  DRIVER_QUALCOMM_3XX, BUG_BROKENINFOLOG,      -1.0, -1.0, true},
-		{VENDOR_QUALCOMM,  DRIVER_QUALCOMM_3XX, BUG_ANNIHILATEDUBOS,	41.0, 46.0, true},
-		{VENDOR_QUALCOMM,  DRIVER_QUALCOMM_3XX, BUG_BROKENSWAP,		-1.0, -1.0, true},
-		{VENDOR_MESA,      DRIVER_NOUVEAU,      BUG_BROKENUBO,           900,  916, true},
-		{VENDOR_MESA,      DRIVER_R600,         BUG_BROKENUBO,           900,  913, true},
-		{VENDOR_MESA,      DRIVER_I965,         BUG_BROKENUBO,           900,  920, true},
-		{VENDOR_ATI,       DRIVER_ATI,          BUG_BROKENHACKEDBUFFER, -1.0, -1.0, true},
-		{VENDOR_MESA,      DRIVER_NOUVEAU,      BUG_BROKENHACKEDBUFFER, -1.0, -1.0, true},
-		{VENDOR_ATI,       DRIVER_ATI,          BUG_BROKENPINNEDMEMORY, -1.0, -1.0, true}
+		{VENDOR_QUALCOMM,	DRIVER_QUALCOMM_3XX,	BUG_NODYNUBOACCESS,	14.0, -1.0, true},
+		{VENDOR_QUALCOMM,	DRIVER_QUALCOMM_3XX,	BUG_BROKENCENTROID,	14.0, -1.0, true},
+		{VENDOR_QUALCOMM,	DRIVER_QUALCOMM_3XX,	BUG_BROKENINFOLOG,	-1.0, -1.0, true},
+		{VENDOR_QUALCOMM,	DRIVER_QUALCOMM_3XX,	BUG_ANNIHILATEDUBOS,	41.0, 46.0, true},
+		{VENDOR_QUALCOMM,	DRIVER_QUALCOMM_3XX,	BUG_BROKENSWAP,		-1.0, -1.0, true},
+		{VENDOR_QUALCOMM,	DRIVER_QUALCOMM_3XX,	BUG_BROKENBUFFERSTREAM,	-1.0, -1.0, true},
+		{VENDOR_ARM,	DRIVER_ARM_T6XX,		BUG_BROKENBUFFERSTREAM,	-1.0, -1.0, true},
+		{VENDOR_MESA,	DRIVER_NOUVEAU,		BUG_BROKENUBO,		900,  916, true},
+		{VENDOR_MESA,	DRIVER_R600,		BUG_BROKENUBO,		900,  913, true},
+		{VENDOR_MESA,	DRIVER_I965,		BUG_BROKENUBO,		900,  920, true},
+		{VENDOR_ATI,	DRIVER_ATI,			BUG_BROKENHACKEDBUFFER,	-1.0, -1.0, true},
+		{VENDOR_MESA,	DRIVER_NOUVEAU,		BUG_BROKENHACKEDBUFFER,	-1.0, -1.0, true},
+		{VENDOR_ATI,	DRIVER_ATI,			BUG_BROKENPINNEDMEMORY,	-1.0, -1.0, true},
+		{VENDOR_TEGRA,	DRIVER_NVIDIA,		BUG_ISTEGRA,		-1.0, -1.0, true},
+		{VENDOR_IMGTEC,	DRIVER_IMGTEC,		BUG_ISPOWERVR,		-1.0, -1.0, true},
 	};
 
 	std::map<Bug, BugInfo> m_bugs;
@@ -47,7 +51,7 @@ namespace DriverDetails
 		m_vendor = vendor;
 		m_driver = driver;
 		m_version = version;
-		
+
 		if (driver == DRIVER_UNKNOWN)
 			switch(vendor)
 			{
@@ -70,16 +74,16 @@ namespace DriverDetails
 				default:
 				break;
 			}
-			
-		for(unsigned int a = 0; a < (sizeof(m_known_bugs) / sizeof(BugInfo)); ++a)
+
+		for(auto& bug : m_known_bugs)
 		{
 			if(
-				( m_known_bugs[a].m_vendor == m_vendor || m_known_bugs[a].m_vendor == VENDOR_ALL ) &&
-				( m_known_bugs[a].m_driver == m_driver || m_known_bugs[a].m_driver == DRIVER_ALL ) &&
-				( m_known_bugs[a].m_versionstart <= m_version || m_known_bugs[a].m_versionstart == -1 ) &&
-				( m_known_bugs[a].m_versionend > m_version || m_known_bugs[a].m_versionend == -1 )
+				( bug.m_vendor == m_vendor || bug.m_vendor == VENDOR_ALL ) &&
+				( bug.m_driver == m_driver || bug.m_driver == DRIVER_ALL ) &&
+				( bug.m_versionstart <= m_version || bug.m_versionstart == -1 ) &&
+				( bug.m_versionend > m_version || bug.m_versionend == -1 )
 			)
-				m_bugs.insert(std::make_pair(m_known_bugs[a].m_bug, m_known_bugs[a]));
+				m_bugs.insert(std::make_pair(bug.m_bug, bug));
 		}
 	}
 
@@ -87,7 +91,7 @@ namespace DriverDetails
 	{
 		auto it = m_bugs.find(bug);
 		if (it == m_bugs.end())
-			return false;	
+			return false;
 		return it->second.m_hasbug;
 	}
 }

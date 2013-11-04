@@ -24,8 +24,6 @@ set(SRCS	Src/BreakPoints.cpp
 			Src/x64ABI.cpp
 			Src/x64Analyzer.cpp
 			Src/x64Emitter.cpp
-			Src/Crypto/aes_cbc.cpp
-			Src/Crypto/aes_core.cpp
 			Src/Crypto/bn.cpp
 			Src/Crypto/ec.cpp)
 
@@ -37,7 +35,6 @@ else()
 	if(NOT _M_GENERIC) #X86
 		set(SRCS	${SRCS}
 					Src/x64FPURoundMode.cpp
-					Src/x64Thunk.cpp
 					)
 	endif()
 	set(SRCS ${SRCS} Src/x64CPUDetect.cpp)
@@ -52,5 +49,4 @@ endif(WIN32)
 
 enable_precompiled_headers(Src/stdafx.h Src/stdafx.cpp SRCS)
 
-add_library(common STATIC ${SRCS})
-target_link_libraries(common ${CMAKE_THREAD_LIBS_INIT})
+add_dolphin_library(common "${SRCS}" "${CMAKE_THREAD_LIBS_INIT}")

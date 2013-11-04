@@ -47,8 +47,8 @@
 	if (Core::g_CoreStartupParameter.bJITOff || \
 	Core::g_CoreStartupParameter.setting) \
 	{Default(inst); return;}
-#define PPCSTATE_OFF(elem) ((s32)STRUCT_OFF(PowerPC::ppcState, elem) - (s32)STRUCT_OFF(PowerPC::ppcState, spr[0])) 
-class JitArm : public JitBase, public ArmGen::ARMXCodeBlock 
+#define PPCSTATE_OFF(elem) ((s32)STRUCT_OFF(PowerPC::ppcState, elem) - (s32)STRUCT_OFF(PowerPC::ppcState, spr[0]))
+class JitArm : public JitBase, public ArmGen::ARMXCodeBlock
 {
 private:
 	JitArmBlockCache blocks;
@@ -67,7 +67,7 @@ private:
 
 	void PrintDebug(UGeckoInstruction inst, u32 level);
 
-	void Helper_UpdateCR1(ARMReg value);	
+	void Helper_UpdateCR1(ARMReg fpscr, ARMReg temp);
 
 	void SetFPException(ARMReg Reg, u32 Exception);
 public:
@@ -81,7 +81,7 @@ public:
 
 	void Jit(u32 em_address);
 	const u8* DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlock *b);
-	
+
 	JitBaseBlockCache *GetBlockCache() { return &blocks; }
 
 	const u8 *BackPatch(u8 *codePtr, u32 em_address, void *ctx);
@@ -93,10 +93,10 @@ public:
 	void ClearCache();
 
 	const u8 *GetDispatcher() {
-		return asm_routines.dispatcher; 
+		return asm_routines.dispatcher;
 	}
 	CommonAsmRoutinesBase *GetAsmRoutines() {
-		return &asm_routines; 
+		return &asm_routines;
 	}
 
 	const char *GetName() {
@@ -154,11 +154,12 @@ public:
 	void sc(UGeckoInstruction _inst);
 	void rfi(UGeckoInstruction _inst);
 	void bcctrx(UGeckoInstruction _inst);
-		
+
 	// Integer
 	void arith(UGeckoInstruction _inst);
 
 	void addex(UGeckoInstruction _inst);
+	void subfic(UGeckoInstruction _inst);
 	void cntlzwx(UGeckoInstruction _inst);
 	void cmp (UGeckoInstruction _inst);
 	void cmpi(UGeckoInstruction _inst);
@@ -209,23 +210,25 @@ public:
 	void fmrx(UGeckoInstruction _inst);
 	void fmaddsx(UGeckoInstruction _inst);
 	void fmaddx(UGeckoInstruction _inst);
+	void fctiwx(UGeckoInstruction _inst);
 	void fctiwzx(UGeckoInstruction _inst);
 	void fcmpo(UGeckoInstruction _inst);
 	void fcmpu(UGeckoInstruction _inst);
+	void fnmaddx(UGeckoInstruction _inst);
+	void fnmaddsx(UGeckoInstruction _inst);
+	void fresx(UGeckoInstruction _inst);
+	void fselx(UGeckoInstruction _inst);
+	void frsqrtex(UGeckoInstruction _inst);
 
 	// Floating point loadStore
-	void lfs(UGeckoInstruction _inst);
-	void lfsu(UGeckoInstruction _inst);
-	void lfsx(UGeckoInstruction _inst);
-	void lfd(UGeckoInstruction _inst);
-	void lfdu(UGeckoInstruction _inst);
+	void lfXX(UGeckoInstruction _inst);
+	void stfXX(UGeckoInstruction _inst);
 	void stfs(UGeckoInstruction _inst);
-	void stfsu(UGeckoInstruction _inst);
-	void stfd(UGeckoInstruction _inst);
-	void stfdu(UGeckoInstruction _inst);
 
 	// Paired Singles
 	void ps_add(UGeckoInstruction _inst);
+	void ps_div(UGeckoInstruction _inst);
+	void ps_res(UGeckoInstruction _inst);
 	void ps_sum0(UGeckoInstruction _inst);
 	void ps_sum1(UGeckoInstruction _inst);
 	void ps_madd(UGeckoInstruction _inst);
@@ -248,11 +251,16 @@ public:
 	void ps_nabs(UGeckoInstruction _inst);
 	void ps_rsqrte(UGeckoInstruction _inst);
 	void ps_sel(UGeckoInstruction _inst);
+	void ps_cmpu0(UGeckoInstruction _inst);
+	void ps_cmpu1(UGeckoInstruction _inst);
+	void ps_cmpo0(UGeckoInstruction _inst);
+	void ps_cmpo1(UGeckoInstruction _inst);
 
 	// LoadStore paired
 	void psq_l(UGeckoInstruction _inst);
+	void psq_lx(UGeckoInstruction _inst);
 	void psq_st(UGeckoInstruction _inst);
-
+	void psq_stx(UGeckoInstruction _inst);
 };
 
 #endif // _JIT64_H

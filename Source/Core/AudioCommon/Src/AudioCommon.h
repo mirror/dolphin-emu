@@ -38,9 +38,9 @@ union UDSPControl
 	UDSPControl(u16 _Hex = 0) : Hex(_Hex) {}
 };
 
-namespace AudioCommon 
+namespace AudioCommon
 {
-	SoundStream *InitSoundStream(CMixer *mixer, void *hWnd);
+	SoundStream *InitSoundStream(CMixer *mixer);
 	void ShutdownSoundStream();
 	std::vector<std::string> GetSoundBackends();
 	bool UseJIT();

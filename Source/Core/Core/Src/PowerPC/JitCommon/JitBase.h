@@ -9,15 +9,23 @@
 //#define JIT_LOG_GPR     // Enables logging of the PPC general purpose regs
 //#define JIT_LOG_FPR     // Enables logging of the PPC floating point regs
 
-#include "../CPUCoreBase.h"
-#include "JitCache.h"
-#include "Jit_Util.h"  // for EmuCodeBlock
-#include "JitBackpatch.h"  // for EmuCodeBlock
 #include "JitAsmCommon.h"
+#include "JitCache.h"
+#include "Jit_Util.h"      // for EmuCodeBlock
+#include "JitBackpatch.h"  // for EmuCodeBlock
+#include "x64ABI.h"
+#include "x64Analyzer.h"
+#include "x64Emitter.h"
+#include "../CPUCoreBase.h"
+#include "../PowerPC.h"
+#include "../PPCAnalyst.h"
+#include "../PPCTables.h"
+#include "../../Core.h"
+#include "../../CoreTiming.h"
+#include "../../HW/GPFifo.h"
+#include "../../HW/Memmap.h"
 
 #include <set>
-
-#define JIT_OPCODE 0
 
 class JitBase : public CPUCoreBase
 {
@@ -69,7 +77,7 @@ public:
 	// This should probably be removed from public:
 	JitOptions jo;
 	JitState js;
-	
+
 	virtual JitBaseBlockCache *GetBlockCache() = 0;
 
 	virtual void Jit(u32 em_address) = 0;
@@ -85,13 +93,13 @@ class Jitx86Base : public JitBase, public EmuCodeBlock
 {
 protected:
 	JitBlockCache blocks;
-	TrampolineCache trampolines;	
+	TrampolineCache trampolines;
 public:
-	JitBlockCache *GetBlockCache() { return &blocks; }
-	
-	const u8 *BackPatch(u8 *codePtr, u32 em_address, void *ctx);
+	JitBlockCache *GetBlockCache() override { return &blocks; }
 
-	bool IsInCodeSpace(u8 *ptr) { return IsInSpace(ptr); }
+	const u8 *BackPatch(u8 *codePtr, u32 em_address, void *ctx) override;
+
+	bool IsInCodeSpace(u8 *ptr) override { return IsInSpace(ptr); }
 };
 
 extern JitBase *jit;

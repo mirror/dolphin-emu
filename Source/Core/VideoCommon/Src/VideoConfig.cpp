@@ -12,6 +12,7 @@
 #include "Core.h"
 #include "Movie.h"
 #include "OnScreenDisplay.h"
+#include "ConfigManager.h"
 
 VideoConfig g_Config;
 VideoConfig g_ActiveConfig;
@@ -97,7 +98,6 @@ void VideoConfig::Load(const char *ini_file)
 	iniFile.Get("Hacks", "EFBScaledCopy", &bCopyEFBScaled, true);
 	iniFile.Get("Hacks", "EFBCopyCacheEnable", &bEFBCopyCacheEnable, false);
 	iniFile.Get("Hacks", "EFBEmulateFormatChanges", &bEFBEmulateFormatChanges, false);
-	iniFile.Get("Hacks", "ForceDualSourceBlend", &bForceDualSourceBlend, false);
 
 	iniFile.Get("Hardware", "Adapter", &iAdapter, 0);
 
@@ -120,7 +120,7 @@ void VideoConfig::Load(const char *ini_file)
 		OSD::AddMessage("Warning: Shader Debugging is enabled, performance will suffer heavily", 15000);
 }
 
-void VideoConfig::GameIniLoad(const char* default_ini_file, const char* local_ini_file)
+void VideoConfig::GameIniLoad()
 {
 	bool gfx_override_exists = false;
 
@@ -136,9 +136,7 @@ void VideoConfig::GameIniLoad(const char* default_ini_file, const char* local_in
 		} \
 	} while (0)
 
-	IniFile iniFile;
-	iniFile.Load(default_ini_file);
-	iniFile.Load(local_ini_file, true);
+	IniFile iniFile = SConfig::GetInstance().m_LocalCoreStartupParameter.LoadGameIni();
 
 	CHECK_SETTING("Video_Hardware", "VSync", bVSync);
 
@@ -284,7 +282,6 @@ void VideoConfig::Save(const char *ini_file)
 	iniFile.Set("Hacks", "EFBScaledCopy", bCopyEFBScaled);
 	iniFile.Set("Hacks", "EFBCopyCacheEnable", bEFBCopyCacheEnable);
 	iniFile.Set("Hacks", "EFBEmulateFormatChanges", bEFBEmulateFormatChanges);
-	iniFile.Set("Hacks", "ForceDualSourceBlend", bForceDualSourceBlend);
 
 	iniFile.Set("Hardware", "Adapter", iAdapter);
 

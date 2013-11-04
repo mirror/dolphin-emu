@@ -6,16 +6,7 @@
 // Should give a very noticeable speed boost to paired single heavy code.
 
 #include "Common.h"
- 
-#include "Thunk.h"
-#include "../PowerPC.h"
-#include "../../Core.h"
-#include "../../HW/GPFifo.h"
-#include "../../HW/Memmap.h"
-#include "../PPCTables.h"
 #include "CPUDetect.h"
-#include "x64Emitter.h"
-#include "x64ABI.h"
 
 #include "Jit.h"
 #include "JitAsm.h"
@@ -24,7 +15,7 @@
 const u8 GC_ALIGNED16(pbswapShuffle2x4[16]) = {3, 2, 1, 0, 7, 6, 5, 4, 8, 9, 10, 11, 12, 13, 14, 15};
 
 //static u64 GC_ALIGNED16(temp64); // unused?
- 
+
 // TODO(ector): Improve 64-bit version
 #if 0
 static void WriteDual32(u64 value, u32 address)
@@ -106,15 +97,11 @@ void Jit64::psq_st(UGeckoInstruction inst)
 		// One value
 		XORPS(XMM0, R(XMM0));  // TODO: See if we can get rid of this cheaply by tweaking the code in the singleStore* functions.
 		CVTSD2SS(XMM0, fpr.R(s));
-		ABI_AlignStack(0);
 		CALLptr(MScaled(EDX, addr_scale, (u32)(u64)asm_routines.singleStoreQuantized));
-		ABI_RestoreStack(0);
 	} else {
 		// Pair of values
 		CVTPD2PS(XMM0, fpr.R(s));
-		ABI_AlignStack(0);
 		CALLptr(MScaled(EDX, addr_scale, (u32)(u64)asm_routines.pairedStoreQuantized));
-		ABI_RestoreStack(0);
 	}
 	gpr.UnlockAll();
 	gpr.UnlockAllX();

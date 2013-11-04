@@ -22,11 +22,11 @@ import android.preference.PreferenceManager;
 public final class UserPreferences
 {
 	/**
-	 * Loads the set config items from the Dolphin config files to the shared preferences of this front-end
+	 * Loads the settings stored in the Dolphin ini config files to the shared preferences of this front-end.
 	 * 
 	 * @param ctx The context used to retrieve the SharedPreferences instance.
 	 */
-	public static void LoadDolphinConfigToPrefs(Context ctx)
+	public static void LoadIniToPrefs(Context ctx)
 	{
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
 
@@ -43,6 +43,7 @@ public final class UserPreferences
 		editor.putBoolean("drawOnscreenControls", getConfig("Dolphin.ini", "Android", "ScreenControls", "True").equals("True"));
 
 		editor.putString("internalResolution",     getConfig("gfx_opengl.ini", "Settings", "EFBScale", "2") );
+		editor.putString("FSAA",                   getConfig("gfx_opengl.ini", "Settings", "MSAA", "0"));
 		editor.putString("anisotropicFiltering",   getConfig("gfx_opengl.ini", "Enhancements", "MaxAnisotropy", "0"));
 		editor.putBoolean("scaledEFBCopy",         getConfig("gfx_opengl.ini", "Hacks", "EFBScaleCopy", "True").equals("True"));
 		editor.putBoolean("perPixelLighting",      getConfig("gfx_opengl.ini", "Settings", "EnablePixelLighting", "False").equals("True"));
@@ -105,11 +106,11 @@ public final class UserPreferences
 	}
 
 	/** 
-	 * Writes the config to the Dolphin ini file. 
+	 * Writes the preferences set in the front-end to the Dolphin ini files.
 	 * 
 	 * @param ctx The context used to retrieve the user settings.
 	 * */
-	public static void SaveConfigToDolphinIni(Context ctx)
+	public static void SavePrefsToIni(Context ctx)
 	{
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
 
@@ -157,6 +158,9 @@ public final class UserPreferences
 
 		// Internal resolution. Falls back to 1x Native upon error.
 		String internalResolution = prefs.getString("internalResolution", "2");
+
+		// FSAA Level. Falls back to 1x upon error.
+		String FSAALevel = prefs.getString("FSAA", "0");
 
 		// Anisotropic Filtering Level. Falls back to 1x upon error.
 		String anisotropicFiltLevel = prefs.getString("anisotropicFiltering", "0");
@@ -236,6 +240,7 @@ public final class UserPreferences
 
 		//-- Enhancement Settings --//
 		NativeLibrary.SetConfig("gfx_opengl.ini", "Settings", "EFBScale", internalResolution);
+		NativeLibrary.SetConfig("gfx_opengl.ini", "Settings", "MSAA", FSAALevel);
 		NativeLibrary.SetConfig("gfx_opengl.ini", "Enhancements", "MaxAnisotropy", anisotropicFiltLevel);
 		NativeLibrary.SetConfig("gfx_opengl.ini", "Hacks", "EFBScaledCopy", usingScaledEFBCopy ? "True" : "False");
 		NativeLibrary.SetConfig("gfx_opengl.ini", "Settings", "EnablePixelLighting", usingPerPixelLighting ? "True" : "False");

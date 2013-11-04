@@ -13,7 +13,7 @@ namespace DiscIO
 namespace DiscScrubber
 {
 
-#define	CLUSTER_SIZE 0x8000
+#define CLUSTER_SIZE 0x8000
 
 u8* m_FreeTable = NULL;
 u64 m_FileSize;
@@ -32,7 +32,7 @@ struct SPartitionHeader
 	u64 TMDOffset;
 	u32 CertChainSize;
 	u64 CertChainOffset;
-	// H3Size is always 0x18000 
+	// H3Size is always 0x18000
 	u64 H3Offset;
 	u64 DataOffset;
 	u64 DataSize;
@@ -234,10 +234,9 @@ bool ParseDisc()
 			PartitionGroup[x].PartitionsVec.push_back(Partition);
 		}
 
-		for (size_t i = 0; i < PartitionGroup[x].PartitionsVec.size(); i++)
+		for (auto& rPartition : PartitionGroup[x].PartitionsVec)
 		{
-			SPartition& rPartition			= PartitionGroup[x].PartitionsVec.at(i);
-			const SPartitionHeader& rHeader	= PartitionGroup[x].PartitionsVec.at(i).Header;
+			const SPartitionHeader& rHeader	= rPartition.Header;
 
 			MarkAsUsed(rPartition.Offset, 0x2c0);
 

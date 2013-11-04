@@ -19,15 +19,23 @@
 #ifndef _JIT64_H
 #define _JIT64_H
 
-#include "../PPCAnalyst.h"
-#include "../JitCommon/JitCache.h"
-#include "../JitCommon/Jit_Util.h"
-#include "JitRegCache.h"
-#include "x64Emitter.h"
-#include "x64Analyzer.h"
 #include "../JitCommon/JitBackpatch.h"
 #include "../JitCommon/JitBase.h"
+#include "../JitCommon/JitCache.h"
+#include "../JitCommon/Jit_Util.h"
+#include "../PowerPC.h"
+#include "../PPCAnalyst.h"
+#include "../PPCTables.h"
+#include "../../Core.h"
+#include "../../CoreTiming.h"
+#include "../../ConfigManager.h"
+#include "../../HW/Memmap.h"
+#include "../../HW/GPFifo.h"
 #include "JitAsm.h"
+#include "JitRegCache.h"
+#include "x64ABI.h"
+#include "x64Analyzer.h"
+#include "x64Emitter.h"
 
 // Use these to control the instruction selection
 // #define INSTRUCTION_START Default(inst); return;
@@ -38,16 +46,6 @@
 	if (Core::g_CoreStartupParameter.bJITOff || \
 	Core::g_CoreStartupParameter.setting) \
 	{Default(inst); return;}
-
-#define MEMCHECK_START \
-	FixupBranch memException; \
-	if (js.memcheck) \
-	{ TEST(32, M((void *)&PowerPC::ppcState.Exceptions), Imm32(EXCEPTION_DSI)); \
-	memException = J_CC(CC_NZ); }
-
-#define MEMCHECK_END \
-	if (js.memcheck) \
-		SetJumpTarget(memException);
 
 class Jit64 : public Jitx86Base
 {
@@ -64,28 +62,30 @@ public:
 	Jit64() : code_buffer(32000) {}
 	~Jit64() {}
 
-	void Init();
-	void Shutdown();
+	void Init() override;
+	void Shutdown() override;
 
 	// Jit!
 
-	void Jit(u32 em_address);
+	void Jit(u32 em_address) override;
 	const u8* DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buffer, JitBlock *b);
 
-	JitBlockCache *GetBlockCache() { return &blocks; }
+	u32 RegistersInUse();
+
+	JitBlockCache *GetBlockCache() override { return &blocks; }
 
 	void Trace();
 
-	void ClearCache();
+	void ClearCache() override;
 
 	const u8 *GetDispatcher() {
 		return asm_routines.dispatcher;
 	}
-	const CommonAsmRoutines *GetAsmRoutines() {
+	const CommonAsmRoutines *GetAsmRoutines() override {
 		return &asm_routines;
 	}
 
-	const char *GetName() {
+	const char *GetName() override {
 #ifdef _M_X64
 		return "JIT64";
 #else
@@ -94,8 +94,8 @@ public:
 	}
 	// Run!
 
-	void Run();
-	void SingleStep();
+	void Run() override;
+	void SingleStep() override;
 
 	// Utilities for use by opcodes
 
@@ -223,7 +223,7 @@ public:
 	void twx(UGeckoInstruction inst);
 
 	void lXXx(UGeckoInstruction inst);
-	
+
 	void stXx(UGeckoInstruction inst);
 
 	void lmw(UGeckoInstruction inst);
@@ -231,7 +231,5 @@ public:
 
 	void icbi(UGeckoInstruction inst);
 };
-
-void ProfiledReJit();
 
 #endif // _JIT64_H

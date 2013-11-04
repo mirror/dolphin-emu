@@ -14,6 +14,13 @@
             android:summary="@string/internal_resolution_descrip"
             android:title="@string/internal_resolution"/>
 
+        <ListPreference
+                android:entries="@array/FSAAEntries"
+                android:entryValues="@array/FSAAValues"
+                android:key="FSAA"
+                android:summary="@string/FSAA_descrip"
+                android:title="@string/FSAA"/>
+
         <ListPreference 
             android:entries="@array/anisotropicFilteringEntries"
             android:entryValues="@array/anisotropicFilteringValues"
@@ -120,9 +127,9 @@
         </PreferenceCategory>
     </PreferenceScreen>
 
-    <ListPreference
+    <org.dolphinemu.dolphinemu.settings.custom.UpdatingListPreference
        android:key="gpuPref"
-       android:summary="@string/video_backend_to_use"
+       android:summary="@string/video_backend_desc"
        android:title="@string/video_backend" />
 
     <CheckBoxPreference

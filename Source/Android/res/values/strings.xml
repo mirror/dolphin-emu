@@ -13,9 +13,9 @@
     <string name="supports_gles3">Supports OpenGL ES 3</string>
 
     <!-- Folder Browser -->
-    <string name="current_dir">Current Dir: </string>
+    <string name="current_dir">Current Dir: %1$s</string>
     <string name="parent_directory">Parent Directory</string>
-    <string name="file_size">File Size: </string>
+    <string name="file_size">File Size: %1$s</string>
 
     <!-- Game List Activity -->
     <string name="clear_game_list">Clear game list</string>
@@ -26,11 +26,13 @@
     <string name="about">About</string>
 
     <!-- Game List Fragment -->
-    <string name="file_clicked">File clicked: </string>
+    <string name="file_clicked">File clicked: %1$s</string>
 
     <!-- Emulation Overlay -->
     <string name="overlay_savestate">Save State</string>
     <string name="overlay_loadstate">Load State</string>
+    <string name="overlay_exit_emulation">Exit</string>
+    <string name="overlay_exit_emulation_confirm">Are you sure you wish to exit this game?</string>
     <string name="overlay_slot1">Slot 1</string>
     <string name="overlay_slot2">Slot 2</string>
     <string name="overlay_slot3">Slot 3</string>
@@ -62,23 +64,26 @@
     <string name="trigger_left">Trigger L</string>
     <string name="trigger_right">Trigger R</string>
 
-    <!-- Preference Related -->
+    <!-- CPU Preference Fragment -->
     <string name="interpreter">Interpreter</string>
     <string name="jit64_recompiler">JIT64 Recompiler</string>
     <string name="jitil_recompiler">JITIL Recompiler</string>
     <string name="jit_arm_recompiler">JIT ARM Recompiler</string>
-    <string name="cpu_core">CPU Core</string>
+    <string name="jitil_arm_recompiler">JITIL ARM Recompiler</string>
     <string name="cpu_settings">CPU</string>
-    <string name="emu_core_to_use">Emulation core to use</string>
+    <string name="cpu_core">CPU Core</string>
+    <string name="cpu_core_desc">%s</string>
     <string name="dual_core">Dual Core</string>
     <string name="dual_core_descrip">Split workload to two CPU cores instead of one. Increases speed.</string>
     <string name="fastmem">Fastmem</string>
     <string name="fastmem_desc">Uses potentially unsafe optimizations for memory access.</string>
+
+    <!-- Video Preference Fragment -->
     <string name="video_settings">Video</string>
     <string name="software_renderer">Software Renderer</string>
-    <string name="opengl_es3">OpenGL ES 3</string>
+    <string name="opengl_es3">OpenGL ES</string>
     <string name="video_backend">Video Backend</string>
-    <string name="video_backend_to_use">Video backend to use</string>
+    <string name="video_backend_desc">%s</string>
     <string name="show_fps">Show FPS</string>
     <string name="show_fps_descrip">Show the number of frames rendered per second as a measure of emulation speed.</string>
     <string name="draw_onscreen_controls">Draw on-screen controls</string>
@@ -86,6 +91,8 @@
     <string name="enhancements">Enhancements</string>
     <string name="internal_resolution">Internal Resolution</string>
     <string name="internal_resolution_descrip">Specifies the resolution used to render at. A high resolution will improve visual quality a lot but is also quite heavy on performance and might cause glitches in certain games.</string>
+    <string name="FSAA">Full-scene Anti-aliasing</string>
+    <string name="FSAA_descrip">Reduces the amount of aliasing caused by rasterizing 3D graphics. This makes the rendered picture look less blocky. Heavily decreases emulation speed and sometimes causes issues.</string>
     <string name="anisotropic_filtering">Anisotropic Filtering</string>
     <string name="anisotropic_filtering_descrip">Enhances visual quality of textures that are at oblique viewing angles. Might cause issues in a small number of games.</string>
     <string name="scaled_efb_copy">Scaled EFB Copy</string>

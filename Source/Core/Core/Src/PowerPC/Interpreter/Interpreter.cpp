@@ -2,18 +2,14 @@
 // Licensed under GPLv2
 // Refer to the license.txt file included.
 
-#include "../../HW/Memmap.h"
-#include "../../HW/CPU.h"
-#include "../../Host.h"
-#include "../PPCTables.h"
+
 #include "Interpreter.h"
-#include "../../Debugger/Debugger_SymbolMap.h"
-#include "../../CoreTiming.h"
-#include "../../ConfigManager.h"
 #include "PowerPCDisasm.h"
+#include "../PPCTables.h"
+#include "../../Debugger/Debugger_SymbolMap.h"
+#include "../../Host.h"
 #include "../../IPC_HLE/WII_IPC_HLE.h"
-#include "Atomic.h"
-#include "HLE/HLE.h"
+
 
 #ifdef USE_GDBSTUB
 #include "../GDBStub.h"
@@ -291,9 +287,9 @@ void Interpreter::Run()
 			while (CoreTiming::downcount > 0)
 			{
 				m_EndBlock = false;
-				int i;
+
 				int cycles = 0;
-				for (i = 0; !m_EndBlock; i++)
+				while (!m_EndBlock)
 				{
 					cycles += SingleStepInner();
 				}

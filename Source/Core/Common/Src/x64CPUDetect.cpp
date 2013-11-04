@@ -3,6 +3,7 @@
 // Refer to the license.txt file included.
 
 #include <memory.h>
+#include "Common.h"
 
 #ifdef _WIN32
 #define _interlockedbittestandset workaround_ms_header_bug_platform_sdk6_set
@@ -75,9 +76,11 @@ static void __cpuid(int info[4], int x)
 #define _XCR_XFEATURE_ENABLED_MASK 0
 static unsigned long long _xgetbv(unsigned int index)
 {
+#ifndef _M_GENERIC
 	unsigned int eax, edx;
 	__asm__ __volatile__("xgetbv" : "=a"(eax), "=d"(edx) : "c"(index));
 	return ((unsigned long long)edx << 32) | eax;
+#endif
 }
 
 #endif
@@ -111,19 +114,19 @@ void CPUInfo::Detect()
 	OS64bit = (f64 == TRUE) ? true : false;
 #endif
 #endif
-	
+
 	// Set obvious defaults, for extra safety
 	if (Mode64bit) {
 		bSSE = true;
 		bSSE2 = true;
 		bLongMode = true;
 	}
-	
+
 	// Assume CPU supports the CPUID instruction. Those that don't can barely
 	// boot modern OS:es anyway.
 	int cpu_id[4];
 	memset(cpu_string, 0, sizeof(cpu_string));
-	
+
 	// Detect CPU's CPUID capabilities, and grab cpu string
 	__cpuid(cpu_id, 0x00000000);
 	u32 max_std_fn = cpu_id[0];  // EAX
@@ -138,10 +141,10 @@ void CPUInfo::Detect()
 		vendor = VENDOR_AMD;
 	else
 		vendor = VENDOR_OTHER;
-	
+
 	// Set reasonable default brand string even if brand string not available.
 	strcpy(brand_string, cpu_string);
-	
+
 	// Detect family and other misc stuff.
 	bool ht = false;
 	HTT = ht;
@@ -186,7 +189,7 @@ void CPUInfo::Detect()
 	}
 
 	num_cores = (logical_cpu_count == 0) ? 1 : logical_cpu_count;
-	
+
 	if (max_ex_fn >= 0x80000008) {
 		// Get number of cores. This is a bit complicated. Following AMD manual here.
 		__cpuid(cpu_id, 0x80000008);
@@ -207,7 +210,7 @@ void CPUInfo::Detect()
 			// Use AMD's new method.
 			num_cores = (cpu_id[2] & 0xFF) + 1;
 		}
-	} 
+	}
 }
 
 // Turn the cpu info into a string we can show

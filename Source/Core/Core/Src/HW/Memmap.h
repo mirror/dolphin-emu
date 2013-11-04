@@ -49,7 +49,7 @@ namespace Memory
 
 // In 64-bit, this might point to "high memory" (above the 32-bit limit),
 // so be sure to load it into a 64-bit register.
-extern u8 *base; 
+extern u8 *base;
 
 // These are guaranteed to point to "low memory" addresses (sub-32-bit).
 extern u8 *m_pRAM;
@@ -79,7 +79,7 @@ enum
 	ADDR_MASK_HW_ACCESS	= 0x0c000000,
 	ADDR_MASK_MEM1		= 0x20000000,
 
-#ifdef _M_IX86
+#ifndef _M_X64
 	MEMVIEW32_MASK  = 0x3FFFFFFF,
 #endif
 };
@@ -110,16 +110,16 @@ inline u8* GetCachePtr() {return m_pL1Cache;}
 inline u8* GetMainRAMPtr() {return m_pRAM;}
 inline u32 ReadFast32(const u32 _Address)
 {
-#ifdef _M_IX86
-	return Common::swap32(*(u32 *)(base + (_Address & MEMVIEW32_MASK)));  // ReadUnchecked_U32(_Address);
-#elif defined(_M_X64)
+#if defined(_M_X64)
 	return Common::swap32(*(u32 *)(base + _Address));
+#else
+	return Common::swap32(*(u32 *)(base + (_Address & MEMVIEW32_MASK)));  // ReadUnchecked_U32(_Address);
 #endif
 }
 
 // used by interpreter to read instructions, uses iCache
 u32 Read_Opcode(const u32 _Address);
-// this is used by Debugger a lot. 
+// this is used by Debugger a lot.
 // For now, just reads from memory!
 u32 Read_Instruction(const u32 _Address);
 
