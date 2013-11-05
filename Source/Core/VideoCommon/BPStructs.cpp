@@ -8,7 +8,7 @@
 #include "Statistics.h"
 #include "RenderBase.h"
 #include "VideoCommon.h"
-#include "PixelShaderManager.h"
+#include "ConstantManager.h"
 #include "PixelEngine.h"
 #include "BPFunctions.h"
 #include "BPStructs.h"
@@ -109,15 +109,15 @@ void BPWritten(const BPCmd& bp)
 	case BPMEM_IND_MTXB+6:
 	case BPMEM_IND_MTXC+6:
 		if(bp.changes)
-			PixelShaderManager::SetIndMatrixChanged((bp.address - BPMEM_IND_MTXA) / 3);
+			ConstantManager::SetIndMatrixChanged((bp.address - BPMEM_IND_MTXA) / 3);
 		break;
 	case BPMEM_RAS1_SS0: // Index Texture Coordinate Scale 0
 		if(bp.changes)
-			PixelShaderManager::SetIndTexScaleChanged(false);
+			ConstantManager::SetIndTexScaleChanged(false);
 		break;
 	case BPMEM_RAS1_SS1: // Index Texture Coordinate Scale 1
 		if(bp.changes)
-			PixelShaderManager::SetIndTexScaleChanged(true);
+			ConstantManager::SetIndTexScaleChanged(true);
 		break;
 	// ----------------
 	// Scissor Control
@@ -166,7 +166,7 @@ void BPWritten(const BPCmd& bp)
 		{
 			PRIM_LOG("constalpha: alp=%d, en=%d", bpmem.dstalpha.alpha, bpmem.dstalpha.enable);
 			if(bp.changes & 0xFF)
-				PixelShaderManager::SetDestAlpha();
+				ConstantManager::SetDestAlpha();
 			if(bp.changes & 0x100)
 				SetBlendMode();
 			break;
@@ -289,36 +289,36 @@ void BPWritten(const BPCmd& bp)
 	case BPMEM_FOGRANGE+4:
 	case BPMEM_FOGRANGE+5:
 		if (!GetConfig(CONFIG_DISABLEFOG) && bp.changes)
-			PixelShaderManager::SetFogRangeAdjustChanged();
+			ConstantManager::SetFogRangeAdjustChanged();
 		break;
 	case BPMEM_FOGPARAM0:
 	case BPMEM_FOGBMAGNITUDE:
 	case BPMEM_FOGBEXPONENT:
 	case BPMEM_FOGPARAM3:
 		if (!GetConfig(CONFIG_DISABLEFOG) && bp.changes)
-			PixelShaderManager::SetFogParamChanged();
+			ConstantManager::SetFogParamChanged();
 		break;
 	case BPMEM_FOGCOLOR: // Fog Color
 		if (!GetConfig(CONFIG_DISABLEFOG) && bp.changes)
-			PixelShaderManager::SetFogColorChanged();
+			ConstantManager::SetFogColorChanged();
 		break;
 	case BPMEM_ALPHACOMPARE: // Compare Alpha Values
 		PRIM_LOG("alphacmp: ref0=%d, ref1=%d, comp0=%d, comp1=%d, logic=%d", bpmem.alpha_test.ref0,
 				bpmem.alpha_test.ref1, bpmem.alpha_test.comp0, bpmem.alpha_test.comp1, bpmem.alpha_test.logic);
 		if(bp.changes & 0xFFFF)
-			PixelShaderManager::SetAlpha();
+			ConstantManager::SetAlpha();
 		if(bp.changes)
 			g_renderer->SetColorMask();
 		break;
 	case BPMEM_BIAS: // BIAS
 		PRIM_LOG("ztex bias=0x%x", bpmem.ztex1.bias);
 		if(bp.changes)
-			PixelShaderManager::SetZTextureBias();
+			ConstantManager::SetZTextureBias();
 		break;
 	case BPMEM_ZTEX2: // Z Texture type
 		{
 			if (bp.changes & 3)
-				PixelShaderManager::SetZTextureTypeChanged();
+				ConstantManager::SetZTextureTypeChanged();
 			#if defined(_DEBUG) || defined(DEBUGFAST)
 			const char* pzop[] = {"DISABLE", "ADD", "REPLACE", "?"};
 			const char* pztype[] = {"Z8", "Z16", "Z24", "?"};
@@ -524,7 +524,7 @@ void BPWritten(const BPCmd& bp)
 		case BPMEM_SU_SSIZE+14:
 		case BPMEM_SU_TSIZE+14:
 			if(bp.changes)
-				PixelShaderManager::SetTexCoordChanged((bp.address - BPMEM_SU_SSIZE) >> 1);
+				ConstantManager::SetTexCoordChanged((bp.address - BPMEM_SU_SSIZE) >> 1);
 			break;
 		// ------------------------
 		// BPMEM_TX_SETMODE0 - (Texture lookup and filtering mode) LOD/BIAS Clamp, MaxAnsio, LODBIAS, DiagLoad, Min Filter, Mag Filter, Wrap T, S
@@ -578,9 +578,9 @@ void BPWritten(const BPCmd& bp)
 				// don't compare with changes!
 				int num = (bp.address >> 1) & 0x3;
 				if ((bp.address & 1) == 0)
-					PixelShaderManager::SetColorChanged(bpmem.tevregs[num].low.type, num);
+					ConstantManager::SetColorChanged(bpmem.tevregs[num].low.type, num);
 				else
-					PixelShaderManager::SetColorChanged(bpmem.tevregs[num].high.type, num);
+					ConstantManager::SetColorChanged(bpmem.tevregs[num].high.type, num);
 			}
 			break;
 
@@ -663,7 +663,7 @@ void BPReload()
 {
 	// restore anything that goes straight to the renderer.
 	// let's not risk actually replaying any writes.
-	// note that PixelShaderManager is already covered since it has its own DoState.
+	// note that ConstantManager is already covered since it has its own DoState.
 	SetGenerationMode();
 	SetScissor();
 	SetLineWidth();

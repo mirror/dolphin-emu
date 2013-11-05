@@ -65,7 +65,7 @@
     <ClCompile Include="PerfQueryBase.cpp" />
     <ClCompile Include="PixelEngine.cpp" />
     <ClCompile Include="PixelShaderGen.cpp" />
-    <ClCompile Include="PixelShaderManager.cpp" />
+    <ClCompile Include="ConstantManager.cpp" />
     <ClCompile Include="RenderBase.cpp" />
     <ClCompile Include="Statistics.cpp" />
     <ClCompile Include="stdafx.cpp">
@@ -119,7 +119,7 @@
     <ClInclude Include="PerfQueryBase.h" />
     <ClInclude Include="PixelEngine.h" />
     <ClInclude Include="PixelShaderGen.h" />
-    <ClInclude Include="PixelShaderManager.h" />
+    <ClInclude Include="ConstantManager.h" />
     <ClInclude Include="RenderBase.h" />
     <ClInclude Include="ShaderGenCommon.h" />
     <ClInclude Include="Statistics.h" />

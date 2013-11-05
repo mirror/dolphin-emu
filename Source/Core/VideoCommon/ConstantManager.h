@@ -10,7 +10,7 @@ typedef float float4[4];
 typedef u32 uint4[4];
 typedef s32 int4[4];
 
-struct PixelShaderConstants
+struct Constants
 {
 	float4 colors[4];
 	float4 kcolors[4];
@@ -37,6 +37,38 @@ struct VertexShaderConstants
 	float4 normalmatrices[32];
 	float4 posttransformmatrices[64];
 	float4 depthparams;
+};
+
+class ConstantManager
+{
+public:
+	static void Init();
+	static void Dirty();
+	static void Shutdown();
+	static void DoState(PointerWrap &p);
+
+	static void SetConstants(); // sets pixel shader constants
+
+	// constant management, should be called after memory is committed
+	static void SetColorChanged(int type, int index);
+	static void SetAlpha();
+	static void SetDestAlpha();
+	static void SetTexDims(int texmapid, u32 width, u32 height, u32 wraps, u32 wrapt);
+	static void SetZTextureBias();
+	static void SetViewportChanged();
+	static void SetIndMatrixChanged(int matrixidx);
+	static void SetTevKSelChanged(int id);
+	static void SetZTextureTypeChanged();
+	static void SetIndTexScaleChanged(bool high);
+	static void SetTexCoordChanged(u8 texmapid);
+	static void SetFogColorChanged();
+	static void SetFogParamChanged();
+	static void SetFogRangeAdjustChanged();
+	static void InvalidateXFRange(int start, int end);
+	static void SetMaterialColorChanged(int index, u32 color);
+
+	static Constants constants;
+	static bool dirty;
 };
 
 #endif

@@ -5,7 +5,7 @@
 #include "OpcodeDecoding.h"
 #include "IndexGenerator.h"
 #include "VertexShaderManager.h"
-#include "PixelShaderManager.h"
+#include "ConstantManager.h"
 #include "NativeVertexFormat.h"
 #include "TextureCacheBase.h"
 #include "RenderBase.h"
@@ -215,7 +215,7 @@ void VertexManager::Flush()
 			if (tentry)
 			{
 				// 0s are probably for no manual wrapping needed.
-				PixelShaderManager::SetTexDims(i, tentry->native_width, tentry->native_height, 0, 0);
+				ConstantManager::SetTexDims(i, tentry->native_width, tentry->native_height, 0, 0);
 			}
 			else
 				ERROR_LOG(VIDEO, "error loading texture");
@@ -224,7 +224,7 @@ void VertexManager::Flush()
 
 	// set global constants
 	VertexShaderManager::SetConstants();
-	PixelShaderManager::SetConstants();
+	ConstantManager::SetConstants();
 
 	// TODO: need to merge more stuff into VideoCommon
 	g_vertex_manager->vFlush();

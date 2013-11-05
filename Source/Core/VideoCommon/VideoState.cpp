@@ -11,7 +11,7 @@
 #include "Fifo.h"
 #include "CommandProcessor.h"
 #include "PixelEngine.h"
-#include "PixelShaderManager.h"
+#include "ConstantManager.h"
 #include "VertexShaderManager.h"
 #include "VertexManagerBase.h"
 
@@ -50,8 +50,8 @@ static void DoState(PointerWrap &p)
 	p.DoMarker("PixelEngine");
 
 	// the old way of replaying current bpmem as writes to push side effects to pixel shader manager doesn't really work.
-	PixelShaderManager::DoState(p);
-	p.DoMarker("PixelShaderManager");
+	ConstantManager::DoState(p);
+	p.DoMarker("ConstantManager");
 
 	VertexShaderManager::DoState(p);
 	p.DoMarker("VertexShaderManager");

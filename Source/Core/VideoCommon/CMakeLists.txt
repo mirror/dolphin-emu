@@ -3,6 +3,7 @@ set(SRCS	BPFunctions.cpp
 			BPStructs.cpp
 			CPMemory.cpp
 			CommandProcessor.cpp
+			ConstantManager.cpp
 			Debugger.cpp
 			DriverDetails.cpp
 			Fifo.cpp
@@ -17,7 +18,6 @@ set(SRCS	BPFunctions.cpp
 			PerfQueryBase.cpp
 			PixelEngine.cpp
 			PixelShaderGen.cpp
-			PixelShaderManager.cpp
 			RenderBase.cpp
 			Statistics.cpp
 			TextureCacheBase.cpp

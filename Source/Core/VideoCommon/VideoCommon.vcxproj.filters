@@ -90,7 +90,7 @@
     <ClCompile Include="VertexShaderGen.cpp">
       <Filter>Shader Generators</Filter>
     </ClCompile>
-    <ClCompile Include="PixelShaderManager.cpp">
+    <ClCompile Include="ConstantManager.cpp">
       <Filter>Shader Managers</Filter>
     </ClCompile>
     <ClCompile Include="VertexShaderManager.cpp">
@@ -217,7 +217,7 @@
     <ClInclude Include="VertexShaderGen.h">
       <Filter>Shader Generators</Filter>
     </ClInclude>
-    <ClInclude Include="PixelShaderManager.h">
+    <ClInclude Include="ConstantManager.h">
       <Filter>Shader Managers</Filter>
     </ClInclude>
     <ClInclude Include="VertexShaderManager.h">

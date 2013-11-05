@@ -8,14 +8,14 @@
 #include "CPMemory.h"
 #include "VertexManagerBase.h"
 #include "VertexShaderManager.h"
-#include "PixelShaderManager.h"
+#include "ConstantManager.h"
 #include "HW/Memmap.h"
 
 void XFMemWritten(u32 transferSize, u32 baseAddress)
 {
 	VertexManager::Flush();
 	VertexShaderManager::InvalidateXFRange(baseAddress, baseAddress + transferSize);
-	PixelShaderManager::InvalidateXFRange(baseAddress, baseAddress + transferSize);
+	ConstantManager::InvalidateXFRange(baseAddress, baseAddress + transferSize);
 }
 
 void XFRegWritten(int transferSize, u32 baseAddress, u32 *pData)
@@ -61,7 +61,7 @@ void XFRegWritten(int transferSize, u32 baseAddress, u32 *pData)
 				{
 					VertexManager::Flush();
 					VertexShaderManager::SetMaterialColorChanged(chan, newValue);
-					PixelShaderManager::SetMaterialColorChanged(chan, newValue);
+					ConstantManager::SetMaterialColorChanged(chan, newValue);
 				}
 				break;
 			}
@@ -74,7 +74,7 @@ void XFRegWritten(int transferSize, u32 baseAddress, u32 *pData)
 				{
 					VertexManager::Flush();
 					VertexShaderManager::SetMaterialColorChanged(chan + 2, newValue);
-					PixelShaderManager::SetMaterialColorChanged(chan + 2, newValue);
+					ConstantManager::SetMaterialColorChanged(chan + 2, newValue);
 				}
 				break;
 			}
@@ -110,7 +110,7 @@ void XFRegWritten(int transferSize, u32 baseAddress, u32 *pData)
 		case XFMEM_SETVIEWPORT+5:
 			VertexManager::Flush();
 			VertexShaderManager::SetViewportChanged();
-			PixelShaderManager::SetViewportChanged();
+			ConstantManager::SetViewportChanged();
 
 			nextAddress = XFMEM_SETVIEWPORT + 6;
 			break;

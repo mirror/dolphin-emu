@@ -14,7 +14,7 @@
 #include "Globals.h"
 #include "PixelShaderGen.h"
 #include "PixelShaderCache.h"
-#include "PixelShaderManager.h"
+#include "ConstantManager.h"
 
 #include "ConfigManager.h"
 
@@ -336,15 +336,15 @@ ID3D11PixelShader* PixelShaderCache::GetClearProgram()
 ID3D11Buffer* &PixelShaderCache::GetConstantBuffer()
 {
 	// TODO: divide the global variables of the generated shaders into about 5 constant buffers to speed this up
-	if (PixelShaderManager::dirty)
+	if (ConstantManager::dirty)
 	{
 		D3D11_MAPPED_SUBRESOURCE map;
 		D3D::context->Map(pscbuf, 0, D3D11_MAP_WRITE_DISCARD, 0, &map);
-		memcpy(map.pData, &PixelShaderManager::constants, sizeof(PixelShaderConstants));
+		memcpy(map.pData, &ConstantManager::constants, sizeof(Constants));
 		D3D::context->Unmap(pscbuf, 0);
-		PixelShaderManager::dirty = false;
+		ConstantManager::dirty = false;
 
-		ADDSTAT(stats.thisFrame.bytesUniformStreamed, sizeof(PixelShaderConstants));
+		ADDSTAT(stats.thisFrame.bytesUniformStreamed, sizeof(Constants));
 	}
 	return pscbuf;
 }
@@ -361,7 +361,7 @@ public:
 
 void PixelShaderCache::Init()
 {
-	unsigned int cbsize = ((sizeof(PixelShaderConstants))&(~0xf))+0x10; // must be a multiple of 16
+	unsigned int cbsize = ((sizeof(Constants))&(~0xf))+0x10; // must be a multiple of 16
 	D3D11_BUFFER_DESC cbdesc = CD3D11_BUFFER_DESC(cbsize, D3D11_BIND_CONSTANT_BUFFER, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
 	D3D::device->CreateBuffer(&cbdesc, NULL, &pscbuf);
 	CHECK(pscbuf!=NULL, "Create pixel shader constant buffer");

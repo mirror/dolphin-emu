@@ -11,7 +11,7 @@
 #include "Debugger.h"
 #include "IndexGenerator.h"
 #include "MainBase.h"
-#include "PixelShaderManager.h"
+#include "ConstantManager.h"
 #include "RenderBase.h"
 #include "Render.h"
 #include "Statistics.h"

@@ -6,25 +6,27 @@
 
 #include "Common.h"
 #include "Statistics.h"
-#include "PixelShaderManager.h"
+#include "ConstantManager.h"
 #include "VideoCommon.h"
 #include "VideoConfig.h"
+#include "BPMemory.h"
+#include "XFMemory.h"
 
 #include "RenderBase.h"
 static bool s_bFogRangeAdjustChanged;
 static bool s_bViewPortChanged;
 static int nLightsChanged[2]; // min,max
 
-PixelShaderConstants PixelShaderManager::constants;
-bool PixelShaderManager::dirty;
+Constants ConstantManager::constants;
+bool ConstantManager::dirty;
 
-void PixelShaderManager::Init()
+void ConstantManager::Init()
 {
 	memset(&constants, 0, sizeof(constants));
 	Dirty();
 }
 
-void PixelShaderManager::Dirty()
+void ConstantManager::Dirty()
 {
 	s_bFogRangeAdjustChanged = true;
 	s_bViewPortChanged = true;
@@ -60,12 +62,12 @@ void PixelShaderManager::Dirty()
 	SetFogParamChanged();
 }
 
-void PixelShaderManager::Shutdown()
+void ConstantManager::Shutdown()
 {
 
 }
 
-void PixelShaderManager::SetConstants()
+void ConstantManager::SetConstants()
 {
 	if (s_bFogRangeAdjustChanged)
 	{
@@ -149,7 +151,7 @@ void PixelShaderManager::SetConstants()
 // TODO: Move conversion out, only store the raw color value
 // and update it when the shader constant is set, only.
 // TODO: Conversion should be checked in the context of tev_fixes..
-void PixelShaderManager::SetColorChanged(int type, int num)
+void ConstantManager::SetColorChanged(int type, int num)
 {
 	float4* c = type ? constants.kcolors : constants.colors;
 	c[num][0] = bpmem.tevregs[num].low.a / 255.0f;
@@ -161,20 +163,20 @@ void PixelShaderManager::SetColorChanged(int type, int num)
 	PRIM_LOG("pixel %scolor%d: %f %f %f %f\n", type?"k":"", num, c[num][0], c[num][1], c[num][2], c[num][3]);
 }
 
-void PixelShaderManager::SetAlpha()
+void ConstantManager::SetAlpha()
 {
 	constants.alpha[0] = bpmem.alpha_test.ref0 / 255.0f;
 	constants.alpha[1] = bpmem.alpha_test.ref1 / 255.0f;
 	dirty = true;
 }
 
-void PixelShaderManager::SetDestAlpha()
+void ConstantManager::SetDestAlpha()
 {
 	constants.alpha[3] = bpmem.dstalpha.alpha / 255.0f;
 	dirty = true;
 }
 
-void PixelShaderManager::SetTexDims(int texmapid, u32 width, u32 height, u32 wraps, u32 wrapt)
+void ConstantManager::SetTexDims(int texmapid, u32 width, u32 height, u32 wraps, u32 wrapt)
 {
 	// TODO: move this check out to callee. There we could just call this function on texture changes
 	// or better, use textureSize() in glsl
@@ -185,19 +187,19 @@ void PixelShaderManager::SetTexDims(int texmapid, u32 width, u32 height, u32 wra
 	constants.texdims[texmapid][1] = 1.0f/height;
 }
 
-void PixelShaderManager::SetZTextureBias()
+void ConstantManager::SetZTextureBias()
 {
 	constants.zbias[1][3] = bpmem.ztex1.bias/16777215.0f;
 	dirty = true;
 }
 
-void PixelShaderManager::SetViewportChanged()
+void ConstantManager::SetViewportChanged()
 {
 	s_bViewPortChanged = true;
 	s_bFogRangeAdjustChanged = true; // TODO: Shouldn't be necessary with an accurate fog range adjust implementation
 }
 
-void PixelShaderManager::SetIndTexScaleChanged(bool high)
+void ConstantManager::SetIndTexScaleChanged(bool high)
 {
 	constants.indtexscale[high][0] = bpmem.texscale[high].getScaleS(0);
 	constants.indtexscale[high][1] = bpmem.texscale[high].getScaleT(0);
@@ -206,7 +208,7 @@ void PixelShaderManager::SetIndTexScaleChanged(bool high)
 	dirty = true;
 }
 
-void PixelShaderManager::SetIndMatrixChanged(int matrixidx)
+void ConstantManager::SetIndMatrixChanged(int matrixidx)
 {
 	int scale = ((u32)bpmem.indmtx[matrixidx].col0.s0 << 0) |
 			((u32)bpmem.indmtx[matrixidx].col1.s1 << 2) |
@@ -233,7 +235,7 @@ void PixelShaderManager::SetIndMatrixChanged(int matrixidx)
 
 }
 
-void PixelShaderManager::SetZTextureTypeChanged()
+void ConstantManager::SetZTextureTypeChanged()
 {
 	switch (bpmem.ztex2.type)
 	{
@@ -261,7 +263,7 @@ void PixelShaderManager::SetZTextureTypeChanged()
         dirty = true;
 }
 
-void PixelShaderManager::SetTexCoordChanged(u8 texmapid)
+void ConstantManager::SetTexCoordChanged(u8 texmapid)
 {
 	TCoordInfo& tc = bpmem.texcoords[texmapid];
 	constants.texdims[texmapid][2] = (float)(tc.s.scale_minus_1 + 1);
@@ -269,7 +271,7 @@ void PixelShaderManager::SetTexCoordChanged(u8 texmapid)
 	dirty = true;
 }
 
-void PixelShaderManager::SetFogColorChanged()
+void ConstantManager::SetFogColorChanged()
 {
 	constants.fog[0][0] = bpmem.fog.color.r / 255.0f;
 	constants.fog[0][1] = bpmem.fog.color.g / 255.0f;
@@ -277,7 +279,7 @@ void PixelShaderManager::SetFogColorChanged()
 	dirty = true;
 }
 
-void PixelShaderManager::SetFogParamChanged()
+void ConstantManager::SetFogParamChanged()
 {
 	if(!g_ActiveConfig.bDisableFog)
 	{
@@ -296,12 +298,12 @@ void PixelShaderManager::SetFogParamChanged()
 	dirty = true;
 }
 
-void PixelShaderManager::SetFogRangeAdjustChanged()
+void ConstantManager::SetFogRangeAdjustChanged()
 {
 	s_bFogRangeAdjustChanged = true;
 }
 
-void PixelShaderManager::InvalidateXFRange(int start, int end)
+void ConstantManager::InvalidateXFRange(int start, int end)
 {
 	if (start < XFMEM_LIGHTS_END && end > XFMEM_LIGHTS)
 	{
@@ -321,7 +323,7 @@ void PixelShaderManager::InvalidateXFRange(int start, int end)
 	}
 }
 
-void PixelShaderManager::SetMaterialColorChanged(int index, u32 color)
+void ConstantManager::SetMaterialColorChanged(int index, u32 color)
 {
 	if(g_ActiveConfig.bEnablePixelLighting && g_ActiveConfig.backend_info.bSupportsPixelLighting)
 	{
@@ -333,7 +335,7 @@ void PixelShaderManager::SetMaterialColorChanged(int index, u32 color)
 	}
 }
 
-void PixelShaderManager::DoState(PointerWrap &p)
+void ConstantManager::DoState(PointerWrap &p)
 {
 	p.Do(constants);
 	p.Do(dirty);

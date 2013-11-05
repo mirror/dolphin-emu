@@ -17,7 +17,7 @@
 #include "ImageWrite.h"
 #include "BPMemory.h"
 #include "TextureCache.h"
-#include "PixelShaderManager.h"
+#include "ConstantManager.h"
 #include "VertexShaderManager.h"
 #include "ProgramShaderCache.h"
 #include "VertexShaderGen.h"

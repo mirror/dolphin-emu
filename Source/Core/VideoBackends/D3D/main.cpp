@@ -12,7 +12,7 @@
 #include "OnScreenDisplay.h"
 #include "OpcodeDecoding.h"
 #include "PixelEngine.h"
-#include "PixelShaderManager.h"
+#include "ConstantManager.h"
 #include "VideoConfig.h"
 #include "VertexLoaderManager.h"
 #include "VertexShaderManager.h"
@@ -198,7 +198,7 @@ void VideoBackend::Video_Prepare()
 	VertexLoaderManager::Init();
 	OpcodeDecoder_Init();
 	VertexShaderManager::Init();
-	PixelShaderManager::Init();
+	ConstantManager::Init();
 	CommandProcessor::Init();
 	PixelEngine::Init();
 	DLCache::Init();
@@ -222,7 +222,7 @@ void VideoBackend::Shutdown()
 		DLCache::Shutdown();
 		Fifo_Shutdown();
 		CommandProcessor::Shutdown();
-		PixelShaderManager::Shutdown();
+		ConstantManager::Shutdown();
 		VertexShaderManager::Shutdown();
 		OpcodeDecoder_Shutdown();
 		VertexLoaderManager::Shutdown();
