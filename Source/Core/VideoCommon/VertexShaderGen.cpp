@@ -16,6 +16,7 @@
 #include "LightingShaderGen.h"
 #include "VertexShaderGen.h"
 #include "VideoConfig.h"
+#include "ConstantManager.h"
 
 static char text[16768];
 

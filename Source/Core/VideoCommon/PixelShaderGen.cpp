@@ -16,6 +16,7 @@
 #include "BPMemory.h"
 #include "VideoConfig.h"
 #include "NativeVertexFormat.h"
+#include "ConstantManager.h"
 
 
 //   old tev->pixelshader notes

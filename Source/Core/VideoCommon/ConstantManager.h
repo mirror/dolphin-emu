@@ -39,6 +39,56 @@ struct VertexShaderConstants
 	float4 depthparams;
 };
 
+
+// shader variables
+#define I_COLORS      "color"
+#define I_KCOLORS     "k"
+#define I_ALPHA       "alphaRef"
+#define I_TEXDIMS     "texdim"
+#define I_ZBIAS       "czbias"
+#define I_INDTEXSCALE "cindscale"
+#define I_INDTEXMTX   "cindmtx"
+#define I_FOG         "cfog"
+#define I_PLIGHTS     "cPLights"
+#define I_PMATERIALS  "cPmtrl"
+
+// TODO: get rid of them as they aren't used
+#define C_COLORMATRIX	0						// 0
+#define C_COLORS		0						// 0
+#define C_KCOLORS		(C_COLORS + 4)			// 4
+#define C_ALPHA			(C_KCOLORS + 4)			// 8
+#define C_TEXDIMS		(C_ALPHA + 1)			// 9
+#define C_ZBIAS			(C_TEXDIMS + 8)			//17
+#define C_INDTEXSCALE	(C_ZBIAS + 2)			//19
+#define C_INDTEXMTX		(C_INDTEXSCALE + 2)		//21
+#define C_FOG			(C_INDTEXMTX + 6)		//27
+
+#define C_PLIGHTS		(C_FOG + 3)
+#define C_PMATERIALS	(C_PLIGHTS + 40)
+#define C_PENVCONST_END (C_PMATERIALS + 4)
+
+#define I_POSNORMALMATRIX       "cpnmtx"
+#define I_PROJECTION            "cproj"
+#define I_MATERIALS             "cmtrl"
+#define I_LIGHTS                "clights"
+#define I_TEXMATRICES           "ctexmtx"
+#define I_TRANSFORMMATRICES     "ctrmtx"
+#define I_NORMALMATRICES        "cnmtx"
+#define I_POSTTRANSFORMMATRICES "cpostmtx"
+#define I_DEPTHPARAMS           "cDepth" // farZ, zRange
+
+//TODO: get rid of them, they aren't used at all
+#define C_POSNORMALMATRIX        0
+#define C_PROJECTION            (C_POSNORMALMATRIX + 6)
+#define C_MATERIALS             (C_PROJECTION + 4)
+#define C_LIGHTS                (C_MATERIALS + 4)
+#define C_TEXMATRICES           (C_LIGHTS + 40)
+#define C_TRANSFORMMATRICES     (C_TEXMATRICES + 24)
+#define C_NORMALMATRICES        (C_TRANSFORMMATRICES + 64)
+#define C_POSTTRANSFORMMATRICES (C_NORMALMATRICES + 32)
+#define C_DEPTHPARAMS           (C_POSTTRANSFORMMATRICES + 64)
+#define C_VENVCONST_END			(C_DEPTHPARAMS + 1)
+
 class ConstantManager
 {
 public:

@@ -15,6 +15,7 @@
 #include "BPMemory.h"
 #include "RenderBase.h"
 #include "VideoConfig.h"
+#include "ConstantManager.h"
 
 #define WRITE p+=sprintf
 

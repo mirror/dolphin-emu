@@ -10,32 +10,6 @@
 #include "BPMemory.h"
 #include "LightingShaderGen.h"
 
-#define I_COLORS      "color"
-#define I_KCOLORS     "k"
-#define I_ALPHA       "alphaRef"
-#define I_TEXDIMS     "texdim"
-#define I_ZBIAS       "czbias"
-#define I_INDTEXSCALE "cindscale"
-#define I_INDTEXMTX   "cindmtx"
-#define I_FOG         "cfog"
-#define I_PLIGHTS     "cPLights"
-#define I_PMATERIALS  "cPmtrl"
-
-// TODO: get rid of them as they aren't used
-#define C_COLORMATRIX	0						// 0
-#define C_COLORS		0						// 0
-#define C_KCOLORS		(C_COLORS + 4)			// 4
-#define C_ALPHA			(C_KCOLORS + 4)			// 8
-#define C_TEXDIMS		(C_ALPHA + 1)			// 9
-#define C_ZBIAS			(C_TEXDIMS + 8)			//17
-#define C_INDTEXSCALE	(C_ZBIAS + 2)			//19
-#define C_INDTEXMTX		(C_INDTEXSCALE + 2)		//21
-#define C_FOG			(C_INDTEXMTX + 6)		//27
-
-#define C_PLIGHTS		(C_FOG + 3)
-#define C_PMATERIALS	(C_PLIGHTS + 40)
-#define C_PENVCONST_END (C_PMATERIALS + 4)
-
 // Different ways to achieve rendering with destination alpha
 enum DSTALPHA_MODE
 {
