@@ -81,7 +81,6 @@
     <ClCompile Include="VertexLoader_TextCoord.cpp" />
     <ClCompile Include="VertexManagerBase.cpp" />
     <ClCompile Include="VertexShaderGen.cpp" />
-    <ClCompile Include="VertexShaderManager.cpp" />
     <ClCompile Include="VideoBackendBase.cpp" />
     <ClCompile Include="VideoConfig.cpp" />
     <ClCompile Include="VideoState.cpp" />

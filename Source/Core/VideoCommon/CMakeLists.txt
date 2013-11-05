@@ -30,7 +30,6 @@ set(SRCS	BPFunctions.cpp
 			VertexLoader_TextCoord.cpp
 			VertexManagerBase.cpp
 			VertexShaderGen.cpp
-			VertexShaderManager.cpp
 			VideoBackendBase.cpp
 			VideoConfig.cpp
 			VideoState.cpp

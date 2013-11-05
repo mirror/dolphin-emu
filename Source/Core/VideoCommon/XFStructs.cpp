@@ -7,14 +7,12 @@
 #include "XFMemory.h"
 #include "CPMemory.h"
 #include "VertexManagerBase.h"
-#include "VertexShaderManager.h"
 #include "ConstantManager.h"
 #include "HW/Memmap.h"
 
 void XFMemWritten(u32 transferSize, u32 baseAddress)
 {
 	VertexManager::Flush();
-	VertexShaderManager::InvalidateXFRange(baseAddress, baseAddress + transferSize);
 	ConstantManager::InvalidateXFRange(baseAddress, baseAddress + transferSize);
 }
 
@@ -60,7 +58,6 @@ void XFRegWritten(int transferSize, u32 baseAddress, u32 *pData)
 				if (xfregs.ambColor[chan] != newValue)
 				{
 					VertexManager::Flush();
-					VertexShaderManager::SetMaterialColorChanged(chan, newValue);
 					ConstantManager::SetMaterialColorChanged(chan, newValue);
 				}
 				break;
@@ -73,7 +70,6 @@ void XFRegWritten(int transferSize, u32 baseAddress, u32 *pData)
 				if (xfregs.matColor[chan] != newValue)
 				{
 					VertexManager::Flush();
-					VertexShaderManager::SetMaterialColorChanged(chan + 2, newValue);
 					ConstantManager::SetMaterialColorChanged(chan + 2, newValue);
 				}
 				break;
@@ -95,11 +91,11 @@ void XFRegWritten(int transferSize, u32 baseAddress, u32 *pData)
 
 		case XFMEM_SETMATRIXINDA:
 			//_assert_msg_(GX_XF, 0, "XF matrixindex0");
-			VertexShaderManager::SetTexMatrixChangedA(newValue);
+			ConstantManager::SetTexMatrixChangedA(newValue);
 			break;
 		case XFMEM_SETMATRIXINDB:
 			//_assert_msg_(GX_XF, 0, "XF matrixindex1");
-			VertexShaderManager::SetTexMatrixChangedB(newValue);
+			ConstantManager::SetTexMatrixChangedB(newValue);
 			break;
 
 		case XFMEM_SETVIEWPORT:
@@ -109,7 +105,6 @@ void XFRegWritten(int transferSize, u32 baseAddress, u32 *pData)
 		case XFMEM_SETVIEWPORT+4:
 		case XFMEM_SETVIEWPORT+5:
 			VertexManager::Flush();
-			VertexShaderManager::SetViewportChanged();
 			ConstantManager::SetViewportChanged();
 
 			nextAddress = XFMEM_SETVIEWPORT + 6;
@@ -123,7 +118,7 @@ void XFRegWritten(int transferSize, u32 baseAddress, u32 *pData)
 		case XFMEM_SETPROJECTION+5:
 		case XFMEM_SETPROJECTION+6:
 			VertexManager::Flush();
-			VertexShaderManager::SetProjectionChanged();
+			ConstantManager::SetProjectionChanged();
 
 			nextAddress = XFMEM_SETPROJECTION + 7;
 			break;

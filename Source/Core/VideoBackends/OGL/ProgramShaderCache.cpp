@@ -11,7 +11,6 @@
 #include "ImageWrite.h"
 #include "Render.h"
 #include "ConstantManager.h"
-#include "VertexShaderManager.h"
 
 namespace OGL
 {
@@ -49,8 +48,6 @@ const char *UniformNames[NUM_UNIFORMS] =
 	I_INDTEXSCALE ,
 	I_INDTEXMTX,
 	I_FOG,
-	I_PLIGHTS,
-	I_PMATERIALS,
 	// VERTEX SHADER UNIFORMS
 	I_POSNORMALMATRIX,
 	I_PROJECTION ,
@@ -63,7 +60,7 @@ const char *UniformNames[NUM_UNIFORMS] =
 	I_DEPTHPARAMS,
 };
 
-const static int PSVar_Loc[] = {
+const static int PSVar_Loc[NUM_UNIFORMS] = {
 	offsetof(Constants, colors)/16,
 	offsetof(Constants, kcolors)/16,
 	offsetof(Constants, alpha)/16,
@@ -72,20 +69,16 @@ const static int PSVar_Loc[] = {
 	offsetof(Constants, indtexscale)/16,
 	offsetof(Constants, indtexmtx)/16,
 	offsetof(Constants, fog)/16,
-	offsetof(Constants, plights)/16,
-	offsetof(Constants, pmaterials)/16,
-};
-
-const static int VSVar_Loc[] = {
-	offsetof(VertexShaderConstants, posnormalmatrix)/16,
-	offsetof(VertexShaderConstants, projection)/16,
-	offsetof(VertexShaderConstants, materials)/16,
-	offsetof(VertexShaderConstants, lights)/16,
-	offsetof(VertexShaderConstants, texmatrices)/16,
-	offsetof(VertexShaderConstants, transformmatrices)/16,
-	offsetof(VertexShaderConstants, normalmatrices)/16,
-	offsetof(VertexShaderConstants, posttransformmatrices)/16,
-	offsetof(VertexShaderConstants, depthparams)/16,
+	
+	offsetof(Constants, posnormalmatrix)/16,
+	offsetof(Constants, projection)/16,
+	offsetof(Constants, materials)/16,
+	offsetof(Constants, lights)/16,
+	offsetof(Constants, texmatrices)/16,
+	offsetof(Constants, transformmatrices)/16,
+	offsetof(Constants, normalmatrices)/16,
+	offsetof(Constants, posttransformmatrices)/16,
+	offsetof(Constants, depthparams)/16,
 };
 
 // End of UBO workaround
@@ -191,24 +184,15 @@ void ProgramShaderCache::UploadConstants()
 {
 	if(g_ActiveConfig.backend_info.bSupportsGLSLUBO)
 	{
-		if(ConstantManager::dirty || VertexShaderManager::dirty)
+		if(ConstantManager::dirty)
 		{
 			auto buffer = s_buffer->Map(s_ubo_buffer_size, s_ubo_align);
-
-			memcpy(buffer.first,
-			       &ConstantManager::constants, sizeof(Constants));
-
-			memcpy(buffer.first + ROUND_UP(sizeof(Constants), s_ubo_align),
-			       &VertexShaderManager::constants, sizeof(VertexShaderConstants));
-
+			memcpy(buffer.first, &ConstantManager::constants, sizeof(Constants));
 			s_buffer->Unmap(s_ubo_buffer_size);
-			glBindBufferRange(GL_UNIFORM_BUFFER, 1, s_buffer->m_buffer, buffer.second,
-			                  sizeof(Constants));
-			glBindBufferRange(GL_UNIFORM_BUFFER, 2, s_buffer->m_buffer, buffer.second + ROUND_UP(sizeof(Constants), s_ubo_align),
-			                  sizeof(VertexShaderConstants));
+
+			glBindBufferRange(GL_UNIFORM_BUFFER, 1, s_buffer->m_buffer, buffer.second, sizeof(Constants));
 
 			ConstantManager::dirty = false;
-			VertexShaderManager::dirty = false;
 
 			ADDSTAT(stats.thisFrame.bytesUniformStreamed, s_ubo_buffer_size);
 		}
@@ -217,15 +201,10 @@ void ProgramShaderCache::UploadConstants()
 	{
 		// UBO workaround
 		// this must be updated per shader switch, so also update it when it's not dirty
-		for (unsigned int a = 0; a < 10; ++a)
+		for (unsigned int a = 0; a < NUM_UNIFORMS; ++a)
 		{
 			if(last_entry->shader.UniformSize[a] > 0)
 				glUniform4fv(last_entry->shader.UniformLocations[a], last_entry->shader.UniformSize[a], (float*) &ConstantManager::constants + 4*PSVar_Loc[a]);
-		}
-		for (unsigned int a = 0; a < 9; ++a)
-		{
-			if(last_entry->shader.UniformSize[a+10] > 0)
-				glUniform4fv(last_entry->shader.UniformLocations[a+10], last_entry->shader.UniformSize[a+10], (float*) &VertexShaderManager::constants + 4*VSVar_Loc[a]);
 		}
 
 		ADDSTAT(stats.thisFrame.bytesUniformStreamed, s_ubo_buffer_size);
@@ -466,7 +445,7 @@ void ProgramShaderCache::Init(void)
 	{
 		glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &s_ubo_align);
 
-		s_ubo_buffer_size = ROUND_UP(sizeof(Constants), s_ubo_align) + ROUND_UP(sizeof(VertexShaderConstants), s_ubo_align);
+		s_ubo_buffer_size = ROUND_UP(sizeof(Constants), s_ubo_align);
 
 		// We multiply by *4*4 because we need to get down to basic machine units.
 		// So multiply by four to get how many floats we have from vec4s

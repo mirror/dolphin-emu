@@ -12,7 +12,7 @@
 #include "D3DShader.h"
 #include "Globals.h"
 #include "VertexShaderCache.h"
-#include "VertexShaderManager.h"
+#include "ConstantManager.h"
 
 #include "ConfigManager.h"
 
@@ -40,15 +40,15 @@ ID3D11Buffer* vscbuf = NULL;
 ID3D11Buffer* &VertexShaderCache::GetConstantBuffer()
 {
 	// TODO: divide the global variables of the generated shaders into about 5 constant buffers to speed this up
-	if (VertexShaderManager::dirty)
+	if (ConstantManager::dirty)
 	{
 		D3D11_MAPPED_SUBRESOURCE map;
 		D3D::context->Map(vscbuf, 0, D3D11_MAP_WRITE_DISCARD, 0, &map);
-		memcpy(map.pData, &VertexShaderManager::constants, sizeof(VertexShaderConstants));
+		memcpy(map.pData, &ConstantManager::constants, sizeof(Constants));
 		D3D::context->Unmap(vscbuf, 0);
-		VertexShaderManager::dirty = false;
+		ConstantManager::dirty = false;
 
-		ADDSTAT(stats.thisFrame.bytesUniformStreamed, sizeof(VertexShaderConstants));
+		ADDSTAT(stats.thisFrame.bytesUniformStreamed, sizeof(Constants));
 	}
 	return vscbuf;
 }
@@ -112,7 +112,7 @@ void VertexShaderCache::Init()
 		{ "COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	unsigned int cbsize = ((sizeof(VertexShaderConstants))&(~0xf))+0x10; // must be a multiple of 16
+	unsigned int cbsize = ((sizeof(Constants))&(~0xf))+0x10; // must be a multiple of 16
 	D3D11_BUFFER_DESC cbdesc = CD3D11_BUFFER_DESC(cbsize, D3D11_BIND_CONSTANT_BUFFER, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE);
 	HRESULT hr = D3D::device->CreateBuffer(&cbdesc, NULL, &vscbuf);
 	CHECK(hr==S_OK, "Create vertex shader constant buffer (size=%u)", cbsize);

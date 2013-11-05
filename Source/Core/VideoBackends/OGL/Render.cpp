@@ -35,7 +35,7 @@
 #include "VertexShaderGen.h"
 #include "DLCache.h"
 #include "ProgramShaderCache.h"
-#include "VertexShaderManager.h"
+#include "ConstantManager.h"
 #include "VertexLoaderManager.h"
 #include "VertexLoader.h"
 #include "PostProcessing.h"
@@ -1072,7 +1072,7 @@ u32 Renderer::AccessEFB(EFBAccessType type, u32 x, u32 y, u32 poke_data)
 	return 0;
 }
 
-// Called from VertexShaderManager
+// Called from ConstantManager
 void Renderer::UpdateViewport()
 {
 	// reversed gxsetviewport(xorig, yorig, width, height, nearz, farz)

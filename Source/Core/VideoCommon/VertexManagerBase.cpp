@@ -4,7 +4,6 @@
 #include "Statistics.h"
 #include "OpcodeDecoding.h"
 #include "IndexGenerator.h"
-#include "VertexShaderManager.h"
 #include "ConstantManager.h"
 #include "NativeVertexFormat.h"
 #include "TextureCacheBase.h"
@@ -223,7 +222,6 @@ void VertexManager::Flush()
 	}
 
 	// set global constants
-	VertexShaderManager::SetConstants();
 	ConstantManager::SetConstants();
 
 	// TODO: need to merge more stuff into VideoCommon

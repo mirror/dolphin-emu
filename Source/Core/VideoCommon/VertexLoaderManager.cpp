@@ -9,7 +9,7 @@
 #include "VideoCommon.h"
 #include "Statistics.h"
 
-#include "VertexShaderManager.h"
+#include "ConstantManager.h"
 #include "VertexLoader.h"
 #include "VertexLoaderManager.h"
 #include "HW/Memmap.h"
@@ -148,11 +148,11 @@ void LoadCPReg(u32 sub_cmd, u32 value)
 	switch (sub_cmd & 0xF0)
 	{
 	case 0x30:
-		VertexShaderManager::SetTexMatrixChangedA(value);
+		ConstantManager::SetTexMatrixChangedA(value);
 		break;
 
 	case 0x40:
-		VertexShaderManager::SetTexMatrixChangedB(value);
+		ConstantManager::SetTexMatrixChangedB(value);
 		break;
 
 	case 0x50:

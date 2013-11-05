@@ -69,7 +69,6 @@ Make AA apply instantly during gameplay if possible
 #include "VertexLoaderManager.h"
 #include "VertexManager.h"
 #include "ConstantManager.h"
-#include "VertexShaderManager.h"
 #include "ProgramShaderCache.h"
 #include "CommandProcessor.h"
 #include "PixelEngine.h"
@@ -215,7 +214,6 @@ void VideoBackend::Video_Prepare()
 	Fifo_Init(); // must be done before OpcodeDecoder_Init()
 	OpcodeDecoder_Init();
 	IndexGenerator::Init();
-	VertexShaderManager::Init();
 	ConstantManager::Init();
 	ProgramShaderCache::Init();
 	PostProcessing::Init();
@@ -266,7 +264,6 @@ void VideoBackend::Video_Cleanup() {
 		g_texture_cache = NULL;
 		PostProcessing::Shutdown();
 		ProgramShaderCache::Shutdown();
-		VertexShaderManager::Shutdown();
 		ConstantManager::Shutdown();
 		delete g_perf_query;
 		g_perf_query = NULL;

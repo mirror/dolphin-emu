@@ -15,7 +15,6 @@
 #include "ConstantManager.h"
 #include "VideoConfig.h"
 #include "VertexLoaderManager.h"
-#include "VertexShaderManager.h"
 #include "Core.h"
 #include "Host.h"
 
@@ -197,7 +196,6 @@ void VideoBackend::Video_Prepare()
 	IndexGenerator::Init();
 	VertexLoaderManager::Init();
 	OpcodeDecoder_Init();
-	VertexShaderManager::Init();
 	ConstantManager::Init();
 	CommandProcessor::Init();
 	PixelEngine::Init();
@@ -223,7 +221,6 @@ void VideoBackend::Shutdown()
 		Fifo_Shutdown();
 		CommandProcessor::Shutdown();
 		ConstantManager::Shutdown();
-		VertexShaderManager::Shutdown();
 		OpcodeDecoder_Shutdown();
 		VertexLoaderManager::Shutdown();
 

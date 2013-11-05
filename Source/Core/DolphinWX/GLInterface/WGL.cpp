@@ -6,7 +6,6 @@
 #include "Host.h"
 #include "RenderBase.h"
 
-#include "VertexShaderManager.h"
 #include "GLInterface.h"
 #include "WGL.h"
 

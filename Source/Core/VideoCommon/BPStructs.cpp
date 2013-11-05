@@ -14,7 +14,6 @@
 #include "BPStructs.h"
 #include "TextureDecoder.h"
 #include "VertexLoader.h"
-#include "VertexShaderManager.h"
 #include "Thread.h"
 #include "HW/Memmap.h"
 #include "PerfQueryBase.h"
@@ -126,7 +125,7 @@ void BPWritten(const BPCmd& bp)
 	case BPMEM_SCISSORBR: // Scissor Rectable Bottom, Right
 	case BPMEM_SCISSOROFFSET: // Scissor Offset
 		SetScissor();
-		VertexShaderManager::SetViewportChanged();
+		ConstantManager::SetViewportChanged();
 		break;
 	case BPMEM_LINEPTWIDTH: // Line Width
 		SetLineWidth();

@@ -93,9 +93,6 @@
     <ClCompile Include="ConstantManager.cpp">
       <Filter>Shader Managers</Filter>
     </ClCompile>
-    <ClCompile Include="VertexShaderManager.cpp">
-      <Filter>Shader Managers</Filter>
-    </ClCompile>
     <ClCompile Include="AVIDump.cpp">
       <Filter>Util</Filter>
     </ClCompile>
@@ -218,9 +215,6 @@
       <Filter>Shader Generators</Filter>
     </ClInclude>
     <ClInclude Include="ConstantManager.h">
-      <Filter>Shader Managers</Filter>
-    </ClInclude>
-    <ClInclude Include="VertexShaderManager.h">
       <Filter>Shader Managers</Filter>
     </ClInclude>
     <ClInclude Include="AVIDump.h">

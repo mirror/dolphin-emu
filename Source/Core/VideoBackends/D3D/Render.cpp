@@ -14,7 +14,7 @@
 #include "OnScreenDisplay.h"
 #include "PixelEngine.h"
 #include "Statistics.h"
-#include "VertexShaderManager.h"
+#include "ConstantManager.h"
 #include "VideoConfig.h"
 
 #include "D3DBase.h"
@@ -477,7 +477,7 @@ u32 Renderer::AccessEFB(EFBAccessType type, u32 x, u32 y, u32 poke_data)
 }
 
 
-// Called from VertexShaderManager
+// Called from ConstantManager
 void Renderer::UpdateViewport()
 {
 	// reversed gxsetviewport(xorig, yorig, width, height, nearz, farz)

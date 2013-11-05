@@ -16,7 +16,6 @@
 #include "Render.h"
 #include "Statistics.h"
 #include "TextureCacheBase.h"
-#include "VertexShaderManager.h"
 #include "VideoConfig.h"
 
 // internal state for loading vertices

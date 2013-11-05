@@ -20,14 +20,7 @@ struct Constants
 	float4 indtexscale[2];
 	float4 indtexmtx[6];
 	float4 fog[3];
-
-	// For pixel lighting
-	float4 plights[40];
-	float4 pmaterials[4];
-};
-
-struct VertexShaderConstants
-{
+	
 	float4 posnormalmatrix[6];
 	float4 projection[4];
 	float4 materials[4];
@@ -39,7 +32,6 @@ struct VertexShaderConstants
 	float4 depthparams;
 };
 
-
 // shader variables
 #define I_COLORS      "color"
 #define I_KCOLORS     "k"
@@ -49,23 +41,6 @@ struct VertexShaderConstants
 #define I_INDTEXSCALE "cindscale"
 #define I_INDTEXMTX   "cindmtx"
 #define I_FOG         "cfog"
-#define I_PLIGHTS     "cPLights"
-#define I_PMATERIALS  "cPmtrl"
-
-// TODO: get rid of them as they aren't used
-#define C_COLORMATRIX	0						// 0
-#define C_COLORS		0						// 0
-#define C_KCOLORS		(C_COLORS + 4)			// 4
-#define C_ALPHA			(C_KCOLORS + 4)			// 8
-#define C_TEXDIMS		(C_ALPHA + 1)			// 9
-#define C_ZBIAS			(C_TEXDIMS + 8)			//17
-#define C_INDTEXSCALE	(C_ZBIAS + 2)			//19
-#define C_INDTEXMTX		(C_INDTEXSCALE + 2)		//21
-#define C_FOG			(C_INDTEXMTX + 6)		//27
-
-#define C_PLIGHTS		(C_FOG + 3)
-#define C_PMATERIALS	(C_PLIGHTS + 40)
-#define C_PENVCONST_END (C_PMATERIALS + 4)
 
 #define I_POSNORMALMATRIX       "cpnmtx"
 #define I_PROJECTION            "cproj"
@@ -77,17 +52,27 @@ struct VertexShaderConstants
 #define I_POSTTRANSFORMMATRICES "cpostmtx"
 #define I_DEPTHPARAMS           "cDepth" // farZ, zRange
 
-//TODO: get rid of them, they aren't used at all
-#define C_POSNORMALMATRIX        0
-#define C_PROJECTION            (C_POSNORMALMATRIX + 6)
-#define C_MATERIALS             (C_PROJECTION + 4)
-#define C_LIGHTS                (C_MATERIALS + 4)
-#define C_TEXMATRICES           (C_LIGHTS + 40)
-#define C_TRANSFORMMATRICES     (C_TEXMATRICES + 24)
-#define C_NORMALMATRICES        (C_TRANSFORMMATRICES + 64)
-#define C_POSTTRANSFORMMATRICES (C_NORMALMATRICES + 32)
-#define C_DEPTHPARAMS           (C_POSTTRANSFORMMATRICES + 64)
-#define C_VENVCONST_END			(C_DEPTHPARAMS + 1)
+// TODO: get rid of them as they aren't used
+#define C_COLORMATRIX           0				// 0
+#define C_COLORS                0				// 0
+#define C_KCOLORS               (C_COLORS + 4)			// 4
+#define C_ALPHA                 (C_KCOLORS + 4)			// 8
+#define C_TEXDIMS               (C_ALPHA + 1)			// 9
+#define C_ZBIAS                 (C_TEXDIMS + 8)			//17
+#define C_INDTEXSCALE           (C_ZBIAS + 2)			//19
+#define C_INDTEXMTX             (C_INDTEXSCALE + 2)		//21
+#define C_FOG                   (C_INDTEXMTX + 6)		//27
+
+#define C_POSNORMALMATRIX       (C_FOG + 3)			//30
+#define C_PROJECTION            (C_POSNORMALMATRIX + 6)		//36
+#define C_MATERIALS             (C_PROJECTION + 4)		//40
+#define C_LIGHTS                (C_MATERIALS + 4)		//44
+#define C_TEXMATRICES           (C_LIGHTS + 40)			//84
+#define C_TRANSFORMMATRICES     (C_TEXMATRICES + 24)		//108
+#define C_NORMALMATRICES        (C_TRANSFORMMATRICES + 64)	//172
+#define C_POSTTRANSFORMMATRICES (C_NORMALMATRICES + 32)		//204
+#define C_DEPTHPARAMS           (C_POSTTRANSFORMMATRICES + 64)	//268
+#define C_VENVCONST_END         (C_DEPTHPARAMS + 1)
 
 class ConstantManager
 {
@@ -105,7 +90,6 @@ public:
 	static void SetDestAlpha();
 	static void SetTexDims(int texmapid, u32 width, u32 height, u32 wraps, u32 wrapt);
 	static void SetZTextureBias();
-	static void SetViewportChanged();
 	static void SetIndMatrixChanged(int matrixidx);
 	static void SetTevKSelChanged(int id);
 	static void SetZTextureTypeChanged();
@@ -114,11 +98,23 @@ public:
 	static void SetFogColorChanged();
 	static void SetFogParamChanged();
 	static void SetFogRangeAdjustChanged();
+	
 	static void InvalidateXFRange(int start, int end);
+	static void SetTexMatrixChangedA(u32 value);
+	static void SetTexMatrixChangedB(u32 value);
+	static void SetViewportChanged();
+	static void SetProjectionChanged();
 	static void SetMaterialColorChanged(int index, u32 color);
+
+	static void TranslateView(float x, float y, float z = 0.0f);
+	static void RotateView(float x, float y);
+	static void ResetView();
 
 	static Constants constants;
 	static bool dirty;
 };
 
+void UpdateProjectionHack(int iPhackvalue[], std::string sPhackvalue[]);
+
 #endif
+

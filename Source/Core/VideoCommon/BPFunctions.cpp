@@ -7,7 +7,7 @@
 #include "RenderBase.h"
 #include "TextureCacheBase.h"
 #include "VertexManagerBase.h"
-#include "VertexShaderManager.h"
+#include "ConstantManager.h"
 #include "VideoConfig.h"
 #include "HW/Memmap.h"
 #include "ConfigManager.h"

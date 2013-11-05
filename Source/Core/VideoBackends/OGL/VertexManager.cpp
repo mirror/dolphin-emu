@@ -18,7 +18,6 @@
 #include "BPMemory.h"
 #include "TextureCache.h"
 #include "ConstantManager.h"
-#include "VertexShaderManager.h"
 #include "ProgramShaderCache.h"
 #include "VertexShaderGen.h"
 #include "VertexLoader.h"

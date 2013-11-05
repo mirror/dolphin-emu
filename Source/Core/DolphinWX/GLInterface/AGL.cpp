@@ -22,7 +22,6 @@
 
 #include <wx/panel.h>
 
-#include "VertexShaderManager.h"
 #include "GLInterface.h"
 #include "AGL.h"
 

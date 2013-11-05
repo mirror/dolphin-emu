@@ -32,7 +32,7 @@
 #include "Movie.h"
 #include "RenderBase.h"
 #include "VideoConfig.h"
-#include "VertexShaderManager.h"
+#include "ConstantManager.h"
 
 #include "VideoBackendBase.h"
 
@@ -979,25 +979,25 @@ void CFrame::OnKeyDown(wxKeyEvent& event)
 				debugSpeed *= 2.0f;
 				break;
 			case 'W':
-				VertexShaderManager::TranslateView(0.0f, debugSpeed);
+				ConstantManager::TranslateView(0.0f, debugSpeed);
 				break;
 			case 'S':
-				VertexShaderManager::TranslateView(0.0f, -debugSpeed);
+				ConstantManager::TranslateView(0.0f, -debugSpeed);
 				break;
 			case 'A':
-				VertexShaderManager::TranslateView(debugSpeed, 0.0f);
+				ConstantManager::TranslateView(debugSpeed, 0.0f);
 				break;
 			case 'D':
-				VertexShaderManager::TranslateView(-debugSpeed, 0.0f);
+				ConstantManager::TranslateView(-debugSpeed, 0.0f);
 				break;
 			case 'Q':
-				VertexShaderManager::TranslateView(0.0f, 0.0f, debugSpeed);
+				ConstantManager::TranslateView(0.0f, 0.0f, debugSpeed);
 				break;
 			case 'E':
-				VertexShaderManager::TranslateView(0.0f, 0.0f, -debugSpeed);
+				ConstantManager::TranslateView(0.0f, 0.0f, -debugSpeed);
 				break;
 			case 'R':
-				VertexShaderManager::ResetView();
+				ConstantManager::ResetView();
 				break;
 			default:
 				break;
@@ -1066,7 +1066,7 @@ void CFrame::OnMouse(wxMouseEvent& event)
 	{
 		if (mouseLookEnabled)
 		{
-			VertexShaderManager::RotateView((event.GetX() - lastMouse[0]) / 200.0f,
+			ConstantManager::RotateView((event.GetX() - lastMouse[0]) / 200.0f,
 					(event.GetY() - lastMouse[1]) / 200.0f);
 			lastMouse[0] = event.GetX();
 			lastMouse[1] = event.GetY();
@@ -1074,7 +1074,7 @@ void CFrame::OnMouse(wxMouseEvent& event)
 
 		if (mouseMoveEnabled)
 		{
-			VertexShaderManager::TranslateView((event.GetX() - lastMouse[0]) / 50.0f,
+			ConstantManager::TranslateView((event.GetX() - lastMouse[0]) / 50.0f,
 					(event.GetY() - lastMouse[1]) / 50.0f);
 			lastMouse[0] = event.GetX();
 			lastMouse[1] = event.GetY();
