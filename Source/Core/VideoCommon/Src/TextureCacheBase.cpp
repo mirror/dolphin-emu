@@ -438,22 +438,9 @@ TextureCache::TCacheEntryBase* TextureCache::Load(unsigned int const stage,
 		}
 
 		// 3. If we reach this line, we'll have to upload the new texture data to VRAM.
-		//    If we're lucky, the texture parameters didn't change and we can reuse the internal texture object instead of destroying and recreating it.
-		//
-		// TODO: Don't we need to force texture decoding to RGBA8 for dynamic EFB copies?
-		// TODO: Actually, it should be enough if the internal texture format matches...
-		if ((entry->type == TCET_NORMAL && width == entry->virtual_width && height == entry->virtual_height
-			&& full_format == entry->format && entry->num_mipmaps > maxlevel)
-			|| (entry->type == TCET_EC_DYNAMIC && entry->native_width == width && entry->native_height == height))
-		{
-			// reuse the texture
-		}
-		else
-		{
-			// pool the texture and make a new one
-			PoolTexture(entry);
-			entry = NULL;
-		}
+		// So pool the current entry for other reuses
+		PoolTexture(entry);
+		entry = NULL;
 	}
 
 	bool using_custom_texture = false;
@@ -464,18 +451,9 @@ TextureCache::TCacheEntryBase* TextureCache::Load(unsigned int const stage,
 		pcfmt = LoadCustomTexture(tex_hash, texformat, 0, width, height);
 		if (pcfmt != PC_TEX_FMT_NONE)
 		{
-			if (expandedWidth != width || expandedHeight != height)
-			{
-				expandedWidth = width;
-				expandedHeight = height;
-
-				// If we thought we could reuse the texture before, make sure to pool it now!
-				if(entry)
-				{
-					PoolTexture(entry);
-					entry = NULL;
-				}
-			}
+			// Also update expanded width/height as original width/height may be modified
+			expandedWidth = width;
+			expandedHeight = height;
 			using_custom_texture = true;
 		}
 	}
