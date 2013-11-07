@@ -484,7 +484,12 @@ TextureCache::TCacheEntryBase* TextureCache::Load(unsigned int const stage,
 		// Try to find a matching texture in the pool. We pool unused texture as they often just change the type.
 		// This happens in eg efb2ram which overwrites half of a texture. So most of this textures are only pooled
 		// for some frames.
-		textures[texID] = entry = GetPooledTexture ( width, height, full_format, texLevels, false );
+		entry = GetPooledTexture ( width, height, pcfmt, texLevels );
+		if( entry )
+		{
+			textures[texID] = entry;
+			entry->type = TCET_NORMAL;
+		}
 	}
 	
 	// create the entry/texture
@@ -500,8 +505,8 @@ TextureCache::TCacheEntryBase* TextureCache::Load(unsigned int const stage,
 		// But that will currently make the above "existing entry" tests fail as "texLevels" is not calculated until after.
 		// Currently, we might try to reuse a texture which appears to have more levels than actual, maybe..
 		entry->num_mipmaps = maxlevel + 1;
-		entry->type = TCET_NORMAL;
 		entry->pcfmt = pcfmt;
+		entry->type = TCET_NORMAL;
 
 		GFX_DEBUGGER_PAUSE_AT(NEXT_NEW_TEXTURE, true);
 	}
@@ -844,7 +849,7 @@ void TextureCache::CopyRenderTargetToTexture(u32 dstAddr, unsigned int dstFormat
 	if (NULL == entry)
 	{
 		// search for a compatible pooled texture
-		entry = GetPooledTexture(scaled_tex_w, scaled_tex_h, 0, 0, true);
+		entry = GetPooledTexture(scaled_tex_w, scaled_tex_h, PC_TEX_FMT_EFB_COPY, 0);
 		
 		if (NULL == entry)
 		{
@@ -866,18 +871,14 @@ void TextureCache::CopyRenderTargetToTexture(u32 dstAddr, unsigned int dstFormat
 	entry->FromRenderTarget(dstAddr, dstFormat, srcFormat, srcRect, isIntensity, scaleByHalf, cbufid, colmat);
 }
 
-TextureCache::TCacheEntryBase* TextureCache::GetPooledTexture ( u32 width, u32 height, u32 full_format, u32 maxlevel, bool isEfbCopy )
+TextureCache::TCacheEntryBase* TextureCache::GetPooledTexture ( u32 width, u32 height, PC_TexFormat pcfmt, u32 maxlevel )
 {
 	TCacheEntryBase* entry = NULL;
 	std::pair<TexPool::iterator, TexPool::iterator> bounds;
 	bounds = texPool.equal_range(std::make_pair(width, height));
 	while(!entry && bounds.first != bounds.second) {
 		entry = bounds.first->second;
-		if (
-			(isEfbCopy && entry->IsEfbCopy()) ||
-			(!isEfbCopy && entry->type == TCET_NORMAL && full_format == entry->format && entry->num_mipmaps == maxlevel) ||
-			(!isEfbCopy && entry->type == TCET_EC_DYNAMIC)
-		)
+		if ( entry->num_mipmaps == maxlevel && entry->pcfmt == pcfmt )
 		{
 			texPool.erase(bounds.first);
 		}
