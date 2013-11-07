@@ -36,6 +36,7 @@ public:
 		u64 hash;
 		//u32 pal_hash;
 		u32 format;
+		PC_TexFormat pcfmt;
 
 		enum TexCacheEntryType type;
 
@@ -84,7 +85,7 @@ public:
 
 		int IntersectsMemoryRange(u32 range_address, u32 range_size) const;
 
-		bool IsEfbCopy() { return (type == TCET_EC_VRAM || type == TCET_EC_DYNAMIC); }
+		bool IsEfbCopy() { return pcfmt == PC_TEX_FMT_EFB_COPY; }
 	};
 
 	virtual ~TextureCache(); // needs virtual for DX11 dtor

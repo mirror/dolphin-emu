@@ -501,6 +501,7 @@ TextureCache::TCacheEntryBase* TextureCache::Load(unsigned int const stage,
 		// Currently, we might try to reuse a texture which appears to have more levels than actual, maybe..
 		entry->num_mipmaps = maxlevel + 1;
 		entry->type = TCET_NORMAL;
+		entry->pcfmt = pcfmt;
 
 		GFX_DEBUGGER_PAUSE_AT(NEXT_NEW_TEXTURE, true);
 	}
@@ -849,6 +850,7 @@ void TextureCache::CopyRenderTargetToTexture(u32 dstAddr, unsigned int dstFormat
 		{
 			// create the texture
 			entry = g_texture_cache->CreateRenderTargetTexture(scaled_tex_w, scaled_tex_h);
+			entry->pcfmt = PC_TEX_FMT_EFB_COPY;
 		}
 		textures[dstAddr] = entry;
 		
