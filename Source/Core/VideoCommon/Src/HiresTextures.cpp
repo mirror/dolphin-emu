@@ -108,7 +108,7 @@ PC_TexFormat GetHiresTex(const char *fileName, unsigned int *pWidth, unsigned in
 
 	switch (texformat)
 	{
-	case GX_TF_I4:
+/*	case GX_TF_I4:
 	case GX_TF_I8:
 	case GX_TF_IA4:
 	case GX_TF_IA8:
@@ -124,7 +124,7 @@ PC_TexFormat GetHiresTex(const char *fileName, unsigned int *pWidth, unsigned in
 			data[offset++] = temp[i+3];
 		}
 		returnTex = PC_TEX_FMT_IA8;
-		break;
+		break;*/
 	default:
 		*required_size = width * height * 4;
 		if (data_size < *required_size)
