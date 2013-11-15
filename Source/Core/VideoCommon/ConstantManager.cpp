@@ -396,8 +396,6 @@ void ConstantManager::SetConstants()
 	if (bViewportChanged)
 	{
 		bViewportChanged = false;
-		constants.depthparams[0] = xfregs.viewport.farZ / 16777216.0f;
-		constants.depthparams[1] = xfregs.viewport.zRange / 16777216.0f;
 		constants.zbias[1][0] = xfregs.viewport.farZ / 16777216.0f;
 		constants.zbias[1][1] = xfregs.viewport.zRange / 16777216.0f;
 		

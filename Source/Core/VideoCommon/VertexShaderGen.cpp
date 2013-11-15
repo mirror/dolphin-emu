@@ -104,7 +104,6 @@ static inline void GenerateVertexShader(T& out, u32 components, API_TYPE api_typ
 	DeclareUniform(out, api_type, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_TRANSFORMMATRICES, "float4", I_TRANSFORMMATRICES"[64]");
 	DeclareUniform(out, api_type, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_NORMALMATRICES, "float4", I_NORMALMATRICES"[32]");
 	DeclareUniform(out, api_type, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_POSTTRANSFORMMATRICES, "float4", I_POSTTRANSFORMMATRICES"[64]");
-	DeclareUniform(out, api_type, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_DEPTHPARAMS, "float4", I_DEPTHPARAMS);
 
 	if (g_ActiveConfig.backend_info.bSupportsGLSLUBO)
 		out.Write("};\n");
@@ -413,7 +412,7 @@ static inline void GenerateVertexShader(T& out, u32 components, API_TYPE api_typ
 	//if not early z culling will improve speed
 	if (api_type == API_D3D)
 	{
-		out.Write("o.pos.z = " I_DEPTHPARAMS".x * o.pos.w + o.pos.z * " I_DEPTHPARAMS".y;\n");
+		out.Write("o.pos.z = " I_ZBIAS"[1].x * o.pos.w + o.pos.z * " I_ZBIAS"[1].y;\n");
 	}
 	else // OGL
 	{

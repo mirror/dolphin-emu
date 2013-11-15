@@ -57,7 +57,6 @@ const char *UniformNames[NUM_UNIFORMS] =
 	I_TRANSFORMMATRICES ,
 	I_NORMALMATRICES ,
 	I_POSTTRANSFORMMATRICES,
-	I_DEPTHPARAMS,
 };
 
 const static int PSVar_Loc[NUM_UNIFORMS] = {
@@ -78,7 +77,6 @@ const static int PSVar_Loc[NUM_UNIFORMS] = {
 	offsetof(Constants, transformmatrices)/16,
 	offsetof(Constants, normalmatrices)/16,
 	offsetof(Constants, posttransformmatrices)/16,
-	offsetof(Constants, depthparams)/16,
 };
 
 // End of UBO workaround

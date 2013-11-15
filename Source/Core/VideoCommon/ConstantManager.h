@@ -29,7 +29,6 @@ struct Constants
 	float4 transformmatrices[64];
 	float4 normalmatrices[32];
 	float4 posttransformmatrices[64];
-	float4 depthparams;
 };
 
 // shader variables
@@ -50,7 +49,6 @@ struct Constants
 #define I_TRANSFORMMATRICES     "ctrmtx"
 #define I_NORMALMATRICES        "cnmtx"
 #define I_POSTTRANSFORMMATRICES "cpostmtx"
-#define I_DEPTHPARAMS           "cDepth" // farZ, zRange
 
 // TODO: get rid of them as they aren't used
 #define C_COLORMATRIX           0				// 0
@@ -71,8 +69,7 @@ struct Constants
 #define C_TRANSFORMMATRICES     (C_TEXMATRICES + 24)		//108
 #define C_NORMALMATRICES        (C_TRANSFORMMATRICES + 64)	//172
 #define C_POSTTRANSFORMMATRICES (C_NORMALMATRICES + 32)		//204
-#define C_DEPTHPARAMS           (C_POSTTRANSFORMMATRICES + 64)	//268
-#define C_VENVCONST_END         (C_DEPTHPARAMS + 1)
+#define C_VENVCONST_END         (C_POSTTRANSFORMMATRICES + 64)
 
 class ConstantManager
 {
