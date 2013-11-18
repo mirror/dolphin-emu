@@ -14,6 +14,7 @@
 #include "PSTextureEncoder.h"
 #include "HW/Memmap.h"
 #include "VideoConfig.h"
+#include "ImageWrite.h"
 
 namespace DX11
 {
@@ -32,7 +33,7 @@ void TextureCache::TCacheEntry::Bind(unsigned int stage)
 	D3D::context->PSSetShaderResources(stage, 1, &texture->GetSRV());
 }
 
-bool TextureCache::TCacheEntry::Save(const char filename[], unsigned int level)
+bool TextureCache::TCacheEntry::Save(const std::string filename, unsigned int level)
 {
 	// TODO: Somehow implement this (D3DX11 doesn't support dumping individual LODs)
 	static bool warn_once = true;
@@ -42,8 +43,35 @@ bool TextureCache::TCacheEntry::Save(const char filename[], unsigned int level)
 		warn_once = false;
 		return false;
 	}
-	//return SUCCEEDED(PD3DX11SaveTextureToFileA(D3D::context, texture->GetTex(), D3DX11_IFF_PNG, filename));
-	return true;
+
+	ID3D11Texture2D* pNewTexture = NULL;
+	ID3D11Texture2D* pSurface = texture->GetTex();
+	D3D11_TEXTURE2D_DESC desc;
+	pSurface->GetDesc(&desc);
+
+	desc.BindFlags = 0;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
+	desc.Usage = D3D11_USAGE_STAGING;
+
+	HRESULT hr = D3D::device->CreateTexture2D(&desc, NULL, &pNewTexture);
+
+	bool saved_png = false;
+
+	if (SUCCEEDED(hr) && pNewTexture)
+	{
+		D3D::context->CopyResource(pNewTexture, pSurface);
+
+		D3D11_MAPPED_SUBRESOURCE map;
+		HRESULT hr = D3D::context->Map(pNewTexture, 0, D3D11_MAP_READ_WRITE, 0, &map);
+		if (SUCCEEDED(hr))
+		{
+			saved_png = TextureToPng((u8*)map.pData, map.RowPitch, filename, desc.Width, desc.Height);
+			D3D::context->Unmap(pNewTexture, 0);
+		}
+		SAFE_RELEASE(pNewTexture);
+	}
+
+	return saved_png;
 }
 
 void TextureCache::TCacheEntry::Load(unsigned int width, unsigned int height,
@@ -83,10 +111,10 @@ TextureCache::TCacheEntryBase* TextureCache::CreateTexture(unsigned int width,
 
 	// TODO: better debug names
 	D3D::SetDebugObjectName((ID3D11DeviceChild*)entry->texture->GetTex(), "a texture of the TextureCache");
-	D3D::SetDebugObjectName((ID3D11DeviceChild*)entry->texture->GetSRV(), "shader resource view of a texture of the TextureCache");	
+	D3D::SetDebugObjectName((ID3D11DeviceChild*)entry->texture->GetSRV(), "shader resource view of a texture of the TextureCache");
 
 	SAFE_RELEASE(pTexture);
-	
+
 	if (tex_levels != 1)
 		entry->Load(width, height, expanded_width, 0);
 
@@ -138,7 +166,7 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 			VertexShaderCache::GetSimpleVertexShader(), VertexShaderCache::GetSimpleInputLayout());
 
 		D3D::context->OMSetRenderTargets(1, &FramebufferManager::GetEFBColorTexture()->GetRTV(), FramebufferManager::GetEFBDepthTexture()->GetDSV());
-	
+
 		g_renderer->RestoreAPIState();
 	}
 

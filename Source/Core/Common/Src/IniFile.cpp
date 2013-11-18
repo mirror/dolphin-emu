@@ -37,7 +37,7 @@ void ParseLine(const std::string& line, std::string* keyOut, std::string* valueO
 
 }
 
-std::string* IniFile::Section::GetLine(const char* key, std::string* valueOut) 
+std::string* IniFile::Section::GetLine(const char* key, std::string* valueOut)
 {
 	if (!parsed)
 	{
@@ -86,10 +86,10 @@ void IniFile::Section::Set(const char* key, const char* newValue)
 	}
 }
 
-void IniFile::Section::Set(const char* key, const std::vector<std::string>& newValues) 
+void IniFile::Section::Set(const char* key, const std::vector<std::string>& newValues)
 {
 	std::string temp;
-	// Join the strings with , 
+	// Join the strings with ,
 	std::vector<std::string>::const_iterator it;
 	for (it = newValues.begin(); it != newValues.end(); ++it)
 	{
@@ -112,19 +112,17 @@ bool IniFile::Section::Get(const char* key, std::vector<std::string>& out) const
 	size_t subStart = temp.find_first_not_of(",");
 	size_t subEnd;
 
-	// split by , 
-	while (subStart != std::string::npos) {
-		
-		// Find next , 
+	// split by ,
+	while (subStart != std::string::npos)
+	{
+		// Find next ,
 		subEnd = temp.find_first_of(",", subStart);
-		if (subStart != subEnd) 
-			// take from first char until next , 
+		if (subStart != subEnd)
+			// take from first char until next ,
 			out.push_back(StripSpaces(temp.substr(subStart, subEnd - subStart)));
-	
 		// Find the next non , char
 		subStart = temp.find_first_not_of(",", subEnd);
-	} 
-	
+	}
 	return true;
 }
 
@@ -184,17 +182,17 @@ void IniFile::Section::SetLines(std::vector<std::string> _lines)
 
 const IniFile::Section* IniFile::GetSection(const char* sectionName) const
 {
-	for (std::vector<Section>::const_iterator iter = sections.begin(); iter != sections.end(); ++iter)
-		if (!strcasecmp(iter->name.c_str(), sectionName))
-			return (&(*iter));
+	for (const auto& sect : sections)
+		if (!strcasecmp(sect.name.c_str(), sectionName))
+			return (&(sect));
 	return 0;
 }
 
 IniFile::Section* IniFile::GetSection(const char* sectionName)
 {
-	for (std::vector<Section>::iterator iter = sections.begin(); iter != sections.end(); ++iter)
-		if (!strcasecmp(iter->name.c_str(), sectionName))
-			return (&(*iter));
+	for (auto& sect : sections)
+		if (!strcasecmp(sect.name.c_str(), sectionName))
+			return (&(sect));
 	return 0;
 }
 
@@ -311,16 +309,13 @@ bool IniFile::Save(const char* filename)
 		return false;
 	}
 
-	for (auto iter = sections.begin(); iter != sections.end(); ++iter)
+	for (auto& section : sections)
 	{
-		const Section& section = *iter;
-
 		if (section.keys.size() != 0 || section.lines.size() != 0)
 			out << "[" << section.name << "]" << std::endl;
 
-		for (auto liter = section.lines.begin(); liter != section.lines.end(); ++liter)
+		for (auto s : section.lines)
 		{
-			std::string s = *liter;
 			if (s != "[") // deleted
 				out << s << std::endl;
 		}
@@ -330,8 +325,6 @@ bool IniFile::Save(const char* filename)
 
 	return File::RenameSync(temp, filename);
 }
-
-
 
 // Unit test. TODO: Move to the real unit test framework.
 /*

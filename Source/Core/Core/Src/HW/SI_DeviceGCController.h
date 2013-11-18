@@ -13,7 +13,6 @@
 class CSIDevice_GCController : public ISIDevice
 {
 protected:
-	
 	// Commands
 	enum EBufferCommands
 	{
@@ -47,7 +46,7 @@ protected:
 	union UCommand
 	{
 		u32 Hex;
-		struct  
+		struct
 		{
 			u32 Parameter1	:	8;
 			u32 Parameter2	:	8;

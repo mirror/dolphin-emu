@@ -481,14 +481,16 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 
 	case NP_MSG_PONG :
 		{
-			const u32 ping = m_ping_timer.GetTimeElapsed();
+			const u32 ping = (u32)m_ping_timer.GetTimeElapsed();
 			u32 ping_key = 0;
 			packet.Do(ping_key);
 			if (packet.failure)
 				return OnDisconnect(pid);
 
 			if (m_ping_key == ping_key)
+			{
 				player.ping = ping;
+			}
 
 			Packet opacket;
 			opacket.W((MessageId)NP_MSG_PLAYER_PING_DATA);

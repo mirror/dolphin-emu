@@ -139,11 +139,11 @@ void ENetHostClient::BroadcastPacket(Packet&& packet, ENetPeer* except)
 		u16 seq = m_GlobalSequenceNumber++;
 		m_OutgoingPacketInfo.push_back(OutgoingPacketInfo(std::move(packet), except, seq, m_GlobalTicker++));
 		size_t peer = 0;
-		for (auto it = m_PeerInfo.begin(); it != m_PeerInfo.end(); ++it, ++peer)
+		for (auto& pi : m_PeerInfo)
 		{
-			if (&m_Host->peers[peer] == except)
+			if (&m_Host->peers[peer++] == except)
 				continue;
-			(*it).m_GlobalSeqToSeq[seq] = (*it).m_OutgoingSequenceNumber++;
+			pi.m_GlobalSeqToSeq[seq] = pi.m_OutgoingSequenceNumber++;
 		}
 	}
 	else
@@ -228,9 +228,8 @@ void ENetHostClient::ProcessPacketQueue()
 			continue;
 		Packet p;
 		auto& pi = m_PeerInfo[peer - m_Host->peers];
-		for (auto it = m_OutgoingPacketInfo.begin(); it != m_OutgoingPacketInfo.end(); ++it)
+		for (OutgoingPacketInfo& info : m_OutgoingPacketInfo)
 		{
-			OutgoingPacketInfo& info = *it;
 			if (info.m_Except == peer)
 				continue;
 			if (pi.m_ConnectTicker > info.m_Ticker)
@@ -612,11 +611,11 @@ void TraversalClient::ResendPacket(OutgoingTraversalPacketInfo* info)
 void TraversalClient::HandleResends()
 {
 	enet_uint32 now = enet_time_get();
-	for (auto it = m_OutgoingTraversalPackets.begin(); it != m_OutgoingTraversalPackets.end(); ++it)
+	for (auto& tpi : m_OutgoingTraversalPackets)
 	{
-		if (now - it->sendTime >= (u32) (300 * it->tries))
+		if (now - tpi.sendTime >= (u32) (300 * tpi.tries))
 		{
-			if (it->tries >= 5)
+			if (tpi.tries >= 5)
 			{
 				OnFailure(ResendTimeout);
 				m_OutgoingTraversalPackets.clear();
@@ -624,7 +623,7 @@ void TraversalClient::HandleResends()
 			}
 			else
 			{
-				ResendPacket(&*it);
+				ResendPacket(&tpi);
 			}
 		}
 	}

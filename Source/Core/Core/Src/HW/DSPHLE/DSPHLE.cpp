@@ -42,8 +42,9 @@ struct DSPState
 	}
 };
 
-bool DSPHLE::Initialize(bool bWii, bool bDSPThread)
+bool DSPHLE::Initialize(void *hWnd, bool bWii, bool bDSPThread)
 {
+	m_hWnd = hWnd;
 	m_bWii = bWii;
 	m_pUCode = NULL;
 	m_lastUCode = NULL;
@@ -252,7 +253,7 @@ void DSPHLE::DSP_WriteMailBoxLow(bool _CPUMailbox, unsigned short _Value)
 		m_dspState.CPUMailbox = (m_dspState.CPUMailbox & 0xFFFF0000) | _Value;
 		SendMailToDSP(m_dspState.CPUMailbox);
 		// Mail sent so clear MSB to show that it is progressed
-		m_dspState.CPUMailbox &= 0x7FFFFFFF; 
+		m_dspState.CPUMailbox &= 0x7FFFFFFF;
 	}
 	else
 	{
@@ -265,7 +266,7 @@ void DSPHLE::InitMixer()
 	unsigned int AISampleRate, DACSampleRate;
 	AudioInterface::Callback_GetSampleRate(AISampleRate, DACSampleRate);
 	delete soundStream;
-	soundStream = AudioCommon::InitSoundStream(new HLEMixer(this, AISampleRate, DACSampleRate, 48000));
+	soundStream = AudioCommon::InitSoundStream(new HLEMixer(this, AISampleRate, DACSampleRate, 48000), m_hWnd);
 	if(!soundStream) PanicAlert("Error starting up sound stream");
 	// Mixer is initialized
 	m_InitMixer = true;
@@ -333,5 +334,5 @@ void DSPHLE::DSP_ClearAudioBuffer(bool mute)
 void DSPHLE::PauseAndLock(bool doLock, bool unpauseOnUnlock)
 {
 	if (doLock || unpauseOnUnlock)
-		DSP_ClearAudioBuffer(doLock); 
+		DSP_ClearAudioBuffer(doLock);
 }

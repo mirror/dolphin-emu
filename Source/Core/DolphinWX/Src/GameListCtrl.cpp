@@ -10,6 +10,7 @@
 #include <wx/filename.h>
 
 #include <algorithm>
+#include <cinttypes>
 #include <memory>
 
 #include "FileSearch.h"
@@ -63,6 +64,7 @@ static int CompareGameListItems(const GameListItem* iso1, const GameListItem* is
 
 	int indexOne = iso1->GetLang();
 	int indexOther = iso2->GetLang();
+
 	switch(sortData)
 	{
 		case CGameListCtrl::COLUMN_TITLE:
@@ -292,7 +294,7 @@ void CGameListCtrl::Update()
 #else
 		const int platform_padding = 8;
 #endif
-		
+
 		// set initial sizes for columns
 		SetColumnWidth(COLUMN_DUMMY,0);
 		SetColumnWidth(COLUMN_PLATFORM, 35 + platform_padding);
@@ -360,15 +362,15 @@ void CGameListCtrl::Update()
 wxString NiceSizeFormat(u64 _size)
 {
 	const char* const unit_symbols[] = {"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"};
-	
+
 	auto const unit = Log2(std::max<u64>(_size, 1)) / 10;
 	auto const unit_size = (1 << (unit * 10));
-	
+
 	// ugly rounding integer math
 	auto const value = (_size + unit_size / 2) / unit_size;
 	auto const frac = (_size % unit_size * 10 + unit_size / 2) / unit_size % 10;
 
-	return StrToWxStr(StringFromFormat("%llu.%llu %s", value, frac, unit_symbols[unit]));
+	return StrToWxStr(StringFromFormat("%" PRIu64 ".%" PRIu64 " %s", value, frac, unit_symbols[unit]));
 }
 
 void CGameListCtrl::InsertItemInReportView(long _Index)
@@ -393,10 +395,8 @@ void CGameListCtrl::InsertItemInReportView(long _Index)
 	// Set the game's banner in the second column
 	SetItemColumnImage(_Index, COLUMN_BANNER, ImageIndex);
 
-	int SelectedLanguage = SConfig::GetInstance().m_LocalCoreStartupParameter.SelectedLanguage;
-	
-	SelectedLanguage = rISOFile.GetLang();
-	
+	int SelectedLanguage = rISOFile.GetLang();
+
 	std::string const name = rISOFile.GetName(SelectedLanguage);
 	SetItem(_Index, COLUMN_TITLE, StrToWxStr(name), -1);
 
@@ -456,15 +456,15 @@ void CGameListCtrl::ScanForISOs()
 		{
 			File::FSTEntry FST_Temp;
 			File::ScanDirectoryTree(Directories[i], FST_Temp);
-			for (u32 j = 0; j < FST_Temp.children.size(); j++)
+			for (auto& Entry : FST_Temp.children)
 			{
-				if (FST_Temp.children[j].isDirectory)
+				if (Entry.isDirectory)
 				{
 					bool duplicate = false;
-					for (u32 k = 0; k < Directories.size(); k++)
+					for (auto& Directory : Directories)
 					{
-						if (strcmp(Directories[k].c_str(),
-									FST_Temp.children[j].physicalName.c_str()) == 0)
+						if (strcmp(Directory.c_str(),
+									Entry.physicalName.c_str()) == 0)
 						{
 							duplicate = true;
 							break;
@@ -472,7 +472,7 @@ void CGameListCtrl::ScanForISOs()
 					}
 					if (!duplicate)
 						Directories.push_back(
-								FST_Temp.children[j].physicalName.c_str());
+								Entry.physicalName.c_str());
 				}
 			}
 		}
@@ -520,7 +520,7 @@ void CGameListCtrl::ScanForISOs()
 			if (dialog.WasCancelled())
 				break;
 
-			std::auto_ptr<GameListItem> iso_file(new GameListItem(rFilenames[i]));
+			std::unique_ptr<GameListItem> iso_file(new GameListItem(rFilenames[i]));
 			const GameListItem& ISOFile = *iso_file;
 
 			if (ISOFile.IsValid())
@@ -584,9 +584,9 @@ void CGameListCtrl::ScanForISOs()
 	{
 		const std::vector<std::string> drives = cdio_get_devices();
 
-		for (std::vector<std::string>::const_iterator iter = drives.begin(); iter != drives.end(); ++iter)
+		for (const auto& drive : drives)
 		{
-			std::unique_ptr<GameListItem> gli(new GameListItem(*iter));
+			std::unique_ptr<GameListItem> gli(new GameListItem(drive));
 
 			if (gli->IsValid())
 				m_ISOFiles.push_back(gli.release());
@@ -813,7 +813,7 @@ void CGameListCtrl::OnLeftClick(wxMouseEvent& event)
 }
 
 void CGameListCtrl::OnRightClick(wxMouseEvent& event)
-{	
+{
 	// Focus the clicked item.
 	int flags;
 	long item = HitTest(event.GetPosition(), flags);
@@ -875,7 +875,6 @@ void CGameListCtrl::AppendContextMenuOptions(wxMenu* menu)
 			menu->Append(IDM_HOSTNETPLAY, _("Host &Netplay Game"));
 		menu->AppendSeparator();
 
-
 		if (selected_iso && selected_iso->GetPlatform() != GameListItem::GAMECUBE_DISC)
 		{
 			menu->Append(IDM_OPENSAVEFOLDER, _("Open Wii &save folder"));
@@ -897,7 +896,7 @@ void CGameListCtrl::AppendContextMenuOptions(wxMenu* menu)
 		{
 			if (selected_iso->IsCompressed())
 				menu->Append(IDM_COMPRESSGCM, _("Decompress ISO..."));
-			else if (selected_iso->GetFileName().substr(selected_iso->GetFileName().find_last_of(".")) != ".ciso" 
+			else if (selected_iso->GetFileName().substr(selected_iso->GetFileName().find_last_of(".")) != ".ciso"
 					 && selected_iso->GetFileName().substr(selected_iso->GetFileName().find_last_of(".")) != ".wbfs")
 				menu->Append(IDM_COMPRESSGCM, _("Compress ISO..."));
 		}
@@ -1148,7 +1147,7 @@ void CGameListCtrl::CompressSelection(bool _compress)
 				if (wxFileExists(StrToWxStr(OutputFileName)) &&
 						wxMessageBox(
 							wxString::Format(_("The file %s already exists.\nDo you wish to replace it?"),
-								StrToWxStr(OutputFileName)), 
+								StrToWxStr(OutputFileName)),
 							_("Confirm File Overwrite"),
 							wxYES_NO) == wxNO)
 					continue;
@@ -1176,7 +1175,7 @@ void CGameListCtrl::CompressSelection(bool _compress)
 				if (wxFileExists(StrToWxStr(OutputFileName)) &&
 						wxMessageBox(
 							wxString::Format(_("The file %s already exists.\nDo you wish to replace it?"),
-								StrToWxStr(OutputFileName)), 
+								StrToWxStr(OutputFileName)),
 							_("Confirm File Overwrite"),
 							wxYES_NO) == wxNO)
 					continue;
@@ -1237,7 +1236,7 @@ void CGameListCtrl::OnCompressGCM(wxCommandEvent& WXUNUSED (event))
 					StrToWxStr(FilePath),
 					StrToWxStr(FileName) + _T(".gcz"),
 					wxEmptyString,
-					_("All compressed GC/Wii ISO files (gcz)") + 
+					_("All compressed GC/Wii ISO files (gcz)") +
 						wxString::Format(wxT("|*.gcz|%s"), wxGetTranslation(wxALL_FILES)),
 					wxFD_SAVE,
 					this);
@@ -1246,7 +1245,7 @@ void CGameListCtrl::OnCompressGCM(wxCommandEvent& WXUNUSED (event))
 			return;
 	} while (wxFileExists(path) &&
 			wxMessageBox(
-				wxString::Format(_("The file %s already exists.\nDo you wish to replace it?"), path.c_str()), 
+				wxString::Format(_("The file %s already exists.\nDo you wish to replace it?"), path.c_str()),
 				_("Confirm File Overwrite"),
 				wxYES_NO) == wxNO);
 

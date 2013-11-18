@@ -59,15 +59,15 @@ struct VBOCache {
 };
 static std::map<u64,VBOCache> s_VBO;
 
-bool SaveTexture(const char* filename, u32 textarget, u32 tex, int virtual_width, int virtual_height, unsigned int level)
+bool SaveTexture(const std::string filename, u32 textarget, u32 tex, int virtual_width, int virtual_height, unsigned int level)
 {
 #ifndef USE_GLES3
 	int width = std::max(virtual_width >> level, 1);
 	int height = std::max(virtual_height >> level, 1);
-	std::vector<u32> data(width * height);
+	u8* data = new u8[width * height * 4];
 	glActiveTexture(GL_TEXTURE0+9);
 	glBindTexture(textarget, tex);
-	glGetTexImage(textarget, level, GL_BGRA, GL_UNSIGNED_BYTE, &data[0]);
+	glGetTexImage(textarget, level, GL_RGBA, GL_UNSIGNED_BYTE, data);
 	glBindTexture(textarget, 0);
 	TextureCache::SetStage();
 
@@ -75,10 +75,12 @@ bool SaveTexture(const char* filename, u32 textarget, u32 tex, int virtual_width
 	if (GL_NO_ERROR != err)
 	{
 		PanicAlert("Can't save texture, GL Error: %s", gluErrorString(err));
+		delete[] data;
 		return false;
 	}
-
-	return SaveTGA(filename, width, height, &data[0]);
+	bool success = TextureToPng(data, width * 4, filename, width, height, true);
+	delete[] data;
+	return success;
 #else
 	return false;
 #endif
@@ -88,9 +90,9 @@ TextureCache::TCacheEntry::~TCacheEntry()
 {
 	if (texture)
 	{
-		for(int i=0; i<8; i++)
-			if(s_Textures[i] == texture)
-				s_Textures[i] = 0;
+		for(auto& gtex : s_Textures)
+			if(gtex == texture)
+				gtex = 0;
 		glDeleteTextures(1, &texture);
 		texture = 0;
 	}
@@ -119,19 +121,15 @@ void TextureCache::TCacheEntry::Bind(unsigned int stage)
 			glActiveTexture(GL_TEXTURE0 + stage);
 			s_ActiveTexture = stage;
 		}
-		
+
 		glBindTexture(GL_TEXTURE_2D, texture);
 		s_Textures[stage] = texture;
 	}
 }
 
-bool TextureCache::TCacheEntry::Save(const char filename[], unsigned int level)
+bool TextureCache::TCacheEntry::Save(const std::string filename, unsigned int level)
 {
-	// TODO: make ogl dump PNGs
-	std::string tga_filename(filename);
-	tga_filename.replace(tga_filename.size() - 3, 3, "tga");
-
-	return SaveTexture(tga_filename.c_str(), GL_TEXTURE_2D, texture, virtual_width, virtual_height, level);
+	return SaveTexture(filename, GL_TEXTURE_2D, texture, virtual_width, virtual_height, level);
 }
 
 TextureCache::TCacheEntryBase* TextureCache::CreateTexture(unsigned int width,
@@ -148,7 +146,7 @@ TextureCache::TCacheEntryBase* TextureCache::CreateTexture(unsigned int width,
 		{
 		default:
 		case PC_TEX_FMT_NONE:
-			PanicAlert("Invalid PC texture format %i", pcfmt); 
+			PanicAlert("Invalid PC texture format %i", pcfmt);
 		case PC_TEX_FMT_BGRA32:
 			gl_format = GL_BGRA;
 			gl_iformat = GL_RGBA;
@@ -200,7 +198,7 @@ TextureCache::TCacheEntryBase* TextureCache::CreateTexture(unsigned int width,
 	entry.pcfmt = pcfmt;
 
 	entry.m_tex_levels = tex_levels;
-	
+
 	entry.Load(width, height, expanded_width, 0);
 
 	return &entry;
@@ -264,7 +262,7 @@ TextureCache::TCacheEntryBase* TextureCache::CreateRenderTargetTexture(
 
 	glTexImage2D(GL_TEXTURE_2D, 0, gl_iformat, scaled_tex_w, scaled_tex_h, 0, gl_format, gl_type, NULL);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	
+
 	glGenFramebuffers(1, &entry->framebuffer);
 	FramebufferManager::SetFramebuffer(entry->framebuffer);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, entry->texture, 0);
@@ -355,7 +353,7 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 
 			glBindBuffer(GL_ARRAY_BUFFER, vbo_it->second.vbo);
 			glBufferData(GL_ARRAY_BUFFER, 4*4*sizeof(GLfloat), vertices, GL_STREAM_DRAW);
-			
+
 			vbo_it->second.targetSource = targetSource;
 		}
 
@@ -370,10 +368,10 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 		int encoded_size = TextureConverter::EncodeToRamFromTexture(
 			addr,
 			read_texture,
-			srcFormat == PIXELFMT_Z24, 
-			isIntensity, 
-			dstFormat, 
-			scaleByHalf, 
+			srcFormat == PIXELFMT_Z24,
+			isIntensity,
+			dstFormat,
+			scaleByHalf,
 			srcRect);
 
 		u8* dst = Memory::GetPointer(addr);
@@ -395,8 +393,8 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 	if (g_ActiveConfig.bDumpEFBTarget)
 	{
 		static int count = 0;
-		SaveTexture(StringFromFormat("%sefb_frame_%i.tga", File::GetUserPath(D_DUMPTEXTURES_IDX).c_str(),
-			count++).c_str(), GL_TEXTURE_2D, texture, virtual_width, virtual_height, 0);
+		SaveTexture(StringFromFormat("%sefb_frame_%i.png", File::GetUserPath(D_DUMPTEXTURES_IDX).c_str(),
+			count++), GL_TEXTURE_2D, texture, virtual_width, virtual_height, 0);
 	}
 
 	g_renderer->RestoreAPIState();
@@ -404,7 +402,7 @@ void TextureCache::TCacheEntry::FromRenderTarget(u32 dstAddr, unsigned int dstFo
 
 TextureCache::TextureCache()
 {
-	const char *pColorMatrixProg = 
+	const char *pColorMatrixProg =
 		"uniform sampler2DRect samp9;\n"
 		"uniform vec4 colmat[7];\n"
 		"VARYIN vec2 uv0;\n"
@@ -449,8 +447,8 @@ TextureCache::TextureCache()
 
 	s_ActiveTexture = -1;
 	s_NextStage = -1;
-	for(int i=0; i<8; i++)
-		s_Textures[i] = -1;
+	for(auto& gtex : s_Textures)
+		gtex = -1;
 }
 
 
@@ -458,10 +456,10 @@ TextureCache::~TextureCache()
 {
 	s_ColorMatrixProgram.Destroy();
 	s_DepthMatrixProgram.Destroy();
-	
-	for(std::map<u64, VBOCache>::iterator it = s_VBO.begin(); it != s_VBO.end(); it++) {
-		glDeleteBuffers(1, &it->second.vbo);
-		glDeleteVertexArrays(1, &it->second.vao);
+
+	for(auto& cache : s_VBO) {
+		glDeleteBuffers(1, &cache.second.vbo);
+		glDeleteVertexArrays(1, &cache.second.vao);
 	}
 	s_VBO.clear();
 }

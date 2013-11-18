@@ -260,7 +260,7 @@ void DoState(PointerWrap &p)
 	p.DoPOD(g_StatusReg);
 	p.Do(g_EXIClockCount);
 	p.Do(g_SIBuffer);
-}	
+}
 
 
 void Init()
@@ -273,7 +273,7 @@ void Init()
 	}
 
 	for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
-	{	
+	{
 		g_Channel[i].m_Out.Hex = 0;
 		g_Channel[i].m_InHi.Hex = 0;
 		g_Channel[i].m_InLo.Hex = 0;

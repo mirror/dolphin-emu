@@ -83,7 +83,7 @@ int CSIDevice_GCController::RunBuffer(u8* _pBuffer, int _iLength)
 			for (int i = 0; i < (int)sizeof(SOrigin); i++)
 			{
 				_pBuffer[i ^ 3] = *pCalibration++;
-			}				
+			}
 		}
 		break;
 
@@ -92,7 +92,7 @@ int CSIDevice_GCController::RunBuffer(u8* _pBuffer, int _iLength)
 		{
 			ERROR_LOG(SERIALINTERFACE, "Unknown SI command     (0x%x)", command);
 			PanicAlert("SI: Unknown command (0x%x)", command);
-		}			
+		}
 		break;
 	}
 

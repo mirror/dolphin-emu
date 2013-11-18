@@ -390,11 +390,11 @@ void NetPlayDiag::UpdateHostLabel()
 	}
 
 	auto set = netplay_server->GetInterfaceSet();
-	for (auto it = set.begin(); it != set.end(); ++it)
+	for (const std::string& iface : set)
 	{
-		wxString kind = EnLabel(*it);
-		if (m_host_type_choice->FindString(kind) == wxNOT_FOUND)
-			m_host_type_choice->Append(kind);
+		wxString wxIface = EnLabel(iface);
+		if (m_host_type_choice->FindString(wxIface) == wxNOT_FOUND)
+			m_host_type_choice->Append(wxIface);
 	}
 	for (unsigned i = 1, count = m_host_type_choice->GetCount(); i != count; i++)
 	{
@@ -646,8 +646,8 @@ PadMapDiag::PadMapDiag(wxWindow* const parent, PadMapping map[], PadMapping wiim
 
 	wxArrayString player_names;
 	player_names.Add(_("None"));
-	for (unsigned int i = 0; i < m_player_list.size(); i++)
-		player_names.Add(m_player_list[i]->name);
+	for (auto& player : m_player_list)
+		player_names.Add(player->name);
 
 	wxString wiimote_names[5];
 	wiimote_names[0] = _("None");

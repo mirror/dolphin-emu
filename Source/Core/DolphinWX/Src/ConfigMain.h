@@ -126,7 +126,7 @@ private:
 	wxCheckBox* EnableCheats;
 	wxChoice* Framelimit;
 	wxCheckBox* UseFPSForLimiting;
-	
+
 	// Advanced
 	wxCheckBox* EnableOpenCL;
 	wxRadioBox* CPUEngine;

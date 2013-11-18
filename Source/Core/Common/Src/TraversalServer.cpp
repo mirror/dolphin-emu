@@ -252,11 +252,11 @@ static void ResendPackets()
 		++it;
 	}
 
-	for (auto it = todoFailures.begin(); it != todoFailures.end(); ++it)
+	for (const auto& p : todoFailures)
 	{
-		TraversalPacket* fail = AllocPacket(MakeSinAddr(it->first));
+		TraversalPacket* fail = AllocPacket(MakeSinAddr(p.first));
 		fail->type = TraversalPacketConnectFailed;
-		fail->connectFailed.requestId = it->second;
+		fail->connectFailed.requestId = p.second;
 		fail->connectFailed.reason = TraversalConnectFailedClientDidntRespond;
 	}
 }

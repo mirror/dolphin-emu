@@ -5,7 +5,7 @@
 
 
 // OpenGL Backend Documentation
-/* 
+/*
 
 1.1 Display settings
 
@@ -110,16 +110,16 @@ void GetShaders(std::vector<std::string> &shaders)
 		File::GetUserPath(D_SHADERS_IDX),
 		File::GetSysDirectory() + SHADERS_DIR DIR_SEP,
 	};
-	for (size_t i = 0; i < ArraySize(directories); ++i)
+	for (auto& directory : directories)
 	{
-		if (!File::IsDirectory(directories[i]))
+		if (!File::IsDirectory(directory))
 			continue;
 
 		File::FSTEntry entry;
-		File::ScanDirectoryTree(directories[i], entry);
-		for (u32 j = 0; j < entry.children.size(); j++)
+		File::ScanDirectoryTree(directory, entry);
+		for (auto& file : entry.children)
 		{
-			std::string name = entry.children[j].virtualName.c_str();
+			std::string name = file.virtualName.c_str();
 			if (name.size() < 5)
 				continue;
 			if (strcasecmp(name.substr(name.size() - 5).c_str(), ".glsl"))
@@ -182,7 +182,7 @@ bool VideoBackend::Initialize(void *&window_handle)
 	if (!GLInterface->Create(window_handle))
 		return false;
 
-	// Do our OSD callbacks	
+	// Do our OSD callbacks
 	OSD::DoCallbacks(OSD::OSD_INIT);
 
 	s_BackendInitialized = true;
@@ -233,14 +233,14 @@ void VideoBackend::Shutdown()
 {
 	s_BackendInitialized = false;
 
-	// Do our OSD callbacks	
+	// Do our OSD callbacks
 	OSD::DoCallbacks(OSD::OSD_SHUTDOWN);
 
 	GLInterface->Shutdown();
 }
 
 void VideoBackend::Video_Cleanup() {
-	
+
 	if (g_renderer)
 	{
 		s_efbAccessRequested = false;

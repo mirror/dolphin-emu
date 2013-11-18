@@ -130,7 +130,7 @@ namespace HwRasterizer
 		glDepthFunc(GL_LEQUAL);
 
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		
+
 		CreateShaders();
 		GL_REPORT_ERRORD();
 	}
@@ -141,7 +141,7 @@ namespace HwRasterizer
 		u32 imageAddr = texUnit.texImage3[0].image_base;
 		// Texture Rectangle uses pixel coordinates
 		// While GLES uses texture coordinates
-#ifdef USE_GLES	
+#ifdef USE_GLES
 		width = texUnit.texImage0[0].width;
 		height = texUnit.texImage0[0].height;
 #else
@@ -303,7 +303,7 @@ namespace HwRasterizer
 		{
 			glUseProgram(clearProg);
 			glVertexAttribPointer(clear_apos, 3, GL_FLOAT, GL_FALSE, 0, verts);
-			glUniform4f(clear_ucol, r, g, b, a);	
+			glUniform4f(clear_ucol, r, g, b, a);
 			glEnableVertexAttribArray(col_apos);
 				glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 			glDisableVertexAttribArray(col_apos);
@@ -329,15 +329,12 @@ namespace HwRasterizer
 		int image_width = texImage0.width;
 		int image_height = texImage0.height;
 
-		DebugUtil::GetTextureBGRA(temp, 0, 0, image_width, image_height);
+		DebugUtil::GetTextureRGBA(temp, 0, 0, image_width, image_height);
 
 		glGenTextures(1, (GLuint *)&texture);
 		glBindTexture(TEX2D, texture);
-#ifdef USE_GLES
 		glTexImage2D(TEX2D, 0, GL_RGBA, (GLsizei)image_width, (GLsizei)image_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, temp);
-#else
-		glTexImage2D(TEX2D, 0, GL_RGBA8, (GLsizei)image_width, (GLsizei)image_height, 0, GL_BGRA, GL_UNSIGNED_BYTE, temp);
-#endif
+
 		GL_REPORT_ERRORD();
 	}
 

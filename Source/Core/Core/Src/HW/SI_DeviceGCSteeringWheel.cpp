@@ -23,7 +23,6 @@ CSIDevice_GCSteeringWheel::CSIDevice_GCSteeringWheel(SIDevices device, int _iDev
 	: CSIDevice_GCController(device, _iDeviceNumber)
 {}
 
-
 // SendCommand
 void CSIDevice_GCSteeringWheel::SendCommand(u32 _Cmd, u8 _Poll)
 {

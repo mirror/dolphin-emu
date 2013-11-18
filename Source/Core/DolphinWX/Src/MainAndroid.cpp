@@ -94,8 +94,8 @@ void Host_GetRenderWindowSize(int& x, int& y, int& width, int& height)
 {
 	x = SConfig::GetInstance().m_LocalCoreStartupParameter.iRenderWindowXPos;
 	y = SConfig::GetInstance().m_LocalCoreStartupParameter.iRenderWindowYPos;
-	width = g_width; 	
-	height = g_height; 
+	width = g_width;
+	height = g_height;
 }
 
 void Host_RequestRenderWindowSize(int width, int height) {}
@@ -227,12 +227,12 @@ JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_UnPauseEmula
 {
 	PowerPC::Start();
 }
-JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_PauseEmulation(JNIEnv *env, jobject obj) 
+JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_PauseEmulation(JNIEnv *env, jobject obj)
 {
 	PowerPC::Pause();
 }
 
-JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_StopEmulation(JNIEnv *env, jobject obj) 
+JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_StopEmulation(JNIEnv *env, jobject obj)
 {
 	Core::Stop();
 	updateMainFrameEvent.Set(); // Kick the waiting event
@@ -278,10 +278,22 @@ JNIEXPORT jstring JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_GetTitle(
 	env->ReleaseStringUTFChars(jFile, File);
 	return env->NewStringUTF(Name.c_str());
 }
+
 JNIEXPORT jstring JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_GetVersionString(JNIEnv *env, jobject obj)
 {
 	return env->NewStringUTF(scm_rev_str);
 }
+
+JNIEXPORT jboolean JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_SupportsNEON(JNIEnv *env, jobject obj)
+{
+	return cpu_info.bNEON;
+}
+
+JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_SaveScreenShot(JNIEnv *env, jobject obj)
+{
+	Core::SaveScreenShot();
+}
+
 JNIEXPORT jstring JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_GetConfig(JNIEnv *env, jobject obj, jstring jFile, jstring jKey, jstring jValue, jstring jDefault)
 {
 	IniFile ini;
@@ -289,12 +301,12 @@ JNIEXPORT jstring JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_GetConfig
 	const char *Key = env->GetStringUTFChars(jKey, NULL);
 	const char *Value = env->GetStringUTFChars(jValue, NULL);
 	const char *Default = env->GetStringUTFChars(jDefault, NULL);
-	
+
 	ini.Load(File::GetUserPath(D_CONFIG_IDX) + std::string(File));
 	std::string value;
-	
+
 	ini.Get(Key, Value, &value, Default);
-	
+
 	env->ReleaseStringUTFChars(jFile, File);
 	env->ReleaseStringUTFChars(jKey, Key);
 	env->ReleaseStringUTFChars(jValue, Value);
@@ -309,7 +321,7 @@ JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_SetConfig(JN
 	const char *Key = env->GetStringUTFChars(jKey, NULL);
 	const char *Value = env->GetStringUTFChars(jValue, NULL);
 	const char *Default = env->GetStringUTFChars(jDefault, NULL);
-	
+
 	ini.Load(File::GetUserPath(D_CONFIG_IDX) + std::string(File));
 
 	ini.Set(Key, Value, Default);

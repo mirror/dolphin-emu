@@ -2,7 +2,8 @@
 // Licensed under GPLv2
 // Refer to the license.txt file included.
 
-#include <math.h>
+#include <cinttypes>
+#include <cmath>
 
 #include "Timer.h"
 
@@ -33,6 +34,7 @@
 #include "FPSCounter.h"
 #include "ConfigManager.h"
 #include <strsafe.h>
+#include "ImageWrite.h"
 
 namespace DX11
 {
@@ -293,7 +295,7 @@ bool Renderer::CheckForResize()
 
 	// Sanity check
 	if ((client_width != Renderer::GetBackbufferWidth() ||
-		client_height != Renderer::GetBackbufferHeight()) && 
+		client_height != Renderer::GetBackbufferHeight()) &&
 		client_width >= 4 && client_height >= 4)
 	{
 		return true;
@@ -449,7 +451,7 @@ u32 Renderer::AccessEFB(EFBAccessType type, u32 x, u32 y, u32 poke_data)
 		else if (bpmem.zcontrol.pixel_format == PIXELFMT_RGB565_Z16)
 		{
 			ret = RGBA8ToRGB565ToRGBA8(ret);
-		}			
+		}
 		if(bpmem.zcontrol.pixel_format != PIXELFMT_RGBA6_Z24)
 		{
 			ret |= 0xFF000000;
@@ -537,7 +539,7 @@ void Renderer::ClearScreen(const EFBRectangle& rc, bool colorEnable, bool alphaE
 
 	// Update the view port for clearing the picture
 	TargetRectangle targetRc = Renderer::ConvertEFBRectangle(rc);
-	D3D11_VIEWPORT vp = CD3D11_VIEWPORT((float)targetRc.left, (float)targetRc.top, (float)targetRc.GetWidth(), (float)targetRc.GetHeight(), 0.f, 1.f); 
+	D3D11_VIEWPORT vp = CD3D11_VIEWPORT((float)targetRc.left, (float)targetRc.top, (float)targetRc.GetWidth(), (float)targetRc.GetHeight(), 0.f, 1.f);
 	D3D::context->RSSetViewports(1, &vp);
 
 	// Color is passed in bgra mode so we need to convert it to rgba
@@ -689,24 +691,15 @@ bool Renderer::SaveScreenshot(const std::string &filename, const TargetRectangle
 	D3D11_BOX box = CD3D11_BOX(rc.left, rc.top, 0, rc.right, rc.bottom, 1);
 	D3D::context->CopySubresourceRegion(s_screenshot_texture, 0, 0, 0, 0, (ID3D11Resource*)D3D::GetBackBuffer()->GetTex(), 0, &box);
 
-	// D3DX11SaveTextureToFileA doesn't allow us to ignore the alpha channel, so we need to strip it out ourselves
 	D3D11_MAPPED_SUBRESOURCE map;
 	D3D::context->Map(s_screenshot_texture, 0, D3D11_MAP_READ_WRITE, 0, &map);
-	for (unsigned int y = 0; y < rc.GetHeight(); ++y)
-	{
-		u8* ptr = (u8*)map.pData + y * map.RowPitch + 3;
-		for (unsigned int x = 0; x < rc.GetWidth(); ++x)
-		{
-			*ptr = 0xFF;
-			ptr += 4;
-		}
-	}
+
+	bool saved_png = TextureToPng((u8*)map.pData, map.RowPitch, filename, rc.GetWidth(), rc.GetHeight(), false);
+
 	D3D::context->Unmap(s_screenshot_texture, 0);
 
-	// ready to be saved
-	//HRESULT hr = PD3DX11SaveTextureToFileA(D3D::context, s_screenshot_texture, D3DX11_IFF_PNG, filename.c_str());
-	HRESULT hr = 0;
-	if (SUCCEEDED(hr))
+
+	if (saved_png)
 	{
 		OSD::AddMessage(StringFromFormat("Saved %i x %i %s", rc.GetWidth(),
 		                                 rc.GetHeight(), filename.c_str()));
@@ -716,7 +709,7 @@ bool Renderer::SaveScreenshot(const std::string &filename, const TargetRectangle
 		OSD::AddMessage(StringFromFormat("Error saving %s", filename.c_str()));
 	}
 
-	return SUCCEEDED(hr);
+	return saved_png;
 }
 
 void formatBufferDump(const u8* in, u8* out, int w, int h, int p)
@@ -802,7 +795,7 @@ void Renderer::Swap(u32 xfbAddr, u32 fbWidth, u32 fbHeight,const EFBRectangle& r
 		{
 			xfbSource = xfbSourceList[i];
 			MathUtil::Rectangle<float> sourceRc;
-			
+
 			sourceRc.left = 0;
 			sourceRc.top = 0;
 			sourceRc.right = (float)xfbSource->texWidth;
@@ -929,7 +922,7 @@ void Renderer::Swap(u32 xfbAddr, u32 fbWidth, u32 fbHeight,const EFBRectangle& r
 	if (SConfig::GetInstance().m_ShowLag)
 	{
 		char lag[10];
-		StringCchPrintfA(lag, 10, "Lag: %llu\n", Movie::g_currentLagCount);
+		StringCchPrintfA(lag, 10, "Lag: %" PRIu64 "\n", Movie::g_currentLagCount);
 		D3D::font.DrawTextScaled(0, 18, 20, 0.0f, 0xFF00FFFF, lag);
 	}
 
@@ -1260,7 +1253,7 @@ void Renderer::SetLogicOpMode()
 		D3D11_BLEND_INV_DEST_COLOR,//10
 		D3D11_BLEND_ONE,//11
 		D3D11_BLEND_INV_SRC_COLOR,//12
-		D3D11_BLEND_INV_SRC_COLOR,//13 
+		D3D11_BLEND_INV_SRC_COLOR,//13
 		D3D11_BLEND_INV_DEST_COLOR,//14
 		D3D11_BLEND_ONE//15
 	};
@@ -1279,7 +1272,7 @@ void Renderer::SetLogicOpMode()
 		D3D11_BLEND_INV_DEST_COLOR,//10
 		D3D11_BLEND_INV_DEST_COLOR,//11
 		D3D11_BLEND_INV_SRC_COLOR,//12
-		D3D11_BLEND_ONE,//13 
+		D3D11_BLEND_ONE,//13
 		D3D11_BLEND_INV_SRC_COLOR,//14
 		D3D11_BLEND_ONE//15
 	};
@@ -1330,7 +1323,7 @@ void Renderer::SetSamplerState(int stage, int texindex)
 	const FourTexUnits &tex = bpmem.tex[texindex];
 	const TexMode0 &tm0 = tex.texMode0[stage];
 	const TexMode1 &tm1 = tex.texMode1[stage];
-	
+
 	unsigned int mip = d3dMipFilters[tm0.min_filter & 3];
 
 	if (texindex) stage += 4;

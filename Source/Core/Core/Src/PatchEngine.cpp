@@ -35,7 +35,7 @@ using namespace Common;
 namespace PatchEngine
 {
 
-const char *PatchTypeStrings[] = 
+const char *PatchTypeStrings[] =
 {
 	"byte",
 	"word",
@@ -54,10 +54,8 @@ void LoadPatchSection(const char *section, std::vector<Patch> &patches,
 	std::set<std::string> enabledNames;
 	if (const IniFile::Section* sect = localIni.GetSection(enabledSectionName.c_str()))
 	{
-		std::vector<std::string> enabledLines = sect->GetLines();
-		for (auto iter = enabledLines.begin(); iter != enabledLines.end(); ++iter)
+		for (const std::string& line : sect->GetLines())
 		{
-			const std::string& line = *iter;
 			if (line.size() != 0 && line[0] == '$')
 			{
 				std::string name = line.substr(1, line.size() - 1);
@@ -79,10 +77,8 @@ void LoadPatchSection(const char *section, std::vector<Patch> &patches,
 
 		std::vector<std::string> lines = sect->GetLines();
 
-		for (auto iter = lines.begin(); iter != lines.end(); ++iter)
+		for (auto line : lines)
 		{
-			std::string line = *iter;
-
 			if (line.size() == 0)
 				continue;
 
@@ -192,11 +188,11 @@ void LoadPatches()
 
 void ApplyPatches(const std::vector<Patch> &patches)
 {
-	for (std::vector<Patch>::const_iterator iter = patches.begin(); iter != patches.end(); ++iter)
+	for (const auto& patch : patches)
 	{
-		if (iter->active)
+		if (patch.active)
 		{
-			for (std::vector<PatchEntry>::const_iterator iter2 = iter->entries.begin(); iter2 != iter->entries.end(); ++iter2)
+			for (std::vector<PatchEntry>::const_iterator iter2 = patch.entries.begin(); iter2 != patch.entries.end(); ++iter2)
 			{
 				u32 addr = iter2->address;
 				u32 value = iter2->value;
@@ -220,7 +216,7 @@ void ApplyPatches(const std::vector<Patch> &patches)
 	}
 }
 
-void ApplyFramePatches() 
+void ApplyFramePatches()
 {
 	ApplyPatches(onFrame);
 
