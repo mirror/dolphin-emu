@@ -77,6 +77,20 @@ void NetPlayServer::UpdatePings()
 	m_update_pings = false;
 }
 
+// Does this "player" have no input devices assigned?
+bool NetPlayServer::IsSpectator(PlayerId pid)
+{
+	for (int c = 0; c < IOSync::Class::NumClasses; c++)
+	{
+		for (int i = 0; i < IOSync::Class::MaxDeviceIndex; i++)
+		{
+			if (m_device_map[c][i].first == pid)
+				return false;
+		}
+	}
+	return true;
+}
+
 void NetPlayServer::OnENetEvent(ENetEvent* event)
 {
 	// update pings every so many seconds
@@ -515,6 +529,16 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 
 	case NP_MSG_STOP_GAME:
 		{
+			if (!m_is_running)
+				break;
+			if (IsSpectator(pid))
+			{
+				// If they're a spectator, the game can keep going even after
+				// they stopped, but we need to note that they no longer can be
+				// assigned to controllers.
+				//UpdateDevicesPresent();
+				break;
+			}
 			// tell clients to stop game
 			Packet opacket;
 			opacket.W((MessageId)NP_MSG_STOP_GAME);
@@ -525,7 +549,7 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 		}
 		break;
 
-	default :
+	default:
 		PanicAlertT("Unknown message with id:%d received from player:%d Kicking player!", mid, pid);
 		// unknown message, kick the client
 		return OnDisconnect(pid);

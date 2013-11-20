@@ -30,13 +30,10 @@ TraversalClient::~TraversalClient()
 {
 	if (m_NetHost)
 	{
-		Common::Event done;
-		m_NetHost->RunOnThread([&]() {
+		m_NetHost->RunOnThreadSync([&]() {
 			ASSUME_ON(NET);
 			m_NetHost->m_TraversalClient = NULL;
-			done.Set();
 		});
-		done.Wait();
 	}
 }
 

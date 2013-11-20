@@ -33,9 +33,9 @@ public:
 	virtual ~NetPlayUI() {};
 
 	virtual void BootGame(const std::string& filename) = 0;
-	virtual void StopGame() = 0;
 
 	virtual void Update() = 0;
+	virtual void GameStopped() = 0;
 	virtual void AppendChat(const std::string& msg) = 0;
 
 	virtual void OnMsgChangeGame(const std::string& filename) = 0;
@@ -82,8 +82,7 @@ public:
 	int m_failure_reason;
 
 	bool StartGame(const std::string &path) /* ON(GUI) */;
-	bool StopGame() /* multiple threads */;
-	void Stop() /* ON(GUI) */;
+	void GameStopped() /* ON(GUI) */;
 	bool ChangeGame(const std::string& game) /* ON(GUI) */;
 	void SendChatMessage(const std::string& msg) /* ON(GUI) */;
 	void ChangeName(const std::string& name) /* ON(GUI) */;
@@ -123,6 +122,8 @@ protected:
 	IOSync::BackendNetPlay* m_backend;
 
 	u32		m_current_game;
+	bool m_received_stop_request;
+	Common::Event m_game_started_evt;
 
 	bool m_is_recording;
 
@@ -136,8 +137,5 @@ private:
 	TraversalClient* m_traversal_client;
 	Common::Event m_have_dialog_event;
 };
-
-void NetPlay_Enable(NetPlayClient* const np);
-void NetPlay_Disable();
 
 #endif

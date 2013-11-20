@@ -57,6 +57,8 @@ private:
 		u32 ping;
 		u32 current_game;
 		bool connected;
+		bool in_game;
+		//bool m_devices_present[IOSync::Class::NumClasses][IOSync::Class::MaxDeviceIndex];
 		//bool is_localhost;
 	};
 
@@ -65,6 +67,8 @@ private:
 	MessageId OnConnect(PlayerId pid, Packet& hello) ON(NET);
 	void OnDisconnect(PlayerId pid) ON(NET);
 	void UpdatePings() ON(NET);
+	bool IsSpectator(PlayerId pid);
+
 	std::vector<std::pair<std::string, std::string>> GetInterfaceListInternal();
 
 	NetSettings     m_settings;
@@ -76,16 +80,14 @@ private:
 	u32		m_current_game;
 	u32				m_target_buffer_size;
 
-	// Note about disconnects: Imagine a single player plus
-	// spectators.  The client should not have to wait for the
-	// server for each frame.  However, if the server decides to
-	// change the mapping, the client must not desync.
-	// Therefore, in lieu of more complicated solutions,
-	// disconnects that will be a surprise for the disconnected
-	// user (i.e. not a disconnect request or the user
-	// disconnecting) must be scheduled for the far future.
+	// Note about disconnects: Imagine a single player plus spectators.  The
+	// client should not have to wait for the server for each frame.  However,
+	// if the server decides to change the mapping, the client must not desync.
+	// Therefore, in lieu of more complicated solutions, disconnects should be
+	// requested rather than forced.
 
 	std::pair<PlayerId, s8> m_device_map[IOSync::Class::NumClasses][IOSync::Class::MaxDeviceIndex];
+
 
 	std::vector<Client>	m_players;
 	unsigned m_num_players;

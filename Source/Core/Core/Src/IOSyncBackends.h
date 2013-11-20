@@ -42,6 +42,7 @@ public:
 
 	// from netplay
 	void OnPacketReceived(Packet&& packet) ON(NET);
+	void Abort() ON(NET);
 	// from (arbitrarily-ish) SI
 	virtual void NewLocalSubframe() override;
 private:
@@ -70,6 +71,8 @@ private:
 	u32 m_Delay;
 	// indexed by remote device
 	DeviceInfo m_DeviceInfo[Class::NumClasses][Class::MaxDeviceIndex];
+	// Need to quit because of a NP_MSG_STOP_GAME?
+	volatile bool m_Abort;
 };
 
 }

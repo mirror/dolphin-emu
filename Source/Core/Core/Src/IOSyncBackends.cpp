@@ -68,6 +68,7 @@ BackendNetPlay::BackendNetPlay(NetPlayClient* client, u32 delay)
 	m_Client = client;
 	m_SubframeId = -1;
 	m_Delay = delay;
+	m_Abort = false;
 	NewLocalSubframe();
 }
 
@@ -124,7 +125,7 @@ Packet BackendNetPlay::DequeueReport(int classId, int index, bool* keepGoing)
 	while (1)
 	{
 		//printf("dev=%llu past=%llu\n", deviceInfo.m_SubframeId, m_PastSubframeId);
-		if (!isConnected || deviceInfo.m_SubframeId > m_PastSubframeId)
+		if (!isConnected || m_Abort || deviceInfo.m_SubframeId > m_PastSubframeId)
 		{
 			*keepGoing = false;
 			return PWBuffer();
@@ -172,6 +173,11 @@ void BackendNetPlay::DoState(PointerWrap& p)
 void BackendNetPlay::OnPacketReceived(Packet&& packet)
 {
 	m_PacketsPendingProcessing.Push(std::move(packet));
+}
+
+void BackendNetPlay::Abort()
+{
+	m_Abort = true;
 }
 
 void BackendNetPlay::ProcessIncomingPackets()

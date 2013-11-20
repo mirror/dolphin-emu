@@ -19,16 +19,14 @@
 #include "ConfigManager.h"
 #include "HW/WiimoteEmu/WiimoteEmu.h"
 
-std::mutex crit_netplay_client;
-static NetPlayClient * netplay_client = NULL;
 NetSettings g_NetPlaySettings;
+static volatile bool g_is_running;
 
 #define RPT_SIZE_HACK	(1 << 16)
 NetPlayClient::~NetPlayClient()
 {
-	// not perfect
 	if (m_is_running)
-		StopGame();
+		PanicAlert("NetPlayClient destroyed while still running");
 
 	if (m_net_host)
 		m_net_host->Reset();
@@ -47,6 +45,7 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 	m_state_callback = stateCallback;
 	m_local_name = name;
 	m_backend = NULL;
+	m_received_stop_request = false;
 
 	size_t pos = hostSpec.find(':');
 	if (pos != std::string::npos)
@@ -237,17 +236,14 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 			packet.Do(m_delay);
 			if (packet.failure)
 				return OnDisconnect(InvalidPacket);
-			if (!m_backend)
-				break;
 			/* fall through */
 		}
-
 	case NP_MSG_DISCONNECT_DEVICE:
 	case NP_MSG_CONNECT_DEVICE:
 	case NP_MSG_REPORT:
 		{
 			if (!m_backend)
-				return OnDisconnect(InvalidPacket);
+				break;
 			packet.readOff = oldOff;
 			m_backend->OnPacketReceived(std::move(packet));
 			break;
@@ -264,6 +260,9 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 
 	case NP_MSG_START_GAME :
 		{
+			if (m_is_running)
+				return OnDisconnect(InvalidPacket);
+
 			{
 				std::lock_guard<std::recursive_mutex> lk(m_crit);
 				packet.Do(m_current_game);
@@ -280,22 +279,17 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 					return OnDisconnect(InvalidPacket);
 			}
 
+			m_received_stop_request = false;
 			m_dialog->OnMsgStartGame();
 		}
 		break;
 
 	case NP_MSG_STOP_GAME :
 		{
+			m_received_stop_request = true;
+			if (m_backend)
+				m_backend->Abort();
 			m_dialog->OnMsgStopGame();
-		}
-		break;
-
-	case NP_MSG_DISABLE_GAME :
-		{
-			PanicAlertT("Other client disconnected while game is running!! NetPlay is disabled. You manually stop the game.");
-			std::lock_guard<std::recursive_mutex> lk(m_crit);
-			m_is_running = false;
-			NetPlay_Disable();
 		}
 		break;
 
@@ -348,13 +342,15 @@ void NetPlayClient::OnDisconnect(int reason)
 	std::lock_guard<std::recursive_mutex> lk(m_crit);
 	if (m_state == Connected)
 	{
-		NetPlay_Disable();
 		m_dialog->AppendChat("< LOST CONNECTION TO SERVER >");
-		PanicAlertT("Lost connection to server.");
 		m_players.clear();
 		m_pid = -1;
 	}
-	m_is_running = false;
+	if (m_is_running)
+	{
+		m_received_stop_request = true;
+		m_dialog->OnMsgStopGame();
+	}
 	m_state = Failure;
 	m_failure_reason = reason;
 	if (m_state_callback)
@@ -504,7 +500,6 @@ bool NetPlayClient::StartGame(const std::string &path)
 		return false;
 	}
 
-	m_is_running = true;
 
 	// tell server i started the game
 	Packet packet;
@@ -518,13 +513,18 @@ bool NetPlayClient::StartGame(const std::string &path)
 
 	m_dialog->AppendChat(" -- STARTING GAME -- ");
 
-	NetPlay_Enable(this);
-
 	IOSync::g_Backend.reset(m_backend = new IOSync::BackendNetPlay(this, m_delay));
-
 	// boot game
 
 	m_dialog->BootGame(path);
+
+	if (Core::IsRunningAndStarted())
+	{
+		g_is_running = true;
+		m_is_running = true;
+	}
+
+	m_game_started_evt.Set();
 
 	return true;
 }
@@ -534,61 +534,32 @@ bool NetPlayClient::ChangeGame(const std::string&)
 	return true;
 }
 
-bool NetPlayClient::StopGame()
+void NetPlayClient::GameStopped()
 {
-	// XXX - this is weird
 	std::lock_guard<std::recursive_mutex> lk(m_crit);
 
-	if (!m_is_running)
-	{
-		PanicAlertT("Game isn't running!");
-		return false;
-	}
-
-	// reset the IOSync backend
-	IOSync::ResetBackend();
-	m_backend = NULL;
+	m_net_host->RunOnThreadSync([=]() {
+		IOSync::ResetBackend();
+		m_backend = NULL;
+	});
+	g_is_running = false;
+	m_is_running = false;
 
 	m_dialog->AppendChat(" -- STOPPING GAME -- ");
+	m_dialog->GameStopped();
 
-	m_is_running = false;
-	NetPlay_Disable();
-
-	// stop game
-	m_dialog->StopGame();
-
-	return true;
+	// This might have happened as a result of an incoming NP_MSG_STOP_GAME, in
+	// which case we should avoid making another stop request.  Note that this
+	// stop request might be ignored if we're a spectator.
+	if (!m_received_stop_request)
+	{
+		Packet packet;
+		packet.W((MessageId)NP_MSG_STOP_GAME);
+		SendPacket(std::move(packet));
+	}
 }
-
-/*
-static bool Has
-	for (int c = 0; c < IOSync::ClassBase::NumClasses; c++)
-		for (int i = 0; i < IOSync::ClassBase::MaxDeviceIndex; i++)
-*/
-
-void NetPlayClient::Stop()
-{
-	if (m_is_running == false)
-		return;
-	abort();
-	// if we have a pad, then tell the server to stop (need a dialog about
-	// this); else just quit netplay
-}
-
 
 bool NetPlay::IsNetPlayRunning()
 {
-	return netplay_client != NULL;
-}
-
-void NetPlay_Enable(NetPlayClient* const np)
-{
-	std::lock_guard<std::mutex> lk(crit_netplay_client);
-	netplay_client = np;
-}
-
-void NetPlay_Disable()
-{
-	std::lock_guard<std::mutex> lk(crit_netplay_client);
-	netplay_client = NULL;
+	return g_is_running;
 }

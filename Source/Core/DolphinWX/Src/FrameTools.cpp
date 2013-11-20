@@ -1062,12 +1062,13 @@ void CFrame::DoStop()
 			DoRecordingSave();
 		if(Movie::IsPlayingInput() || Movie::IsRecordingInput())
 			Movie::EndPlayInput(false);
-		NetPlay::StopGame();
 
 		wxBeginBusyCursor();
 		BootManager::Stop();
 		wxEndBusyCursor();
 		confirmStop = false;
+
+		NetPlay::GameStopped();
 
 #if defined(HAVE_X11) && HAVE_X11
 	if (SConfig::GetInstance().m_LocalCoreStartupParameter.bDisableScreenSaver)

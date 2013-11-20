@@ -12,6 +12,7 @@
 #include "Frame.h"
 #include "Core.h"
 #include "ConfigManager.h"
+#include "Host.h"
 
 #include <sstream>
 #include <string>
@@ -21,7 +22,7 @@
 #define NETPLAY_TITLEBAR	"Dolphin NetPlay"
 #define INITIAL_PAD_BUFFER_SIZE 20
 
-static wxString FailureReasonStringForHost(int reason)
+static wxString FailureReasonStringForHostLabel(int reason)
 {
 	switch (reason)
 	{
@@ -38,7 +39,7 @@ static wxString FailureReasonStringForHost(int reason)
 	}
 }
 
-static wxString FailureReasonStringForConnect(int reason)
+static wxString FailureReasonStringForDialog(int reason)
 {
 	switch (reason)
 	{
@@ -201,6 +202,15 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const 
 
 	Center();
 	Show();
+
+	if (netplay_client)
+	{
+		netplay_client->m_state_callback = [=](NetPlayClient* npc) { OnStateChanged(); };
+		netplay_client->SetDialog(this);
+	}
+	if (netplay_server)
+		netplay_server->SetDialog(this);
+	Update();
 }
 
 const GameListItem* NetPlayDiag::FindISO(const std::string& id)
@@ -238,6 +248,8 @@ void NetPlayDiag::UpdateGameName()
 
 NetPlayDiag::~NetPlayDiag()
 {
+	// We must be truly stopped before killing netplay_client.
+	main_frame->DoStop();
 	netplay_client.reset();
 	netplay_server.reset();
 	npd = NULL;
@@ -279,9 +291,11 @@ void NetPlayDiag::BootGame(const std::string& filename)
 	main_frame->BootGame(filename);
 }
 
-void NetPlayDiag::StopGame()
+void NetPlayDiag::GameStopped()
 {
-	main_frame->DoStop();
+	if (m_start_btn)
+		m_start_btn->Enable();
+	m_record_chkbox->Enable();
 }
 
 // NetPlayUI methods called from ---NETPLAY--- thread
@@ -308,20 +322,25 @@ void NetPlayDiag::OnMsgChangeGame(const std::string& filename)
 
 void NetPlayDiag::OnMsgStartGame()
 {
+	// This has to be synchronous because of following messages.
+	m_game_started_evt.Reset();
 	wxCommandEvent evt(wxEVT_THREAD, NP_GUI_EVT_START_GAME);
 	GetEventHandler()->AddPendingEvent(evt);
-	if (m_start_btn)
-		m_start_btn->Disable();
-	m_record_chkbox->Disable();
+	m_game_started_evt.Wait();
 }
 
 void NetPlayDiag::OnMsgStopGame()
 {
-	wxCommandEvent evt(wxEVT_THREAD, NP_GUI_EVT_STOP_GAME);
-	GetEventHandler()->AddPendingEvent(evt);
-	if (m_start_btn)
-		m_start_btn->Enable();
-	m_record_chkbox->Enable();
+	Host_Message(WM_USER_STOP);
+}
+
+void NetPlayDiag::OnStateChanged()
+{
+	if (netplay_client->m_state == NetPlayClient::Failure)
+	{
+		wxCommandEvent evt(wxEVT_THREAD, NP_GUI_EVT_FAILURE);
+		GetEventHandler()->AddPendingEvent(evt);
+	}
 }
 
 void NetPlayDiag::OnAdjustBuffer(wxCommandEvent& event)
@@ -370,7 +389,7 @@ void NetPlayDiag::UpdateHostLabel()
 			break;
 		case TraversalClient::Failure:
 			m_host_label->SetForegroundColour(*wxBLACK);
-			m_host_label->SetLabel(FailureReasonStringForHost(g_TraversalClient->m_FailureReason));
+			m_host_label->SetLabel(FailureReasonStringForHostLabel(g_TraversalClient->m_FailureReason));
 			m_host_copy_btn->SetLabel(_("Retry"));
 			m_host_copy_btn->Enable();
 			m_host_copy_btn_is_retry = true;
@@ -454,16 +473,23 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 		else
 		{
 			PanicAlertT("The host chose a game that was not found locally.");
-			netplay_client.reset();
 		}
+		if (m_start_btn)
+			m_start_btn->Disable();
+		m_record_chkbox->Disable();
+		m_game_started_evt.Set();
 		}
 		break;
-	case NP_GUI_EVT_STOP_GAME :
-		// client stop game
+	case NP_GUI_EVT_FAILURE:
 		{
-		netplay_client->StopGame();
+		main_frame->DoStop();
+		wxString err = FailureReasonStringForDialog(netplay_client->m_failure_reason);
+		// see other comment about wx bug
+		auto complain = new wxMessageDialog(this, err);
+		complain->Bind(wxEVT_WINDOW_MODAL_DIALOG_CLOSED, &NetPlayDiag::OnErrorClosed, this);
+		complain->ShowWindowModal();
+		return;
 		}
-		break;
 	}
 
 	// chat messages
@@ -474,6 +500,11 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 		//PanicAlert("message: %s", s.c_str());
 		m_chat_text->AppendText(StrToWxStr(s).Append(wxT('\n')));
 	}
+}
+
+void NetPlayDiag::OnErrorClosed(wxCommandEvent&)
+{
+	Destroy();
 }
 
 void NetPlayDiag::OnConfigPads(wxCommandEvent&)
@@ -556,7 +587,6 @@ bool ConnectDiag::Validate()
 	if (netplay_client)
 	{
 		// shouldn't be possible, just in case
-		printf("already a NPC???\n");
 		return false;
 	}
 	std::string hostSpec = GetHost();
@@ -579,12 +609,13 @@ void ConnectDiag::OnThread(wxCommandEvent& event)
 {
 	if (netplay_client->m_state == NetPlayClient::Connected)
 	{
-		netplay_client->SetDialog(new NetPlayDiag(GetParent(), "", false));
+		// changes m_state_callback
+		new NetPlayDiag(GetParent(), "", false);
 		EndModal(0);
 	}
 	else
 	{
-		wxString err = FailureReasonStringForConnect(netplay_client->m_failure_reason);
+		wxString err = FailureReasonStringForDialog(netplay_client->m_failure_reason);
 		netplay_client.reset();
 		// connection failure
 		auto complain = new wxMessageDialog(this, err);
@@ -627,7 +658,6 @@ ConnectDiag::~ConnectDiag()
 {
 	if (netplay_client)
 	{
-		netplay_client->m_state_callback = nullptr;
 		if (GetReturnCode() != 0)
 			netplay_client.reset();
 	}
@@ -724,10 +754,10 @@ void PadMapDiag::OnAdjust(wxCommandEvent& event)
 	}
 }
 
-void NetPlay::StopGame()
+void NetPlay::GameStopped()
 {
 	if (netplay_client != NULL)
-		netplay_client->Stop();
+		netplay_client->GameStopped();
 }
 
 void NetPlay::ShowConnectDialog(wxWindow* parent)
@@ -780,6 +810,7 @@ void NetPlay::StartHosting(std::string id, wxWindow* parent)
 		    npc->m_state == NetPlayClient::Failure)
 			ev.Set();
 	}));
+	ev.Wait();
 	if (netplay_client->m_state == NetPlayClient::Failure)
 	{
 		PanicAlert("Failed to init netplay client.  This shouldn't happen...");
@@ -787,7 +818,6 @@ void NetPlay::StartHosting(std::string id, wxWindow* parent)
 		netplay_server.reset();
 		return;
 	}
-	ev.Wait();
 
 	if (netplay_client->m_state != NetPlayClient::Connected)
 	{
@@ -797,8 +827,5 @@ void NetPlay::StartHosting(std::string id, wxWindow* parent)
 		netplay_server.reset();
 		return;
 	}
-	auto diag = new NetPlayDiag(parent, id, true);
-	netplay_client->SetDialog(diag);
-	netplay_server->SetDialog(diag);
-	diag->Update();
+	new NetPlayDiag(parent, id, true);
 }

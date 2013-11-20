@@ -30,6 +30,7 @@ enum
 	NP_GUI_EVT_CHANGE_GAME = 45,
 	NP_GUI_EVT_START_GAME,
 	NP_GUI_EVT_STOP_GAME,
+	NP_GUI_EVT_FAILURE,
 };
 
 class NetPlayDiag : public wxFrame, public NetPlayUI
@@ -43,19 +44,20 @@ public:
 	void OnStart(wxCommandEvent& event);
 
 	// implementation of NetPlayUI methods
-	void BootGame(const std::string& filename);
-	void StopGame();
+	virtual void BootGame(const std::string& filename) override;
+	virtual void GameStopped() override;
 
-	void Update();
-	void AppendChat(const std::string& msg);
+	virtual void Update() override;
+	virtual void AppendChat(const std::string& msg) override;
 
-	void OnMsgChangeGame(const std::string& filename);
-	void OnMsgStartGame();
-	void OnMsgStopGame();
+	virtual void OnMsgChangeGame(const std::string& filename) override;
+	virtual void OnMsgStartGame() override;
+	virtual void OnMsgStopGame() override;
+	void OnStateChanged();
 
 	static NetPlayDiag *&GetInstance() { return npd; };
 
-	bool IsRecording();
+	virtual bool IsRecording() override;
 
 	static const GameListItem* FindISO(const std::string& id);
 	void UpdateGameName();
@@ -73,6 +75,7 @@ private:
     void OnDefocusName(wxFocusEvent& event);
     void OnCopyIP(wxCommandEvent& event);
 	void GetNetSettings(NetSettings &settings);
+	void OnErrorClosed(wxCommandEvent& event);
 
 	wxTextCtrl*		m_name_text;
 	wxListBox*		m_player_lbox;
@@ -89,6 +92,7 @@ private:
 	wxStaticText*	m_game_label;
 	wxButton*		m_start_btn;
     bool            m_is_hosting;
+	Common::Event	m_game_started_evt;
 
 	std::vector<int>	m_playerids;
 
@@ -129,7 +133,7 @@ private:
 
 namespace NetPlay
 {
-	void StopGame();
+	void GameStopped();
 	void ShowConnectDialog(wxWindow* parent);
 	void StartHosting(std::string id, wxWindow* parent);
 }
