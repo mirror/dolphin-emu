@@ -3,7 +3,6 @@
 // Refer to the license.txt file included.
 
 #include <vector>
-#include <cinttypes>
 
 #include "Thread.h"
 #include "PowerPC/PowerPC.h"

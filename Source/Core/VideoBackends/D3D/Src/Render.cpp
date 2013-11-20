@@ -2,7 +2,6 @@
 // Licensed under GPLv2
 // Refer to the license.txt file included.
 
-#include <cinttypes>
 #include <cmath>
 
 #include "Timer.h"

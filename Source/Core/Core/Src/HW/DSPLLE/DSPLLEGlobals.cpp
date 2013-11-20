@@ -6,7 +6,6 @@
 #include "FileUtil.h"
 #include "DSP/DSPCore.h"
 #include "DSPLLEGlobals.h"
-#include <cinttypes>
 
 #if PROFILE
 

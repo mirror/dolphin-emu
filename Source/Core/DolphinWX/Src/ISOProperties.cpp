@@ -7,7 +7,6 @@
 #endif
 
 #include <type_traits>
-#include <cinttypes>
 
 #include "Common.h"
 #include "CommonPaths.h"

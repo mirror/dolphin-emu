@@ -10,7 +10,6 @@
 #include <wx/filename.h>
 
 #include <algorithm>
-#include <cinttypes>
 #include <memory>
 
 #include "FileSearch.h"
