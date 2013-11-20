@@ -26,7 +26,9 @@ NetPlayServer::~NetPlayServer()
 	if (m_prefs)
 		CFRelease(m_prefs);
 #endif
-	// leave the host open for future use
+	// disconnect all
+	if (g_MainNetHost)
+		g_MainNetHost->Reset();
 	ReleaseTraversalClient();
 }
 
@@ -46,14 +48,16 @@ NetPlayServer::NetPlayServer()
 	m_prefs = SCPreferencesCreate(NULL, CFSTR("NetPlayServer"), NULL);
 #endif
 
-	EnsureTraversalClient(
+	if (!EnsureTraversalClient(
 		SConfig::GetInstance().m_LocalCoreStartupParameter.strNetPlayCentralServer,
-		SConfig::GetInstance().m_LocalCoreStartupParameter.iNetPlayListenPort);
-	if (!g_TraversalClient)
+		SConfig::GetInstance().m_LocalCoreStartupParameter.iNetPlayListenPort))
 		return;
 
 	g_TraversalClient->m_Client = this;
-	m_host = g_TraversalClient->m_Host;
+	g_MainNetHost->m_Client = this;
+	m_traversal_client = g_TraversalClient.get();
+	m_net_host = g_MainNetHost.get();
+	m_enet_host = m_net_host->m_Host;
 
 	if (g_TraversalClient->m_State == TraversalClient::Failure)
 		g_TraversalClient->ReconnectToServer();
@@ -79,7 +83,7 @@ void NetPlayServer::OnENetEvent(ENetEvent* event)
 	if (m_ping_timer.GetTimeElapsed() > (10 * 1000))
 		UpdatePings();
 
-	PlayerId pid = event->peer - m_host->peers;
+	PlayerId pid = event->peer - m_enet_host->peers;
 	switch (event->type)
 	{
 	case ENET_EVENT_TYPE_DISCONNECT:
@@ -181,7 +185,7 @@ std::unordered_set<std::string> NetPlayServer::GetInterfaceSet()
 std::string NetPlayServer::GetInterfaceHost(std::string interface)
 {
 	char buf[16];
-	sprintf(buf, ":%d", g_TraversalClient->GetPort());
+	sprintf(buf, ":%d", m_net_host->GetPort());
 	auto lst = GetInterfaceListInternal();
 	for (auto it = lst.begin(); it != lst.end(); ++it)
 	{
@@ -196,7 +200,7 @@ std::string NetPlayServer::GetInterfaceHost(std::string interface)
 MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 {
 	Client& player = m_players[pid];
-	ENetPeer* peer = &m_host->peers[pid];
+	ENetPeer* peer = &m_enet_host->peers[pid];
 
 	std::string npver;
 	hello.Do(npver);
@@ -212,7 +216,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 		return CON_ERR_GAME_RUNNING;
 
 	// too many players
-	if (m_num_players >= MAX_CLIENTS)
+	if (m_num_players >= NetHost::DefaultPeerCount - 20)
 		return CON_ERR_SERVER_FULL;
 
 	// send join message to already connected clients
@@ -230,7 +234,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 		Packet opacket;
 		opacket.W((MessageId)0);
 		opacket.W(pid);
-		g_TraversalClient->SendPacket(peer, std::move(opacket));
+		m_net_host->SendPacket(peer, std::move(opacket));
 	}
 
 	UpdatePings();
@@ -243,7 +247,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 			Packet opacket;
 			opacket.W((MessageId)NP_MSG_CHANGE_GAME);
 			opacket.W(m_selected_game);
-			g_TraversalClient->SendPacket(peer, std::move(opacket));
+			m_net_host->SendPacket(peer, std::move(opacket));
 		}
 	}
 
@@ -252,7 +256,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 		Packet opacket;
 		opacket.W((MessageId)NP_MSG_PAD_BUFFER);
 		opacket.W((u32)m_target_buffer_size);
-		g_TraversalClient->SendPacket(peer, std::move(opacket));
+		m_net_host->SendPacket(peer, std::move(opacket));
 	}
 
 	// send players
@@ -266,7 +270,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 			opacket.W((PlayerId)opid);
 			opacket.W(oplayer.name);
 			opacket.W(oplayer.revision);
-			g_TraversalClient->SendPacket(peer, std::move(opacket));
+			m_net_host->SendPacket(peer, std::move(opacket));
 		}
 	}
 
@@ -320,8 +324,8 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 {
 	/*printf("Server sees\n");
 	DumpBuf(*packet.vec);*/
-	PlayerId pid = event->peer - m_host->peers;
-	ENetPeer* peer = &m_host->peers[pid];
+	PlayerId pid = event->peer - m_enet_host->peers;
+	ENetPeer* peer = &m_enet_host->peers[pid];
 	if (pid >= m_players.size())
 		m_players.resize(pid + 1);
 	Client& player = m_players[pid];
@@ -334,7 +338,7 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 			Packet opacket;
 			opacket.W(error);
 			opacket.W((PlayerId)0);
-			g_TraversalClient->SendPacket(peer, std::move(opacket));
+			m_net_host->SendPacket(peer, std::move(opacket));
 			enet_peer_disconnect_later(peer, 0);
 		}
 		else
@@ -578,7 +582,7 @@ bool NetPlayServer::StartGame(const std::string &path)
 void NetPlayServer::SendToClients(Packet&& packet, const PlayerId skip_pid)
 {
 	CopyAsMove<Packet> tmp(std::move(packet));
-	g_TraversalClient->RunOnThread([=]() mutable {
+	m_net_host->RunOnThread([=]() mutable {
 		ASSUME_ON(NET);
 		SendToClientsOnThread(std::move(*tmp), skip_pid);
 	});
@@ -587,7 +591,7 @@ void NetPlayServer::SendToClients(Packet&& packet, const PlayerId skip_pid)
 
 void NetPlayServer::SendToClientsOnThread(Packet&& packet, const PlayerId skip_pid)
 {
-	g_TraversalClient->BroadcastPacket(std::move(packet), skip_pid >= m_host->peerCount ? NULL : &m_host->peers[skip_pid]);
+	m_net_host->BroadcastPacket(std::move(packet), skip_pid >= m_enet_host->peerCount ? NULL : &m_enet_host->peers[skip_pid]);
 }
 
 void NetPlayServer::SetDialog(NetPlayUI* dialog)

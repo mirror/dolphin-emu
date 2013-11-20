@@ -53,7 +53,7 @@ class Player
 	u32                     ping;
 };
 
-class NetPlayClient : public TraversalClientClient
+class NetPlayClient : public NetHostClient, public TraversalClientClient
 {
 public:
 	NetPlayClient(const std::string& hostSpec, const std::string& name, std::function<void(NetPlayClient*)> stateCallback);
@@ -107,7 +107,6 @@ protected:
 	std::recursive_mutex m_crit;
 
 	NetPlayUI*		m_dialog;
-	ENetHost*		m_host;
 	std::string		m_host_spec;
 	bool			m_direct_connection;
 	std::thread		m_thread;
@@ -132,8 +131,9 @@ private:
 	void DoDirectConnect(const ENetAddress& addr);
 
 	std::map<PlayerId, Player>	m_players GUARDED_BY(m_crit);
-	std::unique_ptr<ENetHostClient> m_host_client_store;
-	ENetHostClient* m_host_client;
+	std::unique_ptr<NetHost> m_net_host_store;
+	NetHost* m_net_host;
+	TraversalClient* m_traversal_client;
 	Common::Event m_have_dialog_event;
 };
 

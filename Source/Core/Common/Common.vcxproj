@@ -74,6 +74,7 @@
     <ClInclude Include="Src\MemoryUtil.h" />
     <ClInclude Include="Src\MsgHandler.h" />
     <ClInclude Include="Src\NandPaths.h" />
+    <ClInclude Include="Src\NetHost.h" />
     <ClInclude Include="Src\SDCardUtil.h" />
     <ClInclude Include="Src\SettingsHandler.h" />
     <ClInclude Include="Src\stdafx.h" />
@@ -110,6 +111,7 @@
     <ClCompile Include="Src\Misc.cpp" />
     <ClCompile Include="Src\MsgHandler.cpp" />
     <ClCompile Include="Src\NandPaths.cpp" />
+    <ClCompile Include="Src\NetHost.cpp" />
     <ClCompile Include="Src\SDCardUtil.cpp" />
     <ClCompile Include="Src\SettingsHandler.cpp" />
     <ClCompile Include="Src\stdafx.cpp">

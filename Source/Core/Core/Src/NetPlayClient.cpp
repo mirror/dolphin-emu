@@ -30,6 +30,9 @@ NetPlayClient::~NetPlayClient()
 	if (m_is_running)
 		StopGame();
 
+	if (m_net_host)
+		m_net_host->Reset();
+
 	if (!m_direct_connection)
 		ReleaseTraversalClient();
 }
@@ -40,7 +43,7 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 	m_delay = 20;
 	m_state = Failure;
 	m_dialog = NULL;
-	m_host = NULL;
+	m_net_host = NULL;
 	m_state_callback = stateCallback;
 	m_local_name = name;
 	m_backend = NULL;
@@ -50,13 +53,11 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 	{
 		// Direct or local connection.  Don't use TraversalClient.
 		m_direct_connection = true;
-		m_host_client_store.reset(new ENetHostClient(/*peerCount=*/1, /*port=*/0));
-		m_host_client = m_host_client_store.get();
-		if (!m_host_client->m_Host)
+		m_net_host_store.reset(new NetHost(/*peerCount=*/1, /*port=*/0));
+		m_net_host = m_net_host_store.get();
+		if (!m_net_host->m_Host)
 			return;
-		m_host_client->m_Client = this;
-
-		m_host = m_host_client->m_Host;
+		m_net_host->m_Client = this;
 
 		std::string host = hostSpec.substr(0, pos);
 		int port = atoi(hostSpec.substr(pos + 1).c_str());
@@ -69,16 +70,16 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 	else
 	{
 		m_direct_connection = false;
-		EnsureTraversalClient(SConfig::GetInstance().m_LocalCoreStartupParameter.strNetPlayCentralServer, 0);
-		if (!g_TraversalClient)
+		if (!EnsureTraversalClient(SConfig::GetInstance().m_LocalCoreStartupParameter.strNetPlayCentralServer, 0))
 			return;
-		m_host_client = g_TraversalClient.get();
+		m_net_host = g_MainNetHost.get();
+		m_net_host->m_Client = this;
+		m_traversal_client = g_TraversalClient.get();
 		// If we were disconnected in the background, reconnect.
-		if (g_TraversalClient->m_State == TraversalClient::Failure)
-			g_TraversalClient->ReconnectToServer();
-		g_TraversalClient->m_Client = this;
+		if (m_traversal_client->m_State == TraversalClient::Failure)
+			m_traversal_client->ReconnectToServer();
+		m_traversal_client->m_Client = this;
 		m_host_spec = hostSpec;
-		m_host = g_TraversalClient->m_Host;
 		m_state = WaitingForTraversalClientConnection;
 		OnTraversalStateChanged();
 	}
@@ -87,7 +88,7 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 void NetPlayClient::DoDirectConnect(const ENetAddress& addr)
 {
 	m_state = Connecting;
-	enet_host_connect(m_host, &addr, /*channelCount=*/0, /*data=*/0);
+	enet_host_connect(m_net_host->m_Host, &addr, /*channelCount=*/0, /*data=*/0);
 }
 
 void NetPlayClient::SetDialog(NetPlayUI* dialog)
@@ -99,15 +100,15 @@ void NetPlayClient::SetDialog(NetPlayUI* dialog)
 void NetPlayClient::SendPacket(Packet&& packet)
 {
 	CopyAsMove<Packet> tmp(std::move(packet));
-	g_TraversalClient->RunOnThread([=]() mutable {
+	m_net_host->RunOnThread([=]() mutable {
 		ASSUME_ON(NET);
-		m_host_client->BroadcastPacket(std::move(*tmp), NULL);
+		m_net_host->BroadcastPacket(std::move(*tmp), NULL);
 	});
 }
 
 void NetPlayClient::OnPacketErrorFromIOSync()
 {
-	g_TraversalClient->RunOnThread([=]() {
+	m_net_host->RunOnThread([=]() {
 		ASSUME_ON(NET);
 		OnDisconnect(InvalidPacket);
 	});
@@ -312,7 +313,7 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 			pong.W(ping_key);
 
 			std::lock_guard<std::recursive_mutex> lk(m_crit);
-			m_host_client->BroadcastPacket(std::move(pong));
+			m_net_host->BroadcastPacket(std::move(pong));
 		}
 		break;
 
@@ -373,7 +374,7 @@ void NetPlayClient::OnENetEvent(ENetEvent* event)
 		hello.W(std::string(NETPLAY_VERSION));
 		hello.W(std::string(netplay_dolphin_ver));
 		hello.W(m_local_name);
-		m_host_client->BroadcastPacket(std::move(hello));
+		m_net_host->BroadcastPacket(std::move(hello));
 		m_state = WaitingForHelloResponse;
 		if (m_state_callback)
 			m_state_callback(this);
@@ -390,17 +391,17 @@ void NetPlayClient::OnENetEvent(ENetEvent* event)
 void NetPlayClient::OnTraversalStateChanged()
 {
 	if (m_state == WaitingForTraversalClientConnection &&
-	    g_TraversalClient->m_State == TraversalClient::Connected)
+	    m_traversal_client->m_State == TraversalClient::Connected)
 	{
 		m_state = WaitingForTraversalClientConnectReady;
 		if (m_state_callback)
 			m_state_callback(this);
-		g_TraversalClient->ConnectToClient(m_host_spec);
+		m_traversal_client->ConnectToClient(m_host_spec);
 	}
 	else if (m_state != Failure &&
-	         g_TraversalClient->m_State == TraversalClient::Failure)
+	         m_traversal_client->m_State == TraversalClient::Failure)
 	{
-		OnDisconnect(g_TraversalClient->m_FailureReason);
+		OnDisconnect(m_traversal_client->m_FailureReason);
 	}
 }
 
@@ -481,7 +482,7 @@ void NetPlayClient::SendChatMessage(const std::string& msg)
 
 void NetPlayClient::ChangeName(const std::string& name)
 {
-	g_TraversalClient->RunOnThread([=]() {
+	m_net_host->RunOnThread([=]() {
 		ASSUME_ON(NET);
 		std::lock_guard<std::recursive_mutex> lk(m_crit);
 		m_local_name = name;

@@ -753,7 +753,7 @@ void NetPlay::StartHosting(std::string id, wxWindow* parent)
 
 	netplay_server.reset(new NetPlayServer());
 
-	if (!g_TraversalClient)
+	if (!g_TraversalClient || !g_MainNetHost)
 	{
 		netplay_server.reset();
 		wxString error;
@@ -774,7 +774,7 @@ void NetPlay::StartHosting(std::string id, wxWindow* parent)
 	std::string nickname = SConfig::GetInstance().m_LocalCoreStartupParameter.strNetPlayNickname;
 	Common::Event ev;
 	char buf[64];
-	sprintf(buf, "127.0.0.1:%d", g_TraversalClient->GetPort());
+	sprintf(buf, "127.0.0.1:%d", g_MainNetHost->GetPort());
 	netplay_client.reset(new NetPlayClient(buf, nickname, [&](NetPlayClient* npc) {
 		if (npc->m_state == NetPlayClient::Connected ||
 		    npc->m_state == NetPlayClient::Failure)

@@ -21,7 +21,7 @@
 
 class NetPlayUI;
 
-class NetPlayServer : public TraversalClientClient
+class NetPlayServer : public NetHostClient, public TraversalClientClient
 {
 public:
 	NetPlayServer();
@@ -45,6 +45,7 @@ public:
 
 	std::unordered_set<std::string> GetInterfaceSet();
 	std::string GetInterfaceHost(std::string interface);
+
 private:
 	class Client
 	{
@@ -94,7 +95,9 @@ private:
 
 	std::string m_selected_game GUARDED_BY(m_crit);
 
-	ENetHost*		m_host;
+	TraversalClient* m_traversal_client;
+	NetHost*		m_net_host;
+	ENetHost*		m_enet_host;
 	NetPlayUI*		m_dialog;
 
 #if defined(__APPLE__)

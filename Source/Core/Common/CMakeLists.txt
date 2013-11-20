@@ -13,6 +13,7 @@ set(SRCS	Src/BreakPoints.cpp
 			Src/Misc.cpp
 			Src/MsgHandler.cpp
 			Src/NandPaths.cpp
+			Src/NetHost.cpp
 			Src/SettingsHandler.cpp
 			Src/SDCardUtil.cpp
 			Src/StringUtil.cpp
