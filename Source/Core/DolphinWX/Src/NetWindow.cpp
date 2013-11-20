@@ -26,6 +26,8 @@ static wxString FailureReasonStringForHostLabel(int reason)
 {
 	switch (reason)
 	{
+	case TraversalClient::BadHost:
+		return _("(Error: Bad host)");
 	case TraversalClient::VersionTooOld:
 		return _("(Error: Dolphin too old)");
 	case TraversalClient::ServerForgotAboutUs:
@@ -43,6 +45,11 @@ static wxString FailureReasonStringForDialog(int reason)
 {
 	switch (reason)
 	{
+	case TraversalClient::BadHost:
+	{
+		auto server = StrToWxStr(SConfig::GetInstance().m_LocalCoreStartupParameter.strNetPlayCentralServer);
+		return wxString::Format(_("Couldn't look up central server %s"), server);
+	}
 	case TraversalClient::VersionTooOld:
 		return _("Dolphin too old for traversal server");
 	case TraversalClient::ServerForgotAboutUs:
@@ -393,9 +400,6 @@ void NetPlayDiag::UpdateHostLabel()
 			m_host_copy_btn->SetLabel(_("Retry"));
 			m_host_copy_btn->Enable();
 			m_host_copy_btn_is_retry = true;
-			break;
-		case TraversalClient::InitFailure:
-			// can't happen
 			break;
 		}
 	}

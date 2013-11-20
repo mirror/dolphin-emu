@@ -16,7 +16,6 @@ TraversalClient::TraversalClient(NetHost* netHost, const std::string& server)
 {
 	m_NetHost = netHost;
 	m_Server = server;
-	m_State = InitFailure;
 	m_Client = NULL;
 
 	m_NetHost->m_TraversalClient = this;
@@ -41,7 +40,13 @@ void TraversalClient::ReconnectToServer()
 {
 	m_Server = "vps.qoid.us"; // XXX
 	if (enet_address_set_host(&m_ServerAddress, m_Server.c_str()))
+	{
+		m_NetHost->RunOnThread([=]() {
+			ASSUME_ON(NET);
+			OnFailure(BadHost);
+		});
 		return;
+	}
 	m_ServerAddress.port = 6262;
 
 	m_State = Connecting;
@@ -289,12 +294,6 @@ bool EnsureTraversalClient(const std::string& server, u16 port)
 		}
 
 		g_TraversalClient.reset(new TraversalClient(g_MainNetHost.get(), server));
-		if (g_TraversalClient->m_State == TraversalClient::InitFailure)
-		{
-			g_TraversalClient.reset();
-			g_MainNetHost.reset();
-			return false;
-		}
 	}
 	return true;
 }

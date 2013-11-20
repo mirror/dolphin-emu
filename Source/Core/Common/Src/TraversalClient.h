@@ -23,7 +23,6 @@ class TraversalClient
 public:
 	enum State
 	{
-		InitFailure,
 		Connecting,
 		Connected,
 		Failure
@@ -31,7 +30,8 @@ public:
 
 	enum FailureReason
 	{
-		VersionTooOld = 0x300,
+		BadHost = 0x300,
+		VersionTooOld,
 		ServerForgotAboutUs,
 		SocketSendError,
 		ResendTimeout,
