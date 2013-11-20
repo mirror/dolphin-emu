@@ -63,7 +63,7 @@ public:
 	void UpdateGameName();
 
 private:
-    DECLARE_EVENT_TABLE()
+	DECLARE_EVENT_TABLE()
 
 	void OnChat(wxCommandEvent& event);
 	void OnQuit(wxCommandEvent& event);
@@ -72,8 +72,8 @@ private:
 	void OnThread(wxCommandEvent& event);
 	void OnAdjustBuffer(wxCommandEvent& event);
 	void OnConfigPads(wxCommandEvent& event);
-    void OnDefocusName(wxFocusEvent& event);
-    void OnCopyIP(wxCommandEvent& event);
+	void OnDefocusName(wxFocusEvent& event);
+	void OnCopyIP(wxCommandEvent& event);
 	void GetNetSettings(NetSettings &settings);
 	void OnErrorClosed(wxCommandEvent& event);
 
@@ -84,14 +84,14 @@ private:
 	wxCheckBox*		m_memcard_write;
 	wxCheckBox*		m_record_chkbox;
 	wxChoice*		m_host_type_choice;
-    wxStaticText*   m_host_label;
-    wxButton*       m_host_copy_btn;
-    bool            m_host_copy_btn_is_retry;
+	wxStaticText*   m_host_label;
+	wxButton*		m_host_copy_btn;
+	bool			m_host_copy_btn_is_retry;
 
 	std::string		m_selected_game;
 	wxStaticText*	m_game_label;
 	wxButton*		m_start_btn;
-    bool            m_is_hosting;
+	bool			m_is_hosting;
 	Common::Event	m_game_started_evt;
 
 	std::vector<int>	m_playerids;
@@ -108,7 +108,7 @@ public:
 	bool Validate();
 
 private:
-    DECLARE_EVENT_TABLE()
+	DECLARE_EVENT_TABLE()
 
 	void OnChange(wxCommandEvent& event);
 	void OnThread(wxCommandEvent& event);
