@@ -34,7 +34,7 @@ void Console_Submit(const char *cmd)
 	}
 	CASE("trans")
 	{
-		TCHAR temp[256];
+		char temp[256];
 		u32 addr;
 		sscanf(cmd, "%s %08x", temp, &addr);
 
@@ -53,7 +53,7 @@ void Console_Submit(const char *cmd)
 	}
 	CASE("call")
 	{
-		TCHAR temp[256];
+		char temp[256];
 		u32 addr;
 		sscanf(cmd, "%s %08x", temp, &addr);
 		if (addr)
@@ -67,7 +67,7 @@ void Console_Submit(const char *cmd)
 	}
 	CASE("llac")
 	{
-		TCHAR temp[256];
+		char temp[256];
 		u32 addr;
 		sscanf(cmd, "%s %08x", temp, &addr);
 		if (addr)
@@ -103,7 +103,7 @@ void Console_Submit(const char *cmd)
 	{
 		u32 start;
 		u32 end;
-		TCHAR temp[256];
+		char temp[256];
 		sscanf(cmd, "%s %08x %08x", temp, &start, &end);
 		char disasm[256];
 		for (u32 addr = start; addr <= end; addr += 4)
