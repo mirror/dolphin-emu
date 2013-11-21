@@ -564,8 +564,11 @@ void CFrame::InitBitmaps()
 // 1. Show the game list and boot the selected game.
 // 2. Default ISO
 // 3. Boot last selected game
-void CFrame::BootGame(const std::string& filename)
+void CFrame::BootGame(const std::string& filename, bool is_netplay)
 {
+	if (NetPlayDiag::GetInstance() != NULL && !is_netplay)
+		return;
+
 	std::string bootfile = filename;
 	SCoreStartupParameter& StartUp = SConfig::GetInstance().m_LocalCoreStartupParameter;
 
@@ -1308,6 +1311,7 @@ void CFrame::StatusBarMessage(const char * Text, ...)
 void CFrame::OnNetPlay(wxCommandEvent& WXUNUSED (event))
 {
 	NetPlay::ShowConnectDialog(this);
+	UpdateGUI();
 }
 
 void CFrame::OnMemcard(wxCommandEvent& WXUNUSED (event))
@@ -1558,6 +1562,10 @@ void CFrame::OnFrameSkip(wxCommandEvent& event)
 // Update the enabled/disabled status
 void CFrame::UpdateGUI()
 {
+	// ...Can't we just kill the process?
+	if (m_bInDestructor)
+		return;
+
 	// Save status
 	bool Initialized = Core::IsRunning();
 	bool Running = Core::GetState() == Core::CORE_RUN;
@@ -1612,6 +1620,7 @@ void CFrame::UpdateGUI()
 
 	// Tools
 	GetMenuBar()->FindItem(IDM_CHEATS)->Enable(SConfig::GetInstance().m_LocalCoreStartupParameter.bEnableCheats);
+	GetMenuBar()->FindItem(IDM_NETPLAY)->Enable(!IsGameRunning());
 
 	GetMenuBar()->FindItem(IDM_CONNECT_WIIMOTE1)->Enable(RunningWii);
 	GetMenuBar()->FindItem(IDM_CONNECT_WIIMOTE2)->Enable(RunningWii);
@@ -1654,54 +1663,35 @@ void CFrame::UpdateGUI()
 
 	GetMenuBar()->FindItem(IDM_RECORDREADONLY)->Enable(Running || Paused);
 
-	if (!Initialized && !m_bGameLoading)
+	if (!IsGameRunning())
 	{
-		if (m_GameListCtrl->IsEnabled())
-		{
-			// Prepare to load Default ISO, enable play button
-			if (!SConfig::GetInstance().m_LocalCoreStartupParameter.m_strDefaultGCM.empty())
-			{
-				if (m_ToolBar)
-					m_ToolBar->EnableTool(IDM_PLAY, true);
-				GetMenuBar()->FindItem(IDM_PLAY)->Enable(true);
-				GetMenuBar()->FindItem(IDM_RECORD)->Enable(true);
-				GetMenuBar()->FindItem(IDM_PLAYRECORD)->Enable(true);
-			}
-			// Prepare to load last selected file, enable play button
-			else if (!SConfig::GetInstance().m_LastFilename.empty()
-					&& wxFileExists(wxSafeConvertMB2WX(SConfig::GetInstance().m_LastFilename.c_str())))
-			{
-				if (m_ToolBar)
-					m_ToolBar->EnableTool(IDM_PLAY, true);
-				GetMenuBar()->FindItem(IDM_PLAY)->Enable(true);
-				GetMenuBar()->FindItem(IDM_RECORD)->Enable(true);
-				GetMenuBar()->FindItem(IDM_PLAYRECORD)->Enable(true);
-			}
-			else
-			{
-				// No game has been selected yet, disable play button
-				if (m_ToolBar)
-					m_ToolBar->EnableTool(IDM_PLAY, false);
-				GetMenuBar()->FindItem(IDM_PLAY)->Enable(false);
-				GetMenuBar()->FindItem(IDM_RECORD)->Enable(false);
-				GetMenuBar()->FindItem(IDM_PLAYRECORD)->Enable(false);
-			}
-		}
-
 		// Game has not started, show game list
 		if (!m_GameListCtrl->IsShown())
 		{
 			m_GameListCtrl->Enable();
 			m_GameListCtrl->Show();
 		}
-		// Game has been selected but not started, enable play button
-		if (m_GameListCtrl->GetSelectedISO() != NULL && m_GameListCtrl->IsEnabled())
+		if (m_GameListCtrl->IsEnabled())
 		{
+			bool enabled =
+				(
+					// Prepare to load Default ISO, enable play button
+					!SConfig::GetInstance().m_LocalCoreStartupParameter.m_strDefaultGCM.empty() ||
+					// Prepare to load last selected file, enable play button
+					(!SConfig::GetInstance().m_LastFilename.empty()
+						&& wxFileExists(wxSafeConvertMB2WX(SConfig::GetInstance().m_LastFilename.c_str()))) ||
+					// Game has been selected but not started, enable play button
+					(m_GameListCtrl->GetSelectedISO() != NULL && m_GameListCtrl->IsEnabled())
+				) &&
+					// No starting while NetPlay is active except through that
+					NetPlayDiag::GetInstance() == NULL;
+
+
 			if (m_ToolBar)
-				m_ToolBar->EnableTool(IDM_PLAY, true);
-			GetMenuBar()->FindItem(IDM_PLAY)->Enable(true);
-			GetMenuBar()->FindItem(IDM_RECORD)->Enable(true);
-			GetMenuBar()->FindItem(IDM_PLAYRECORD)->Enable(true);
+				m_ToolBar->EnableTool(IDM_PLAY, enabled);
+			GetMenuBar()->FindItem(IDM_PLAY)->Enable(enabled);
+			GetMenuBar()->FindItem(IDM_RECORD)->Enable(enabled);
+			GetMenuBar()->FindItem(IDM_PLAYRECORD)->Enable(enabled);
 		}
 	}
 	else if (Initialized)
@@ -1732,6 +1722,12 @@ void CFrame::UpdateGUI()
 		else
 			g_CheatsWindow->Close();
 	}
+	m_GameListCtrl->UpdateFileMenu();
+}
+
+bool CFrame::IsGameRunning()
+{
+	return m_bGameLoading || Core::IsRunning();
 }
 
 void CFrame::UpdateGameList()

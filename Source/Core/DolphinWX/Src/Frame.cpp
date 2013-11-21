@@ -276,7 +276,7 @@ CFrame::CFrame(wxFrame* parent,
 	, m_LogWindow(NULL), m_LogConfigWindow(NULL)
 	, m_FifoPlayerDlg(NULL), UseDebugger(_UseDebugger)
 	, m_bBatchMode(_BatchMode), m_bEdit(false), m_bTabSplit(false), m_bNoDocking(false)
-	, m_bGameLoading(false)
+	, m_bGameLoading(false), m_bInDestructor(false)
 {
 	for (int i = 0; i <= IDM_CODEWINDOW - IDM_LOGWINDOW; i++)
 		bFloatWindow[i] = false;
@@ -395,6 +395,7 @@ CFrame::CFrame(wxFrame* parent,
 // Destructor
 CFrame::~CFrame()
 {
+	m_bInDestructor = true;
 	drives.clear();
 
 	#if defined(HAVE_XRANDR) && HAVE_XRANDR

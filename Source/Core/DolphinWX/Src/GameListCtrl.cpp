@@ -872,6 +872,8 @@ void CGameListCtrl::AppendContextMenuOptions(wxMenu* menu)
 			menu->Append(IDM_HOSTNETPLAY, _("Change &Netplay Game"));
 		else
 			menu->Append(IDM_HOSTNETPLAY, _("Host &Netplay Game"));
+		if (main_frame && main_frame->IsGameRunning())
+			menu->Enable(IDM_HOSTNETPLAY, false);
 		menu->AppendSeparator();
 
 		if (selected_iso && selected_iso->GetPlatform() != GameListItem::GAMECUBE_DISC)
@@ -1079,6 +1081,7 @@ void CGameListCtrl::OnHostNetplay(wxCommandEvent& WXUNUSED (event))
 	if (iso)
 	{
 		NetPlay::StartHosting(iso->GetRevisionSpecificUniqueID(), this);
+		main_frame->UpdateGUI();
 	}
 }
 

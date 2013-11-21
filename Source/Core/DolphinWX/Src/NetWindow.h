@@ -100,7 +100,6 @@ private:
 	wxStaticText*	m_game_label;
 	wxButton*		m_start_btn;
 	bool			m_is_hosting;
-	Common::Event	m_game_started_evt;
 	DeviceMapDiag*	m_device_map_diag;
 
 	std::vector<int>	m_playerids;

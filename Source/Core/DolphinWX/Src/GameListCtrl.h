@@ -40,6 +40,7 @@ public:
 	static const GameListItem *GetISO(size_t index);
 
 	void SetFileMenu(wxMenu* fileMenu);
+	void UpdateFileMenu();
 
 	enum
 	{
@@ -110,7 +111,6 @@ private:
 	void CompressSelection(bool _compress);
 	void AutomaticColumnWidth();
 	void UnselectAll();
-	void UpdateFileMenu();
 
 	static size_t m_currentItem;
 	static std::string m_currentFilename;

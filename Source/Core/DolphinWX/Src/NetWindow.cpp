@@ -276,6 +276,7 @@ NetPlayDiag::~NetPlayDiag()
 	netplay_client.reset();
 	netplay_server.reset();
 	npd = NULL;
+	main_frame->UpdateGUI();
 }
 
 void NetPlayDiag::OnChat(wxCommandEvent&)
@@ -311,7 +312,7 @@ void NetPlayDiag::OnStart(wxCommandEvent&)
 
 void NetPlayDiag::BootGame(const std::string& filename)
 {
-	main_frame->BootGame(filename);
+	main_frame->BootGame(filename, /*is_netplay=*/true);
 }
 
 void NetPlayDiag::GameStopped()
@@ -345,11 +346,8 @@ void NetPlayDiag::OnMsgChangeGame(const std::string& filename)
 
 void NetPlayDiag::OnMsgStartGame()
 {
-	// This has to be synchronous because of following messages.
-	m_game_started_evt.Reset();
 	wxCommandEvent evt(wxEVT_THREAD, NP_GUI_EVT_START_GAME);
 	GetEventHandler()->AddPendingEvent(evt);
-	m_game_started_evt.Wait();
 }
 
 void NetPlayDiag::OnMsgStopGame()
@@ -503,7 +501,6 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 		if (m_start_btn)
 			m_start_btn->Disable();
 		m_record_chkbox->Disable();
-		m_game_started_evt.Set();
 		}
 		break;
 	case NP_GUI_EVT_FAILURE:

@@ -126,7 +126,7 @@ public:
 	void ClearStatusBar();
 	void GetRenderWindowSize(int& x, int& y, int& width, int& height);
 	void OnRenderWindowSizeRequest(int width, int height);
-	void BootGame(const std::string& filename);
+	void BootGame(const std::string& filename, bool is_netplay = false);
 	void OnRenderParentClose(wxCloseEvent& event);
 	void OnRenderParentMove(wxMoveEvent& event);
 	bool RendererHasFocus();
@@ -134,6 +134,7 @@ public:
 	void ToggleDisplayMode (bool bFullscreen);
 	void UpdateWiiMenuChoice(wxMenuItem *WiiMenuItem=NULL);
 	static void ConnectWiimote(int wm_idx, bool connect);
+	bool IsGameRunning();
 
 #ifdef __WXGTK__
 	Common::Event panic_event;
@@ -178,6 +179,7 @@ private:
 	bool m_bTabSplit;
 	bool m_bNoDocking;
 	bool m_bGameLoading;
+	bool m_bInDestructor;
 
 	std::vector<std::string> drives;
 
