@@ -80,9 +80,7 @@ void BackendNetPlay::ConnectLocalDevice(int classId, int localIndex, PWBuffer&& 
 	pac.W((u8) classId);
 	pac.W((u8) localIndex);
 	pac.W((u8) 0); // flags
-	pac.W((PlayerId) 0); // dummy
-	pac.W((u8) 0); // dummy
-	pac.vec->append(buf);
+	pac.W(std::move(buf));
 	m_Client->SendPacket(std::move(pac));
 }
 
@@ -213,8 +211,10 @@ void BackendNetPlay::ProcessPacket(Packet&& p)
 		{
 		PlayerId localPlayer;
 		u8 localIndex;
+		PWBuffer subtype;
 		p.Do(localPlayer);
 		p.Do(localIndex);
+		p.Do(subtype);
 		if (localIndex >= g_Classes[classId]->GetMaxDeviceIndex())
 		{
 			OnPacketError();
@@ -224,7 +224,7 @@ void BackendNetPlay::ProcessPacket(Packet&& p)
 		auto& di = m_DeviceInfo[classId][index] = DeviceInfo();
 		di.m_LastSentSubframeId = di.m_SubframeId = m_SubframeId;
 		g_Classes[classId]->SetIndex(index, localPlayer == m_Client->m_pid ? localIndex : -1);
-		g_Classes[classId]->OnConnected(index, PWBuffer(p.vec->data() + p.readOff, p.vec->size() - p.readOff));
+		g_Classes[classId]->OnConnected(index, std::move(subtype));
 		break;
 		}
 	case NP_MSG_DISCONNECT_DEVICE:

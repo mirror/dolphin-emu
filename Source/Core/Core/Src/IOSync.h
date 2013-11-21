@@ -38,6 +38,7 @@ public:
 	{
 		// These are part of the binary format and should not be changed.
 		ClassSI,
+		ClassEXI,
 		NumClasses
 	};
 
@@ -177,9 +178,19 @@ private:
 	int m_ClassId;
 };
 
-
 void Init();
 void ResetBackend();
 void DoState(PointerWrap& p);
 
 }
+
+// temporary
+class EXISyncClass : public IOSync::Class
+{
+public:
+	EXISyncClass() : IOSync::Class(ClassEXI) {}
+    virtual void OnConnected(int index, PWBuffer&& subtype) override {};
+    virtual void OnDisconnected(int index) override {};
+	virtual int GetMaxDeviceIndex() override { return 2; }
+};
+extern EXISyncClass g_EXISyncClass;

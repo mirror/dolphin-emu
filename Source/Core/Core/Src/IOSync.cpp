@@ -74,3 +74,5 @@ std::unique_ptr<Backend> g_Backend;
 Class* g_Classes[Class::NumClasses];
 
 }
+
+EXISyncClass g_EXISyncClass;

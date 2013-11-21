@@ -41,6 +41,7 @@ public:
 	virtual void OnMsgChangeGame(const std::string& filename) = 0;
 	virtual void OnMsgStartGame() = 0;
 	virtual void OnMsgStopGame() = 0;
+	virtual void UpdateDevices() = 0;
 	virtual bool IsRecording() = 0;
 };
 

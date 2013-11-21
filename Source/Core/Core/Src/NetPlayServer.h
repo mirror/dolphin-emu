@@ -43,10 +43,11 @@ public:
 	virtual void OnConnectReady(ENetAddress addr) override {}
 	virtual void OnConnectFailed(u8 reason) override ON(NET) {}
 
+	void SetDesiredDeviceMapping(int classId, int index, PlayerId pid, int localIndex) ON(NET);
+
 	std::unordered_set<std::string> GetInterfaceSet();
 	std::string GetInterfaceHost(std::string interface);
 
-private:
 	class Client
 	{
 	public:
@@ -57,10 +58,16 @@ private:
 		u32 ping;
 		u32 current_game;
 		bool connected;
-		bool in_game;
-		//bool m_devices_present[IOSync::Class::NumClasses][IOSync::Class::MaxDeviceIndex];
+		std::map<u32, PWBuffer> devices_present;
 		//bool is_localhost;
 	};
+
+	std::vector<Client>	m_players;
+
+	std::pair<PlayerId, s8> m_device_map[IOSync::Class::NumClasses][IOSync::Class::MaxDeviceIndex];
+	std::pair<PlayerId, s8> m_desired_device_map[IOSync::Class::NumClasses][IOSync::Class::MaxDeviceIndex];
+
+private:
 
 	void SendToClients(Packet&& packet, const PlayerId skip_pid = -1) NOT_ON(NET);
 	void SendToClientsOnThread(Packet&& packet, const PlayerId skip_pid = -1) ON(NET);
@@ -80,16 +87,7 @@ private:
 	u32		m_current_game;
 	u32				m_target_buffer_size;
 
-	// Note about disconnects: Imagine a single player plus spectators.  The
-	// client should not have to wait for the server for each frame.  However,
-	// if the server decides to change the mapping, the client must not desync.
-	// Therefore, in lieu of more complicated solutions, disconnects should be
-	// requested rather than forced.
 
-	std::pair<PlayerId, s8> m_device_map[IOSync::Class::NumClasses][IOSync::Class::MaxDeviceIndex];
-
-
-	std::vector<Client>	m_players;
 	unsigned m_num_players;
 
 	// only protects m_selected_game

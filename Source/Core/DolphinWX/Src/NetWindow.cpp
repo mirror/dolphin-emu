@@ -79,6 +79,19 @@ static wxString FailureReasonStringForDialog(int reason)
 	}
 }
 
+static wxString ClassNameString(IOSync::Class::ClassID cls)
+{
+	switch (cls)
+	{
+	case IOSync::Class::ClassSI:
+		return _("Controllers");
+	case IOSync::Class::ClassEXI:
+		return _("Memory Cards");
+	default:
+		abort();
+	}
+}
+
 BEGIN_EVENT_TABLE(NetPlayDiag, wxFrame)
 	EVT_COMMAND(wxID_ANY, wxEVT_THREAD, NetPlayDiag::OnThread)
 END_EVENT_TABLE()
@@ -100,6 +113,7 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const 
 {
 	npd = this;
 	wxPanel* const panel = new wxPanel(this);
+	m_device_map_diag = NULL;
 
 	// top crap
 	m_game_label = new wxStaticText(panel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize);
@@ -255,6 +269,8 @@ void NetPlayDiag::UpdateGameName()
 
 NetPlayDiag::~NetPlayDiag()
 {
+	if (m_device_map_diag)
+		m_device_map_diag->Destroy();
 	// We must be truly stopped before killing netplay_client.
 	main_frame->DoStop();
 	netplay_client.reset();
@@ -339,6 +355,12 @@ void NetPlayDiag::OnMsgStartGame()
 void NetPlayDiag::OnMsgStopGame()
 {
 	Host_Message(WM_USER_STOP);
+}
+
+void NetPlayDiag::UpdateDevices()
+{
+	wxCommandEvent evt(wxEVT_THREAD, NP_GUI_EVT_UPDATE_DEVICES);
+	GetEventHandler()->AddPendingEvent(evt);
 }
 
 void NetPlayDiag::OnStateChanged()
@@ -494,6 +516,14 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 		complain->ShowWindowModal();
 		return;
 		}
+	case NP_GUI_EVT_UPDATE_DEVICES:
+		{
+		if (m_device_map_diag && netplay_server)
+			g_MainNetHost->RunOnThreadSync([&]() {
+				m_device_map_diag->UpdateDeviceMap();
+			});
+		}
+		break;
 	}
 
 	// chat messages
@@ -513,18 +543,25 @@ void NetPlayDiag::OnErrorClosed(wxCommandEvent&)
 
 void NetPlayDiag::OnConfigPads(wxCommandEvent&)
 {
-#if 0
-	PadMapping mapping[4];
-	PadMapping wiimotemapping[4];
-	std::vector<const Player *> player_list;
-	netplay_server->GetPadMapping(mapping);
-	netplay_server->GetWiimoteMapping(wiimotemapping);
-	netplay_client->GetPlayers(player_list);
-	PadMapDiag pmd(this, mapping, wiimotemapping, player_list);
-	pmd.ShowModal();
-	netplay_server->SetPadMapping(mapping);
-	netplay_server->SetWiimoteMapping(wiimotemapping);
-#endif
+	if (m_device_map_diag)
+	{
+		m_device_map_diag->SetFocus();
+	}
+	else
+	{
+		m_device_map_diag = new DeviceMapDiag(this, netplay_server.get());
+		m_device_map_diag->Bind(wxEVT_SHOW, &NetPlayDiag::OnShowDeviceMapDiag, this);
+		UpdateDevices();
+	}
+}
+
+void NetPlayDiag::OnShowDeviceMapDiag(wxShowEvent& event)
+{
+	if (!event.IsShown())
+	{
+		m_device_map_diag->Destroy();
+		m_device_map_diag = NULL;
+	}
 }
 
 void NetPlayDiag::OnDefocusName(wxFocusEvent&)
@@ -669,93 +706,89 @@ ConnectDiag::~ConnectDiag()
 	SConfig::GetInstance().SaveSettings();
 }
 
-PadMapDiag::PadMapDiag(wxWindow* const parent, PadMapping map[], PadMapping wiimotemap[], std::vector<const Player *>& player_list)
-	: wxDialog(parent, wxID_ANY, _("Configure Pads"), wxDefaultPosition, wxDefaultSize)
-	, m_mapping(map)
-	, m_wiimapping (wiimotemap)
-	, m_player_list(player_list)
+DeviceMapDiag::DeviceMapDiag(wxWindow* parent, NetPlayServer* server)
+	: wxDialog(parent, wxID_ANY, _("Configure Pads"), wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxTAB_TRAVERSAL)
 {
-	wxBoxSizer* const h_szr = new wxBoxSizer(wxHORIZONTAL);
-	h_szr->AddSpacer(10);
+	m_server = server;
+	SetFocus();
+}
 
-	wxArrayString player_names;
-	player_names.Add(_("None"));
-	for (auto& player : m_player_list)
-		player_names.Add(player->name);
+void DeviceMapDiag::UpdateDeviceMap()
+{
+	DestroyChildren();
+	m_choice_to_cls_idx.clear();
 
-	wxString wiimote_names[5];
-	wiimote_names[0] = _("None");
-	for (unsigned int i=1; i < 5; ++i)
-		wiimote_names[i] = wxString(_("Wiimote ")) + (wxChar)(wxT('0')+i);
+	auto main_szr = new wxBoxSizer(wxVERTICAL);
 
-	for (unsigned int i=0; i<4; ++i)
+	for (int classId = 0; classId < IOSync::Class::NumClasses; classId++)
 	{
-		wxBoxSizer* const v_szr = new wxBoxSizer(wxVERTICAL);
-		v_szr->Add(new wxStaticText(this, wxID_ANY, (wxString(_("Pad ")) + (wxChar)(wxT('0')+i))),
-					    1, wxALIGN_CENTER_HORIZONTAL);
+		auto class_szr = new wxStaticBoxSizer(wxHORIZONTAL, this, ClassNameString((IOSync::Class::ClassID) classId));
+		main_szr->AddSpacer(10);
+		main_szr->Add(class_szr, 0, wxEXPAND | wxLEFT | wxRIGHT, 5);
+		int max = IOSync::g_Classes[classId]->GetMaxDeviceIndex();
 
-		m_map_cbox[i] = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, player_names);
-		m_map_cbox[i]->Bind(wxEVT_COMMAND_CHOICE_SELECTED, &PadMapDiag::OnAdjust, this);
-		if (m_mapping[i] == -1)
-			m_map_cbox[i]->Select(0);
-		else
-			for (unsigned int j = 0; j < m_player_list.size(); j++)
-				if (m_mapping[i] == m_player_list[j]->pid)
-					m_map_cbox[i]->Select(j + 1);
+		std::unordered_map<u32, int> local_idx_to_pos;
 
-		v_szr->Add(m_map_cbox[i], 1);
+		wxArrayString options;
+		PlayerId pid = 0;
+		m_pos_to_pid_local_idx[classId].clear();
+		options.Add(_("None"));
+		m_pos_to_pid_local_idx[classId].push_back(std::make_pair(255, 255));
+		for (auto& player : m_server->m_players)
+		{
+			if (!player.connected)
+				continue;
+			for (const auto& p : player.devices_present)
+			{
+				int itsClass = p.first & 0xff, local_idx = p.first >> 8;
+				if (itsClass != classId) continue;
+				local_idx_to_pos[(pid << 8) | local_idx] = (int) options.Count();
+				m_pos_to_pid_local_idx[classId].push_back(std::make_pair(pid, local_idx));
+				options.Add(wxString::Format("%s:%u", StrToWxStr(player.name), local_idx));
+			}
+			pid++;
+		}
 
-		h_szr->Add(v_szr, 1, wxTOP | wxEXPAND, 20);
-		h_szr->AddSpacer(10);
+		for (int idx = 0; idx < max; idx++)
+		{
+			auto v_szr = new wxBoxSizer(wxVERTICAL);
+			wxChoice* choice = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, options);
+			choice->Bind(wxEVT_COMMAND_CHOICE_SELECTED, &DeviceMapDiag::OnAdjust, this);
+			m_choice_to_cls_idx[choice] = std::make_pair(classId, idx);
+			auto cur = m_server->m_device_map[classId][idx];
+			if (cur.first == 255)
+				choice->Select(0);
+			else
+				choice->Select(local_idx_to_pos[(cur.first << 8) | cur.second]);
+			v_szr->Add(new wxStaticText(this, wxID_ANY, wxString::Format(_("Slot %d"), idx)));
+			v_szr->Add(choice, 0);
+			class_szr->Add(v_szr, 0, wxEXPAND);
+			class_szr->AddSpacer(10);
+		}
+
 	}
 
-	for (unsigned int i=0; i<4; ++i)
-	{
-		wxBoxSizer* const v_szr = new wxBoxSizer(wxVERTICAL);
-		v_szr->Add(new wxStaticText(this, wxID_ANY, (wxString(_("Wiimote ")) + (wxChar)(wxT('0')+i))),
-					    1, wxALIGN_CENTER_HORIZONTAL);
-
-		m_map_cbox[i+4] = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, player_names);
-		m_map_cbox[i+4]->Bind(wxEVT_COMMAND_CHOICE_SELECTED, &PadMapDiag::OnAdjust, this);
-		if (m_wiimapping[i] == -1)
-			m_map_cbox[i+4]->Select(0);
-		else
-			for (unsigned int j = 0; j < m_player_list.size(); j++)
-				if (m_wiimapping[i] == m_player_list[j]->pid)
-					m_map_cbox[i+4]->Select(j + 1);
-
-		v_szr->Add(m_map_cbox[i+4], 1);
-
-		h_szr->Add(v_szr, 1, wxTOP | wxEXPAND, 20);
-		h_szr->AddSpacer(10);
-	}
-
-	wxBoxSizer* const main_szr = new wxBoxSizer(wxVERTICAL);
-	main_szr->Add(h_szr);
 	main_szr->AddSpacer(5);
 	main_szr->Add(CreateButtonSizer(wxOK), 0, wxEXPAND | wxLEFT | wxRIGHT, 20);
 	main_szr->AddSpacer(5);
 	SetSizerAndFit(main_szr);
-	SetFocus();
+	Show();
+	// Why is this required?
+	Layout();
 }
 
-void PadMapDiag::OnAdjust(wxCommandEvent& event)
+void DeviceMapDiag::OnAdjust(wxCommandEvent& event)
 {
-	(void)event;
-	for (unsigned int i = 0; i < 4; i++)
-	{
-		int player_idx = m_map_cbox[i]->GetSelection();
-		if (player_idx > 0)
-			m_mapping[i] = m_player_list[player_idx - 1]->pid;
-		else
-			m_mapping[i] = -1;
-
-		player_idx = m_map_cbox[i+4]->GetSelection();
-		if (player_idx > 0)
-			m_wiimapping[i] = m_player_list[player_idx - 1]->pid;
-		else
-			m_wiimapping[i] = -1;
-	}
+	auto p = m_choice_to_cls_idx[(wxChoice*) event.GetEventObject()];
+	int classId = p.first, index = p.second;
+	int pos = event.GetSelection();
+	auto q = m_pos_to_pid_local_idx[classId][pos];
+	PlayerId pid = q.first;
+	int local_index = q.second;
+	g_MainNetHost->RunOnThreadSync([=]() {
+		ASSUME_ON(NET);
+		m_server->SetDesiredDeviceMapping(classId, index, pid, local_index);
+	});
 }
 
 void NetPlay::GameStopped()

@@ -115,6 +115,11 @@ void NetPlayServer::OnTraversalStateChanged()
 		m_dialog->Update();
 }
 
+void NetPlayServer::SetDesiredDeviceMapping(int classId, int index, PlayerId pid, int localIndex) ON(NET)
+{
+	WARN_LOG(NETPLAY, "SetDesiredDeviceMapping stub: class %d index %d -> player %d index %d", classId, index, pid, localIndex);
+}
+
 #if defined(__APPLE__)
 std::string CFStrToStr(CFStringRef cfstr)
 {
@@ -435,6 +440,8 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 					return OnDisconnect(pid);
 
 				WARN_LOG(NETPLAY, "Server: received CONNECT_DEVICE (%u/%u) from client %u", classId, localIndex, pid);
+				// stub
+				player.devices_present[classId | (localIndex << 8)] = PWBuffer();
 				int i;
 				for (i = 0; i < limit; i++)
 				{
@@ -458,6 +465,7 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 			else // DISCONNECT
 			{
 				WARN_LOG(NETPLAY, "Server: received DISCONNECT_DEVICE (%u/%u) from client %u", classId, localIndex, pid);
+				player.devices_present.erase(classId | (localIndex << 8));
 				for (int i = 0; i < IOSync::Class::MaxDeviceIndex; i++)
 				{
 					if (map[i].first == pid && map[i].second == localIndex)
@@ -469,6 +477,8 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 					}
 				}
 			}
+			if (m_dialog)
+				m_dialog->UpdateDevices();
 			break;
 		}
 

@@ -24,6 +24,9 @@
 #include "FifoQueue.h"
 
 #include "NetPlayClient.h"
+#include "NetPlayServer.h"
+#include "IOSync.h"
+#include <unordered_map>
 
 enum
 {
@@ -31,7 +34,10 @@ enum
 	NP_GUI_EVT_START_GAME,
 	NP_GUI_EVT_STOP_GAME,
 	NP_GUI_EVT_FAILURE,
+	NP_GUI_EVT_UPDATE_DEVICES
 };
+
+class DeviceMapDiag;
 
 class NetPlayDiag : public wxFrame, public NetPlayUI
 {
@@ -53,6 +59,7 @@ public:
 	virtual void OnMsgChangeGame(const std::string& filename) override;
 	virtual void OnMsgStartGame() override;
 	virtual void OnMsgStopGame() override;
+	virtual void UpdateDevices() override;
 	void OnStateChanged();
 
 	static NetPlayDiag *&GetInstance() { return npd; };
@@ -72,6 +79,7 @@ private:
 	void OnThread(wxCommandEvent& event);
 	void OnAdjustBuffer(wxCommandEvent& event);
 	void OnConfigPads(wxCommandEvent& event);
+	void OnShowDeviceMapDiag(wxShowEvent& event);
 	void OnDefocusName(wxFocusEvent& event);
 	void OnCopyIP(wxCommandEvent& event);
 	void GetNetSettings(NetSettings &settings);
@@ -93,6 +101,7 @@ private:
 	wxButton*		m_start_btn;
 	bool			m_is_hosting;
 	Common::Event	m_game_started_evt;
+	DeviceMapDiag*	m_device_map_diag;
 
 	std::vector<int>	m_playerids;
 
@@ -117,18 +126,18 @@ private:
 	wxButton* m_ConnectBtn;
 };
 
-class PadMapDiag : public wxDialog
+class DeviceMapDiag : public wxDialog
 {
 public:
-	PadMapDiag(wxWindow* const parent, PadMapping map[], PadMapping wiimotemap[], std::vector<const Player *>& player_list);
+	DeviceMapDiag(wxWindow* parent, NetPlayServer* server);
 
+	void UpdateDeviceMap();
 private:
 	void OnAdjust(wxCommandEvent& event);
 
-	wxChoice*	m_map_cbox[8];
-	PadMapping* const m_mapping;
-	PadMapping* const m_wiimapping;
-	std::vector<const Player *>& m_player_list;
+	std::unordered_map<wxChoice*, std::pair<int, int>> m_choice_to_cls_idx;
+	std::vector<std::pair<PlayerId, int>> m_pos_to_pid_local_idx[IOSync::Class::NumClasses];
+	NetPlayServer* m_server;
 };
 
 namespace NetPlay
