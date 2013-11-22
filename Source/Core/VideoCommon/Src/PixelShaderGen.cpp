@@ -716,7 +716,7 @@ static inline void WriteStage(T& out, pixel_shader_uid_data& uid_data, int n, AP
 				_assert_(bpmem.tevind[n].mid >= 5);
 				int mtxidx = 2*(bpmem.tevind[n].mid-5);
 				out.SetConstantsUsed(C_INDTEXMTX+mtxidx, C_INDTEXMTX+mtxidx);
-				out.Write("int2 indtevtrans%d = int2(" I_INDTEXMTX"[%d].ww * int2(uv%d.xy) * iindtevcrd%d.xx) >> 8;\n", n, mtxidx, texcoord, n);
+				out.Write("int2 indtevtrans%d = int2(int2(uv%d.xy) * iindtevcrd%d.xx) >> 8;\n", n, texcoord, n);
 
 				out.Write("if (" I_INDTEXMTX"[%d].w >= 0) indtevtrans%d = indtevtrans%d >> " I_INDTEXMTX"[%d].w;\n", mtxidx, n, n, mtxidx);
 				out.Write("else indtevtrans%d = indtevtrans%d << (-" I_INDTEXMTX"[%d].w);\n", n, n, mtxidx);
@@ -726,7 +726,7 @@ static inline void WriteStage(T& out, pixel_shader_uid_data& uid_data, int n, AP
 				_assert_(bpmem.tevind[n].mid >= 9);
 				int mtxidx = 2*(bpmem.tevind[n].mid-9);
 				out.SetConstantsUsed(C_INDTEXMTX+mtxidx, C_INDTEXMTX+mtxidx);
-				out.Write("int2 indtevtrans%d = int2(" I_INDTEXMTX"[%d].ww * int2(uv%d.xy) * iindtevcrd%d.yy) >> 8;\n", n, mtxidx, texcoord, n);
+				out.Write("int2 indtevtrans%d = int2(int2(uv%d.xy) * iindtevcrd%d.yy) >> 8;\n", n, texcoord, n);
 
 				out.Write("if (" I_INDTEXMTX"[%d].w >= 0) indtevtrans%d = indtevtrans%d >> " I_INDTEXMTX"[%d].w;\n", mtxidx, n, n, mtxidx);
 				out.Write("else indtevtrans%d = indtevtrans%d << (-" I_INDTEXMTX"[%d].w);\n", n, n, mtxidx);
