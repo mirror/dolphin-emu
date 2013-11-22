@@ -244,7 +244,7 @@ void NetHost::ProcessPacketQueue()
 
 void NetHost::PrintStats()
 {
-#if 1
+#if 0
 	if (m_StatsTimer.GetTimeDifference() > 5000)
 	{
 		m_StatsTimer.Update();
