@@ -140,8 +140,8 @@ void PixelShaderManager::SetConstants(u32 components)
 
 	if(s_bViewPortChanged)
 	{
-		constants.zbias[1][0] = xfregs.viewport.farZ / 16777216.0f;
-		constants.zbias[1][1] = xfregs.viewport.zRange / 16777216.0f;
+		constants.zbias[1][0] = xfregs.viewport.farZ;
+		constants.zbias[1][1] = xfregs.viewport.zRange;
 		dirty = true;
 	}
 }
@@ -188,14 +188,14 @@ void PixelShaderManager::SetTexDims(int texmapid, u32 width, u32 height, u32 wra
 
 void PixelShaderManager::SetZTextureBias()
 {
-	constants.zbias[1][3] = bpmem.ztex1.bias/16777215.0f;
+	constants.zbias[1][3] = bpmem.ztex1.bias;
 	dirty = true;
 }
 
 void PixelShaderManager::SetViewportChanged()
 {
-	constants.zbias[1][0] = xfregs.viewport.farZ / 16777216.0f;
-	constants.zbias[1][1] = xfregs.viewport.zRange / 16777216.0f;
+	constants.zbias[1][0] = xfregs.viewport.farZ;
+	constants.zbias[1][1] = xfregs.viewport.zRange;
 	dirty = true;
 
 	s_bFogRangeAdjustChanged = true; // TODO: Shouldn't be necessary with an accurate fog range adjust implementation
@@ -243,18 +243,18 @@ void PixelShaderManager::SetZTextureTypeChanged()
 			constants.zbias[0][0] = 0;
 			constants.zbias[0][1] = 0;
 			constants.zbias[0][2] = 0;
-			constants.zbias[0][3] = 255.0f/16777215.0f;
+			constants.zbias[0][3] = 255;
 			break;
 		case TEV_ZTEX_TYPE_U16:
-			constants.zbias[0][0] = 255.0f/16777215.0f;
+			constants.zbias[0][0] = 255;
 			constants.zbias[0][1] = 0;
 			constants.zbias[0][2] = 0;
-			constants.zbias[0][3] = 65280.0f/16777215.0f;
+			constants.zbias[0][3] = 65280;
 			break;
 		case TEV_ZTEX_TYPE_U24:
-			constants.zbias[0][0] = 16711680.0f/16777215.0f;
-			constants.zbias[0][1] = 65280.0f/16777215.0f;
-			constants.zbias[0][2] = 255.0f/16777215.0f;
+			constants.zbias[0][0] = 16711680;
+			constants.zbias[0][1] = 65280;
+			constants.zbias[0][2] = 255;
 			constants.zbias[0][3] = 0;
 			break;
 		default:
