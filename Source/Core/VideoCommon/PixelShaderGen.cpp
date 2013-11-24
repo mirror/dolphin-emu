@@ -248,6 +248,12 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 	out.Write("\treturn tmp.x + tmp.y + tmp.z;\n");
 	out.Write("}\n");
 
+	out.Write("int idot(int4 x, int4 y)\n");
+	out.Write("{\n");
+	out.Write("\tint4 tmp = x * y;\n");
+	out.Write("\treturn tmp.x + tmp.y + tmp.z + tmp.w;\n");
+	out.Write("}\n");
+
 	if (ApiType == API_OPENGL)
 	{
 		// Fmod implementation gleaned from Nvidia
