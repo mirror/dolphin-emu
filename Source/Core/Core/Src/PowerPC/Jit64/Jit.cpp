@@ -283,16 +283,15 @@ void Jit64::WriteExit(u32 destination)
 	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount));
 
 	//If nobody has taken care of this yet (this can be removed when all branches are done)
-	JitBlock *b = js.curBlock;
 	JitBlock::LinkData linkData;
 	linkData.exitAddress = destination;
 	linkData.exitPtrs = GetWritableCodePtr();
 	linkData.linkStatus = false;
 
 	// Link opportunity!
+	int block = blocks.GetBlockNumberFromStartAddress(destination);
 	if (jo.enableBlocklink)
 	{
-		int block = blocks.GetBlockNumberFromStartAddress(destination);
 		if (block >= 0)
 		{
 			// It exists! Joy of joy!
@@ -304,7 +303,7 @@ void Jit64::WriteExit(u32 destination)
 	MOV(32, M(&PC), Imm32(destination));
 	JMP(asm_routines.dispatcher, true);
 
-	b->linkData.push_back(linkData);
+	blocks.GetBlock(block)->linkData.push_back(linkData);
 }
 
 void Jit64::WriteExitDestInEAX()
