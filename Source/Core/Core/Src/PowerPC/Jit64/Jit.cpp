@@ -301,6 +301,7 @@ void Jit64::WriteExit(u32 destination)
 	MOV(32, M(&PC), Imm32(destination));
 	JMP(asm_routines.dispatcher, true);
 
+
 	b->linkData.push_back(linkData);
 }
 
