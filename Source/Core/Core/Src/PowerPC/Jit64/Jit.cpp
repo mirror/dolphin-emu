@@ -287,6 +287,7 @@ void Jit64::WriteExit(u32 destination)
 	JitBlock::LinkData linkData;
 	linkData.exitAddress = destination;
 	linkData.exitPtrs = GetWritableCodePtr();
+	linkData.linkStatus = false;
 
 	// Link opportunity!
 	if (jo.enableBlocklink)
