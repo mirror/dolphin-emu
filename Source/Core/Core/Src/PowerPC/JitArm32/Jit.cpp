@@ -192,6 +192,7 @@ void JitArm::WriteExit(u32 destination)
 
 	DoDownCount();
 	//If nobody has taken care of this yet (this can be removed when all branches are done)
+	JitBlock *b = js.curBlock;
 	JitBlock::LinkData linkData;
 	linkData.exitAddress = destination;
 	linkData.exitPtrs = GetWritableCodePtr();
@@ -214,7 +215,7 @@ void JitArm::WriteExit(u32 destination)
 		B(A);
 	}
 
-	blocks.GetBlock(block)->linkData.push_back(linkData);
+	b->linkData.push_back(linkData);
 }
 
 void STACKALIGN JitArm::Run()

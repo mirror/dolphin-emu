@@ -390,6 +390,7 @@ void JitIL::WriteExit(u32 destination)
 	SUB(32, M(&CoreTiming::downcount), js.downcountAmount > 127 ? Imm32(js.downcountAmount) : Imm8(js.downcountAmount));
 
 	//If nobody has taken care of this yet (this can be removed when all branches are done)
+	JitBlock *b = js.curBlock;
 	JitBlock::LinkData linkData;
 	linkData.exitAddress = destination;
 	linkData.exitPtrs = GetWritableCodePtr();
@@ -408,7 +409,7 @@ void JitIL::WriteExit(u32 destination)
 		MOV(32, M(&PC), Imm32(destination));
 		JMP(asm_routines.dispatcher, true);
 	}
-	blocks.GetBlock(block)->linkData.push_back(linkData);
+	b->linkData.push_back(linkData);
 }
 
 void JitIL::WriteExitDestInOpArg(const Gen::OpArg& arg)
