@@ -171,7 +171,6 @@ void Jit64::Init()
 	jo.optimizeGatherPipe = true;
 	jo.fastInterrupts = false;
 	jo.accurateSinglePrecision = true;
-	jo.enableBlocklink = false;
 	js.memcheck = Core::g_CoreStartupParameter.bMMU;
 
 	gpr.SetEmitter(this);
@@ -298,11 +297,10 @@ void Jit64::WriteExit(u32 destination)
 		JMP(blocks.GetBlock(block)->checkedEntry, true);
 		linkData.linkStatus = true;
 	}
-	else
-	{
-		MOV(32, M(&PC), Imm32(destination));
-		JMP(asm_routines.dispatcher, true);
-	}
+
+	MOV(32, M(&PC), Imm32(destination));
+	JMP(asm_routines.dispatcher, true);
+
 	b->linkData.push_back(linkData);
 }
 

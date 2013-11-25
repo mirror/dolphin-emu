@@ -404,11 +404,10 @@ void JitIL::WriteExit(u32 destination)
 		JMP(blocks.GetBlock(block)->checkedEntry, true);
 		linkData.linkStatus = true;
 	}
-	else
-	{
-		MOV(32, M(&PC), Imm32(destination));
-		JMP(asm_routines.dispatcher, true);
-	}
+
+	MOV(32, M(&PC), Imm32(destination));
+	JMP(asm_routines.dispatcher, true);
+
 	b->linkData.push_back(linkData);
 }
 
