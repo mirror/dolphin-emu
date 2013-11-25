@@ -95,6 +95,56 @@ public:
 
 
 };
+class IBlock
+{
+	public:
+	enum Type {
+		SIMPLE,
+		COMPLEX,
+	};
+
+	const static u32 FLAG_EXTERNAL_JUMP = 1 << 0;
+	const static u32 FLAG_INTERNAL_JUMP = 1 << 1;
+	const static u32 FLAG_IBLOCK_JUMP   = 1 << 2;
+	const static u32 FLAG_FINAL_JUMP    = 1 << 3;
+	const static u32 FLAG_INLINE_JUMP   = 1 << 4;
+	struct Inst
+	{
+		u32 _hex;
+		u32 _flags;
+		u32 _target;
+	};
+	private:
+	// Index of entry points
+	std::vector<u32> _entrypoints;
+	// Index of exit points
+	// There will be only one exit point in a IBlock
+	std::vector<u32> _exitpoints;
+	// Index of instruction hexes
+	std::vector<Inst> _instructions;
+	// Index of codeOps
+	std::map<u32, CodeOp> _code;
+	BlockStats _stats;
+	BlockRegStats _gpa;
+	BlockRegStats _fpa;
+	Type _type;
+	u32 _blockStart;
+	bool _endsBLR;
+	public:
+	IBlock() {}
+	void Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, u32 blockSize, bool inlineJumps = true);
+	bool EndsBLR() { return _endsBLR; }
+	bool ContainsEntryPoint(u32 addr) { for (auto it : _entrypoints) if (it == addr) return true; return false; }
+	std::vector<Inst>& GetInstructions() { return _instructions; }
+	u32 GetStart() { return _blockStart; }
+	u32 GetSize() { return _instructions.size(); }
+	Type GetType() { return _type; }
+	bool Merge(IBlock *block);
+	
+};
+void FlattenNew(u32 address, std::map<u32, IBlock> &IBlocks, 
+			bool &broken_block, CodeBuffer *buffer,
+			int blockSize);
 
 u32 Flatten(u32 address, int *realsize, BlockStats *st, BlockRegStats *gpa,
 			BlockRegStats *fpa, bool &broken_block, CodeBuffer *buffer,

@@ -8,7 +8,6 @@
 #include "Common.h"
 #include "Thread.h"
 #include "HW/Memmap.h"
-#include "PowerPC/PPCAnalyst.h"
 #include "PowerPC/PPCTables.h"
 #include "CoreTiming.h"
 #include "Core.h"

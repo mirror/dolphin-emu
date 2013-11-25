@@ -22,7 +22,6 @@
 #include "SystemTimers.h"
 #include "../IPC_HLE/WII_IPC_HLE.h"
 #include "../State.h"
-#include "../PowerPC/PPCAnalyst.h"
 
 namespace HW
 {

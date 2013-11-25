@@ -3,7 +3,6 @@
 // Refer to the license.txt file included.
 
 #include "Interpreter.h"
-#include "../PPCAnalyst.h"
 
 void Interpreter::bx(UGeckoInstruction _inst)
 {

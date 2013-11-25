@@ -47,9 +47,6 @@ CodeBuffer::~CodeBuffer()
 }
 
 void AnalyzeFunction2(Symbol &func);
-u32 EvaluateBranchTarget(UGeckoInstruction instr, u32 pc);
-
-#define INVALID_TARGET ((u32)-1)
 
 u32 EvaluateBranchTarget(UGeckoInstruction instr, u32 pc)
 {
@@ -64,7 +61,7 @@ u32 EvaluateBranchTarget(UGeckoInstruction instr, u32 pc)
 			return target;
 		}
 	default:
-		return INVALID_TARGET;
+		return 0;
 	}
 }
 
@@ -171,7 +168,7 @@ bool AnalyzeFunction(u32 startAddr, Symbol &func, int max_size)
 				else
 				{
 					u32 target = EvaluateBranchTarget(instr, addr);
-					if (target != INVALID_TARGET && instr.LK)
+					if (target && instr.LK)
 					{
 						//we found a branch-n-link!
 						func.calls.push_back(SCall(target,addr));
@@ -267,7 +264,427 @@ bool CanSwapAdjacentOps(const CodeOp &a, const CodeOp &b)
 
 	return true;
 }
+u32 FindFunctionLastAddr(u32 address)
+{
+	while (true)
+	{
+		UGeckoInstruction instr = (UGeckoInstruction)Memory::ReadUnchecked_U32(address);
+		if (PPCTables::IsValidInstruction(instr))
+		{
+			if (instr.hex == 0x4e800020) //4e800021 is blrl, not the end of a function
+				return address;
+		}
+		else
+			return address;
+		address += 4;
+	}
+}
+bool ShouldInlineAddr(u32 addr, u32 blockSize)
+{
+	if (!addr || blockSize == 1)
+		return false;
+	IBlock block;
+	u32 numInst = 0;
+	block.Flatten(addr, addr, addr, &numInst, blockSize, false);
+	if (block.EndsBLR())
+		return true;
+	return false;
+}
 
+#define CST1 0
+void IBlock::Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, u32 blockSize, bool inlineJumps)
+{
+	_gpa.any = true;
+	_fpa.any = false;
+	_endsBLR = false;
+	memset(&_stats, 0, sizeof(_stats));
+
+	for (int i = 0; i < 32; i++)
+	{
+		_gpa.firstRead[i]  = -1;
+		_gpa.firstWrite[i] = -1;
+		_gpa.numReads[i] = 0;
+		_gpa.numWrites[i] = 0;
+	}
+	_blockStart = address;
+	int maxsize = blockSize;
+
+	// Used for Gecko CST1 code. (See GeckoCode/GeckoCode.h)
+	// We use std::queue but it is not so slow
+	// because cst1_instructions does not allocate memory so many times.
+	std::queue<UGeckoInstruction> cst1_instructions;
+	const std::map<u32, std::vector<u32> >& inserted_asm_codes =
+		Gecko::GetInsertedAsmCodes();
+	
+	// Entry point on first IBlock instruction
+	_entrypoints.push_back(address);
+	for (int i = 0; i < maxsize; ++i)
+	{
+		UGeckoInstruction inst;
+#if CST1
+		if (!cst1_instructions.empty())
+		{
+			// If the Gecko CST1 instruction queue is not empty,
+			// we consume the first instruction.
+			inst = UGeckoInstruction(cst1_instructions.front());
+			cst1_instructions.pop();
+			address -= 4;
+		}
+		else
+		{
+			// If the address is the insertion point of Gecko CST1 code,
+			// we push the code into the instruction queue and
+			// consume the first instruction.
+			std::map<u32, std::vector<u32> >::const_iterator it =
+				inserted_asm_codes.find(address);
+			if (it != inserted_asm_codes.end())
+			{
+				const std::vector<u32>& codes = it->second;
+				for (u32 c : codes)
+				{
+					cst1_instructions.push(c);
+				}
+				inst = UGeckoInstruction(cst1_instructions.front());
+				cst1_instructions.pop();
+
+			}
+			else
+			{
+				inst = JitInterface::Read_Opcode_JIT(address);
+			}
+		}
+#else
+		inst = JitInterface::Read_Opcode_JIT(address);
+#endif
+		if (inst.hex != 0)
+		{
+			u32 target = 0;
+			u32 instflags = 0;
+			if (i == 0 && inst.hex == 0x60000000)
+			{
+				// Quite a few instances have NOP has the first instruction of the IBlock
+				// This case we can add a entrypoint since NOP does nothing of course.
+				_entrypoints.push_back(address + 4);
+			}
+			memset(&_code[i], 0, sizeof(CodeOp));
+			GekkoOPInfo *opinfo = GetOpInfo(inst);
+			_code[i].opinfo = opinfo;
+			// FIXME: _code[i].address may not be correct due to CST1 _code.
+			_code[i].address = address;
+			_code[i].inst = inst;
+			_code[i].branchTo = 0;
+			_code[i].branchToIndex = -1;
+			_code[i].skip = false;
+			_stats.numCycles += opinfo->numCyclesMinusOne + 1;
+
+			_code[i].wantsCR0 = false;
+			_code[i].wantsCR1 = false;
+			_code[i].wantsPS1 = false;
+
+			int flags = opinfo->flags;
+
+			if (flags & FL_USE_FPU)
+				_fpa.any = true;
+
+			if (flags & FL_TIMER)
+				_gpa.anyTimer = true;
+
+			// Does the instruction output CR0?
+			if (flags & FL_RC_BIT)
+				_code[i].outputCR0 = inst.hex & 1; //todo fix
+			else if ((flags & FL_SET_CRn) && inst.CRFD == 0)
+				_code[i].outputCR0 = true;
+			else
+				_code[i].outputCR0 = (flags & FL_SET_CR0) ? true : false;
+
+			// Does the instruction output CR1?
+			if (flags & FL_RC_BIT_F)
+				_code[i].outputCR1 = inst.hex & 1; //todo fix
+			else if ((flags & FL_SET_CRn) && inst.CRFD == 1)
+				_code[i].outputCR1 = true;
+			else
+				_code[i].outputCR1 = (flags & FL_SET_CR1) ? true : false;
+
+			int numOut = 0;
+			int numIn = 0;
+			if (flags & FL_OUT_A)
+			{
+				_code[i].regsOut[numOut++] = inst.RA;
+				_gpa.SetOutputRegister(inst.RA, i);
+			}
+			if (flags & FL_OUT_D)
+			{
+				_code[i].regsOut[numOut++] = inst.RD;
+				_gpa.SetOutputRegister(inst.RD, i);
+			}
+			if (flags & FL_OUT_S)
+			{
+				_code[i].regsOut[numOut++] = inst.RS;
+				_gpa.SetOutputRegister(inst.RS, i);
+			}
+			if ((flags & FL_IN_A) || ((flags & FL_IN_A0) && inst.RA != 0))
+			{
+				_code[i].regsIn[numIn++] = inst.RA;
+				_gpa.SetInputRegister(inst.RA, i);
+			}
+			if (flags & FL_IN_B)
+			{
+				_code[i].regsIn[numIn++] = inst.RB;
+				_gpa.SetInputRegister(inst.RB, i);
+			}
+			if (flags & FL_IN_C)
+			{
+				_code[i].regsIn[numIn++] = inst.RC;
+				_gpa.SetInputRegister(inst.RC, i);
+			}
+			if (flags & FL_IN_S)
+			{
+				_code[i].regsIn[numIn++] = inst.RS;
+				_gpa.SetInputRegister(inst.RS, i);
+			}
+
+			// Set remaining register slots as unused (-1)
+			for (int j = numIn; j < 3; j++)
+				_code[i].regsIn[j] = -1;
+			for (int j = numOut; j < 2; j++)
+				_code[i].regsOut[j] = -1;
+			for (int j = 0; j < 3; j++)
+				_code[i].fregsIn[j] = -1;
+			_code[i].fregOut = -1;
+
+			switch (opinfo->type)
+			{
+				case OPTYPE_INTEGER:
+				case OPTYPE_LOAD:
+				case OPTYPE_STORE:
+				case OPTYPE_LOADFP:
+				case OPTYPE_STOREFP:
+					break;
+				case OPTYPE_FPU:
+					break;
+				case OPTYPE_BRANCH:
+					if (_code[i].inst.hex == 0x4e800020) // BLR
+					{
+						// For analysis purposes, we can assume that blr eats flags.
+						_code[i].outputCR0 = true;
+						_code[i].outputCR1 = true;
+						_endsBLR = true;
+						instflags |= FLAG_FINAL_JUMP;
+					}
+					break;
+				case OPTYPE_SYSTEM:
+				case OPTYPE_SYSTEMFP:
+					break;
+			}
+
+			if (inst.OPCD == 16)
+			{
+				target = SignExt16(inst.BD << 2);
+				if (!inst.AA)
+					target += address;
+				if (target > maxAddress)
+					instflags |= FLAG_EXTERNAL_JUMP;
+				else
+					if (target < minAddress)
+						instflags |= FLAG_EXTERNAL_JUMP;
+					else
+						if (target >= _blockStart && target < address)
+						{
+							instflags |= FLAG_IBLOCK_JUMP;
+							_type = COMPLEX;
+						}
+						else
+							instflags |= FLAG_INTERNAL_JUMP;
+			}
+			else
+			{
+				
+				target = EvaluateBranchTarget(inst, address);
+				if (target)
+				{
+					if (target > maxAddress)
+						instflags |= FLAG_INLINE_JUMP;
+					else
+						if (target < minAddress)
+							instflags |= FLAG_INLINE_JUMP;
+						else
+							if (target >= _blockStart && target < address)
+							{
+								instflags |= FLAG_IBLOCK_JUMP;
+								_type = COMPLEX;
+							}
+							else
+								instflags |= FLAG_INTERNAL_JUMP;
+				}
+				// Could be a conditional final jump
+				// Not just a regular BLR
+				if (inst.OPCD == 19 && opinfo->type == OPTYPE_BRANCH)
+					if (inst.SUBOP10 == 16) // bclrx
+						instflags |= FLAG_FINAL_JUMP;
+			}
+			if (instflags & FLAG_INLINE_JUMP && inlineJumps)
+			{
+				// Check for inline capability
+				// XXX: Allow inline
+				//if (ShouldInlineAddr(target, blockSize))
+				//	;
+				//else
+				{
+					// Wipe the inline flag
+					instflags &= ~(FLAG_INLINE_JUMP);
+					// Add the external jump
+					instflags |= FLAG_EXTERNAL_JUMP;
+				}
+			}
+			// Instructions that end the block but don't have any flags set
+			// mtmsr
+			// tw
+			// icbi
+			// HLEFunction
+			// twi
+			// sc
+			// rfi/rfid
+			_instructions.push_back({inst.hex, instflags, target});
+			_code[i].branchTo = target;
+			if (opinfo->flags & FL_ENDBLOCK) //right now we stop early
+			{
+				// Every exitpoint has an entry point as well
+				// The entrypoint will be right after the registers are flushed
+				_entrypoints.push_back(address);
+				_exitpoints.push_back(address);
+				break;
+			}
+			address += 4;
+		}
+		else
+		{
+			// ISI exception or other critical memory exception occurred (game over)
+			break;
+		}
+	}
+	// Instruction Reordering Pass
+	if (_instructions.size() > 1)
+	{
+		// Bubble down compares towards branches, so that they can be merged.
+		// -2: -1 for the pair, -1 for not swapping with the final instruction which is probably the branch.
+		for (u32 i = 0; i < _instructions.size() - 2; i++)
+		{
+			CodeOp &a = _code[i];
+			CodeOp &b = _code[i + 1];
+			// All integer compares can be reordered.
+			if ((a.inst.OPCD == 10 || a.inst.OPCD == 11) ||
+				(a.inst.OPCD == 31 && (a.inst.SUBOP10 == 0 || a.inst.SUBOP10 == 32)))
+			{
+				// Got a compare instruction.
+				if (CanSwapAdjacentOps(a, b)) {
+					// Alright, let's bubble it down!
+					CodeOp c = a;
+					a = b;
+					b = c;
+				}
+			}
+		}
+	}
+	// Scan for CR0 dependency
+	// assume next block wants CR0 to be safe
+	bool wantsCR0 = true;
+	bool wantsCR1 = true;
+	bool wantsPS1 = true;
+	for (int i = _instructions.size() - 1; i >= 0; i--)
+	{
+		if (_code[i].outputCR0)
+			wantsCR0 = false;
+		if (_code[i].outputCR1)
+			wantsCR1 = false;
+		if (_code[i].outputPS1)
+			wantsPS1 = false;
+		wantsCR0 |= _code[i].wantsCR0;
+		wantsCR1 |= _code[i].wantsCR1;
+		wantsPS1 |= _code[i].wantsPS1;
+		_code[i].wantsCR0 = wantsCR0;
+		_code[i].wantsCR1 = wantsCR1;
+		_code[i].wantsPS1 = wantsPS1;
+	}
+
+	*numInst += _instructions.size();
+}
+
+bool IBlock::Merge(IBlock *block)
+{
+	bool canMerge = false;	
+	// Can only merge if one instruction in length
+	if (block->GetSize() == 1)
+	{
+		CodeOp *inst = &block->_code[0];
+		if (inst->opinfo->flags & FL_ENDBLOCK)
+		{
+			canMerge = true;
+			_entrypoints.push_back(inst->address);
+			_exitpoints.push_back(inst->address);
+			_instructions.push_back(block->_instructions[0]);
+			_code[_code.size()] = block->_code[0];
+			// XXX: Merge stats
+		}
+	}
+	return canMerge;
+}
+
+void CheckInternalJumps(std::map<u32, IBlock> &IBlocks)
+{
+	for (auto it = IBlocks.begin(); it != IBlocks.end(); ++it)
+	{
+		if (it->second.GetType() == IBlock::SIMPLE)
+		{
+			std::vector<IBlock::Inst>& _instructions = it->second.GetInstructions();
+			for (u32 a = 0; a < _instructions.size(); ++a)
+			{
+				if (_instructions[a]._flags & IBlock::FLAG_INTERNAL_JUMP)
+				{
+					bool Found = false;
+					for (auto it2 = IBlocks.begin(); it2 != IBlocks.end(); ++it2)
+						if (it2->second.ContainsEntryPoint(_instructions[a]._target))
+							Found = true;
+					if (!Found)
+					{
+						// Remove the internal jump
+						_instructions[a]._flags &= ~(IBlock::FLAG_INTERNAL_JUMP);
+						// Set it as an external jump
+						_instructions[a]._flags |= IBlock::FLAG_EXTERNAL_JUMP;
+					}
+				}
+			}
+		}
+	}
+}
+
+void FlattenNew(u32 address, std::map<u32, IBlock> &IBlocks, 
+			bool &broken_block, CodeBuffer *buffer,
+			int blockSize)
+{
+	int num_inst = 0;
+	u32 prev_address = 0;
+	u32 minAddress = address;
+	u32 maxAddress = FindFunctionLastAddr(address);
+
+	for(;;)
+	{
+		u32 insts = 0;
+		IBlocks[address].Flatten(address, minAddress, maxAddress, &insts, blockSize);
+		if (prev_address && IBlocks[prev_address].Merge(&IBlocks[address]))
+			IBlocks.erase(address);
+		if (IBlocks[address].EndsBLR() || insts == 0)
+			break;
+		prev_address = address;
+		address += insts * 4;
+		num_inst += insts;
+	}
+	// Do internal loop checks
+	CheckInternalJumps(IBlocks);
+
+	// A broken block is a block that does not end in a branch
+	if (!IBlocks[address].EndsBLR() && num_inst > 0)
+		broken_block = true;
+}
 // Does not yet perform inlining - although there are plans for that.
 // Returns the exit address of the next PC
 u32 Flatten(u32 address, int *realsize, BlockStats *st, BlockRegStats *gpa,
@@ -275,6 +692,8 @@ u32 Flatten(u32 address, int *realsize, BlockStats *st, BlockRegStats *gpa,
 			int blockSize, u32* merged_addresses,
 			int capacity_of_merged_addresses, int& size_of_merged_addresses)
 {
+	//std::map<u32, IBlock> IBlocks;
+	//FlattenNew(address, IBlocks, broken_block, buffer, blockSize); 
 	if (capacity_of_merged_addresses < FUNCTION_FOLLOWING_THRESHOLD) {
 		PanicAlert("Capacity of merged_addresses is too small!");
 	}
@@ -458,7 +877,7 @@ u32 Flatten(u32 address, int *realsize, BlockStats *st, BlockRegStats *gpa,
 			case OPTYPE_FPU:
 				break;
 			case OPTYPE_BRANCH:
-				if (code[i].inst.hex == 0x4e800020)
+				if (code[i].inst.hex == 0x4e800020) // BLR
 				{
 					// For analysis purposes, we can assume that blr eats flags.
 					code[i].outputCR0 = true;
