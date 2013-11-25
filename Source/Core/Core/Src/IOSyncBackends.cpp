@@ -303,7 +303,7 @@ void BackendNetPlay::ProcessPacket(Packet&& p)
 		p.Do(subframe);
 		if (p.failure)
 			goto failure;
-		WARN_LOG(NETPLAY, "Client: reservation request for subframe %lld; current %lld (%s)", subframe, m_PastSubframeId, subframe > m_PastSubframeId ? "ok" : "too late");
+		WARN_LOG(NETPLAY, "Client: reservation request for subframe %lld; current %lld (%s)", (long long) subframe, (long long) m_PastSubframeId, subframe > m_PastSubframeId ? "ok" : "too late");
 		if (subframe > m_PastSubframeId)
 		{
 			m_ReservedSubframeId = subframe;
@@ -342,7 +342,7 @@ void BackendNetPlay::NewLocalSubframe()
 	if (m_PastSubframeId == m_ReservedSubframeId)
 	{
 		if (!m_HaveClearReservationPacket)
-			WARN_LOG(NETPLAY, "Client: blocking on reserved subframe %lld (bad estimate)", m_ReservedSubframeId);
+			WARN_LOG(NETPLAY, "Client: blocking on reserved subframe %lld (bad estimate)", (long long) m_ReservedSubframeId);
 		while (!m_HaveClearReservationPacket)
 		{
 			// Ouch, the server didn't wait long enough and we have to block.

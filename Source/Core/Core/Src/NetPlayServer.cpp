@@ -756,8 +756,8 @@ void NetPlayServer::AddReservation()
 	}
 	// now -> SET_RESERVATION -> RESERVATION_RESULT -> NP_MSG_CLEAR_RESERVATION
 	// = 3x latency (3/2x ping), hopefully without any clients blocking
-	m_reserved_subframe = std::max(m_highest_known_subframe + (highest_ping * 2) * 120 / 1000, 0ll);
-	WARN_LOG(NETPLAY, "Reserving frame %llu (hp=%u)", m_reserved_subframe, highest_ping);
+	m_reserved_subframe = std::max(m_highest_known_subframe + (highest_ping * 2) * 120 / 1000, (s64) 0);
+	WARN_LOG(NETPLAY, "Reserving frame %lld (hp=%u)", (long long) m_reserved_subframe, highest_ping);
 	Packet packet;
 	packet.W((MessageId)NP_MSG_SET_RESERVATION);
 	packet.W(m_reserved_subframe);
@@ -801,7 +801,7 @@ void NetPlayServer::CheckReservationResults()
 						todo();
 					di.todo.clear();
 					di.actual_mapping = di.new_mapping;
-					WARN_LOG(NETPLAY, "Changing over class %d index %d -> pid %u local %d subframe %lld", c, i, di.new_mapping.first, di.new_mapping.second, di.subframe);
+					WARN_LOG(NETPLAY, "Changing over class %d index %d -> pid %u local %d subframe %lld", c, i, di.new_mapping.first, di.new_mapping.second, (long long) di.subframe);
 				}
 			}
 		}
