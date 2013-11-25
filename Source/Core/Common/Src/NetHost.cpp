@@ -143,7 +143,7 @@ void NetHost::BroadcastPacket(Packet&& packet, ENetPeer* except)
 	if (packet.vec->size() < MaxShortPacketLength)
 	{
 		u16 seq = m_GlobalSequenceNumber++;
-		m_OutgoingPacketInfo.push_back(OutgoingPacketInfo(std::move(packet), except, seq, m_GlobalTicker++));
+		m_OutgoingPacketInfo.emplace_back(std::move(packet), except, seq, m_GlobalTicker++);
 		size_t peer = 0;
 		for (auto& pi : m_PeerInfo)
 		{

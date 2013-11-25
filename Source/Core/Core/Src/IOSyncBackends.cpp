@@ -78,7 +78,7 @@ void BackendNetPlay::StartGame()
 	m_HaveClearReservationPacket = false;
 	for (auto& dis : m_DeviceInfo)
 		for (auto& di : dis)
-			di = DeviceInfo();
+			di.Reset();
 	Packet p;
 	// Flush out any old stuff (but not new stuff!)
 	while (m_PacketsPendingProcessing.Pop(p))
@@ -191,7 +191,7 @@ Packet BackendNetPlay::DequeueReport(int classId, int index, bool* keepGoing)
 
 void BackendNetPlay::DoDisconnect(int classId, int index)
 {
-	m_DeviceInfo[classId][index] = DeviceInfo();
+	m_DeviceInfo[classId][index].Reset();
 	if (g_Classes[classId]->IsConnected(index))
 		g_Classes[classId]->OnDisconnected(index);
 }

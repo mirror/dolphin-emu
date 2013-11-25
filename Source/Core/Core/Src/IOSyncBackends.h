@@ -48,12 +48,17 @@ public:
 	// from (arbitrarily-ish) SI
 	virtual void NewLocalSubframe() override;
 private:
-	struct DeviceInfo
+	struct DeviceInfo : public NonCopyable
 	{
 		DeviceInfo()
 		{
+			Reset();
+		}
+		void Reset()
+		{
 			m_SubframeId = 0;
 			m_LastSentSubframeId = 0;
+			m_IncomingQueue.clear();
 		}
 		std::deque<Packet> m_IncomingQueue;
 		s64 m_SubframeId;

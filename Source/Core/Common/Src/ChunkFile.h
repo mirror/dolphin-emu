@@ -481,7 +481,7 @@ private:
 };
 
 // Convenience methods for packets.
-class Packet : public PointerWrap
+class Packet : public PointerWrap, public NonCopyable
 {
 public:
 	Packet() : PointerWrap(NULL, MODE_WRITE)
