@@ -290,20 +290,18 @@ void Jit64::WriteExit(u32 destination)
 	linkData.linkStatus = false;
 
 	// Link opportunity!
-	if (jo.enableBlocklink)
+	int block = blocks.GetBlockNumberFromStartAddress(destination);
+	if (block >= 0 && jo.enableBlocklink)
 	{
-		int block = blocks.GetBlockNumberFromStartAddress(destination);
-		if (block >= 0)
-		{
-			// It exists! Joy of joy!
-			JMP(blocks.GetBlock(block)->checkedEntry, true);
-			linkData.linkStatus = true;
-			return;
-		}
+		// It exists! Joy of joy!
+		JMP(blocks.GetBlock(block)->checkedEntry, true);
+		linkData.linkStatus = true;
 	}
-	MOV(32, M(&PC), Imm32(destination));
-	JMP(asm_routines.dispatcher, true);
-
+	else
+	{
+		MOV(32, M(&PC), Imm32(destination));
+		JMP(asm_routines.dispatcher, true);
+	}
 	b->linkData.push_back(linkData);
 }
 
