@@ -108,13 +108,6 @@ IEXIDevice* CEXIChannel::GetDevice(const u8 chip_select)
 	return NULL;
 }
 
-void CEXIChannel::Update()
-{
-	// start the transfer
-	for (auto& device : m_pDevices)
-		device->Update();
-}
-
 void CEXIChannel::Read32(u32& _uReturnValue, const u32 _iRegister)
 {
 	switch (_iRegister)
