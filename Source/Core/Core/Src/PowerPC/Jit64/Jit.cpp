@@ -171,6 +171,7 @@ void Jit64::Init()
 	jo.optimizeGatherPipe = true;
 	jo.fastInterrupts = false;
 	jo.accurateSinglePrecision = true;
+	jo.enableBlocklink = false;
 	js.memcheck = Core::g_CoreStartupParameter.bMMU;
 
 	gpr.SetEmitter(this);
