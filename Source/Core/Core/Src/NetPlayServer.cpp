@@ -18,6 +18,8 @@
 #include <arpa/inet.h>
 #endif
 
+const std::pair<PlayerId, s8> NetPlayServer::DeviceInfo::null_mapping(255, 255);
+
 NetPlayServer::~NetPlayServer()
 {
 #ifdef __APPLE__
@@ -38,11 +40,9 @@ NetPlayServer::NetPlayServer()
 	m_is_running = false;
 	m_num_players = 0;
 	m_dialog = NULL;
-#if 0
-	memset(m_pad_map, -1, sizeof(m_pad_map));
-	memset(m_wiimote_map, -1, sizeof(m_wiimote_map));
-#endif
+	m_highest_known_subframe = 0;
 	m_target_buffer_size = 20;
+	m_reservation_state = Inactive;
 #ifdef __APPLE__
 	m_dynamic_store = SCDynamicStoreCreate(NULL, CFSTR("NetPlayServer"), NULL, NULL);
 	m_prefs = SCPreferencesCreate(NULL, CFSTR("NetPlayServer"), NULL);
@@ -84,7 +84,7 @@ bool NetPlayServer::IsSpectator(PlayerId pid)
 	{
 		for (int i = 0; i < IOSync::Class::MaxDeviceIndex; i++)
 		{
-			if (m_device_map[c][i].first == pid)
+			if (m_device_info[c][i].actual_mapping.first == pid)
 				return false;
 		}
 	}
@@ -94,7 +94,7 @@ bool NetPlayServer::IsSpectator(PlayerId pid)
 void NetPlayServer::OnENetEvent(ENetEvent* event)
 {
 	// update pings every so many seconds
-	if (m_ping_timer.GetTimeElapsed() > (10 * 1000))
+	if (m_ping_timer.GetTimeElapsed() > (2 * 1000))
 		UpdatePings();
 
 	PlayerId pid = event->peer - m_enet_host->peers;
@@ -113,11 +113,6 @@ void NetPlayServer::OnTraversalStateChanged()
 {
 	if (m_dialog)
 		m_dialog->Update();
-}
-
-void NetPlayServer::SetDesiredDeviceMapping(int classId, int index, PlayerId pid, int localIndex) ON(NET)
-{
-	WARN_LOG(NETPLAY, "SetDesiredDeviceMapping stub: class %d index %d -> player %d index %d", classId, index, pid, localIndex);
 }
 
 #if defined(__APPLE__)
@@ -226,6 +221,7 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 	hello.Do(player.revision);
 	hello.Do(player.name);
 	player.ping = -1u;
+	player.reservation_ok = false;
 	// dolphin netplay version
 	if (hello.failure || npver != NETPLAY_VERSION)
 		return CON_ERR_VERSION_MISMATCH;
@@ -304,19 +300,29 @@ void NetPlayServer::OnDisconnect(PlayerId pid)
 		return;
 
 	player.connected = false;
+	enet_peer_disconnect_later(&m_enet_host->peers[pid], 0);
+
+	// The last reservation holdout might have disconnected.
+	CheckReservationResults();
 
 	for (int c = 0; c < IOSync::Class::NumClasses; c++)
 	{
 		for (int i = 0; i < IOSync::Class::MaxDeviceIndex; i++)
 		{
-			if (m_device_map[c][i].first == pid)
+			auto& di = m_device_info[c][i];
+			if (di.actual_mapping.first == pid)
 			{
-				Packet opacket;
-				opacket.W((MessageId)NP_MSG_DISCONNECT_DEVICE);
-				opacket.W((u8)c);
-				opacket.W((u8)i);
-				SendToClientsOnThread(std::move(opacket));
+				ForceDisconnectDevice(c, i);
 			}
+			else if (di.new_mapping.first == pid)
+			{
+				di.todo.push_back([=]() {
+					ASSUME_ON(NET);
+					ForceDisconnectDevice(c, i);
+				});
+			}
+			if (di.desired_mapping.first == pid)
+				di.desired_mapping = DeviceInfo::null_mapping;
 		}
 	}
 
@@ -327,6 +333,7 @@ void NetPlayServer::OnDisconnect(PlayerId pid)
 	// alert other players of disconnect
 	SendToClientsOnThread(std::move(opacket));
 }
+
 
 void NetPlayServer::AdjustPadBufferSize(unsigned int size)
 {
@@ -364,6 +371,8 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 		{
 			//player.is_localhost = peer->address.host == 0x0100007f;
 			player.connected = true;
+			// XXX allow connection during game
+			player.sitting_out_this_game = false;
 			m_num_players++;
 		}
 		return;
@@ -414,9 +423,9 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 	case NP_MSG_CONNECT_DEVICE:
 	case NP_MSG_DISCONNECT_DEVICE:
 		{
-			u8 classId, localIndex, flags;
+			u8 classId, localIndex;
+			u16 flags;
 			packet.Do(classId);
-			u8* indexP = (u8*) packet.vec->data() + packet.readOff;
 			packet.Do(localIndex);
 			packet.Do(flags);
 			int limit;
@@ -426,41 +435,30 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 			{
 				return OnDisconnect(pid);
 			}
-			// todo: bring customization back
-			std::pair<PlayerId, s8>* map = m_device_map[classId];
 			if (mid == NP_MSG_CONNECT_DEVICE)
 			{
-				PlayerId dummy1;
-				u8 dummy2;
-				PlayerId* localPlayerP = (PlayerId*) packet.vec->data() + packet.readOff;
-				packet.Do(dummy1);
-				u8* localIndexP = (u8*) packet.vec->data() + packet.readOff;
-				packet.Do(dummy2);
+				PWBuffer subtype;
+				packet.Do(subtype);
 				if (packet.failure)
 					return OnDisconnect(pid);
 
 				WARN_LOG(NETPLAY, "Server: received CONNECT_DEVICE (%u/%u) from client %u", classId, localIndex, pid);
-				// stub
-				player.devices_present[classId | (localIndex << 8)] = PWBuffer();
+				int idx = classId | (localIndex << 8);
+				if (player.devices_present.find(idx) != player.devices_present.end())
+					return OnDisconnect(pid);
+				player.devices_present[idx] = std::move(subtype);
 				int i;
 				for (i = 0; i < limit; i++)
 				{
-					if (map[i].second == -1)
+					auto& di = m_device_info[classId][i];
+					if (di.desired_mapping.second == -1)
 					{
-						map[i].first = pid;
-						map[i].second = localIndex;
-						*indexP = i;
-						*localPlayerP = pid;
-						*localIndexP = localIndex;
-						WARN_LOG(NETPLAY, "   --> assigning %d", i);
-						SendToClientsOnThread(std::move(packet));
+						SetDesiredDeviceMapping(classId, i, pid, localIndex);
 						break;
 					}
 				}
 				if (i == limit)
 					WARN_LOG(NETPLAY, "   --> no assignment");
-				// todo: keep track of connected local devices so they can be
-				// assigned back later
 			}
 			else // DISCONNECT
 			{
@@ -468,13 +466,20 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 				player.devices_present.erase(classId | (localIndex << 8));
 				for (int i = 0; i < IOSync::Class::MaxDeviceIndex; i++)
 				{
-					if (map[i].first == pid && map[i].second == localIndex)
+					auto& di = m_device_info[classId][i];
+					if (di.actual_mapping == std::make_pair(pid, (s8) localIndex))
 					{
-						map[i].first = map[i].second = -1;
-						*indexP = i;
-						SendToClientsOnThread(std::move(packet));
-						break;
+						ForceDisconnectDevice(classId, i);
 					}
+					else if (di.new_mapping == std::make_pair(pid, (s8) localIndex))
+					{
+						di.todo.push_back([=]() {
+							ASSUME_ON(NET);
+							ForceDisconnectDevice(classId, i);
+						});
+					}
+					if (di.desired_mapping == std::make_pair(pid, (s8) localIndex))
+						di.desired_mapping = DeviceInfo::null_mapping;
 				}
 			}
 			if (m_dialog)
@@ -485,10 +490,11 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 
 	case NP_MSG_REPORT:
 		{
-			u8 classId, index, flags;
+			u8 classId, index;
+			u16 skippedFrames;
 			packet.Do(classId);
 			packet.Do(index);
-			packet.Do(flags);
+			packet.Do(skippedFrames);
 			if (packet.failure ||
 			    classId >= IOSync::Class::NumClasses ||
 				index >= IOSync::g_Classes[classId]->GetMaxDeviceIndex())
@@ -496,9 +502,22 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 				return OnDisconnect(pid);
 			}
 
-			if (m_device_map[classId][index].first == pid)
+			auto& di = m_device_info[classId][index];
+			if (di.actual_mapping.first == pid)
 			{
+				di.subframe += skippedFrames;
+				m_highest_known_subframe = std::max(m_highest_known_subframe, di.subframe);
 				SendToClientsOnThread(std::move(packet), pid);
+			}
+			else if (di.new_mapping.first == pid)
+			{
+				di.subframe += skippedFrames;
+				m_highest_known_subframe = std::max(m_highest_known_subframe, di.subframe);
+				CopyAsMove<Packet> cpacket(std::move(packet));
+				di.todo.push_back([=]() mutable {
+					ASSUME_ON(NET);
+					SendToClientsOnThread(std::move(*cpacket), pid);
+				});
 			}
 			else
 			{
@@ -543,19 +562,54 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 				break;
 			if (IsSpectator(pid))
 			{
-				// If they're a spectator, the game can keep going even after
-				// they stopped, but we need to note that they no longer can be
-				// assigned to controllers.
-				//UpdateDevicesPresent();
-				break;
+				player.sitting_out_this_game = true;
+				if (m_dialog)
+					m_dialog->UpdateDevices();
 			}
-			// tell clients to stop game
-			Packet opacket;
-			opacket.W((MessageId)NP_MSG_STOP_GAME);
+			else
+			{
+				// tell clients to stop game
+				Packet opacket;
+				opacket.W((MessageId)NP_MSG_STOP_GAME);
 
-			SendToClientsOnThread(std::move(opacket));
+				SendToClientsOnThread(std::move(opacket));
 
-			m_is_running = false;
+				m_is_running = false;
+				m_reservation_state = Inactive;
+			}
+		}
+		break;
+
+	case NP_MSG_RESERVATION_RESULT:
+		{
+			if (m_reservation_state != WaitingForResponses)
+				break;
+			s64 requested_subframe, actual_subframe;
+			packet.Do(requested_subframe);
+			packet.Do(actual_subframe);
+			m_highest_known_subframe = std::max(m_highest_known_subframe, actual_subframe);
+			if (requested_subframe != m_reserved_subframe)
+				break;
+			if (requested_subframe > actual_subframe)
+			{
+				// OK
+				player.reservation_ok = true;
+				CheckReservationResults();
+			}
+			else
+			{
+				// Fail, try again
+				EndReservation();
+			}
+		}
+		break;
+
+	case NP_MSG_RESERVATION_DONE:
+		{
+			if (m_reservation_state != WaitingForChangeover)
+				break;
+			player.reservation_ok = false;
+			CheckReservationResults();
 		}
 		break;
 
@@ -586,31 +640,46 @@ void NetPlayServer::SetNetSettings(const NetSettings &settings)
 	m_settings = settings;
 }
 
-bool NetPlayServer::StartGame(const std::string &path)
+void NetPlayServer::StartGame(const std::string &path)
 {
-	m_current_game = Common::Timer::GetTimeMs();
+	m_net_host->RunOnThread([=]() {
+		ASSUME_ON(NET);
+		if (m_is_running)
+			return;
+		m_current_game = Common::Timer::GetTimeMs();
 
-	// no change, just update with clients
-	AdjustPadBufferSize(m_target_buffer_size);
+		// no change, just update with clients
+		AdjustPadBufferSize(m_target_buffer_size);
 
-	// tell clients to start game
-	Packet opacket;
-	opacket.W((MessageId)NP_MSG_START_GAME);
-	opacket.W(m_current_game);
-	opacket.W(m_settings.m_CPUthread);
-	opacket.W(m_settings.m_DSPEnableJIT);
-	opacket.W(m_settings.m_DSPHLE);
-	opacket.W(m_settings.m_WriteToMemcard);
-	opacket.W((int) m_settings.m_EXIDevice[0]);
-	opacket.W((int) m_settings.m_EXIDevice[1]);
+		// tell clients to start game
+		Packet opacket;
+		opacket.W((MessageId)NP_MSG_START_GAME);
+		opacket.W(m_current_game);
+		opacket.W(m_settings.m_CPUthread);
+		opacket.W(m_settings.m_DSPEnableJIT);
+		opacket.W(m_settings.m_DSPHLE);
+		opacket.W(m_settings.m_WriteToMemcard);
+		opacket.W((int) m_settings.m_EXIDevice[0]);
+		opacket.W((int) m_settings.m_EXIDevice[1]);
 
-	SendToClients(std::move(opacket));
+		SendToClientsOnThread(std::move(opacket));
 
-	m_is_running = true;
+		bool change = false;
+		for (auto& player : m_players)
+		{
+			if (!player.connected)
+				break;
+			change = change || player.sitting_out_this_game;
+			player.sitting_out_this_game = false;
+		}
+		if (change && m_dialog)
+			m_dialog->UpdateDevices();
 
-	memset(m_device_map, 0xff, sizeof(m_device_map));
+		m_reserved_subframe = 0;
+		ExecuteReservation();
 
-	return true;
+		m_is_running = true;
+	});
 }
 
 void NetPlayServer::SendToClients(Packet&& packet, const PlayerId skip_pid)
@@ -631,4 +700,223 @@ void NetPlayServer::SendToClientsOnThread(Packet&& packet, const PlayerId skip_p
 void NetPlayServer::SetDialog(NetPlayUI* dialog)
 {
 	m_dialog = dialog;
+}
+
+void NetPlayServer::SetDesiredDeviceMapping(int classId, int index, PlayerId pid, int localIndex)
+{
+	auto& dis = m_device_info[classId];
+	auto& di = dis[index];
+	auto new_mapping = std::make_pair(pid, (s8) localIndex);
+	if (di.desired_mapping == new_mapping)
+		return;
+	if (new_mapping.first != 255)
+	{
+		// Anyone else using this mapping?
+		for (int i = 0; i < IOSync::Class::MaxDeviceIndex; i++)
+		{
+			if (i != index && dis[i].desired_mapping == new_mapping)
+			{
+				SetDesiredDeviceMapping(classId, i, 255, 255);
+				// ??? This should not be necessary (definitely being run on
+				// the right thread, not reentrantly, all that), but it seems
+				// to be.
+				Common::SleepCurrentThread(50);
+				if (m_dialog)
+					m_dialog->UpdateDevices();
+				break;
+			}
+		}
+	}
+	di.desired_mapping = new_mapping;
+	AddReservation();
+}
+
+void NetPlayServer::AddReservation()
+{
+	if (m_reservation_state != Inactive)
+		return;
+	// We always pretend that a reservation exists on frame 0.
+	if (!m_is_running)
+		return;
+	m_reservation_state = WaitingForResponses;
+
+	// In case our guessed ping is too low, we should get the ping result
+	// before the reservation failure, so it will be okay next time.
+	UpdatePings();
+	// TODO: spectators don't need to be ok, *unless* everyone is a spectator
+	u32 highest_ping = 50;
+	for (size_t pid = 0; pid < m_players.size(); pid++)
+	{
+		Client& player = m_players[pid];
+		if (!player.connected)
+			continue;
+		player.reservation_ok = false;
+		if (player.ping != -1u)
+			highest_ping = std::max(highest_ping, player.ping);
+	}
+	// now -> SET_RESERVATION -> RESERVATION_RESULT -> NP_MSG_CLEAR_RESERVATION
+	// = 3x latency (3/2x ping), hopefully without any clients blocking
+	m_reserved_subframe = std::max(m_highest_known_subframe + (highest_ping * 2) * 120 / 1000, 0ll);
+	WARN_LOG(NETPLAY, "Reserving frame %llu (hp=%u)", m_reserved_subframe, highest_ping);
+	Packet packet;
+	packet.W((MessageId)NP_MSG_SET_RESERVATION);
+	packet.W(m_reserved_subframe);
+	SendToClientsOnThread(std::move(packet));
+}
+
+void NetPlayServer::CheckReservationResults()
+{
+	if (m_reservation_state == WaitingForResponses)
+	{
+		size_t pid;
+		for (pid = 0; pid < m_players.size(); pid++)
+		{
+			Client& player = m_players[pid];
+			if (player.connected && !player.reservation_ok)
+				return;
+		}
+
+		// All OK
+		ExecuteReservation();
+	}
+	else if (m_reservation_state == WaitingForChangeover)
+	{
+		size_t pid;
+		for (pid = 0; pid < m_players.size(); pid++)
+		{
+			Client& player = m_players[pid];
+			if (player.connected && player.reservation_ok)
+				return;
+		}
+
+		// All done
+		for (int c = 0; c < IOSync::Class::NumClasses; c++)
+		{
+			for (int i = 0; i < IOSync::Class::MaxDeviceIndex; i++)
+			{
+				auto& di = m_device_info[c][i];
+				if (di.new_mapping != di.actual_mapping)
+				{
+					for (auto& todo : di.todo)
+						todo();
+					di.todo.clear();
+					di.actual_mapping = di.new_mapping;
+					WARN_LOG(NETPLAY, "Changing over class %d index %d -> pid %u local %d subframe %lld", c, i, di.new_mapping.first, di.new_mapping.second, di.subframe);
+				}
+			}
+		}
+
+		EndReservation();
+	}
+}
+
+void NetPlayServer::ExecuteReservation()
+{
+	// Everyone is waiting for us!  Hurry up.
+	std::vector<PWBuffer> messages;
+	bool had_disconnects = false;
+	for (int c = 0; c < IOSync::Class::NumClasses; c++)
+	{
+		for (int i = 0; i < IOSync::Class::MaxDeviceIndex; i++)
+		{
+			auto& di = m_device_info[c][i];
+			if (!m_is_running)
+				di.actual_mapping = DeviceInfo::null_mapping;
+			if (di.desired_mapping != di.actual_mapping && di.actual_mapping.first != 255)
+			{
+				// Disconnect the previous assignment
+				Packet packet;
+				packet.W((MessageId)NP_MSG_DISCONNECT_DEVICE);
+				packet.W((u8) c);
+				packet.W((u8) i);
+				packet.W((u16) 0);
+				messages.push_back(std::move(*packet.vec));
+				di.new_mapping = DeviceInfo::null_mapping;
+				di.todo.clear();
+				had_disconnects = true;
+			}
+		}
+	}
+	// Strictly we only need to avoid the *same* device being disconnected and
+	// connected.  Exercise: Why?
+	if (!had_disconnects)
+	{
+		for (int c = 0; c < IOSync::Class::NumClasses; c++)
+		{
+			for (int i = 0; i < IOSync::Class::MaxDeviceIndex; i++)
+			{
+				auto& di = m_device_info[c][i];
+				if (di.desired_mapping != di.actual_mapping && di.desired_mapping.first != 255)
+				{
+					auto pid = di.desired_mapping.first;
+					auto local_index = di.desired_mapping.second;
+					auto& player = m_players[pid];
+					if (!player.connected)
+						goto fail;
+					auto it = player.devices_present.find(c | (local_index << 8));
+					if (it == player.devices_present.end())
+						goto fail;
+					const PWBuffer& subtype = it->second;
+					// And get the new one!
+					Packet packet;
+					packet.W((MessageId)NP_MSG_CONNECT_DEVICE);
+					packet.W((u8) c);
+					packet.W((u8) i);
+					packet.W((u16) 0);
+					packet.W(pid);
+					packet.W((u8) local_index);
+					packet.W(subtype);
+					messages.push_back(std::move(*packet.vec));
+					di.new_mapping = di.desired_mapping;
+					di.subframe = m_reserved_subframe;
+					di.todo.clear();
+				}
+			}
+		}
+	}
+
+	{
+		Packet packet;
+		packet.W((MessageId)NP_MSG_CLEAR_RESERVATION);
+		packet.W(messages);
+		SendToClientsOnThread(std::move(packet));
+	}
+	m_reservation_state = WaitingForChangeover;
+	return;
+
+fail:
+	PanicAlert("ExecuteReservation is messed up");
+}
+
+void NetPlayServer::EndReservation()
+{
+	m_reservation_state = Inactive;
+
+	// We might still not be up to date.
+	for (int c = 0; c < IOSync::Class::NumClasses; c++)
+	{
+		for (int i = 0; i < IOSync::Class::MaxDeviceIndex; i++)
+		{
+			auto& di = m_device_info[c][i];
+			if (di.desired_mapping != di.actual_mapping)
+			{
+				AddReservation();
+				return;
+			}
+		}
+	}
+}
+
+// This is only safe if the player was expecting the disconnect: they sent a
+// disconnect message or disconnected entirely.
+void NetPlayServer::ForceDisconnectDevice(int classId, int index)
+{
+	Packet packet;
+	packet.W((MessageId)NP_MSG_DISCONNECT_DEVICE);
+	packet.W((u8)classId);
+	packet.W((u8)index);
+	packet.W((u8)0);
+	SendToClientsOnThread(std::move(packet));
+	auto& di = m_device_info[classId][index];
+	di.desired_mapping = di.actual_mapping = di.new_mapping = DeviceInfo::null_mapping;
 }

@@ -22,15 +22,18 @@ void Class::SetIndex(int index, int localIndex)
 	}
 }
 
-void Class::OnConnected(int index, PWBuffer&& subtype)
+void Class::OnConnected(int index, int localIndex, PWBuffer&& subtype)
 {
+	SetIndex(index, localIndex);
 	m_Remote[index].m_Subtype = std::move(subtype);
 	m_Remote[index].m_IsConnected = true;
 }
 
 void Class::OnDisconnected(int index)
 {
+	SetIndex(index, -1);
 	m_Remote[index] = DeviceInfo();
+	m_Remote[index].m_IsConnected = false;
 }
 
 void Class::DeviceInfo::DoState(PointerWrap& p)
@@ -53,6 +56,7 @@ void Init()
 {
 	if (!g_Backend)
 		ResetBackend();
+	g_Backend->StartGame();
 }
 
 void ResetBackend()

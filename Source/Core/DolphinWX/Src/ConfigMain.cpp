@@ -1149,11 +1149,8 @@ void CConfigMain::ChooseSIDevice(wxString deviceName, int deviceNum)
 
 	SConfig::GetInstance().m_SIDevice[deviceNum] = tempType;
 
-	if (Core::GetState() != Core::CORE_UNINITIALIZED)
-	{
-		// Change plugged device! :D
-		SerialInterface::ChangeDevice(tempType, deviceNum);
-	}
+	// Change plugged device! :D
+	SerialInterface::ChangeLocalDevice(tempType, deviceNum);
 }
 
 void CConfigMain::ChooseEXIDevice(wxString deviceName, int deviceNum)

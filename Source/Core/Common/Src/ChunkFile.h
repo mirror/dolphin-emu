@@ -508,9 +508,9 @@ public:
 
 	// Write an rvalue.
 	template <typename T>
-	void W(T t)
+	void W(const T& t)
 	{
-		PointerWrap::Do(t);
+		PointerWrap::Do((T&) t);
 	}
 
 private:

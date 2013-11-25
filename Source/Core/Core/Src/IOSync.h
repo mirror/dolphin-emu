@@ -28,6 +28,7 @@ public:
 	virtual void OnPacketError() = 0;
 	virtual u32 GetTime() = 0;
 	virtual void DoState(PointerWrap& p) = 0;
+	virtual void StartGame() {}
 	virtual void NewLocalSubframe() {}
 };
 
@@ -74,11 +75,14 @@ public:
 	// and is sent along with the connection notice.
 	void ConnectLocalDevice(int localIndex, PWBuffer&& subtypeData)
 	{
+		m_Local[localIndex].m_IsConnected = true;
+		m_Local[localIndex].m_Subtype = subtypeData.copy();
 		g_Backend->ConnectLocalDevice(m_ClassId, localIndex, std::move(subtypeData));
 	}
 
 	void DisconnectLocalDevice(int localIndex)
 	{
+		m_Local[localIndex].m_IsConnected = false;
 		g_Backend->DisconnectLocalDevice(m_ClassId, localIndex);
 	}
 
@@ -106,14 +110,14 @@ public:
 		return &m_Local[index].m_Subtype;
 	}
 
-	const bool& LocalIsConnected(int index)
-	{
-		return m_Local[index].m_IsConnected;
-	}
-
 	const bool& IsConnected(int index)
 	{
 		return m_Remote[index].m_IsConnected;
+	}
+
+	bool LocalIsConnected(int index)
+	{
+		return m_Local[index].m_IsConnected;
 	}
 
 	template <typename Report, typename Callback>
@@ -156,7 +160,8 @@ public:
 	}
 
 	// These should be called on thread.
-	virtual void OnConnected(int index, PWBuffer&& subtype);
+	virtual void PreInit() {}
+	virtual void OnConnected(int index, int localIndex, PWBuffer&& subtype);
 	virtual void OnDisconnected(int index);
 	virtual void DoState(PointerWrap& p);
 	virtual int GetMaxDeviceIndex() = 0;
@@ -189,7 +194,7 @@ class EXISyncClass : public IOSync::Class
 {
 public:
 	EXISyncClass() : IOSync::Class(ClassEXI) {}
-    virtual void OnConnected(int index, PWBuffer&& subtype) override {};
+    virtual void OnConnected(int index, int localIndex, PWBuffer&& subtype) override {};
     virtual void OnDisconnected(int index) override {};
 	virtual int GetMaxDeviceIndex() override { return 2; }
 };

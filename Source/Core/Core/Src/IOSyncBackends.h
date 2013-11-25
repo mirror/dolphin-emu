@@ -39,8 +39,10 @@ public:
 	virtual void OnPacketError() override;
 	virtual u32 GetTime() override;
 	virtual void DoState(PointerWrap& p) override;
+	virtual void StartGame() override;
 
 	// from netplay
+	void PreInitDevices() ON(NET);
 	void OnPacketReceived(Packet&& packet) ON(NET);
 	void Abort() ON(NET);
 	// from (arbitrarily-ish) SI
@@ -60,14 +62,18 @@ private:
 
 	void ProcessIncomingPackets();
 	void ProcessPacket(Packet&& p);
-	void UpdateDelay(u32 delay);
+	void DoDisconnect(int classId, int index);
 
 	NetPlayClient* m_Client;
-	// this is split up to avoid unnecessary copying in The Future
 	Common::FifoQueue<Packet, false> m_PacketsPendingProcessing;
 	s64 m_SubframeId;
-	// We accept packets sent before this frame.
+	// We accept packets sent before this frame.  i.e.  this is the subframe
+	// represented in emulation.
 	s64 m_PastSubframeId;
+	// We will wait for this frame.
+	s64 m_ReservedSubframeId;
+	Packet m_ClearReservationPacket;
+	bool m_HaveClearReservationPacket;
 	u32 m_Delay;
 	// indexed by remote device
 	DeviceInfo m_DeviceInfo[Class::NumClasses][Class::MaxDeviceIndex];

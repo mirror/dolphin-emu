@@ -86,6 +86,7 @@ public:
 	~NetHost();
 	void RunOnThread(std::function<void()> func) NOT_ON(NET);
 	void RunOnThreadSync(std::function<void()> func) NOT_ON(NET);
+	void RunOnThisThreadSync(std::function<void()> func) NOT_ON(NET);
 	void CreateThread();
 	void Reset();
 

@@ -44,7 +44,7 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 	m_net_host = NULL;
 	m_state_callback = stateCallback;
 	m_local_name = name;
-	m_backend = NULL;
+	IOSync::g_Backend.reset(m_backend = new IOSync::BackendNetPlay(this, m_delay));
 	m_received_stop_request = false;
 
 	size_t pos = hostSpec.find(':');
@@ -141,6 +141,7 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 		if (m_state_callback)
 			m_state_callback(this);
 		m_have_dialog_event.Wait();
+		m_backend->PreInitDevices();
 		return;
 	}
 	else if(m_state != Connected)
@@ -238,16 +239,6 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 				return OnDisconnect(InvalidPacket);
 			/* fall through */
 		}
-	case NP_MSG_DISCONNECT_DEVICE:
-	case NP_MSG_CONNECT_DEVICE:
-	case NP_MSG_REPORT:
-		{
-			if (!m_backend)
-				break;
-			packet.readOff = oldOff;
-			m_backend->OnPacketReceived(std::move(packet));
-			break;
-		}
 
 	case NP_MSG_CHANGE_GAME :
 		{
@@ -281,8 +272,20 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 
 			m_received_stop_request = false;
 			m_dialog->OnMsgStartGame();
+			// fall through
 		}
-		break;
+	case NP_MSG_DISCONNECT_DEVICE:
+	case NP_MSG_CONNECT_DEVICE:
+	case NP_MSG_REPORT:
+	case NP_MSG_SET_RESERVATION:
+	case NP_MSG_CLEAR_RESERVATION:
+		{
+			if (!m_backend)
+				break;
+			packet.readOff = oldOff;
+			m_backend->OnPacketReceived(std::move(packet));
+			break;
+		}
 
 	case NP_MSG_STOP_GAME :
 		{
@@ -339,6 +342,8 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 
 void NetPlayClient::OnDisconnect(int reason)
 {
+	if (m_state == Failure)
+		return;
 	std::lock_guard<std::recursive_mutex> lk(m_crit);
 	if (m_state == Connected)
 	{
@@ -513,7 +518,6 @@ bool NetPlayClient::StartGame(const std::string &path)
 
 	m_dialog->AppendChat(" -- STARTING GAME -- ");
 
-	IOSync::g_Backend.reset(m_backend = new IOSync::BackendNetPlay(this, m_delay));
 	// boot game
 
 	m_dialog->BootGame(path);
@@ -539,6 +543,7 @@ void NetPlayClient::GameStopped()
 	std::lock_guard<std::recursive_mutex> lk(m_crit);
 
 	m_net_host->RunOnThreadSync([=]() {
+		ASSUME_ON(NET);
 		IOSync::ResetBackend();
 		m_backend = NULL;
 	});

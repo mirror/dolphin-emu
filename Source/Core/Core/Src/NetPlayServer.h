@@ -31,7 +31,7 @@ public:
 
 	void SetNetSettings(const NetSettings &settings) /* ON(GUI) */;
 
-	bool StartGame(const std::string &path) /* ON(GUI) */;
+	void StartGame(const std::string &path) /* ON(GUI) */;
 
 	void AdjustPadBufferSize(unsigned int size) /* multiple threads */;
 
@@ -44,6 +44,11 @@ public:
 	virtual void OnConnectFailed(u8 reason) override ON(NET) {}
 
 	void SetDesiredDeviceMapping(int classId, int index, PlayerId pid, int localIndex) ON(NET);
+	void AddReservation() ON(NET);
+	void CheckReservationResults() ON(NET);
+	void ExecuteReservation() ON(NET);
+	void EndReservation() ON(NET);
+	void ForceDisconnectDevice(int classId, int index) ON(NET);
 
 	std::unordered_set<std::string> GetInterfaceSet();
 	std::string GetInterfaceHost(std::string interface);
@@ -58,14 +63,38 @@ public:
 		u32 ping;
 		u32 current_game;
 		bool connected;
+		bool reservation_ok;
+		bool sitting_out_this_game; // hit "stop"
 		std::map<u32, PWBuffer> devices_present;
 		//bool is_localhost;
 	};
 
 	std::vector<Client>	m_players;
 
-	std::pair<PlayerId, s8> m_device_map[IOSync::Class::NumClasses][IOSync::Class::MaxDeviceIndex];
-	std::pair<PlayerId, s8> m_desired_device_map[IOSync::Class::NumClasses][IOSync::Class::MaxDeviceIndex];
+	struct DeviceInfo
+	{
+		DeviceInfo()
+		{
+			desired_mapping = actual_mapping = new_mapping = null_mapping;
+		}
+		const static std::pair<PlayerId, s8> null_mapping;
+		// The mapping configured in the dialog.
+		std::pair<PlayerId, s8> desired_mapping;
+		// The current mapping.
+		std::pair<PlayerId, s8> actual_mapping;
+		// In WaitingForChangeover mode, the mapping that we'll change over to
+		// when this device hits m_reserved_subframe or we switch to Inactive
+		// mode.  The current approach (disconnect+connect requires two cycles,
+		// etc.) is suboptimal in general, but it simplifies the logic a bit
+		// (which is already rather complicated) and it's not like connecting
+		// and disconnecting devices is super latency sensitive.
+		std::pair<PlayerId, s8> new_mapping;
+		s64 subframe;
+
+		std::vector<std::function<void()>> todo;
+	};
+
+	DeviceInfo m_device_info[IOSync::Class::NumClasses][IOSync::Class::MaxDeviceIndex];
 
 private:
 
@@ -99,6 +128,15 @@ private:
 	NetHost*		m_net_host;
 	ENetHost*		m_enet_host;
 	NetPlayUI*		m_dialog;
+
+	s64				m_highest_known_subframe;
+	enum
+	{
+		Inactive,
+		WaitingForResponses,
+		WaitingForChangeover
+	}				m_reservation_state;
+	s64				m_reserved_subframe;
 
 #if defined(__APPLE__)
 	const void* m_dynamic_store;

@@ -45,6 +45,16 @@ enum
 	NP_MSG_DISCONNECT_DEVICE		= 0x62,
 	NP_MSG_REPORT					= 0x63,
 
+	// Todo: explain why this is a good idea.
+	// [s->c] Block on a specific subframe in the future.
+	NP_MSG_SET_RESERVATION			= 0x64,
+	// [s->c] Clear the reservation and optionally run some commands.
+	NP_MSG_CLEAR_RESERVATION		= 0x65,
+	// [c->s] Reservation was either OK or failed because that frame already started.
+	NP_MSG_RESERVATION_RESULT		= 0x66,
+	// [c->s] Reservation was executed.
+	NP_MSG_RESERVATION_DONE			= 0x67,
+
 	NP_MSG_START_GAME		= 0xA0,
 	NP_MSG_CHANGE_GAME		= 0xA1,
 	NP_MSG_STOP_GAME		= 0xA2,

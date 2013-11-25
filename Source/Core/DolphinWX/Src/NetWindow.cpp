@@ -497,6 +497,7 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 		else
 		{
 			PanicAlertT("The host chose a game that was not found locally.");
+			netplay_client->GameStopped();
 		}
 		if (m_start_btn)
 			m_start_btn->Disable();
@@ -516,7 +517,7 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 	case NP_GUI_EVT_UPDATE_DEVICES:
 		{
 		if (m_device_map_diag && netplay_server)
-			g_MainNetHost->RunOnThreadSync([&]() {
+			g_MainNetHost->RunOnThisThreadSync([&]() {
 				m_device_map_diag->UpdateDeviceMap();
 			});
 		}
@@ -733,7 +734,7 @@ void DeviceMapDiag::UpdateDeviceMap()
 		m_pos_to_pid_local_idx[classId].push_back(std::make_pair(255, 255));
 		for (auto& player : m_server->m_players)
 		{
-			if (!player.connected)
+			if (!player.connected || player.sitting_out_this_game)
 				continue;
 			for (const auto& p : player.devices_present)
 			{
@@ -752,7 +753,7 @@ void DeviceMapDiag::UpdateDeviceMap()
 			wxChoice* choice = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, options);
 			choice->Bind(wxEVT_COMMAND_CHOICE_SELECTED, &DeviceMapDiag::OnAdjust, this);
 			m_choice_to_cls_idx[choice] = std::make_pair(classId, idx);
-			auto cur = m_server->m_device_map[classId][idx];
+			auto cur = m_server->m_device_info[classId][idx].desired_mapping;
 			if (cur.first == 255)
 				choice->Select(0);
 			else
@@ -782,7 +783,7 @@ void DeviceMapDiag::OnAdjust(wxCommandEvent& event)
 	auto q = m_pos_to_pid_local_idx[classId][pos];
 	PlayerId pid = q.first;
 	int local_index = q.second;
-	g_MainNetHost->RunOnThreadSync([=]() {
+	g_MainNetHost->RunOnThread([=]() {
 		ASSUME_ON(NET);
 		m_server->SetDesiredDeviceMapping(classId, index, pid, local_index);
 	});

@@ -120,7 +120,7 @@ protected:
 	Player*		m_local_player GUARDED_BY(m_crit);
 	std::string m_local_name ACCESS_ON(NET);
 
-	IOSync::BackendNetPlay* m_backend;
+	IOSync::BackendNetPlay* m_backend ACCESS_ON(NET);
 
 	u32		m_current_game;
 	bool m_received_stop_request;

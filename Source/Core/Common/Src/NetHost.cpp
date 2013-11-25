@@ -112,6 +112,18 @@ void NetHost::RunOnThreadSync(std::function<void()> func)
 	evt.Wait();
 }
 
+void NetHost::RunOnThisThreadSync(std::function<void()> func)
+{
+	Common::Event evt, evt2;
+	RunOnThread([&]() {
+		evt.Set();
+		evt2.Wait();
+	});
+	evt.Wait();
+	func();
+	evt2.Set();
+}
+
 void NetHost::Reset()
 {
 	// Sync up with the thread and disconnect everyone.

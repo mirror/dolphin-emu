@@ -210,9 +210,14 @@ static u8					g_SIBuffer[128];
 static int changeDevice[4];
 }
 
-void SISyncClass::OnConnected(int channel, PWBuffer&& subtype)
+void SISyncClass::PreInit()
 {
-	IOSync::Class::OnConnected(channel, std::move(subtype));
+	SerialInterface::PreInit();
+}
+
+void SISyncClass::OnConnected(int channel, int localIndex, PWBuffer&& subtype)
+{
+	IOSync::Class::OnConnected(channel, localIndex, std::move(subtype));
 	SIDevices type = GrabSubtype<SIDevices>(GetSubtype(channel));
 
 	CoreTiming::RemoveAllEvents(SerialInterface::changeDevice[channel]);
@@ -262,9 +267,17 @@ void DoState(PointerWrap &p)
 	p.Do(g_SIBuffer);
 }
 
+void PreInit()
+{
+	for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
+	{
+		ChangeLocalDevice(SConfig::GetInstance().m_SIDevice[i], i);
+	}
+}
 
 void Init()
 {
+	PreInit();
 	for (int i = 0; i < 4; i++)
 	{
 		char buf[64];
@@ -279,7 +292,6 @@ void Init()
 		g_Channel[i].m_InLo.Hex = 0;
 
 		AddDevice(SIDEVICE_NONE, i);
-		ChangeDevice(SConfig::GetInstance().m_SIDevice[i], i);
 	}
 
 	g_Poll.Hex = 0;
@@ -611,9 +623,17 @@ void ChangeDeviceCallback(u64 userdata, int cyclesLate)
 	AddDevice((SIDevices)(u32)userdata, channel);
 }
 
-void ChangeDevice(SIDevices device, int channel)
+void ChangeLocalDevice(SIDevices device, int channel)
 {
+	SIDevices old;
 	if (g_SISyncClass.LocalIsConnected(channel))
+		old = g_SISyncClass.GrabSubtype<SIDevices>(g_SISyncClass.GetLocalSubtype(channel));
+	else
+		old = SIDEVICE_NONE;
+
+	if (old == device)
+		return;
+	if (old != SIDEVICE_NONE)
 		g_SISyncClass.DisconnectLocalDevice(channel);
 	if (device != SIDEVICE_NONE)
 		g_SISyncClass.ConnectLocalDevice(channel, g_SISyncClass.PushSubtype(device));

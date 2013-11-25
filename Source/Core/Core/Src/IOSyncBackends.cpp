@@ -8,13 +8,11 @@ namespace IOSync
 
 void BackendLocal::ConnectLocalDevice(int classId, int localIndex, PWBuffer&& buf)
 {
-	g_Classes[classId]->SetIndex(localIndex, localIndex);
-	g_Classes[classId]->OnConnected(localIndex, std::move(buf));
+	g_Classes[classId]->OnConnected(localIndex, localIndex, std::move(buf));
 }
 
 void BackendLocal::DisconnectLocalDevice(int classId, int localIndex)
 {
-	g_Classes[classId]->SetIndex(-1, localIndex);
 	g_Classes[classId]->OnDisconnected(localIndex);
 }
 
@@ -56,8 +54,7 @@ void BackendLocal::DoState(PointerWrap& p)
 				cls->OnDisconnected(d);
 			if (const PWBuffer* subtype = cls->GetLocalSubtype(d))
 			{
-				cls->SetIndex(d, d);
-				cls->OnConnected(d, subtype->copy());
+				cls->OnConnected(d, d, subtype->copy());
 			}
 		}
 	}
@@ -66,9 +63,34 @@ void BackendLocal::DoState(PointerWrap& p)
 BackendNetPlay::BackendNetPlay(NetPlayClient* client, u32 delay)
 {
 	m_Client = client;
-	m_SubframeId = -1;
 	m_Delay = delay;
+}
+
+void BackendNetPlay::PreInitDevices()
+{
+	for (int c = 0; c < Class::NumClasses; c++)
+		g_Classes[c]->PreInit();
+}
+
+void BackendNetPlay::StartGame()
+{
 	m_Abort = false;
+	m_HaveClearReservationPacket = false;
+	for (auto& dis : m_DeviceInfo)
+		for (auto& di : dis)
+			di = DeviceInfo();
+	Packet p;
+	// Flush out any old stuff (but not new stuff!)
+	while (m_PacketsPendingProcessing.Pop(p))
+	{
+		MessageId mid = 0;
+		p.Do(mid);
+		if (mid == NP_MSG_START_GAME)
+			break;
+	}
+	m_SubframeId = -1;
+	// Block on subframe 0.
+	m_ReservedSubframeId = 0;
 	NewLocalSubframe();
 }
 
@@ -79,7 +101,7 @@ void BackendNetPlay::ConnectLocalDevice(int classId, int localIndex, PWBuffer&& 
 	pac.W((MessageId) NP_MSG_CONNECT_DEVICE);
 	pac.W((u8) classId);
 	pac.W((u8) localIndex);
-	pac.W((u8) 0); // flags
+	pac.W((u16) 0); // flags
 	pac.W(std::move(buf));
 	m_Client->SendPacket(std::move(pac));
 }
@@ -93,7 +115,7 @@ void BackendNetPlay::DisconnectLocalDevice(int classId, int localIndex)
 	pac.W((MessageId) NP_MSG_DISCONNECT_DEVICE);
 	pac.W((u8) classId);
 	pac.W((u8) localIndex);
-	pac.W((u8) 0); // flags
+	pac.W((u16) 0); // flags
 	m_Client->SendPacket(std::move(pac));
 }
 
@@ -106,8 +128,8 @@ void BackendNetPlay::EnqueueLocalReport(int classId, int localIndex, PWBuffer&& 
 	pac.W((MessageId) NP_MSG_REPORT);
 	pac.W((u8) classId);
 	pac.W((u8) ri);
-	auto& last = m_DeviceInfo[classId][localIndex].m_LastSentSubframeId;
-	u8 skippedFrames = m_SubframeId - last;
+	auto& last = m_DeviceInfo[classId][ri].m_LastSentSubframeId;
+	u16 skippedFrames = m_SubframeId - last;
 	last = m_SubframeId;
 	pac.W(skippedFrames);
 	pac.vec->append(buf);
@@ -132,23 +154,46 @@ Packet BackendNetPlay::DequeueReport(int classId, int index, bool* keepGoing)
 		if (!queue.empty())
 		{
 			Packet& p = queue.front();
-			u8 skippedFrames;
-			p.Do(skippedFrames);
-			if (deviceInfo.m_SubframeId + skippedFrames > m_PastSubframeId)
+			MessageId packetType = 0;
+			u8 _classId, _index;
+			u16 flags;
+			p.Do(packetType);
+			p.Do(_classId);
+			p.Do(_index);
+			p.Do(flags);
+			if (packetType == NP_MSG_DISCONNECT_DEVICE)
 			{
-				p.readOff--;
+				WARN_LOG(NETPLAY, "Disconnecting remote class %u device %u", classId, index);
+				DoDisconnect(classId, index);
 				*keepGoing = false;
 				return PWBuffer();
 			}
-			deviceInfo.m_SubframeId += skippedFrames;
-			//printf("--> dev=%llu past=%llu ql=%zd\n", deviceInfo.m_SubframeId, m_PastSubframeId, queue.size());
-			*keepGoing = deviceInfo.m_SubframeId < m_PastSubframeId;
-			Packet q = std::move(p);
-			queue.pop_front();
-			return q;
+			else
+			{
+				u16 skippedFrames = flags;
+				if (deviceInfo.m_SubframeId + skippedFrames > m_PastSubframeId)
+				{
+					p.readOff -= 5;
+					*keepGoing = false;
+					return PWBuffer();
+				}
+				deviceInfo.m_SubframeId += skippedFrames;
+				//printf("--> dev=%llu past=%llu ql=%zd\n", deviceInfo.m_SubframeId, m_PastSubframeId, queue.size());
+				*keepGoing = deviceInfo.m_SubframeId < m_PastSubframeId;
+				Packet q = std::move(p);
+				queue.pop_front();
+				return q;
+			}
 		}
 		ProcessIncomingPackets();
 	}
+}
+
+void BackendNetPlay::DoDisconnect(int classId, int index)
+{
+	m_DeviceInfo[classId][index] = DeviceInfo();
+	if (g_Classes[classId]->IsConnected(index))
+		g_Classes[classId]->OnDisconnected(index);
 }
 
 void BackendNetPlay::OnPacketError()
@@ -190,20 +235,24 @@ void BackendNetPlay::ProcessIncomingPackets()
 void BackendNetPlay::ProcessPacket(Packet&& p)
 {
 	MessageId packetType = 0;
-	u8 classId, index, flags;
+	u8 classId, index;
+	u16 flags;
 	p.Do(packetType);
-	if (packetType != NP_MSG_PAD_BUFFER)
+	switch (packetType)
 	{
+	case NP_MSG_CONNECT_DEVICE:
+	case NP_MSG_DISCONNECT_DEVICE:
+	case NP_MSG_REPORT:
 		p.Do(classId);
 		p.Do(index);
 		p.Do(flags);
 		if (p.failure ||
 			classId >= Class::NumClasses ||
 			index >= g_Classes[classId]->GetMaxDeviceIndex())
-		{
-			OnPacketError();
-			return;
-		}
+			goto failure;
+		break;
+	default:
+		break;
 	}
 	switch (packetType)
 	{
@@ -215,30 +264,27 @@ void BackendNetPlay::ProcessPacket(Packet&& p)
 		p.Do(localPlayer);
 		p.Do(localIndex);
 		p.Do(subtype);
-		if (localIndex >= g_Classes[classId]->GetMaxDeviceIndex())
-		{
-			OnPacketError();
-			return;
-		}
+		if (p.failure ||
+		    localIndex >= g_Classes[classId]->GetMaxDeviceIndex())
+			goto failure;
+
 		WARN_LOG(NETPLAY, "Connecting remote class %u device %u with local %u/pid%u", classId, index, localIndex, localPlayer);
-		auto& di = m_DeviceInfo[classId][index] = DeviceInfo();
-		di.m_LastSentSubframeId = di.m_SubframeId = m_SubframeId;
-		g_Classes[classId]->SetIndex(index, localPlayer == m_Client->m_pid ? localIndex : -1);
-		g_Classes[classId]->OnConnected(index, std::move(subtype));
+		// The disconnect might be queued.
+		DoDisconnect(classId, index);
+		auto& di = m_DeviceInfo[classId][index];
+		di.m_SubframeId = di.m_LastSentSubframeId = m_PastSubframeId;
+		int myLocalIndex = localPlayer == m_Client->m_pid ? localIndex : -1;
+		g_Classes[classId]->OnConnected(index, myLocalIndex, std::move(subtype));
 		break;
 		}
 	case NP_MSG_DISCONNECT_DEVICE:
 		{
-		WARN_LOG(NETPLAY, "Disconnecting remote class %u device %u", classId, index);
-		m_DeviceInfo[classId][index] = DeviceInfo();
 		g_Classes[classId]->SetIndex(index, -1);
-		if (g_Classes[classId]->IsConnected(index))
-			g_Classes[classId]->OnDisconnected(index);
-		break;
+		// fall through
 		}
 	case NP_MSG_REPORT:
 		{
-		p.readOff--; // go back to flags
+		p.readOff -= 5; // go back to type
 		m_DeviceInfo[classId][index].m_IncomingQueue.push_back(std::move(p));
 		break;
 		}
@@ -246,21 +292,77 @@ void BackendNetPlay::ProcessPacket(Packet&& p)
 		{
 		u32 delay;
 		p.Do(delay);
+		if (p.failure)
+			goto failure;
 		m_Delay = delay;
-	break;
+		break;
 		}
+	case NP_MSG_SET_RESERVATION:
+		{
+		s64 subframe;
+		p.Do(subframe);
+		if (p.failure)
+			goto failure;
+		WARN_LOG(NETPLAY, "Client: reservation request for subframe %lld; current %lld (%s)", subframe, m_PastSubframeId, subframe > m_PastSubframeId ? "ok" : "too late");
+		if (subframe > m_PastSubframeId)
+		{
+			m_ReservedSubframeId = subframe;
+			m_HaveClearReservationPacket = false;
+		}
+		Packet pac;
+		pac.W((MessageId) NP_MSG_RESERVATION_RESULT);
+		pac.W(subframe);
+		pac.W(m_PastSubframeId);
+		m_Client->SendPacket(std::move(pac));
+		}
+		break;
+	case NP_MSG_CLEAR_RESERVATION:
+		{
+		m_HaveClearReservationPacket = true;
+		m_ClearReservationPacket = std::move(p);
+		}
+		break;
 	default:
 		// can't happen
 		break;
 	}
+	return;
+failure:
+	OnPacketError();
 }
 
 void BackendNetPlay::NewLocalSubframe()
 {
 	m_SubframeId++;
 	m_PastSubframeId = m_SubframeId - m_Delay;
+
 	// If we have nothing connected, we need to process the queue here.
 	ProcessIncomingPackets();
+
+	if (m_PastSubframeId == m_ReservedSubframeId)
+	{
+		if (!m_HaveClearReservationPacket)
+			WARN_LOG(NETPLAY, "Client: blocking on reserved subframe %lld (bad estimate)", m_ReservedSubframeId);
+		while (!m_HaveClearReservationPacket)
+		{
+			// Ouch, the server didn't wait long enough and we have to block.
+			if (m_Abort)
+				return;
+			ProcessIncomingPackets();
+		}
+		std::vector<PWBuffer> messages;
+		m_ClearReservationPacket.Do(messages);
+		m_ClearReservationPacket = Packet();
+		WARN_LOG(NETPLAY, "Client: reservation complete");
+		for (auto& message : messages)
+		{
+			ProcessPacket(std::move(message));
+		}
+		m_ReservedSubframeId--; // dummy value
+		Packet pac;
+		pac.W((MessageId) NP_MSG_RESERVATION_DONE);
+		m_Client->SendPacket(std::move(pac));
+	}
 }
 
-}
+} // namespace
