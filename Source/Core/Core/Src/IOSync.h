@@ -21,6 +21,7 @@ extern Class* g_Classes[];
 class Backend
 {
 public:
+	Backend();
 	virtual void ConnectLocalDevice(int classId, int localIndex, PWBuffer&& buf) = 0;
 	virtual void DisconnectLocalDevice(int classId, int localIndex) = 0;
 	virtual void EnqueueLocalReport(int classId, int localIndex, PWBuffer&& buf) = 0;
@@ -70,6 +71,8 @@ public:
 
 	void SetIndex(int index, int localIndex);
 
+	void ResetRemote();
+
 	// Make a local device available.
 	// subtypeData is data that does not change during the life of the device,
 	// and is sent along with the connection notice.
@@ -115,7 +118,7 @@ public:
 		return m_Remote[index].m_IsConnected;
 	}
 
-	bool LocalIsConnected(int index)
+	const bool& LocalIsConnected(int index)
 	{
 		return m_Local[index].m_IsConnected;
 	}
@@ -184,7 +187,6 @@ private:
 };
 
 void Init();
-void ResetBackend();
 void DoState(PointerWrap& p);
 
 }

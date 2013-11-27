@@ -4,6 +4,14 @@
 namespace IOSync
 {
 
+Backend::Backend()
+{
+	for (int classId = 0; classId < Class::NumClasses; classId++)
+	{
+		g_Classes[classId]->ResetRemote();
+	}
+}
+
 void Class::SetIndex(int index, int localIndex)
 {
 	if (localIndex != -1)
@@ -22,6 +30,16 @@ void Class::SetIndex(int index, int localIndex)
 	}
 }
 
+void Class::ResetRemote()
+{
+	for (int i = 0; i < MaxDeviceIndex; i++)
+	{
+		m_Remote[i] = DeviceInfo();
+		m_Local[i].m_OtherIndex = -1;
+		m_Local[i].m_IsConnected = false;
+	}
+}
+
 void Class::OnConnected(int index, int localIndex, PWBuffer&& subtype)
 {
 	SetIndex(index, localIndex);
@@ -33,7 +51,6 @@ void Class::OnDisconnected(int index)
 {
 	SetIndex(index, -1);
 	m_Remote[index] = DeviceInfo();
-	m_Remote[index].m_IsConnected = false;
 }
 
 void Class::DeviceInfo::DoState(PointerWrap& p)
@@ -55,13 +72,8 @@ void Class::DoState(PointerWrap& p)
 void Init()
 {
 	if (!g_Backend)
-		ResetBackend();
+		g_Backend.reset(new BackendLocal());
 	g_Backend->StartGame();
-}
-
-void ResetBackend()
-{
-	g_Backend.reset(new BackendLocal());
 }
 
 void DoState(PointerWrap& p)

@@ -277,13 +277,14 @@ void PreInit()
 
 void Init()
 {
-	PreInit();
 	for (int i = 0; i < 4; i++)
 	{
 		char buf[64];
 		sprintf(buf, "ChangeSIDevice%d", i);
 		changeDevice[i] = CoreTiming::RegisterEvent(strdup(buf), ChangeDeviceCallback);
 	}
+
+	PreInit();
 
 	for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
 	{

@@ -31,7 +31,7 @@ NetPlayClient::~NetPlayClient()
 	if (m_net_host)
 		m_net_host->Reset();
 
-	IOSync::ResetBackend();
+	IOSync::g_Backend.reset();
 
 	if (!m_direct_connection)
 		ReleaseTraversalClient();
@@ -424,7 +424,7 @@ void NetPlayClient::OnConnectReady(ENetAddress addr)
 void NetPlayClient::OnConnectFailed(u8 reason)
 {
 	m_state = Failure;
-	m_failure_reason = ServerError + reason;
+	m_failure_reason = TraversalClient::ConnectFailedError + reason;
 	if (m_state_callback)
 		m_state_callback(this);
 }

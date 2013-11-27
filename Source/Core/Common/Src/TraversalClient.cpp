@@ -268,6 +268,7 @@ TraversalRequestId TraversalClient::SendTraversalPacket(const TraversalPacket& p
 void TraversalClient::Reset()
 {
 	m_PendingConnect = false;
+	m_Client = NULL;
 }
 
 std::unique_ptr<TraversalClient> g_TraversalClient;

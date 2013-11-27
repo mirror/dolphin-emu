@@ -108,16 +108,15 @@ private:
 	std::vector<std::pair<std::string, std::string>> GetInterfaceListInternal();
 
 	NetSettings     m_settings;
-
-	bool            m_is_running;
-	Common::Timer	m_ping_timer;
+	bool            m_is_running ACCESS_ON(NET);
+	Common::Timer	m_ping_timer ACCESS_ON(NET);
 	u32		m_ping_key;
 	bool            m_update_pings;
 	u32		m_current_game;
 	u32				m_target_buffer_size;
 
 
-	unsigned m_num_players;
+	unsigned m_num_players ACCESS_ON(NET);
 
 	// only protects m_selected_game
 	std::recursive_mutex m_crit;

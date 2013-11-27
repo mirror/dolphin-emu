@@ -300,6 +300,7 @@ void NetPlayServer::OnDisconnect(PlayerId pid)
 		return;
 
 	player.connected = false;
+	m_num_players--;
 	enet_peer_disconnect_later(&m_enet_host->peers[pid], 0);
 
 	// The last reservation holdout might have disconnected.

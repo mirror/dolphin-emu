@@ -73,6 +73,13 @@ EvictFindResult<V> EvictFind(typename std::unordered_map<K, EvictEntry<V>>& map,
 			}
 		}
 	}
+#if DEBUG
+	printf("failed to find key '");
+	for (size_t i = 0; i < sizeof(key); i++) {
+		printf("%02x", ((u8 *) &key)[i]);
+	}
+	printf("'\n");
+#endif
 	result.found = false;
 	return result;
 }
@@ -433,7 +440,7 @@ int main()
 		currentTime = (u64) tv.tv_sec * 1000000 + tv.tv_usec;
 		if (rv < 0)
 		{
-			if (errno != EAGAIN)
+			if (errno != EINTR && errno != EAGAIN)
 			{
 				perror("recvfrom");
 				return 1;
