@@ -104,24 +104,33 @@ void NetHost::RunOnThread(std::function<void()> func)
 
 void NetHost::RunOnThreadSync(std::function<void()> func)
 {
-	Common::Event evt;
+	volatile bool done = false;
 	RunOnThread([&]() {
 		func();
-		evt.Set();
+		std::unique_lock<std::mutex> lk(m_SyncMutex);
+		done = true;
+		m_SyncCond.notify_all();
 	});
-	evt.Wait();
+	std::unique_lock<std::mutex> lk(m_SyncMutex);
+	m_SyncCond.wait(lk, [&]{ return done; });
 }
 
 void NetHost::RunOnThisThreadSync(std::function<void()> func)
 {
-	Common::Event evt, evt2;
-	RunOnThread([&]() {
-		evt.Set();
-		evt2.Wait();
+	volatile bool* flag = new bool;
+	*flag = false;
+	RunOnThread([=]() {
+		std::unique_lock<std::mutex> lk(m_SyncMutex);
+		*flag = true;
+		m_SyncCond.notify_all();
+		m_SyncCond.wait(lk, [&]{ return !*flag; });
+		delete flag;
 	});
-	evt.Wait();
+	std::unique_lock<std::mutex> lk(m_SyncMutex);
+	m_SyncCond.wait(lk, [&]{ return *flag; });
 	func();
-	evt2.Set();
+	*flag = false;
+	m_SyncCond.notify_all();
 }
 
 void NetHost::Reset()

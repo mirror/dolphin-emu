@@ -142,5 +142,8 @@ private:
 	std::vector<PeerInfo> m_PeerInfo ACCESS_ON(NET);
 	u16 m_GlobalSequenceNumber ACCESS_ON(NET);
 	u64 m_GlobalTicker ACCESS_ON(NET);
+
+	std::mutex m_SyncMutex;
+	std::condition_variable m_SyncCond;
 };
 

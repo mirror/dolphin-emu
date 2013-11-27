@@ -31,6 +31,8 @@ NetPlayClient::~NetPlayClient()
 	if (m_net_host)
 		m_net_host->Reset();
 
+	IOSync::ResetBackend();
+
 	if (!m_direct_connection)
 		ReleaseTraversalClient();
 }
@@ -232,13 +234,6 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 		}
 		break;
 
-	case NP_MSG_PAD_BUFFER:
-		{
-			packet.Do(m_delay);
-			if (packet.failure)
-				return OnDisconnect(InvalidPacket);
-			/* fall through */
-		}
 
 	case NP_MSG_CHANGE_GAME :
 		{
@@ -248,6 +243,14 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 			m_dialog->OnMsgChangeGame(m_selected_game);
 		}
 		break;
+
+	case NP_MSG_PAD_BUFFER:
+		{
+			packet.Do(m_delay);
+			if (packet.failure)
+				return OnDisconnect(InvalidPacket);
+			goto forward_to_iosync;
+		}
 
 	case NP_MSG_START_GAME :
 		{
@@ -272,13 +275,15 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 
 			m_received_stop_request = false;
 			m_dialog->OnMsgStartGame();
-			// fall through
+			goto forward_to_iosync;
 		}
+
 	case NP_MSG_DISCONNECT_DEVICE:
 	case NP_MSG_CONNECT_DEVICE:
 	case NP_MSG_REPORT:
 	case NP_MSG_SET_RESERVATION:
 	case NP_MSG_CLEAR_RESERVATION:
+	forward_to_iosync:
 		{
 			if (!m_backend)
 				break;
@@ -542,11 +547,6 @@ void NetPlayClient::GameStopped()
 {
 	std::lock_guard<std::recursive_mutex> lk(m_crit);
 
-	m_net_host->RunOnThreadSync([=]() {
-		ASSUME_ON(NET);
-		IOSync::ResetBackend();
-		m_backend = NULL;
-	});
 	g_is_running = false;
 	m_is_running = false;
 
