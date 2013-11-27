@@ -86,6 +86,11 @@ void DoState(PointerWrap& p)
 	g_Backend->DoState(p);
 }
 
+void Stop()
+{
+	g_Backend->StopGame();
+}
+
 std::unique_ptr<Backend> g_Backend;
 Class* g_Classes[Class::NumClasses];
 

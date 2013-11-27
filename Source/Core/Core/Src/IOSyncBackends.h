@@ -40,11 +40,11 @@ public:
 	virtual u32 GetTime() override;
 	virtual void DoState(PointerWrap& p) override;
 	virtual void StartGame() override;
+	virtual void StopGame() override;
 
 	// from netplay
 	void PreInitDevices() ON(NET);
 	void OnPacketReceived(Packet&& packet) ON(NET);
-	void Abort() ON(NET);
 	// from (arbitrarily-ish) SI
 	virtual void NewLocalSubframe() override;
 private:

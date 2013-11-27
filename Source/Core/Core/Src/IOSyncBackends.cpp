@@ -218,7 +218,7 @@ void BackendNetPlay::OnPacketReceived(Packet&& packet)
 	m_PacketsPendingProcessing.Push(std::move(packet));
 }
 
-void BackendNetPlay::Abort()
+void BackendNetPlay::StopGame()
 {
 	m_Abort = true;
 }

@@ -304,8 +304,6 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 	case NP_MSG_STOP_GAME :
 		{
 			m_received_stop_request = true;
-			if (m_backend)
-				m_backend->Abort();
 			m_dialog->OnMsgStopGame();
 		}
 		break;

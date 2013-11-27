@@ -30,6 +30,7 @@ public:
 	virtual u32 GetTime() = 0;
 	virtual void DoState(PointerWrap& p) = 0;
 	virtual void StartGame() {}
+	virtual void StopGame() {}
 	virtual void NewLocalSubframe() {}
 };
 
@@ -188,6 +189,7 @@ private:
 
 void Init();
 void DoState(PointerWrap& p);
+void Stop();
 
 }
 
