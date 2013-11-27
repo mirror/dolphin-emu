@@ -101,6 +101,8 @@ public:
 	void SendPacket(Packet&& packet);
 	void OnPacketErrorFromIOSync();
 
+	void ProcessPacketQueue();
+
 	std::function<void(NetPlayClient*)> m_state_callback;
 	PlayerId		m_pid;
 protected:

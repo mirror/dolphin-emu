@@ -66,7 +66,7 @@ public:
 		bool reservation_ok;
 		bool sitting_out_this_game; // hit "stop"
 		std::map<u32, PWBuffer> devices_present;
-		//bool is_localhost;
+		bool is_localhost;
 	};
 
 	std::vector<Client>	m_players;
@@ -117,6 +117,7 @@ private:
 
 
 	unsigned m_num_players ACCESS_ON(NET);
+	unsigned m_num_nonlocal_players ACCESS_ON(NET);
 
 	// only protects m_selected_game
 	std::recursive_mutex m_crit;

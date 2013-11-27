@@ -363,6 +363,8 @@ void BackendNetPlay::NewLocalSubframe()
 		pac.W((MessageId) NP_MSG_RESERVATION_DONE);
 		m_Client->SendPacket(std::move(pac));
 	}
+
+	m_Client->ProcessPacketQueue();
 }
 
 } // namespace

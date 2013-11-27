@@ -115,6 +115,15 @@ void NetPlayClient::OnPacketErrorFromIOSync()
 	});
 }
 
+void NetPlayClient::ProcessPacketQueue()
+{
+	auto host = m_net_host;
+	host->RunOnThread([=] {
+		ASSUME_ON(NET);
+		host->ProcessPacketQueue();
+	});
+}
+
 void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 {
 	if (m_state == WaitingForHelloResponse)
@@ -316,6 +325,7 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 
 			std::lock_guard<std::recursive_mutex> lk(m_crit);
 			m_net_host->BroadcastPacket(std::move(pong));
+			m_net_host->ProcessPacketQueue();
 		}
 		break;
 
@@ -533,6 +543,10 @@ bool NetPlayClient::StartGame(const std::string &path)
 		m_is_running = true;
 	}
 
+	// Rely on SI to trigger sends - better to be synchronized with
+	// something than nothing.  Might be better to synchronize everything.
+	m_net_host->m_AutoSend = false;
+
 	m_game_started_evt.Set();
 
 	return true;
@@ -546,6 +560,8 @@ bool NetPlayClient::ChangeGame(const std::string&)
 void NetPlayClient::GameStopped()
 {
 	std::lock_guard<std::recursive_mutex> lk(m_crit);
+
+	m_net_host->m_AutoSend = true;
 
 	g_is_running = false;
 	m_is_running = false;

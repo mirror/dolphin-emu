@@ -660,7 +660,6 @@ void UpdateDevices()
 	// This doesn't really have to be synced with SI, but we do it here to
 	// minimize the time before packets are sent out
 	IOSync::g_Backend->NewLocalSubframe();
-
 }
 
 void RunSIBuffer()

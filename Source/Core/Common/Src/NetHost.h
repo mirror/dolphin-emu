@@ -79,7 +79,8 @@ public:
 		// peerCount peers; probably doesn't matter in practice, but it might
 		// cause a problem if sending to thousands of clients were ever desired
 		// (and "DolphinTV" would be nice to have!).
-		DefaultPeerCount = 50
+		DefaultPeerCount = 50,
+		AutoSendDelay = 7
 	};
 
 	NetHost(size_t peerCount, u16 port);
@@ -94,12 +95,14 @@ public:
 	void SendPacket(ENetPeer* peer, Packet&& packet) ON(NET);
 	void PrintStats() ON(NET);
 	u16 GetPort();
+	void ProcessPacketQueue() ON(NET);
 
 	NetHostClient* m_Client;
 	// The traversal client needs to be on the same socket.
 	TraversalClient* m_TraversalClient ACCESS_ON(NET);
 	std::function<bool(u8* data, size_t size, const ENetAddress* from)> m_InterceptCallback ACCESS_ON(NET);
 	ENetHost* m_Host;
+	volatile bool m_AutoSend;
 private:
 	struct OutgoingPacketInfo
 	{
@@ -127,8 +130,6 @@ private:
 
 	void ThreadFunc() /* ON(NET) */;
 	void OnReceive(ENetEvent* event, Packet&& packet) ON(NET);
-	void MaybeProcessPacketQueue() ON(NET);
-	void ProcessPacketQueue() ON(NET);
 	static int ENET_CALLBACK InterceptCallback(ENetHost* host, ENetEvent* event) /* ON(NET) */;
 
 	Common::FifoQueue<std::function<void()>, false> m_RunQueue;

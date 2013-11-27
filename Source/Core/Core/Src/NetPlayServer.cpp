@@ -39,6 +39,7 @@ NetPlayServer::NetPlayServer()
 {
 	m_is_running = false;
 	m_num_players = 0;
+	m_num_nonlocal_players = 0;
 	m_dialog = NULL;
 	m_highest_known_subframe = 0;
 	m_target_buffer_size = 20;
@@ -300,6 +301,8 @@ void NetPlayServer::OnDisconnect(PlayerId pid)
 		return;
 
 	player.connected = false;
+	if (!player.is_localhost)
+		m_num_nonlocal_players--;
 	m_num_players--;
 	enet_peer_disconnect_later(&m_enet_host->peers[pid], 0);
 
@@ -370,11 +373,13 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 		}
 		else
 		{
-			//player.is_localhost = peer->address.host == 0x0100007f;
+			player.is_localhost = peer->address.host == 0x0100007f;
 			player.connected = true;
 			// XXX allow connection during game
 			player.sitting_out_this_game = false;
 			m_num_players++;
+			if (!player.is_localhost)
+				m_num_nonlocal_players++;
 		}
 		return;
 	}
@@ -546,6 +551,7 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 			opacket.W(player.ping);
 
 			SendToClientsOnThread(std::move(opacket));
+			m_net_host->ProcessPacketQueue();
 		}
 		break;
 
@@ -696,6 +702,10 @@ void NetPlayServer::SendToClients(Packet&& packet, const PlayerId skip_pid)
 void NetPlayServer::SendToClientsOnThread(Packet&& packet, const PlayerId skip_pid)
 {
 	m_net_host->BroadcastPacket(std::move(packet), skip_pid >= m_enet_host->peerCount ? NULL : &m_enet_host->peers[skip_pid]);
+	// If there's no more than one nonlocal player, no point trying to
+	// coalesce
+	if (m_num_players <= 1)
+		m_net_host->ProcessPacketQueue();
 }
 
 void NetPlayServer::SetDialog(NetPlayUI* dialog)

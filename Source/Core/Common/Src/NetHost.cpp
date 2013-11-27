@@ -55,6 +55,7 @@ NetHost::NetHost(size_t peerCount, u16 port)
 	m_GlobalSequenceNumber = 0;
 	m_GlobalTicker = 0;
 	m_TraversalClient = NULL;
+	m_AutoSend = true;
 
 	ENetAddress addr = { ENET_HOST_ANY, port };
 	m_Host = enet_host_create(
@@ -208,15 +209,6 @@ void NetHost::SendPacket(ENetPeer* peer, Packet&& packet)
 	pi.m_SentPackets++;
 }
 
-void NetHost::MaybeProcessPacketQueue()
-{
-	if (m_SendTimer.GetTimeDifference() > 6)
-	{
-		ProcessPacketQueue();
-		m_SendTimer.Update();
-	}
-}
-
 void NetHost::ProcessPacketQueue()
 {
 	// The idea is that we send packets n-1 times unreliably and n times
@@ -261,6 +253,7 @@ void NetHost::ProcessPacketQueue()
 	}
 	while (numToRemove--)
 		m_OutgoingPacketInfo.pop_front();
+	m_SendTimer.Update();
 }
 
 void NetHost::PrintStats()
@@ -321,7 +314,12 @@ void NetHost::ThreadFunc()
 			PanicAlert("enet_socket_get_address failed.");
 			continue;
 		}
-		int count = enet_host_service(m_Host, &event, m_Host->connectedPeers > 0 ? 5 : 300);
+		u32 wait;
+		if (m_Host->connectedPeers > 0 || !m_AutoSend)
+			wait = 300;
+		else
+			wait = std::max((s64) 1, AutoSendDelay - (s64) m_SendTimer.GetTimeDifference());
+		int count = enet_host_service(m_Host, &event, wait);
 		if (count < 0)
 		{
 			PanicAlert("enet_host_service failed... do something about this.");
@@ -358,7 +356,8 @@ void NetHost::ThreadFunc()
 				m_Client->OnENetEvent(&event);
 			}
 		}
-		MaybeProcessPacketQueue();
+		if (m_AutoSend && m_SendTimer.GetTimeDifference() >= AutoSendDelay)
+			ProcessPacketQueue();
 	}
 }
 
