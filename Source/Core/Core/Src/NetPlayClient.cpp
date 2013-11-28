@@ -172,6 +172,7 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 		std::lock_guard<std::recursive_mutex> lk(m_crit);
 
 		MessageId server_error;
+
 		packet.Do(server_error);
 		packet.Do(m_pid);
 
@@ -424,6 +425,7 @@ void NetPlayClient::OnENetEvent(ENetEvent* event)
 		{
 		if (m_state != Connecting)
 			break;
+		m_net_host->MarkConnected(event->peer - event->peer->host->peers);
 		// send connect message
 		Packet hello;
 		hello.W(std::string(NETPLAY_VERSION));
@@ -436,6 +438,7 @@ void NetPlayClient::OnENetEvent(ENetEvent* event)
 		break;
 		}
 	case ENET_EVENT_TYPE_DISCONNECT:
+		WARN_LOG(NETPLAY, "EVENT_TYPE_DISCONNECT");
 		OnDisconnect(ReceivedENetDisconnect);
 		break;
 	default:

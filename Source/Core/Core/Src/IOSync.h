@@ -187,7 +187,10 @@ private:
 	int m_ClassId;
 };
 
+// Called before the devices are set up, to init the backend.
 void Init();
+// Called after, to connect devices.
+void PostInit();
 void DoState(PointerWrap& p);
 void Stop();
 

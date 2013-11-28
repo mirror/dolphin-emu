@@ -72,10 +72,10 @@ private:
 
 	NetPlayClient* m_Client;
 	Common::FifoQueue<Packet, false> m_PacketsPendingProcessing;
+	// The subframe we're sending packets for.
+	s64 m_FutureSubframeId;
+	// The subframe emulation is currently on.
 	s64 m_SubframeId;
-	// We accept packets sent before this frame.  i.e.  this is the subframe
-	// represented in emulation.
-	s64 m_PastSubframeId;
 	// We will wait for this frame.
 	s64 m_ReservedSubframeId;
 	Packet m_ClearReservationPacket;

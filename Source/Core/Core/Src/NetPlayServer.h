@@ -69,7 +69,7 @@ public:
 		bool is_localhost;
 	};
 
-	std::vector<Client>	m_players;
+	std::vector<Client>	m_players ACCESS_ON(NET);
 
 	struct DeviceInfo
 	{

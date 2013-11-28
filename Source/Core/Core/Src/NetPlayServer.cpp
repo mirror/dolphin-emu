@@ -295,12 +295,16 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 
 void NetPlayServer::OnDisconnect(PlayerId pid)
 {
+	WARN_LOG(NETPLAY, "Disconnecting player %d", pid);
 	Client& player = m_players[pid];
 
 	if (!player.connected)
 		return;
 
 	player.connected = false;
+	player.devices_present.clear();
+	player.name = "";
+	player.revision = "";
 	if (!player.is_localhost)
 		m_num_nonlocal_players--;
 	m_num_players--;
@@ -381,6 +385,7 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 			if (!player.is_localhost)
 				m_num_nonlocal_players++;
 		}
+		m_net_host->MarkConnected(pid);
 		return;
 	}
 
@@ -583,6 +588,17 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 
 				m_is_running = false;
 				m_reservation_state = Inactive;
+
+				bool change = false;
+				for (auto& oplayer : m_players)
+				{
+					if (!player.connected)
+						break;
+					change = change || oplayer.sitting_out_this_game;
+					oplayer.sitting_out_this_game = false;
+				}
+				if (change && m_dialog)
+					m_dialog->UpdateDevices();
 			}
 		}
 		break;
@@ -671,17 +687,6 @@ void NetPlayServer::StartGame(const std::string &path)
 
 		SendToClientsOnThread(std::move(opacket));
 
-		bool change = false;
-		for (auto& player : m_players)
-		{
-			if (!player.connected)
-				break;
-			change = change || player.sitting_out_this_game;
-			player.sitting_out_this_game = false;
-		}
-		if (change && m_dialog)
-			m_dialog->UpdateDevices();
-
 		m_reserved_subframe = 0;
 		ExecuteReservation();
 
@@ -728,10 +733,6 @@ void NetPlayServer::SetDesiredDeviceMapping(int classId, int index, PlayerId pid
 			if (i != index && dis[i].desired_mapping == new_mapping)
 			{
 				SetDesiredDeviceMapping(classId, i, 255, 255);
-				// ??? This should not be necessary (definitely being run on
-				// the right thread, not reentrantly, all that), but it seems
-				// to be.
-				Common::SleepCurrentThread(50);
 				if (m_dialog)
 					m_dialog->UpdateDevices();
 				break;
@@ -926,7 +927,7 @@ void NetPlayServer::ForceDisconnectDevice(int classId, int index)
 	packet.W((MessageId)NP_MSG_DISCONNECT_DEVICE);
 	packet.W((u8)classId);
 	packet.W((u8)index);
-	packet.W((u8)0);
+	packet.W((u16)0);
 	SendToClientsOnThread(std::move(packet));
 	auto& di = m_device_info[classId][index];
 	di.desired_mapping = di.actual_mapping = di.new_mapping = DeviceInfo::null_mapping;

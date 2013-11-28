@@ -13,7 +13,7 @@
 
 DEFINE_THREAD_HAT(NET);
 
-/*
+#if 0
 static inline void DumpBuf(PWBuffer& buf)
 {
 	printf("+00:");
@@ -26,7 +26,7 @@ static inline void DumpBuf(PWBuffer& buf)
 	}
 	printf("\n");
 }
-*/
+#endif
 
 // Some trivial utilities that should be moved:
 
@@ -96,6 +96,8 @@ public:
 	void PrintStats() ON(NET);
 	u16 GetPort();
 	void ProcessPacketQueue() ON(NET);
+	// This pid will be a target for broadcasts
+	void MarkConnected(size_t pid) ON(NET);
 
 	NetHostClient* m_Client;
 	// The traversal client needs to be on the same socket.
@@ -119,6 +121,7 @@ private:
 
 	struct PeerInfo
 	{
+		PeerInfo() { m_Connected = false; }
 		std::deque<PWBuffer> m_IncomingPackets;
 		// the sequence number of the first element of m_IncomingPackets
 		u16 m_IncomingSequenceNumber;
@@ -126,6 +129,7 @@ private:
 		u16 m_GlobalSeqToSeq[65536];
 		u64 m_ConnectTicker;
 		int m_SentPackets;
+		bool m_Connected;
 	};
 
 	void ThreadFunc() /* ON(NET) */;

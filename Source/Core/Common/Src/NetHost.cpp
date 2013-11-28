@@ -142,7 +142,7 @@ void NetHost::Reset()
 		{
 			ENetPeer* peer = &m_Host->peers[i];
 			if (peer->state != ENET_PEER_STATE_DISCONNECTED)
-				enet_peer_disconnect_later(peer, 0);
+				enet_peer_disconnect_now(peer, 0);
 		}
 	});
 	m_Client = NULL;
@@ -157,7 +157,7 @@ void NetHost::BroadcastPacket(Packet&& packet, ENetPeer* except)
 		size_t peer = 0;
 		for (auto& pi : m_PeerInfo)
 		{
-			if (&m_Host->peers[peer++] == except)
+			if (!pi.m_Connected || &m_Host->peers[peer++] == except)
 				continue;
 			pi.m_GlobalSeqToSeq[seq] = pi.m_OutgoingSequenceNumber++;
 		}
@@ -192,7 +192,8 @@ void NetHost::BroadcastPacket(Packet&& packet, ENetPeer* except)
 			}
 			u16* oseqp = (u16 *) epacket->data;
 			*oseqp = seq;
-			enet_peer_send(peer, 0, epacket);
+			if (enet_peer_send(peer, 0, epacket) < 0)
+				ERROR_LOG(NETPLAY, "enet_peer_send failed");
 		}
 		if (epacket && epacket->referenceCount == 0)
 			enet_packet_destroy(epacket);
@@ -345,20 +346,35 @@ void NetHost::ThreadFunc()
 				if (pid >= m_PeerInfo.size())
 					m_PeerInfo.resize(pid + 1);
 				auto& pi = m_PeerInfo[pid];
-				pi.m_IncomingPackets.clear();
 				pi.m_IncomingSequenceNumber = 0;
 				pi.m_OutgoingSequenceNumber = 0;
 				pi.m_ConnectTicker = m_GlobalTicker++;
 				pi.m_SentPackets = 0;
+				m_Client->OnENetEvent(&event);
+				break;
 				}
-				/* fall through */
+			case ENET_EVENT_TYPE_DISCONNECT:
+				{
+				size_t pid = event.peer - m_Host->peers;
+				auto& pi = m_PeerInfo[pid];
+				pi.m_Connected = false;
+				pi.m_IncomingPackets.clear();
+				m_Client->OnENetEvent(&event);
+				}
+				break;
 			default:
 				m_Client->OnENetEvent(&event);
+				break;
 			}
 		}
 		if (m_AutoSend && m_SendTimer.GetTimeDifference() >= AutoSendDelay)
 			ProcessPacketQueue();
 	}
+}
+
+void NetHost::MarkConnected(size_t pid)
+{
+	m_PeerInfo[pid].m_Connected = true;
 }
 
 void NetHost::OnReceive(ENetEvent* event, Packet&& packet)
@@ -415,6 +431,7 @@ void NetHost::OnReceive(ENetEvent* event, Packet&& packet)
 		{
 			// strange
 			WARN_LOG(NETPLAY, "Failure splitting packet - truncation?");
+			return;
 		}
 	}
 

@@ -129,8 +129,8 @@ void BackendNetPlay::EnqueueLocalReport(int classId, int localIndex, PWBuffer&& 
 	pac.W((u8) classId);
 	pac.W((u8) ri);
 	auto& last = m_DeviceInfo[classId][ri].m_LastSentSubframeId;
-	u16 skippedFrames = m_SubframeId - last;
-	last = m_SubframeId;
+	s16 skippedFrames = m_FutureSubframeId - last;
+	last = m_FutureSubframeId;
 	pac.W(skippedFrames);
 	pac.vec->append(buf);
 	// server won't send our own reports back to us
@@ -145,8 +145,8 @@ Packet BackendNetPlay::DequeueReport(int classId, int index, bool* keepGoing)
 	bool alreadyProcessed = false;
 	while (1)
 	{
-		//printf("dev=%llu past=%llu\n", deviceInfo.m_SubframeId, m_PastSubframeId);
-		if (!isConnected || m_Abort || deviceInfo.m_SubframeId > m_PastSubframeId)
+		//printf("dev=%llu past=%llu\n", deviceInfo.m_SubframeId, m_SubframeId);
+		if (!isConnected || m_Abort || deviceInfo.m_SubframeId > m_SubframeId)
 		{
 			*keepGoing = false;
 			return PWBuffer();
@@ -171,16 +171,16 @@ Packet BackendNetPlay::DequeueReport(int classId, int index, bool* keepGoing)
 			}
 			else
 			{
-				u16 skippedFrames = flags;
-				if (deviceInfo.m_SubframeId + skippedFrames > m_PastSubframeId)
+				s16 skippedFrames = flags;
+				if (deviceInfo.m_SubframeId + skippedFrames > m_SubframeId)
 				{
 					p.readOff -= 5;
 					*keepGoing = false;
 					return PWBuffer();
 				}
 				deviceInfo.m_SubframeId += skippedFrames;
-				//printf("--> dev=%llu past=%llu ql=%zd\n", deviceInfo.m_SubframeId, m_PastSubframeId, queue.size());
-				*keepGoing = deviceInfo.m_SubframeId < m_PastSubframeId;
+				//printf("--> dev=%llu past=%llu ql=%zd\n", deviceInfo.m_SubframeId, m_SubframeId, queue.size());
+				*keepGoing = deviceInfo.m_SubframeId < m_SubframeId;
 				Packet q = std::move(p);
 				queue.pop_front();
 				return q;
@@ -276,7 +276,7 @@ void BackendNetPlay::ProcessPacket(Packet&& p)
 		// The disconnect might be queued.
 		DoDisconnect(classId, index);
 		auto& di = m_DeviceInfo[classId][index];
-		di.m_SubframeId = di.m_LastSentSubframeId = m_PastSubframeId;
+		di.m_SubframeId = di.m_LastSentSubframeId = m_SubframeId;
 		di.m_OwnerId = localPlayer;
 		int myLocalIndex = localPlayer == m_Client->m_pid ? localIndex : -1;
 		g_Classes[classId]->OnConnected(index, myLocalIndex, std::move(subtype));
@@ -308,8 +308,8 @@ void BackendNetPlay::ProcessPacket(Packet&& p)
 		p.Do(subframe);
 		if (p.failure)
 			goto failure;
-		WARN_LOG(NETPLAY, "Client: reservation request for subframe %lld; current %lld (%s)", (long long) subframe, (long long) m_PastSubframeId, subframe > m_PastSubframeId ? "ok" : "too late");
-		if (subframe > m_PastSubframeId)
+		WARN_LOG(NETPLAY, "Client: reservation request for subframe %lld; current %lld (%s)", (long long) subframe, (long long) m_SubframeId, subframe > m_SubframeId ? "ok" : "too late");
+		if (subframe > m_SubframeId)
 		{
 			m_ReservedSubframeId = subframe;
 			m_HaveClearReservationPacket = false;
@@ -317,7 +317,7 @@ void BackendNetPlay::ProcessPacket(Packet&& p)
 		Packet pac;
 		pac.W((MessageId) NP_MSG_RESERVATION_RESULT);
 		pac.W(subframe);
-		pac.W(m_PastSubframeId);
+		pac.W(m_SubframeId);
 		m_Client->SendPacket(std::move(pac));
 		}
 		break;
@@ -339,12 +339,12 @@ failure:
 void BackendNetPlay::NewLocalSubframe()
 {
 	m_SubframeId++;
-	m_PastSubframeId = m_SubframeId - m_Delay;
+	m_FutureSubframeId = m_SubframeId + m_Delay;
 
 	// If we have nothing connected, we need to process the queue here.
 	ProcessIncomingPackets();
 
-	if (m_PastSubframeId == m_ReservedSubframeId)
+	if (m_SubframeId == m_ReservedSubframeId)
 	{
 		if (!m_HaveClearReservationPacket)
 			WARN_LOG(NETPLAY, "Client: blocking on reserved subframe %lld (bad estimate)", (long long) m_ReservedSubframeId);

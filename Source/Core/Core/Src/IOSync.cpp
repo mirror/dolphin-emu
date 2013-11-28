@@ -73,6 +73,10 @@ void Init()
 {
 	if (!g_Backend)
 		g_Backend.reset(new BackendLocal());
+}
+
+void PostInit()
+{
 	g_Backend->StartGame();
 }
 

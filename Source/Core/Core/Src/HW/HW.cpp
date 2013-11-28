@@ -52,6 +52,8 @@ namespace HW
 			WII_IPCInterface::Init();
 			WII_IPC_HLE_Interface::Init();
 		}
+
+		IOSync::PostInit();
 	}
 
 	void Shutdown()

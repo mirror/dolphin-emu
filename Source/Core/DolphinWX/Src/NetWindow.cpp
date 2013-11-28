@@ -75,7 +75,7 @@ static wxString FailureReasonStringForDialog(int reason)
 	case NetPlayClient::ReceivedENetDisconnect:
 		return _("Disconnected");
 	default:
-		return _("Unknown error");
+		return wxString::Format(_("Unknown error %x"), reason);
 	}
 }
 
@@ -752,7 +752,9 @@ DeviceMapDiag::DeviceMapDiag(wxWindow* parent, NetPlayServer* server)
 
 void DeviceMapDiag::UpdateDeviceMap()
 {
-	DestroyChildren();
+	// It's unsafe to use DestroyChildren here!
+	for (auto& child : GetChildren())
+		child->Destroy();
 	m_choice_to_cls_idx.clear();
 
 	auto main_szr = new wxBoxSizer(wxVERTICAL);

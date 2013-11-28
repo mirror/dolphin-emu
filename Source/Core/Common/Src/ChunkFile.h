@@ -265,7 +265,14 @@ public:
 		u32 size = (u32)x.size();
 		Do(size);
 		if (mode == MODE_READ)
+		{
+			if (size >= 1000000)
+			{
+				failure = true;
+				return;
+			}
 			x.resize(size);
+		}
 
 		for (auto& elem : x)
 			Do(elem);
