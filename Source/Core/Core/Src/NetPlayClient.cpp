@@ -532,12 +532,12 @@ bool NetPlayClient::StartGame(const std::string &path)
 	m_dialog->AppendChat(" -- STARTING GAME -- ");
 
 	// boot game
+	g_is_running = true;
 
 	m_dialog->BootGame(path);
 
 	if (Core::IsRunningAndStarted())
 	{
-		g_is_running = true;
 		m_is_running = true;
 	}
 
