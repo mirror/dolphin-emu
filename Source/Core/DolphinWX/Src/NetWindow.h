@@ -34,7 +34,8 @@ enum
 	NP_GUI_EVT_START_GAME,
 	NP_GUI_EVT_STOP_GAME,
 	NP_GUI_EVT_FAILURE,
-	NP_GUI_EVT_UPDATE_DEVICES
+	NP_GUI_EVT_UPDATE_DEVICES,
+	NP_GUI_EVT_WARN_LAGGING
 };
 
 class DeviceMapDiag;
@@ -68,6 +69,7 @@ public:
 
 	static const GameListItem* FindISO(const std::string& id);
 	void UpdateGameName();
+	virtual void UpdateLagWarning() override;
 
 private:
 	DECLARE_EVENT_TABLE()
@@ -85,6 +87,9 @@ private:
 	void GetNetSettings(NetSettings &settings);
 	void OnErrorClosed(wxCommandEvent& event);
 
+	void DoUpdateLagWarning();
+	void LagWarningTimerHit(wxTimerEvent& event);
+
 	wxTextCtrl*		m_name_text;
 	wxListBox*		m_player_lbox;
 	wxTextCtrl*		m_chat_text;
@@ -98,9 +103,12 @@ private:
 
 	std::string		m_selected_game;
 	wxStaticText*	m_game_label;
+	wxBoxSizer*		m_top_szr;
+	wxStaticText*	m_warn_label;
 	wxButton*		m_start_btn;
 	bool			m_is_hosting;
 	DeviceMapDiag*	m_device_map_diag;
+	wxTimer			m_lag_timer;
 
 	std::vector<int>	m_playerids;
 

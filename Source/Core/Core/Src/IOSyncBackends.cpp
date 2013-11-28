@@ -142,6 +142,7 @@ Packet BackendNetPlay::DequeueReport(int classId, int index, bool* keepGoing)
 {
 	auto& deviceInfo = m_DeviceInfo[classId][index];
 	const bool& isConnected = g_Classes[classId]->IsConnected(index);
+	bool alreadyProcessed = false;
 	while (1)
 	{
 		//printf("dev=%llu past=%llu\n", deviceInfo.m_SubframeId, m_PastSubframeId);
@@ -185,7 +186,10 @@ Packet BackendNetPlay::DequeueReport(int classId, int index, bool* keepGoing)
 				return q;
 			}
 		}
+		if (alreadyProcessed)
+			m_Client->WarnLagging(deviceInfo.m_OwnerId);
 		ProcessIncomingPackets();
+		alreadyProcessed = true;
 	}
 }
 
@@ -273,6 +277,7 @@ void BackendNetPlay::ProcessPacket(Packet&& p)
 		DoDisconnect(classId, index);
 		auto& di = m_DeviceInfo[classId][index];
 		di.m_SubframeId = di.m_LastSentSubframeId = m_PastSubframeId;
+		di.m_OwnerId = localPlayer;
 		int myLocalIndex = localPlayer == m_Client->m_pid ? localIndex : -1;
 		g_Classes[classId]->OnConnected(index, myLocalIndex, std::move(subtype));
 		break;

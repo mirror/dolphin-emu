@@ -43,15 +43,18 @@ public:
 	virtual void OnMsgStopGame() = 0;
 	virtual void UpdateDevices() = 0;
 	virtual bool IsRecording() = 0;
+	virtual void UpdateLagWarning() = 0;
 };
 
 class Player
 {
  public:
-	PlayerId		pid;
-	std::string		name;
-	std::string		revision;
-	u32                     ping;
+    PlayerId        pid;
+    std::string     name;
+    std::string     revision;
+    u32             ping;
+	bool            lagging;
+	u32             lagging_at;
 };
 
 class NetPlayClient : public NetHostClient, public TraversalClientClient
@@ -100,6 +103,8 @@ public:
 
 	void SendPacket(Packet&& packet);
 	void OnPacketErrorFromIOSync();
+	void WarnLagging(PlayerId pid) /* ON(CPU) */;
+	std::pair<std::string, u32> GetLaggardNamesAndTimer() /* ON(GUI) */;
 
 	void ProcessPacketQueue();
 

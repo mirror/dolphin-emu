@@ -63,6 +63,7 @@ private:
 		std::deque<Packet> m_IncomingQueue;
 		s64 m_SubframeId;
 		s64 m_LastSentSubframeId;
+		PlayerId m_OwnerId;
 	};
 
 	void ProcessIncomingPackets();

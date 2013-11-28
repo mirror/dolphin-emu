@@ -115,6 +115,47 @@ void NetPlayClient::OnPacketErrorFromIOSync()
 	});
 }
 
+void NetPlayClient::WarnLagging(PlayerId pid)
+{
+	bool was_lagging;
+	{
+		std::lock_guard<std::recursive_mutex> lk(m_crit);
+		auto& player = m_players[pid];
+		was_lagging = player.lagging;
+		player.lagging = true;
+		player.lagging_at = Common::Timer::GetTimeMs();
+	}
+	if (!was_lagging && m_dialog)
+		m_dialog->UpdateLagWarning();
+}
+
+std::pair<std::string, u32> NetPlayClient::GetLaggardNamesAndTimer()
+{
+	std::lock_guard<std::recursive_mutex> lk(m_crit);
+	u32 time = Common::Timer::GetTimeMs();
+	bool first = true;
+	std::stringstream ss;
+	u32 min_diff = -1u;
+	for (auto& p : m_players)
+	{
+		auto& player = p.second;
+		if (!player.lagging)
+			continue;
+		u32 diff = player.lagging_at - time;
+		if (diff >= 1000)
+		{
+			player.lagging = false;
+			continue;
+		}
+		min_diff = std::min(min_diff, 1000 - diff);
+		if (!first)
+			ss << ", ";
+		first = false;
+		ss << player.name;
+	}
+	return std::make_pair(ss.str(), min_diff + 50);
+}
+
 void NetPlayClient::ProcessPacketQueue()
 {
 	auto host = m_net_host;

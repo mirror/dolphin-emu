@@ -114,9 +114,16 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const 
 	npd = this;
 	wxPanel* const panel = new wxPanel(this);
 	m_device_map_diag = NULL;
+	m_lag_timer.Bind(wxEVT_TIMER, &NetPlayDiag::LagWarningTimerHit, this);
 
 	// top crap
-	m_game_label = new wxStaticText(panel, wxID_ANY, "", wxDefaultPosition, wxDefaultSize);
+	m_top_szr = new wxBoxSizer(wxHORIZONTAL);
+	m_game_label = new wxStaticText(panel, wxID_ANY, "");
+	m_top_szr->Add(m_game_label, 0, wxEXPAND);
+	m_warn_label = new wxStaticText(panel, wxID_ANY, "");
+	m_warn_label->SetForegroundColour(*wxRED);
+	m_top_szr->AddStretchSpacer();
+	m_top_szr->Add(m_warn_label, 0, wxEXPAND | wxRIGHT, 3);
 	UpdateGameName();
 
 	// middle crap
@@ -215,7 +222,7 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const 
 
 	// main sizer
 	wxBoxSizer* const main_szr = new wxBoxSizer(wxVERTICAL);
-	main_szr->Add(m_game_label, 0, wxEXPAND | wxALL, 5);
+	main_szr->Add(m_top_szr, 0, wxEXPAND | wxALL, 5);
 	main_szr->Add(mid_szr, 1, wxEXPAND | wxLEFT | wxRIGHT, 5);
 	main_szr->Add(bottom_szr, 0, wxEXPAND | wxALL, 5);
 
@@ -268,6 +275,30 @@ void NetPlayDiag::UpdateGameName()
 	}
 	m_game_label->SetLabel(_(" Game : ") + name);
 
+}
+
+void NetPlayDiag::UpdateLagWarning()
+{
+	wxCommandEvent evt(wxEVT_THREAD, NP_GUI_EVT_WARN_LAGGING);
+	GetEventHandler()->AddPendingEvent(evt);
+}
+
+void NetPlayDiag::DoUpdateLagWarning()
+{
+	auto p = netplay_client->GetLaggardNamesAndTimer();
+	wxString label = "";
+	if (!p.first.empty())
+	{
+		label = _("Waiting for: ") + WxStrToStr(p.first);
+		m_lag_timer.StartOnce(p.second);
+	}
+	m_warn_label->SetLabel(label);
+	m_top_szr->Layout();
+}
+
+void NetPlayDiag::LagWarningTimerHit(wxTimerEvent&)
+{
+	DoUpdateLagWarning();
 }
 
 NetPlayDiag::~NetPlayDiag()
@@ -523,6 +554,11 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 			g_MainNetHost->RunOnThisThreadSync([&]() {
 				m_device_map_diag->UpdateDeviceMap();
 			});
+		}
+		break;
+	case NP_GUI_EVT_WARN_LAGGING:
+		{
+		DoUpdateLagWarning();
 		}
 		break;
 	}
