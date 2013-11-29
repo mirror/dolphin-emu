@@ -11,6 +11,7 @@ set(LIBS	core
 			audiocommon
 			z
 			sfml-network
+			enet
 			${GTK2_LIBRARIES})
 
 if(NOT ANDROID)
@@ -44,6 +45,10 @@ endif()
 
 if(LIBAV_FOUND)
 	set(LIBS	${LIBS} ${LIBAV_LIBRARIES})
+endif()
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	set(LIBS	${LIBS} ${SYSTEMCONFIGURATION_LIBRARY})
 endif()
 
 if(wxWidgets_FOUND)
@@ -168,10 +173,6 @@ if(wxWidgets_FOUND)
 	set(DOLPHIN_EXE ${DOLPHIN_EXE_BASE})
 else()
 	set(DOLPHIN_EXE ${DOLPHIN_EXE_BASE}-nogui)
-endif()
-
-if(USE_UPNP)
-  set(LIBS  ${LIBS} miniupnpc)
 endif()
 
 include(FindGettext)

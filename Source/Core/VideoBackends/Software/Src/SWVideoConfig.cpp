@@ -37,7 +37,7 @@ void SWVideoConfig::Load(const char* ini_file)
 	IniFile iniFile;
 	iniFile.Load(ini_file);
 
-	iniFile.Get("Hardware", "Fullscreen", &bFullscreen, 0); // Hardware
+	iniFile.Get("Hardware", "Fullscreen", &bFullscreen, false); // Hardware
 	iniFile.Get("Hardware", "RenderToMainframe", &renderToMainframe, false);
 
 	iniFile.Get("Rendering", "HwRasterizer", &bHwRasterizer, false);
@@ -52,8 +52,8 @@ void SWVideoConfig::Load(const char* ini_file)
 	iniFile.Get("Utility", "DumpTevStages", &bDumpTevStages, false);
 	iniFile.Get("Utility", "DumpTevTexFetches", &bDumpTevTextureFetches, false);
 
-	iniFile.Get("Misc", "DrawStart", &drawStart, 0);
-	iniFile.Get("Misc", "DrawEnd", &drawEnd, 100000);
+	iniFile.Get("Misc", "DrawStart", &drawStart, 0u);
+	iniFile.Get("Misc", "DrawEnd", &drawEnd, 100000u);
 }
 
 void SWVideoConfig::Save(const char* ini_file)

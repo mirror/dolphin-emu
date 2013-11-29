@@ -48,8 +48,8 @@ static std::string g_last_filename;
 static CallbackFunc g_onAfterLoadCb = NULL;
 
 // Temporary undo state buffer
-static std::vector<u8> g_undo_load_buffer;
-static std::vector<u8> g_current_buffer;
+static PWBuffer g_undo_load_buffer;
+static PWBuffer g_current_buffer;
 static int g_loadDepth = 0;
 
 static std::mutex g_cs_undo_load_buffer;
@@ -90,7 +90,7 @@ void DoState(PointerWrap &p)
 		// if the version doesn't match, fail.
 		// this will trigger a message like "Can't load state from other revisions"
 		// we could use the version numbers to maintain some level of backward compatibility, but currently don't.
-		p.SetMode(PointerWrap::MODE_MEASURE);
+		p.failure = true;
 		return;
 	}
 
@@ -101,7 +101,7 @@ void DoState(PointerWrap &p)
 	p.DoMarker("video_backend");
 
 	if (Core::g_CoreStartupParameter.bWii)
-		Wiimote::DoState(p.GetPPtr(), p.GetMode());
+		Wiimote::DoState(p);
 	p.DoMarker("Wiimote");
 
 	PowerPC::DoState(p);
@@ -114,41 +114,32 @@ void DoState(PointerWrap &p)
 	p.DoMarker("Movie");
 }
 
-void LoadFromBuffer(std::vector<u8>& buffer)
+void LoadFromBuffer(PWBuffer& buffer)
 {
 	bool wasUnpaused = Core::PauseAndLock(true);
 
-	u8* ptr = &buffer[0];
-	PointerWrap p(&ptr, PointerWrap::MODE_READ);
+	PointerWrap p(&buffer, PointerWrap::MODE_READ);
 	DoState(p);
 
 	Core::PauseAndLock(false, wasUnpaused);
 }
 
-void SaveToBuffer(std::vector<u8>& buffer)
+void SaveToBuffer(PWBuffer& buffer)
 {
 	bool wasUnpaused = Core::PauseAndLock(true);
 
-	u8* ptr = NULL;
-	PointerWrap p(&ptr, PointerWrap::MODE_MEASURE);
-
-	DoState(p);
-	const size_t buffer_size = reinterpret_cast<size_t>(ptr);
-	buffer.resize(buffer_size);
-
-	ptr = &buffer[0];
-	p.SetMode(PointerWrap::MODE_WRITE);
+	buffer.reserve(80000000);
+	PointerWrap p(&buffer, PointerWrap::MODE_WRITE);
 	DoState(p);
 
 	Core::PauseAndLock(false, wasUnpaused);
 }
 
-void VerifyBuffer(std::vector<u8>& buffer)
+void VerifyBuffer(PWBuffer& buffer)
 {
 	bool wasUnpaused = Core::PauseAndLock(true);
 
-	u8* ptr = &buffer[0];
-	PointerWrap p(&ptr, PointerWrap::MODE_VERIFY);
+	PointerWrap p(&buffer, PointerWrap::MODE_VERIFY);
 	DoState(p);
 
 	Core::PauseAndLock(false, wasUnpaused);
@@ -198,7 +189,7 @@ std::map<double, int> GetSavedStates()
 
 struct CompressAndDumpState_args
 {
-	std::vector<u8>* buffer_vector;
+	PWBuffer* buffer_vector;
 	std::mutex* buffer_mutex;
 	std::string filename;
 	bool wait;
@@ -297,42 +288,28 @@ void SaveAs(const std::string& filename, bool wait)
 	// Pause the core while we save the state
 	bool wasUnpaused = Core::PauseAndLock(true);
 
-	// Measure the size of the buffer.
-	u8 *ptr = NULL;
-	PointerWrap p(&ptr, PointerWrap::MODE_MEASURE);
-	DoState(p);
-	const size_t buffer_size = reinterpret_cast<size_t>(ptr);
-
-	// Then actually do the write.
 	{
 		std::lock_guard<std::mutex> lk(g_cs_current_buffer);
-		g_current_buffer.resize(buffer_size);
-		ptr = &g_current_buffer[0];
+		g_current_buffer.reserve(80000000);
+		PointerWrap p(&g_current_buffer, PointerWrap::MODE_WRITE);
 		p.SetMode(PointerWrap::MODE_WRITE);
 		DoState(p);
+		printf("new size is %zd\n", g_current_buffer.size());
 	}
 
-	if (p.GetMode() == PointerWrap::MODE_WRITE)
-	{
-		Core::DisplayMessage("Saving State...", 1000);
+	Core::DisplayMessage("Saving State...", 1000);
 
-		CompressAndDumpState_args save_args;
-		save_args.buffer_vector = &g_current_buffer;
-		save_args.buffer_mutex = &g_cs_current_buffer;
-		save_args.filename = filename;
-		save_args.wait = wait;
+	CompressAndDumpState_args save_args;
+	save_args.buffer_vector = &g_current_buffer;
+	save_args.buffer_mutex = &g_cs_current_buffer;
+	save_args.filename = filename;
+	save_args.wait = wait;
 
-		Flush();
-		g_save_thread = std::thread(CompressAndDumpState, save_args);
-		g_compressAndDumpStateSyncEvent.Wait();
+	Flush();
+	g_save_thread = std::thread(CompressAndDumpState, save_args);
+	g_compressAndDumpStateSyncEvent.Wait();
 
-		g_last_filename = filename;
-	}
-	else
-	{
-		// someone aborted the save by changing the mode?
-		Core::DisplayMessage("Unable to Save : Internal DoState Error", 4000);
-	}
+	g_last_filename = filename;
 
 	// Resume the core and disable stepping
 	Core::PauseAndLock(false, wasUnpaused);
@@ -352,7 +329,7 @@ bool ReadHeader(const std::string filename, StateHeader& header)
 	return true;
 }
 
-void LoadFileStateData(const std::string& filename, std::vector<u8>& ret_data)
+void LoadFileStateData(const std::string& filename, PWBuffer& ret_data)
 {
 	Flush();
 	File::IOFile f(filename, "rb");
@@ -372,7 +349,7 @@ void LoadFileStateData(const std::string& filename, std::vector<u8>& ret_data)
 		return;
 	}
 
-	std::vector<u8> buffer;
+	PWBuffer buffer;
 
 	if (0 != header.size)	// non-zero size means the state is compressed
 	{
@@ -390,7 +367,7 @@ void LoadFileStateData(const std::string& filename, std::vector<u8>& ret_data)
 				break;
 
 			f.ReadBytes(out, cur_len);
-			const int res = lzo1x_decompress(out, cur_len, &buffer[i], &new_len, NULL);
+			const int res = lzo1x_decompress(out, cur_len, (u8*) buffer.data() + i, &new_len, NULL);
 			if (res != LZO_E_OK)
 			{
 				// This doesn't seem to happen anymore.
@@ -407,7 +384,7 @@ void LoadFileStateData(const std::string& filename, std::vector<u8>& ret_data)
 		const size_t size = (size_t)(f.GetSize() - sizeof(StateHeader));
 		buffer.resize(size);
 
-		if (!f.ReadBytes(&buffer[0], size))
+		if (!f.ReadBytes(buffer.data(), size))
 		{
 			PanicAlert("wtf? reading bytes: %i", (int)size);
 			return;
@@ -451,16 +428,15 @@ void LoadAs(const std::string& filename)
 
 	// brackets here are so buffer gets freed ASAP
 	{
-		std::vector<u8> buffer;
+		PWBuffer buffer;
 		LoadFileStateData(filename, buffer);
 
 		if (!buffer.empty())
 		{
-			u8 *ptr = &buffer[0];
-			PointerWrap p(&ptr, PointerWrap::MODE_READ);
+			PointerWrap p(&buffer, PointerWrap::MODE_READ);
 			DoState(p);
 			loaded = true;
-			loadedSuccessfully = (p.GetMode() == PointerWrap::MODE_READ);
+			loadedSuccessfully = !p.failure;
 		}
 	}
 
@@ -509,16 +485,15 @@ void VerifyAt(const std::string& filename)
 {
 	bool wasUnpaused = Core::PauseAndLock(true);
 
-	std::vector<u8> buffer;
+	PWBuffer buffer;
 	LoadFileStateData(filename, buffer);
 
 	if (!buffer.empty())
 	{
-		u8 *ptr = &buffer[0];
-		PointerWrap p(&ptr, PointerWrap::MODE_VERIFY);
+		PointerWrap p(&buffer, PointerWrap::MODE_VERIFY);
 		DoState(p);
 
-		if (p.GetMode() == PointerWrap::MODE_VERIFY)
+		if (!p.failure)
 			Core::DisplayMessage(StringFromFormat("Verified state at %s", filename.c_str()).c_str(), 2000);
 		else
 			Core::DisplayMessage("Unable to Verify : Can't verify state from other revisions !", 4000);
@@ -542,12 +517,12 @@ void Shutdown()
 	// this gives a better guarantee to free the allocated memory right NOW (as opposed to, actually, never)
 	{
 		std::lock_guard<std::mutex> lk(g_cs_current_buffer);
-		std::vector<u8>().swap(g_current_buffer);
+		PWBuffer().swap(g_current_buffer);
 	}
 
 	{
 		std::lock_guard<std::mutex> lk(g_cs_undo_load_buffer);
-		std::vector<u8>().swap(g_undo_load_buffer);
+		PWBuffer().swap(g_undo_load_buffer);
 	}
 }
 

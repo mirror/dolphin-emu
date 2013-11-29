@@ -36,12 +36,15 @@
     <ClInclude Include="Src\MemoryUtil.h" />
     <ClInclude Include="Src\MsgHandler.h" />
     <ClInclude Include="Src\NandPaths.h" />
+    <ClInclude Include="Src\NetHost.h" />
     <ClInclude Include="Src\SDCardUtil.h" />
     <ClInclude Include="Src\SettingsHandler.h" />
     <ClInclude Include="Src\StdConditionVariable.h" />
     <ClInclude Include="Src\StdMutex.h" />
     <ClInclude Include="Src\StdThread.h" />
     <ClInclude Include="Src\StringUtil.h" />
+    <ClInclude Include="Src\TraversalClient.h" />
+    <ClInclude Include="Src\TraversalProto.h" />
     <ClInclude Include="Src\SymbolDB.h" />
     <ClInclude Include="Src\SysConf.h" />
     <ClInclude Include="Src\Thread.h" />

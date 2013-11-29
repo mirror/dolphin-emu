@@ -9,7 +9,6 @@
 #include <vector>
 #include <cmath>
 #include <cstdio>
-#include <cinttypes>
 
 #include "GLUtil.h"
 #if defined(HAVE_WX) && HAVE_WX

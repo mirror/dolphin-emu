@@ -42,7 +42,6 @@ class CGameListCtrl;
 class GameListItem;
 class CLogWindow;
 class FifoPlayerDlg;
-class NetPlaySetupDiag;
 class wxCheatsWindow;
 
 // The CPanel class to receive MSWWindowProc messages from the video backend.
@@ -110,7 +109,6 @@ public:
 
 	// These have to be public
 	CCodeWindow* g_pCodeWindow;
-	NetPlaySetupDiag* g_NetPlaySetupDiag;
 	wxCheatsWindow* g_CheatsWindow;
 	TASInputDlg* g_TASInputDlg[4];
 
@@ -128,7 +126,7 @@ public:
 	void ClearStatusBar();
 	void GetRenderWindowSize(int& x, int& y, int& width, int& height);
 	void OnRenderWindowSizeRequest(int width, int height);
-	void BootGame(const std::string& filename);
+	void BootGame(const std::string& filename, bool is_netplay = false);
 	void OnRenderParentClose(wxCloseEvent& event);
 	void OnRenderParentMove(wxMoveEvent& event);
 	bool RendererHasFocus();
@@ -136,8 +134,7 @@ public:
 	void ToggleDisplayMode (bool bFullscreen);
 	void UpdateWiiMenuChoice(wxMenuItem *WiiMenuItem=NULL);
 	static void ConnectWiimote(int wm_idx, bool connect);
-
-	const CGameListCtrl *GetGameListCtrl() const;
+	bool IsGameRunning();
 
 #ifdef __WXGTK__
 	Common::Event panic_event;
@@ -166,6 +163,8 @@ public:
 	std::vector<SPerspectives> Perspectives;
 	u32 ActivePerspective;
 
+	virtual bool ProcessEvent(wxEvent& event);
+
 private:
 	CGameListCtrl* m_GameListCtrl;
 	wxPanel* m_Panel;
@@ -180,6 +179,7 @@ private:
 	bool m_bTabSplit;
 	bool m_bNoDocking;
 	bool m_bGameLoading;
+	bool m_bInDestructor;
 
 	std::vector<std::string> drives;
 

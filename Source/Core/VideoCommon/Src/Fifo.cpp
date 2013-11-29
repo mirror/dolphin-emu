@@ -35,6 +35,7 @@ void Fifo_DoState(PointerWrap &p)
 	p.Do(g_bSkipCurrentFrame);
 }
 
+IGNORE_THREAD_SAFETY
 void Fifo_PauseAndLock(bool doLock, bool unpauseOnUnlock)
 {
 	if (doLock)

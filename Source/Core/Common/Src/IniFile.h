@@ -10,6 +10,7 @@
 #include <string>
 #include <set>
 #include <vector>
+#include <map>
 
 #include "StringUtil.h"
 
@@ -24,65 +25,103 @@ struct CaseInsensitiveStringCompare
 class IniFile
 {
 public:
+	enum Mode
+	{
+		MODE_READ,
+		MODE_WRITE,
+		MODE_PATCH // read, but don't apply defaults
+	};
 	class Section
 	{
 		friend class IniFile;
 
 	public:
-		Section() {}
-		Section(const std::string& _name) : name(_name) {}
+		Section() : parsed(false) {}
+		Section(const std::string& _name) : name(_name), parsed(false) {}
 
 		bool Exists(const char *key) const;
 		bool Delete(const char *key);
 
 		void Set(const char* key, const char* newValue);
-		void Set(const char* key, const std::string& newValue, const std::string& defaultValue);
 
 		void Set(const std::string &key, const std::string &value) {
 			Set(key.c_str(), value.c_str());
 		}
-		bool Get(const char* key, std::string* value, const char* defaultValue);
-
 		void Set(const char* key, u32 newValue) {
 			Set(key, StringFromFormat("0x%08x", newValue).c_str());
 		}
 		void Set(const char* key, float newValue) {
 			Set(key, StringFromFormat("%f", newValue).c_str());
 		}
-		void Set(const char* key, const float newValue, const float defaultValue);
 		void Set(const char* key, double newValue) {
 			Set(key, StringFromFormat("%f", newValue).c_str());
 		}
-
-		void Set(const char* key, int newValue, int defaultValue);
 		void Set(const char* key, int newValue) {
 			Set(key, StringFromInt(newValue).c_str());
 		}
-
-		void Set(const char* key, bool newValue, bool defaultValue);
 		void Set(const char* key, bool newValue) {
 			Set(key, StringFromBool(newValue).c_str());
 		}
 		void Set(const char* key, const std::vector<std::string>& newValues);
 
-		bool Get(const char* key, int* value, int defaultValue = 0);
-		bool Get(const char* key, u32* value, u32 defaultValue = 0);
-		bool Get(const char* key, bool* value, bool defaultValue = false);
-		bool Get(const char* key, float* value, float defaultValue = false);
-		bool Get(const char* key, double* value, double defaultValue = false);
-		bool Get(const char* key, std::vector<std::string>& values);
+		template <typename T, typename U>
+		void Set(const char* key, T newValue, U defaultValue)
+		{
+			if (newValue == defaultValue)
+				Delete(key);
+			else
+				Set(key, newValue);
+		}
+
+		template <typename T, typename U>
+		bool Get(const char* key, T* value, U defaultValue) const
+		{
+			std::string temp;
+			if (const_cast<Section*>(this)->GetLine(key, &temp) &&
+			    TryParse(temp, value))
+			{
+				return true;
+			}
+			*value = defaultValue;
+			return false;
+		}
+		bool Get(const char* key, std::vector<std::string>& values) const;
+
+		std::vector<std::string> GetLines(const bool remove_comments = true) const;
+		void SetLines(std::vector<std::string> lines);
+
+		template <typename T>
+		void Do(Mode mode, const char* key, T* value, T defaultValue = 0)
+		{
+			switch (mode)
+			{
+			case MODE_WRITE:
+				Set(key, *value, defaultValue);
+				break;
+			case MODE_PATCH:
+				T temp;
+				if (Get(key, &temp))
+					*value = temp;
+				break;
+			case MODE_READ:
+				Get(key, value, defaultValue);
+				break;
+			}
+		}
 
 		bool operator < (const Section& other) const {
 			return name < other.name;
 		}
 
-	protected:
 		std::string name;
-
-		std::vector<std::string> keys_order;
-		std::map<std::string, std::string, CaseInsensitiveStringCompare> values;
-
 		std::vector<std::string> lines;
+		std::map<std::string /* key */, std::pair<
+			size_t, // offset
+			std::string // value
+		>, CaseInsensitiveStringCompare> keys;
+	private:
+		std::string* GetLine(const char* key, std::string* valueOut);
+		bool parsed;
 	};
 
 	/**
@@ -101,44 +140,33 @@ public:
 	// Returns true if key exists in section
 	bool Exists(const char* sectionName, const char* key) const;
 
-	// TODO: Get rid of these, in favor of the Section ones.
-	void Set(const char* sectionName, const char* key, const char* newValue) {
-		GetOrCreateSection(sectionName)->Set(key, newValue);
-	}
-	void Set(const char* sectionName, const char* key, const std::string& newValue) {
-		GetOrCreateSection(sectionName)->Set(key, newValue.c_str());
-	}
-	void Set(const char* sectionName, const char* key, int newValue) {
-		GetOrCreateSection(sectionName)->Set(key, newValue);
-	}
-	void Set(const char* sectionName, const char* key, u32 newValue) {
-		GetOrCreateSection(sectionName)->Set(key, newValue);
-	}
-	void Set(const char* sectionName, const char* key, bool newValue) {
-		GetOrCreateSection(sectionName)->Set(key, newValue);
-	}
-	void Set(const char* sectionName, const char* key, const std::vector<std::string>& newValues) {
-		GetOrCreateSection(sectionName)->Set(key, newValues);
-	}
-
-	// TODO: Get rid of these, in favor of the Section ones.
-	bool Get(const char* sectionName, const char* key, std::string* value, const char* defaultValue = "");
-	bool Get(const char* sectionName, const char* key, int* value, int defaultValue = 0);
-	bool Get(const char* sectionName, const char* key, u32* value, u32 defaultValue = 0);
-	bool Get(const char* sectionName, const char* key, bool* value, bool defaultValue = false);
-	bool Get(const char* sectionName, const char* key, std::vector<std::string>& values);
-
-	template<typename T> bool GetIfExists(const char* sectionName, const char* key, T value)
+	template <typename T>
+	bool Get(const char* section, const char* key, T* value) const
 	{
-		if (Exists(sectionName, key))
-			return Get(sectionName, key, value);
-		return false;
+		return Get(section, key, value, T());
 	}
 
-	bool GetKeys(const char* sectionName, std::vector<std::string>& keys) const;
+	template <typename T, typename U>
+	bool Get(const char* section, const char* key, T* value, U defaultValue) const
+	{
+		const Section* sect = GetSection(section);
+		if (sect)
+		{
+			return sect->Get(key, value, defaultValue);
+		}
+		else
+		{
+			*value = defaultValue;
+			return false;
+		}
+	}
 
-	void SetLines(const char* sectionName, const std::vector<std::string> &lines);
-	bool GetLines(const char* sectionName, std::vector<std::string>& lines, const bool remove_comments = true) const;
+	// temporary
+	template <typename T>
+	void Set(const char* section, const char* key, T value)
+	{
+		return GetOrCreateSection(section)->Set(key, value);
+	}
 
 	bool DeleteKey(const char* sectionName, const char* key);
 	bool DeleteSection(const char* sectionName);
@@ -146,13 +174,12 @@ public:
 	void SortSections();
 
 	Section* GetOrCreateSection(const char* section);
+	const Section* GetSection(const char* section) const;
+	Section* GetSection(const char* section);
 
 private:
 	std::vector<Section> sections;
 
-	const Section* GetSection(const char* section) const;
-	Section* GetSection(const char* section);
-	std::string* GetLine(const char* section, const char* key);
 	void CreateSection(const char* section);
 };
 

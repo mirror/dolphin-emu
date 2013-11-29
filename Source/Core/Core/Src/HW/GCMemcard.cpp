@@ -5,7 +5,6 @@
 #include "GCMemcard.h"
 #include "ColorUtil.h"
 
-#include <cinttypes>
 
 static void ByteSwap(u8 *valueA, u8 *valueB)
 {

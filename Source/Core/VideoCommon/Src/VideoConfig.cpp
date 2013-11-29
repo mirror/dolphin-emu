@@ -44,12 +44,12 @@ void VideoConfig::Load(const char *ini_file)
 	IniFile iniFile;
 	iniFile.Load(ini_file);
 
-	iniFile.Get("Hardware", "VSync", &bVSync, 0); // Hardware
+	iniFile.Get("Hardware", "VSync", &bVSync, false); // Hardware
 	iniFile.Get("Settings", "wideScreenHack", &bWidescreenHack, false);
 	iniFile.Get("Settings", "AspectRatio", &iAspectRatio, (int)ASPECT_AUTO);
 	iniFile.Get("Settings", "Crop", &bCrop, false);
-	iniFile.Get("Settings", "UseXFB", &bUseXFB, 0);
-	iniFile.Get("Settings", "UseRealXFB", &bUseRealXFB, 0);
+	iniFile.Get("Settings", "UseXFB", &bUseXFB, false);
+	iniFile.Get("Settings", "UseRealXFB", &bUseRealXFB, false);
 	iniFile.Get("Settings", "SafeTextureCacheColorSamples", &iSafeTextureCache_ColorSamples,128);
 	iniFile.Get("Settings", "ShowFPS", &bShowFPS, false); // Settings
 	iniFile.Get("Settings", "LogFPSToFile", &bLogFPSToFile, false);
@@ -58,17 +58,17 @@ void VideoConfig::Load(const char *ini_file)
 	iniFile.Get("Settings", "OverlayProjStats", &bOverlayProjStats, false);
 	iniFile.Get("Settings", "ShowEFBCopyRegions", &bShowEFBCopyRegions, false);
 	iniFile.Get("Settings", "DLOptimize", &iCompileDLsLevel, 0);
-	iniFile.Get("Settings", "DumpTextures", &bDumpTextures, 0);
-	iniFile.Get("Settings", "HiresTextures", &bHiresTextures, 0);
-	iniFile.Get("Settings", "DumpEFBTarget", &bDumpEFBTarget, 0);
-	iniFile.Get("Settings", "DumpFrames", &bDumpFrames, 0);
-	iniFile.Get("Settings", "FreeLook", &bFreeLook, 0);
-	iniFile.Get("Settings", "UseFFV1", &bUseFFV1, 0);
+	iniFile.Get("Settings", "DumpTextures", &bDumpTextures, false);
+	iniFile.Get("Settings", "HiresTextures", &bHiresTextures, false);
+	iniFile.Get("Settings", "DumpEFBTarget", &bDumpEFBTarget, false);
+	iniFile.Get("Settings", "DumpFrames", &bDumpFrames, false);
+	iniFile.Get("Settings", "FreeLook", &bFreeLook, false);
+    iniFile.Get("Settings", "UseFFV1", &bUseFFV1, false);
 	iniFile.Get("Settings", "AnaglyphStereo", &bAnaglyphStereo, false);
 	iniFile.Get("Settings", "AnaglyphStereoSeparation", &iAnaglyphStereoSeparation, 200);
 	iniFile.Get("Settings", "AnaglyphFocalAngle", &iAnaglyphFocalAngle, 0);
-	iniFile.Get("Settings", "EnablePixelLighting", &bEnablePixelLighting, 0);
-	iniFile.Get("Settings", "HackedBufferUpload", &bHackedBufferUpload, 0);
+	iniFile.Get("Settings", "EnablePixelLighting", &bEnablePixelLighting, false);
+	iniFile.Get("Settings", "HackedBufferUpload", &bHackedBufferUpload, false);
 	iniFile.Get("Settings", "FastDepthCalc", &bFastDepthCalc, true);
 
 	iniFile.Get("Settings", "MSAA", &iMultisampleMode, 0);
@@ -76,19 +76,19 @@ void VideoConfig::Load(const char *ini_file)
 
 	iniFile.Get("Settings", "DstAlphaPass", &bDstAlphaPass, false);
 
-	iniFile.Get("Settings", "TexFmtOverlayEnable", &bTexFmtOverlayEnable, 0);
-	iniFile.Get("Settings", "TexFmtOverlayCenter", &bTexFmtOverlayCenter, 0);
-	iniFile.Get("Settings", "WireFrame", &bWireFrame, 0);
-	iniFile.Get("Settings", "DisableFog", &bDisableFog, 0);
+	iniFile.Get("Settings", "TexFmtOverlayEnable", &bTexFmtOverlayEnable, false);
+	iniFile.Get("Settings", "TexFmtOverlayCenter", &bTexFmtOverlayCenter, false);
+	iniFile.Get("Settings", "WireFrame", &bWireFrame, false);
+	iniFile.Get("Settings", "DisableFog", &bDisableFog, false);
 
 	iniFile.Get("Settings", "EnableOpenCL", &bEnableOpenCL, false);
 	iniFile.Get("Settings", "OMPDecoder", &bOMPDecoder, false);
 
 	iniFile.Get("Settings", "EnableShaderDebugging", &bEnableShaderDebugging, false);
 
-	iniFile.Get("Enhancements", "ForceFiltering", &bForceFiltering, 0);
+	iniFile.Get("Enhancements", "ForceFiltering", &bForceFiltering, false);
 	iniFile.Get("Enhancements", "MaxAnisotropy", &iMaxAnisotropy, 0);  // NOTE - this is x in (1 << x)
-	iniFile.Get("Enhancements", "PostProcessingShader", &sPostProcessingShader, "");
+	iniFile.Get("Enhancements", "PostProcessingShader", &sPostProcessingShader, std::string());
 	iniFile.Get("Enhancements", "Enable3dVision", &b3DVision, false);
 
 	iniFile.Get("Hacks", "EFBAccessEnable", &bEFBAccessEnable, true);
@@ -127,8 +127,9 @@ void VideoConfig::GameIniLoad()
 	// XXX: Again, bad place to put OSD messages at (see delroth's comment above)
 	// XXX: This will add an OSD message for each projection hack value... meh
 #define CHECK_SETTING(section, key, var) do { \
-		decltype(var) temp = var; \
-		if (iniFile.GetIfExists(section, key, &var) && var != temp) { \
+		auto temp = var; \
+		if (iniFile.Get(section, key, &temp) && var != temp) { \
+			var = temp; \
 			char buf[256]; \
 			snprintf(buf, sizeof(buf), "Note: Option \"%s\" is overridden by game ini.", key); \
 			OSD::AddMessage(buf, 7500); \

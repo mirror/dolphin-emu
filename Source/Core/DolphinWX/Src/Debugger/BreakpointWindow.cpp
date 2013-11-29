@@ -165,8 +165,8 @@ void CBreakPointWindow::SaveAll()
 	IniFile ini;
 	if (ini.Load(File::GetUserPath(F_DEBUGGERCONFIG_IDX)))
 	{
-		ini.SetLines("BreakPoints", PowerPC::breakpoints.GetStrings());
-		ini.SetLines("MemoryChecks", PowerPC::memchecks.GetStrings());
+		ini.GetOrCreateSection("Breakpoints")->SetLines(PowerPC::breakpoints.GetStrings());
+		ini.GetOrCreateSection("MemoryChecks")->SetLines(PowerPC::memchecks.GetStrings());
 		ini.Save(File::GetUserPath(F_DEBUGGERCONFIG_IDX));
 	}
 }
@@ -174,16 +174,14 @@ void CBreakPointWindow::SaveAll()
 void CBreakPointWindow::LoadAll(wxCommandEvent& WXUNUSED(event))
 {
 	IniFile ini;
-	BreakPoints::TBreakPointsStr newbps;
-	MemChecks::TMemChecksStr newmcs;
 
 	if (!ini.Load(File::GetUserPath(F_DEBUGGERCONFIG_IDX)))
 		return;
 
-	if (ini.GetLines("BreakPoints", newbps, false))
-		PowerPC::breakpoints.AddFromStrings(newbps);
-	if (ini.GetLines("MemoryChecks", newmcs, false))
-		PowerPC::memchecks.AddFromStrings(newmcs);
+	if (IniFile::Section* newbps = ini.GetSection("BreakPoints"))
+		PowerPC::breakpoints.AddFromStrings(newbps->GetLines(false));
+	if (IniFile::Section* newmcs = ini.GetSection("MemoryChecks"))
+		PowerPC::memchecks.AddFromStrings(newmcs->GetLines(false));
 
 	NotifyUpdate();
 }

@@ -5,7 +5,6 @@
 #include "FileUtil.h"
 #include "SysConf.h"
 
-#include <cinttypes>
 
 SysConf::SysConf()
 	: m_IsValid(false)

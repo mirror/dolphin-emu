@@ -10,105 +10,137 @@
 #include "Thread.h"
 #include "Timer.h"
 
-#include <SFML/Network.hpp>
-
+#include "enet/enet.h"
 #include "NetPlayProto.h"
+#include "FifoQueue.h"
+#include "TraversalClient.h"
+#include "IOSync.h"
 
 #include <functional>
-#include <map>
-#include <queue>
-#include <sstream>
+#include <unordered_set>
 
-class NetPlayServer
+class NetPlayUI;
+
+class NetPlayServer : public NetHostClient, public TraversalClientClient
 {
 public:
-	void ThreadFunc();
-
-	NetPlayServer(const u16 port);
+	NetPlayServer();
 	~NetPlayServer();
 
-	bool ChangeGame(const std::string& game);
-	void SendChatMessage(const std::string& msg);
+	bool ChangeGame(const std::string& game) /* ON(GUI) */;
 
-	void SetNetSettings(const NetSettings &settings);
+	void SetNetSettings(const NetSettings &settings) /* ON(GUI) */;
 
-	bool StartGame(const std::string &path);
+	void StartGame(const std::string &path) /* ON(GUI) */;
 
-	void GetPadMapping(PadMapping map[]);
-	void SetPadMapping(const PadMapping map[]);
+	void AdjustPadBufferSize(unsigned int size) /* multiple threads */;
 
-	void GetWiimoteMapping(PadMapping map[]);
-	void SetWiimoteMapping(const PadMapping map[]);
+	void SetDialog(NetPlayUI* dialog);
 
-	void AdjustPadBufferSize(unsigned int size);
+	virtual void OnENetEvent(ENetEvent*) override ON(NET);
+	virtual void OnData(ENetEvent* event, Packet&& packet) ON(NET);
+	virtual void OnTraversalStateChanged() override ON(NET);
+	virtual void OnConnectReady(ENetAddress addr) override {}
+	virtual void OnConnectFailed(u8 reason) override ON(NET) {}
 
-	bool is_connected;
+	void SetDesiredDeviceMapping(int classId, int index, PlayerId pid, int localIndex) ON(NET);
+	void AddReservation() ON(NET);
+	void CheckReservationResults() ON(NET);
+	void ExecuteReservation() ON(NET);
+	void EndReservation() ON(NET);
+	void ForceDisconnectDevice(int classId, int index) ON(NET);
 
-#ifdef USE_UPNP
-	void TryPortmapping(u16 port);
-#endif
+	std::unordered_set<std::string> GetInterfaceSet();
+	std::string GetInterfaceHost(std::string interface);
 
-private:
 	class Client
 	{
 	public:
-		PlayerId		pid;
+		Client() { connected = false; }
 		std::string		name;
 		std::string		revision;
 
-		sf::SocketTCP	socket;
 		u32 ping;
 		u32 current_game;
+		bool connected;
+		bool reservation_ok;
+		bool sitting_out_this_game; // hit "stop"
+		std::map<u32, PWBuffer> devices_present;
+		bool is_localhost;
 	};
 
-	void SendToClients(sf::Packet& packet, const PlayerId skip_pid = 0);
-	unsigned int OnConnect(sf::SocketTCP& socket);
-	unsigned int OnDisconnect(sf::SocketTCP& socket);
-	unsigned int OnData(sf::Packet& packet, sf::SocketTCP& socket);
-	void UpdatePadMapping();
-	void UpdateWiimoteMapping();
+	std::vector<Client>	m_players ACCESS_ON(NET);
+
+	struct DeviceInfo
+	{
+		DeviceInfo()
+		{
+			desired_mapping = actual_mapping = new_mapping = null_mapping;
+		}
+		const static std::pair<PlayerId, s8> null_mapping;
+		// The mapping configured in the dialog.
+		std::pair<PlayerId, s8> desired_mapping;
+		// The current mapping.
+		std::pair<PlayerId, s8> actual_mapping;
+		// In WaitingForChangeover mode, the mapping that we'll change over to
+		// when this device hits m_reserved_subframe or we switch to Inactive
+		// mode.  The current approach (disconnect+connect requires two cycles,
+		// etc.) is suboptimal in general, but it simplifies the logic a bit
+		// (which is already rather complicated) and it's not like connecting
+		// and disconnecting devices is super latency sensitive.
+		std::pair<PlayerId, s8> new_mapping;
+		s64 subframe;
+
+		std::vector<std::function<void()>> todo;
+	};
+
+	DeviceInfo m_device_info[IOSync::Class::NumClasses][IOSync::Class::MaxDeviceIndex];
+
+private:
+
+	void SendToClients(Packet&& packet, const PlayerId skip_pid = -1) NOT_ON(NET);
+	void SendToClientsOnThread(Packet&& packet, const PlayerId skip_pid = -1) ON(NET);
+	MessageId OnConnect(PlayerId pid, Packet& hello) ON(NET);
+	void OnDisconnect(PlayerId pid) ON(NET);
+	void UpdatePings() ON(NET);
+	bool IsSpectator(PlayerId pid);
+
+	std::vector<std::pair<std::string, std::string>> GetInterfaceListInternal();
 
 	NetSettings     m_settings;
-
-	bool            m_is_running;
-	bool            m_do_loop;
-	Common::Timer	m_ping_timer;
+	bool            m_is_running ACCESS_ON(NET);
+	Common::Timer	m_ping_timer ACCESS_ON(NET);
 	u32		m_ping_key;
 	bool            m_update_pings;
 	u32		m_current_game;
-	unsigned int	m_target_buffer_size;
-	PadMapping      m_pad_map[4];
-	PadMapping      m_wiimote_map[4];
+	u32				m_target_buffer_size;
 
-	std::map<sf::SocketTCP, Client>	m_players;
 
-	struct
+	unsigned m_num_players ACCESS_ON(NET);
+	unsigned m_num_nonlocal_players ACCESS_ON(NET);
+
+	// only protects m_selected_game
+	std::recursive_mutex m_crit;
+
+	std::string m_selected_game GUARDED_BY(m_crit);
+
+	TraversalClient* m_traversal_client;
+	NetHost*		m_net_host;
+	ENetHost*		m_enet_host;
+	NetPlayUI*		m_dialog;
+
+	s64				m_highest_known_subframe;
+	enum
 	{
-		std::recursive_mutex game;
-		// lock order
-		std::recursive_mutex players, send;
-	} m_crit;
+		Inactive,
+		WaitingForResponses,
+		WaitingForChangeover
+	}				m_reservation_state;
+	s64				m_reserved_subframe;
 
-	std::string m_selected_game;
-
-	sf::SocketTCP m_socket;
-	std::thread m_thread;
-	sf::Selector<sf::SocketTCP> m_selector;
-
-#ifdef USE_UPNP
-	static void mapPortThread(const u16 port);
-	static void unmapPortThread();
-
-	static bool initUPnP();
-	static bool UPnPMapPort(const std::string& addr, const u16 port);
-	static bool UPnPUnmapPort(const u16 port);
-
-	static struct UPNPUrls m_upnp_urls;
-	static struct IGDdatas m_upnp_data;
-	static u16 m_upnp_mapped;
-	static bool m_upnp_inited;
-	static bool m_upnp_error;
-	static std::thread m_upnp_thread;
+#if defined(__APPLE__)
+	const void* m_dynamic_store;
+	const void* m_prefs;
 #endif
 };
 

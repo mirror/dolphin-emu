@@ -43,9 +43,6 @@ public:
 	virtual void PauseAndLock(bool doLock, bool unpauseOnUnlock=true) {}
 	virtual IEXIDevice* FindDevice(TEXIDevices device_type, int customIndex=-1) { return (device_type == m_deviceType) ? this : NULL; }
 
-	// Update
-	virtual void Update() {}
-
 	// Is generating interrupt ?
 	virtual bool IsInterruptSet() {return false;}
 	virtual ~IEXIDevice() {}

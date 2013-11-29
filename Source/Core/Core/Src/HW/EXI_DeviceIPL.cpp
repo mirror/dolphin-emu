@@ -349,24 +349,9 @@ void CEXIIPL::TransferByte(u8& _uByte)
 
 u32 CEXIIPL::GetGCTime()
 {
-	u64 ltime = 0;
 	static const u32 cJanuary2000 = 0x386D4380;  // Seconds between 1.1.1970 and 1.1.2000
 
-	if (Movie::IsRecordingInput() || Movie::IsPlayingInput())
-	{
-		ltime = Movie::GetRecordingStartTime();
-
-		// let's keep time moving forward, regardless of what it starts at
-		ltime += CoreTiming::GetTicks() / SystemTimers::GetTicksPerSecond();
-	}
-	else
-	{
-		// hack in some netplay stuff
-		ltime = NetPlay_GetGCTime();
-
-		if (0 == ltime)
-			ltime = Common::Timer::GetLocalTimeSinceJan1970();
-	}
+	u32 ltime = IOSync::g_Backend->GetTime();
 
 	return ((u32)ltime - cJanuary2000);
 

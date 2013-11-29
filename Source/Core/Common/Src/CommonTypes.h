@@ -10,6 +10,7 @@
 #ifndef _COMMONTYPES_H_
 #define _COMMONTYPES_H_
 
+#include <cinttypes>
 #include <cstdint>
 #include <cstddef>
 

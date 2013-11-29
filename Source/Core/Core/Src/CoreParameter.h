@@ -151,6 +151,9 @@ struct SCoreStartupParameter
 	// Interface settings
 	bool bConfirmStop, bHideCursor, bAutoHideCursor, bUsePanicHandlers, bOnScreenDisplayMessages;
 	std::string theme_name;
+	std::string strNetPlayHost, strNetPlayNickname;
+	std::string strNetPlayCentralServer;
+	int iNetPlayListenPort;
 
 	// Hotkeys
 	int iHotkey[NUM_HOTKEYS];

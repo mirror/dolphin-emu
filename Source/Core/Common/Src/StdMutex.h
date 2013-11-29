@@ -1,4 +1,3 @@
-
 #ifndef MUTEX_H_
 #define MUTEX_H_
 
@@ -12,7 +11,7 @@
 #if GCC_VERSION >= GCC_VER(4,4,0) && __GXX_EXPERIMENTAL_CXX0X__
 // GCC 4.4 provides <mutex>
 #include <mutex>
-#elif __has_include(<mutex>) && !ANDROID
+#elif __has_include(<mutex>) && !ANDROID && !defined(THREAD_SAFETY_ANNOTATIONS)
 // Clang + libc++
 #include <mutex>
 
@@ -44,6 +43,18 @@
 
 #if defined(_WIN32) && defined(_M_X64)
 #define USE_SRWLOCKS
+#endif
+
+#ifdef __clang__
+#include <mutex>
+#define defer_lock_t _defer_lock_t
+#define try_to_lock_t _try_to_lock_t
+#define adopt_lock_t _adopt_lock_t
+#define defer_lock _defer_lock
+#define try_to_lock _try_to_lock
+#define adopt_lock _adopt_lock
+#define mutex _mutex
+#define recursive_mutex _recursive_mutex
 #endif
 
 namespace std
@@ -84,6 +95,7 @@ public:
 #endif
 	}
 
+	_TS_MACRO(__attribute__((exclusive_lock_function)))
 	void lock()
 	{
 #ifdef _WIN32
@@ -93,6 +105,7 @@ public:
 #endif
 	}
 
+	_TS_MACRO(__attribute__((unlock_function)))
 	void unlock()
 	{
 #ifdef _WIN32
@@ -102,6 +115,7 @@ public:
 #endif
 	}
 
+	_TS_MACRO(__attribute__((exclusive_trylock_function(true))))
 	bool try_lock()
 	{
 #ifdef _WIN32
@@ -118,7 +132,7 @@ public:
 
 private:
 	native_type m_handle;
-};
+} _TS_MACRO(__attribute__((lockable)));
 
 #if !defined(_WIN32) || defined(USE_SRWLOCKS)
 
@@ -153,6 +167,7 @@ public:
 #endif
 	}
 
+	_TS_MACRO(__attribute__((exclusive_lock_function)))
 	void lock()
 	{
 #ifdef _WIN32
@@ -162,6 +177,7 @@ public:
 #endif
 	}
 
+	_TS_MACRO(__attribute__((unlock_function)))
 	void unlock()
 	{
 #ifdef _WIN32
@@ -171,6 +187,7 @@ public:
 #endif
 	}
 
+	_TS_MACRO(__attribute__((exclusive_trylock_function(true))))
 	bool try_lock()
 	{
 #ifdef _WIN32
@@ -189,7 +206,7 @@ public:
 
 private:
 	native_type m_handle;
-};
+} _TS_MACRO(__attribute__((lockable)));
 
 #else
 typedef recursive_mutex mutex;	// just use CriticalSections
@@ -206,17 +223,20 @@ class lock_guard
 public:
 	typedef Mutex mutex_type;
 
+	_TS_MACRO(__attribute__((exclusive_lock_function(m))))
 	explicit lock_guard(mutex_type& m)
 		: pm(m)
 	{
 		m.lock();
 	}
 
+	_TS_MACRO(__attribute__((exclusive_lock_function(m))))
 	lock_guard(mutex_type& m, adopt_lock_t)
 		: pm(m)
 	{
 	}
 
+	_TS_MACRO(__attribute__((unlock_function)))
 	~lock_guard()
 	{
 		pm.unlock();
@@ -227,7 +247,7 @@ public:
 
 private:
 	mutex_type& pm;
-};
+} _TS_MACRO(__attribute__((scoped_lockable)));
 
 template <class Mutex>
 class unique_lock
@@ -239,6 +259,7 @@ public:
 		: pm(NULL), owns(false)
 	{}
 
+	_TS_MACRO(__attribute__((exclusive_lock_function(m))))
 	/*explicit*/ unique_lock(mutex_type& m)
 		: pm(&m), owns(true)
 	{
@@ -249,10 +270,14 @@ public:
 		: pm(&m), owns(false)
 	{}
 
+	/* There is no "tryunlock_function", so this must be annotated this way.
+	 * This generally fails to be expressive enough for lock inversion. */
+	_TS_MACRO(__attribute__((exclusive_lock_function(m))))
 	unique_lock(mutex_type& m, try_to_lock_t)
 		: pm(&m), owns(m.try_lock())
 	{}
 
+	_TS_MACRO(__attribute__((exclusive_lock_function(m))))
 	unique_lock(mutex_type& m, adopt_lock_t)
 		: pm(&m), owns(true)
 	{}
@@ -263,6 +288,7 @@ public:
 	//template <class Rep, class Period>
 	//unique_lock(mutex_type& m, const chrono::duration<Rep, Period>& rel_time);
 
+	_TS_MACRO(__attribute__((unlock_function)))
 	~unique_lock()
 	{
 		if (owns_lock())
@@ -300,12 +326,14 @@ public:
 		swap(other);
 	}
 
+	_TS_MACRO(__attribute__((exclusive_lock_function)))
 	void lock()
 	{
 		mutex()->lock();
 		owns = true;
 	}
 
+	_TS_MACRO(__attribute__((exclusive_lock_function)))
 	bool try_lock()
 	{
 		owns = mutex()->try_lock();
@@ -317,6 +345,7 @@ public:
 	//template <class Clock, class Duration>
 	//bool try_lock_until(const chrono::time_point<Clock, Duration>& abs_time);
 
+	_TS_MACRO(__attribute__((unlock_function)))
 	void unlock()
 	{
 		mutex()->unlock();
@@ -357,7 +386,7 @@ public:
 private:
 	mutex_type* pm;
 	bool owns;
-};
+} _TS_MACRO(__attribute__((scoped_lockable)));
 
 template <class Mutex>
 void swap(unique_lock<Mutex>& x, unique_lock<Mutex>& y)

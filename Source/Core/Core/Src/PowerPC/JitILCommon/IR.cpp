@@ -118,7 +118,6 @@ Fix profiled loads/stores to work safely.  On 32-bit, one solution is to
 
 #include <algorithm>
 #include <memory>
-#include <cinttypes>
 #include <ctime>
 #include <set>
 #include "IR.h"

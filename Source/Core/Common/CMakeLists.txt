@@ -13,9 +13,11 @@ set(SRCS	Src/BreakPoints.cpp
 			Src/Misc.cpp
 			Src/MsgHandler.cpp
 			Src/NandPaths.cpp
+			Src/NetHost.cpp
 			Src/SettingsHandler.cpp
 			Src/SDCardUtil.cpp
 			Src/StringUtil.cpp
+			Src/TraversalClient.cpp
 			Src/SymbolDB.cpp
 			Src/SysConf.cpp
 			Src/Thread.cpp
@@ -50,3 +52,4 @@ endif(WIN32)
 enable_precompiled_headers(Src/stdafx.h Src/stdafx.cpp SRCS)
 
 add_dolphin_library(common "${SRCS}" "${CMAKE_THREAD_LIBS_INIT}")
+add_executable(traversal_server Src/TraversalServer.cpp)

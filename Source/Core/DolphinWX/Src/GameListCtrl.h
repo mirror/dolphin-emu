@@ -36,7 +36,11 @@ public:
 
 	void BrowseForDirectory();
 	const GameListItem *GetSelectedISO();
-	const GameListItem *GetISO(size_t index) const;
+	// todo: put this functionality somewhere saner for god's sake
+	static const GameListItem *GetISO(size_t index);
+
+	void SetFileMenu(wxMenu* fileMenu);
+	void UpdateFileMenu();
 
 	enum
 	{
@@ -57,6 +61,7 @@ private:
 	std::vector<int> m_PlatformImageIndex;
 	std::vector<int> m_EmuStateImageIndex;
 	std::vector<GameListItem*> m_ISOFiles;
+	static CGameListCtrl* s_Instance;
 
 	void ClearIsoFiles()
 	{
@@ -71,6 +76,7 @@ private:
 	int last_sort;
 	wxSize lastpos;
 	wxEmuStateTip *toolTip;
+	wxMenu* m_FileMenu;
 	void InitBitmaps();
 	void InsertItemInReportView(long _Index);
 	void SetBackgroundColor();
@@ -85,9 +91,11 @@ private:
 	void OnColumnClick(wxListEvent& event);
 	void OnColBeginDrag(wxListEvent& event);
 	void OnKeyPress(wxListEvent& event);
+	void OnItemSelectedDeselected(wxListEvent& event);
 	void OnSize(wxSizeEvent& event);
 	void OnProperties(wxCommandEvent& event);
 	void OnWiki(wxCommandEvent& event);
+	void OnHostNetplay(wxCommandEvent& event);
 	void OnOpenContainingFolder(wxCommandEvent& event);
 	void OnOpenSaveFolder(wxCommandEvent& event);
 	void OnExportSave(wxCommandEvent& event);
@@ -99,6 +107,7 @@ private:
 	void OnInstallWAD(wxCommandEvent& event);
 	void OnDropFiles(wxDropFilesEvent& event);
 
+	void AppendContextMenuOptions(wxMenu* menu);
 	void CompressSelection(bool _compress);
 	void AutomaticColumnWidth();
 	void UnselectAll();

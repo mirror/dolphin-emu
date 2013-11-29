@@ -119,6 +119,8 @@ EVT_CHECKBOX(ID_IDLESKIP, CConfigMain::CoreSettingsChanged)
 EVT_CHECKBOX(ID_ENABLECHEATS, CConfigMain::CoreSettingsChanged)
 EVT_CHOICE(ID_FRAMELIMIT, CConfigMain::CoreSettingsChanged)
 EVT_CHECKBOX(ID_FRAMELIMIT_USEFPSFORLIMITING, CConfigMain::CoreSettingsChanged)
+EVT_CHECKBOX(ID_NETPLAY_PORT_ENABLED, CConfigMain::CoreSettingsChanged)
+EVT_TEXT(ID_NETPLAY_PORT, CConfigMain::CoreSettingsChanged)
 
 EVT_RADIOBOX(ID_CPUENGINE, CConfigMain::CoreSettingsChanged)
 EVT_CHECKBOX(ID_NTSCJ, CConfigMain::CoreSettingsChanged)
@@ -331,6 +333,9 @@ void CConfigMain::InitializeGUIValues()
 		if (CPUCores[a].CPUid == startup_params.iCPUCore)
 			CPUEngine->SetSelection(a);
 	_NTSCJ->SetValue(startup_params.bForceNTSCJ);
+	NetPlayPortEnabled->SetValue(startup_params.iNetPlayListenPort != 0);
+	NetPlayPort->SetValue(startup_params.iNetPlayListenPort);
+	NetPlayPort->Enable(NetPlayPortEnabled->IsChecked());
 
 
 	// Display - Interface
@@ -553,6 +558,8 @@ void CConfigMain::CreateGUIControls()
 	// Core Settings - Advanced
 	CPUEngine = new wxRadioBox(GeneralPage, ID_CPUENGINE, _("CPU Emulator Engine"), wxDefaultPosition, wxDefaultSize, arrayStringFor_CPUEngine, 0, wxRA_SPECIFY_ROWS);
 	_NTSCJ = new wxCheckBox(GeneralPage, ID_NTSCJ, _("Force Console as NTSC-J"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator);
+	NetPlayPortEnabled = new wxCheckBox(GeneralPage, ID_NETPLAY_PORT_ENABLED, _("Force Netplay Listen Port: "));
+	NetPlayPort = new wxSpinCtrl(GeneralPage, ID_NETPLAY_PORT, "", wxDefaultPosition, wxSize(80, -1), wxSP_ARROW_KEYS, 1, 65535);
 
 	// Populate the General settings
 	wxBoxSizer* sFramelimit = new wxBoxSizer(wxHORIZONTAL);
@@ -568,6 +575,11 @@ void CConfigMain::CreateGUIControls()
 	wxStaticBoxSizer* const sbAdvanced = new wxStaticBoxSizer(wxVERTICAL, GeneralPage, _("Advanced Settings"));
 	sbAdvanced->Add(CPUEngine, 0, wxALL, 5);
 	sbAdvanced->Add(_NTSCJ, 0, wxALL, 5);
+
+	wxBoxSizer* sNetPlayPort = new wxBoxSizer(wxHORIZONTAL);
+	sNetPlayPort->Add(NetPlayPortEnabled, 0, wxCENTER);
+	sNetPlayPort->Add(NetPlayPort, 0, wxCENTER);
+	sbAdvanced->Add(sNetPlayPort, 0, wxALL, 5);
 
 	wxBoxSizer* const sGeneralPage = new wxBoxSizer(wxVERTICAL);
 	sGeneralPage->Add(sbBasic, 0, wxEXPAND | wxALL, 5);
@@ -903,6 +915,12 @@ void CConfigMain::CoreSettingsChanged(wxCommandEvent& event)
 	case ID_NTSCJ:
 		SConfig::GetInstance().m_LocalCoreStartupParameter.bForceNTSCJ = _NTSCJ->IsChecked();
 		break;
+
+	case ID_NETPLAY_PORT_ENABLED:
+	case ID_NETPLAY_PORT:
+		SConfig::GetInstance().m_LocalCoreStartupParameter.iNetPlayListenPort = NetPlayPortEnabled->IsChecked() ? NetPlayPort->GetValue() : 0;
+		NetPlayPort->Enable(NetPlayPortEnabled->IsChecked());
+		break;
 	}
 }
 
@@ -1131,11 +1149,8 @@ void CConfigMain::ChooseSIDevice(wxString deviceName, int deviceNum)
 
 	SConfig::GetInstance().m_SIDevice[deviceNum] = tempType;
 
-	if (Core::GetState() != Core::CORE_UNINITIALIZED)
-	{
-		// Change plugged device! :D
-		SerialInterface::ChangeDevice(tempType, deviceNum);
-	}
+	// Change plugged device! :D
+	SerialInterface::ChangeLocalDevice(tempType, deviceNum);
 }
 
 void CConfigMain::ChooseEXIDevice(wxString deviceName, int deviceNum)

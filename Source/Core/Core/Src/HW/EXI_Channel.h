@@ -118,7 +118,6 @@ public:
 	void Read32(u32& _uReturnValue, const u32 _iRegister);
 	void Write32(const u32 _iValue, const u32 _iRegister);
 
-	void Update();
 	bool IsCausingInterrupt();
 	void DoState(PointerWrap &p);
 	void PauseAndLock(bool doLock, bool unpauseOnUnlock);

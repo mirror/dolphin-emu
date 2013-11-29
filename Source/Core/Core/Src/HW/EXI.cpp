@@ -96,14 +96,6 @@ IEXIDevice* FindDevice(TEXIDevices device_type, int customIndex)
 	return NULL;
 }
 
-// Unused (?!)
-void Update()
-{
-	g_Channels[0]->Update();
-	g_Channels[1]->Update();
-	g_Channels[2]->Update();
-}
-
 void Read32(u32& _uReturnValue, const u32 _iAddress)
 {
 	// TODO 0xfff00000 is mapped to EXI -> mapped to first MB of maskrom

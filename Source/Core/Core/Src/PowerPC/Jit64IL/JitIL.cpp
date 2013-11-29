@@ -4,7 +4,6 @@
 
 #include <map>
 #include <memory>
-#include <cinttypes>
 
 #include "Common.h"
 #include "../../HLE/HLE.h"

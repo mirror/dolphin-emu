@@ -19,7 +19,9 @@ void LoadCodes(const IniFile& globalIni, const IniFile& localIni, std::vector<Ge
 	for (size_t i = 0; i < ArraySize(inis); ++i)
 	{
 		std::vector<std::string> lines;
-		inis[i]->GetLines("Gecko", lines, false);
+		const IniFile::Section* sect = inis[i]->GetSection("Gecko");
+		if (sect)
+			lines = sect->GetLines(false);
 
 		GeckoCode gcode;
 
@@ -73,7 +75,10 @@ void LoadCodes(const IniFile& globalIni, const IniFile& localIni, std::vector<Ge
 		if (gcode.name.size())
 			gcodes.push_back(gcode);
 
-		inis[i]->GetLines("Gecko_Enabled", lines, false);
+		sect = inis[i]->GetSection("Gecko_Enabled");
+		lines.clear();
+		if (sect)
+			lines = sect->GetLines(false);
 
 		for (auto line : lines)
 		{
@@ -147,8 +152,8 @@ void SaveCodes(IniFile& inifile, const std::vector<GeckoCode>& gcodes)
 		SaveGeckoCode(lines, enabledLines, *gcodes_iter);
 	}
 
-	inifile.SetLines("Gecko", lines);
-	inifile.SetLines("Gecko_Enabled", enabledLines);
+	inifile.GetOrCreateSection("Gecko")->SetLines(lines);
+	inifile.GetOrCreateSection("Gecko_Enabled")->SetLines(enabledLines);
 }
 
 };

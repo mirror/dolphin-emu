@@ -128,6 +128,7 @@ void CCPU::Break()
 	EnableStepping(true);
 }
 
+IGNORE_THREAD_SAFETY
 bool CCPU::PauseAndLock(bool doLock, bool unpauseOnUnlock)
 {
 	bool wasUnpaused = !IsStepping();
