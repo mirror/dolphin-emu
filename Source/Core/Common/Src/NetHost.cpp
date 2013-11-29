@@ -254,7 +254,6 @@ void NetHost::ProcessPacketQueue()
 	}
 	while (numToRemove--)
 		m_OutgoingPacketInfo.pop_front();
-	m_SendTimer.Update();
 }
 
 void NetHost::PrintStats()
@@ -302,6 +301,8 @@ void NetHost::ThreadFunc()
 	Common::SetCurrentThreadName(m_TraversalClient ? "TraversalClient thread" : "NetHost thread");
 	while (1)
 	{
+		if (m_AutoSend)
+			ProcessPacketQueue();
 		while (!m_RunQueue.Empty())
 		{
 			m_RunQueue.Front()();
@@ -315,12 +316,7 @@ void NetHost::ThreadFunc()
 			PanicAlert("enet_socket_get_address failed.");
 			continue;
 		}
-		u32 wait;
-		if (m_Host->connectedPeers > 0 || !m_AutoSend)
-			wait = 300;
-		else
-			wait = std::max((s64) 1, AutoSendDelay - (s64) m_SendTimer.GetTimeDifference());
-		int count = enet_host_service(m_Host, &event, wait);
+		int count = enet_host_service(m_Host, &event, 4);
 		if (count < 0)
 		{
 			PanicAlert("enet_host_service failed... do something about this.");
@@ -367,8 +363,6 @@ void NetHost::ThreadFunc()
 				break;
 			}
 		}
-		if (m_AutoSend && m_SendTimer.GetTimeDifference() >= AutoSendDelay)
-			ProcessPacketQueue();
 	}
 }
 

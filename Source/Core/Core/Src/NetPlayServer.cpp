@@ -707,10 +707,6 @@ void NetPlayServer::SendToClients(Packet&& packet, const PlayerId skip_pid)
 void NetPlayServer::SendToClientsOnThread(Packet&& packet, const PlayerId skip_pid)
 {
 	m_net_host->BroadcastPacket(std::move(packet), skip_pid >= m_enet_host->peerCount ? NULL : &m_enet_host->peers[skip_pid]);
-	// If there's no more than one nonlocal player, no point trying to
-	// coalesce
-	if (m_num_players <= 1)
-		m_net_host->ProcessPacketQueue();
 }
 
 void NetPlayServer::SetDialog(NetPlayUI* dialog)

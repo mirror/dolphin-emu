@@ -142,7 +142,6 @@ private:
 	bool m_ShouldEndThread ACCESS_ON(NET);
 
 	std::deque<OutgoingPacketInfo> m_OutgoingPacketInfo ACCESS_ON(NET);
-	Common::Timer m_SendTimer ACCESS_ON(NET);
 	Common::Timer m_StatsTimer ACCESS_ON(NET);
 	std::vector<PeerInfo> m_PeerInfo ACCESS_ON(NET);
 	u16 m_GlobalSequenceNumber ACCESS_ON(NET);
