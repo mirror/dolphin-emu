@@ -121,15 +121,14 @@ private:
 
 	struct PeerInfo
 	{
-		PeerInfo() { m_Connected = false; }
+		PeerInfo() { m_ConnectTicker = -1; }
 		std::deque<PWBuffer> m_IncomingPackets;
 		// the sequence number of the first element of m_IncomingPackets
 		u16 m_IncomingSequenceNumber;
 		u16 m_OutgoingSequenceNumber;
-		u16 m_GlobalSeqToSeq[65536];
+		u16 m_GlobalSeqToSeq[256];
 		u64 m_ConnectTicker;
 		int m_SentPackets;
-		bool m_Connected;
 	};
 
 	void ThreadFunc() /* ON(NET) */;

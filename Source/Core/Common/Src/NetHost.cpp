@@ -153,13 +153,13 @@ void NetHost::BroadcastPacket(Packet&& packet, ENetPeer* except)
 	if (packet.vec->size() < MaxShortPacketLength)
 	{
 		u16 seq = m_GlobalSequenceNumber++;
-		m_OutgoingPacketInfo.emplace_back(std::move(packet), except, seq, m_GlobalTicker++);
+		m_OutgoingPacketInfo.emplace_back(std::move(packet), except, seq, m_GlobalTicker);
 		size_t peer = 0;
 		for (auto& pi : m_PeerInfo)
 		{
-			if (!pi.m_Connected || &m_Host->peers[peer++] == except)
+			if (pi.m_ConnectTicker == (u64) -1 || &m_Host->peers[peer++] == except)
 				continue;
-			pi.m_GlobalSeqToSeq[seq] = pi.m_OutgoingSequenceNumber++;
+			pi.m_GlobalSeqToSeq[seq & 255] = pi.m_OutgoingSequenceNumber++;
 		}
 	}
 	else
@@ -177,7 +177,10 @@ void NetHost::BroadcastPacket(Packet&& packet, ENetPeer* except)
 				continue;
 			if (peer == except)
 				continue;
-			u16 seq = m_PeerInfo[peer - m_Host->peers].m_OutgoingSequenceNumber++;
+			auto& pi = m_PeerInfo[peer - m_Host->peers];
+			if (pi.m_ConnectTicker == (u64) -1)
+				continue;
+			u16 seq = pi.m_OutgoingSequenceNumber++;
 			if (!epacket)
 			{
 				epacket = ENetUtil::MakeENetPacket(std::move(container), ENET_PACKET_FLAG_RELIABLE);
@@ -242,7 +245,7 @@ void NetHost::ProcessPacketQueue()
 				continue;
 			if (pi.m_ConnectTicker > info.m_Ticker)
 				continue;
-			p.W(pi.m_GlobalSeqToSeq[info.m_GlobalSequenceNumber]);
+			p.W(pi.m_GlobalSeqToSeq[info.m_GlobalSequenceNumber & 255]);
 			p.Do((PointerWrap&) info.m_Packet);
 			info.m_DidSendReliably = info.m_DidSendReliably || needReliable;
 		}
@@ -344,7 +347,6 @@ void NetHost::ThreadFunc()
 				auto& pi = m_PeerInfo[pid];
 				pi.m_IncomingSequenceNumber = 0;
 				pi.m_OutgoingSequenceNumber = 0;
-				pi.m_ConnectTicker = m_GlobalTicker++;
 				pi.m_SentPackets = 0;
 				m_Client->OnENetEvent(&event);
 				break;
@@ -353,7 +355,7 @@ void NetHost::ThreadFunc()
 				{
 				size_t pid = event.peer - m_Host->peers;
 				auto& pi = m_PeerInfo[pid];
-				pi.m_Connected = false;
+				pi.m_ConnectTicker = -1;
 				pi.m_IncomingPackets.clear();
 				m_Client->OnENetEvent(&event);
 				}
@@ -368,7 +370,7 @@ void NetHost::ThreadFunc()
 
 void NetHost::MarkConnected(size_t pid)
 {
-	m_PeerInfo[pid].m_Connected = true;
+	m_PeerInfo[pid].m_ConnectTicker = ++m_GlobalTicker;
 }
 
 void NetHost::OnReceive(ENetEvent* event, Packet&& packet)
