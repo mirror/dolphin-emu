@@ -1,3 +1,15 @@
+set(QT_USE_QTNETWORK FALSE)
+set(QT_USE_QTOPENGL FALSE)
+set(QT_USE_QTSQL FALSE)
+set(QT_USE_QTXML FALSE)
+set(QT_USE_QTSVG FALSE)
+set(QT_USE_QTTEST FALSE)
+set(QT_USE_QTDBUS FALSE)
+set(QT_USE_QTSCRIPT FALSE)
+set(QT_USE_QTWEBKIT FALSE)
+set(QT_USE_QTXMLPATTERNS FALSE)
+set(QT_USE_PHONON FALSE)
+
 set(SRCS		Src/Config/ConfigAudio.cpp
 			Src/Config/ConfigGeneral.cpp
 			Src/Config/ConfigGfx.cpp
@@ -15,8 +27,29 @@ set(SRCS		Src/Config/ConfigAudio.cpp
 			Src/MainWindowEvents.cpp
 			Src/RenderWindow.cpp)
 
+if(USE_EGL)
+	set(SRCS ${SRCS} ../DolphinWX/Src/GLInterface/Platform.cpp
+		../DolphinWX/Src/GLInterface/EGL.cpp)
+	if(USE_WAYLAND)
+		set(SRCS ${SRCS} ../DolphinWX/Src/GLInterface/Wayland_Util.cpp)
+	endif()
+	if(USE_X11)
+		set(SRCS ${SRCS} ../DolphinWX/Src/GLInterface/X11_Util.cpp)
+	endif()
+else()
+	if(WIN32)
+		set(SRCS ${SRCS} ../DolphinWX/Src/GLInterface/WGL.cpp)
+	elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+		set(SRCS ${SRCS} ../DolphinWX/Src/GLInterface/AGL.cpp)
+	else()
+		set(SRCS ${SRCS} ../DolphinWX/Src/GLInterface/GLX.cpp
+			../DolphinWX/Src/GLInterface/X11_Util.cpp)
+
+	endif()
+endif()
+
 set(LIBS		core
-			lzo2
+			${LZO}
 			discio
 			bdisasm
 			inputcommon
@@ -24,10 +57,23 @@ set(LIBS		core
 			audiocommon
 			z
 			sfml-network
-			SDL
-			GL
-			${XRANDR_LIBRARIES}
-			${X11_LIBRARIES})
+			${OPENGL_LIBRARIES}
+			${X11_LIBRARIES}
+			${XINPUT2_LIBRARIES}
+			${XRANDR_LIBRARIES})
+
+if(SDL2_FOUND)
+	# Using shared SDL2
+	set(LIBS	${LIBS} ${SDL2_LIBRARY})
+else(SDL2_FOUND)
+	if(SDL_FOUND)
+		# Using shared SDL
+		set(LIBS	${LIBS} ${SDL_LIBRARY})
+	else(SDL_FOUND)
+		# Using static SDL from Externals
+		set(LIBS	${LIBS} SDL)
+	endif()
+endif()
 
 set(EXEGUI dolphin-emu-qt4)
 

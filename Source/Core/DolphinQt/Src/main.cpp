@@ -20,59 +20,46 @@ int main(int argc, char* argv[])
 
 	// TODO
 /*#if defined _DEBUG && defined _WIN32
-    int tmpflag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
-    tmpflag |= _CRTDBG_DELAY_FREE_MEM_DF;
-    _CrtSetDbgFlag(tmpflag);
+	int tmpflag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
+	tmpflag |= _CRTDBG_DELAY_FREE_MEM_DF;
+	_CrtSetDbgFlag(tmpflag);
 #endif*/
 
-    // Register message box and translation handlers
+	// Register message box and translation handlers
 //RegisterMsgAlertHandler( .. );
 //RegisterStringTranslator( .. );
 
-    // "ExtendedTrace" looks freakin dangerous!!!
+	// "ExtendedTrace" looks freakin dangerous!!!
 /*#ifdef _WIN32
-    EXTENDEDTRACEINITIALIZE(".");
-    SetUnhandledExceptionFilter(&MyUnhandledExceptionFilter);
+	EXTENDEDTRACEINITIALIZE(".");
+	SetUnhandledExceptionFilter(&MyUnhandledExceptionFilter);
 #elif wxUSE_ON_FATAL_EXCEPTION
-    wxHandleFatalExceptions(true);
+	wxHandleFatalExceptions(true);
 #endif*/
 
 
-#ifdef _WIN32
-	// TODO: Check if the file portable exists
-#else
-    //create all necessary directories in user directory
-    //TODO : detect the revision and upgrade where necessary
-    File::CopyDir(std::string(SHARED_USER_DIR CONFIG_DIR DIR_SEP).c_str(),
-        File::GetUserPath(D_CONFIG_IDX));
-    File::CopyDir(std::string(SHARED_USER_DIR GAMECONFIG_DIR DIR_SEP).c_str(),
-        File::GetUserPath(D_GAMECONFIG_IDX));
-    File::CopyDir(std::string(SHARED_USER_DIR MAPS_DIR DIR_SEP).c_str(),
-        File::GetUserPath(D_MAPS_IDX));
-    File::CopyDir(std::string(SHARED_USER_DIR SHADERS_DIR DIR_SEP).c_str(),
-        File::GetUserPath(D_SHADERS_IDX));
-    File::CopyDir(std::string(SHARED_USER_DIR WII_USER_DIR DIR_SEP).c_str(),
-        File::GetUserPath(D_WIIUSER_IDX));
-    File::CopyDir(std::string(SHARED_USER_DIR OPENCL_DIR DIR_SEP).c_str(),
-        File::GetUserPath(D_OPENCL_IDX));
+	// Copy initial Wii NAND data from Sys to User.
+	File::CopyDir(File::GetSysDirectory() + WII_USER_DIR DIR_SEP,
+				  File::GetUserPath(D_WIIUSER_IDX));
 
-    if (!File::Exists(File::GetUserPath(D_GCUSER_IDX)))
-        File::CreateFullPath(File::GetUserPath(D_GCUSER_IDX));
-    if (!File::Exists(File::GetUserPath(D_CACHE_IDX)))
-        File::CreateFullPath(File::GetUserPath(D_CACHE_IDX));
-    if (!File::Exists(File::GetUserPath(D_DUMPDSP_IDX)))
-        File::CreateFullPath(File::GetUserPath(D_DUMPDSP_IDX));
-    if (!File::Exists(File::GetUserPath(D_DUMPTEXTURES_IDX)))
-        File::CreateFullPath(File::GetUserPath(D_DUMPTEXTURES_IDX));
-    if (!File::Exists(File::GetUserPath(D_HIRESTEXTURES_IDX)))
-        File::CreateFullPath(File::GetUserPath(D_HIRESTEXTURES_IDX));
-    if (!File::Exists(File::GetUserPath(D_SCREENSHOTS_IDX)))
-        File::CreateFullPath(File::GetUserPath(D_SCREENSHOTS_IDX));
-    if (!File::Exists(File::GetUserPath(D_STATESAVES_IDX)))
-        File::CreateFullPath(File::GetUserPath(D_STATESAVES_IDX));
-    if (!File::Exists(File::GetUserPath(D_MAILLOGS_IDX)))
-        File::CreateFullPath(File::GetUserPath(D_MAILLOGS_IDX));
-#endif
+	File::CreateFullPath(File::GetUserPath(D_USER_IDX));
+	File::CreateFullPath(File::GetUserPath(D_CACHE_IDX));
+	File::CreateFullPath(File::GetUserPath(D_CONFIG_IDX));
+	File::CreateFullPath(File::GetUserPath(D_DUMPDSP_IDX));
+	File::CreateFullPath(File::GetUserPath(D_DUMPTEXTURES_IDX));
+	File::CreateFullPath(File::GetUserPath(D_GAMESETTINGS_IDX));
+	File::CreateFullPath(File::GetUserPath(D_GCUSER_IDX));
+	File::CreateFullPath(File::GetUserPath(D_GCUSER_IDX) + USA_DIR DIR_SEP);
+	File::CreateFullPath(File::GetUserPath(D_GCUSER_IDX) + EUR_DIR DIR_SEP);
+	File::CreateFullPath(File::GetUserPath(D_GCUSER_IDX) + JAP_DIR DIR_SEP);
+	File::CreateFullPath(File::GetUserPath(D_HIRESTEXTURES_IDX));
+	File::CreateFullPath(File::GetUserPath(D_MAILLOGS_IDX));
+	File::CreateFullPath(File::GetUserPath(D_MAPS_IDX));
+	File::CreateFullPath(File::GetUserPath(D_OPENCL_IDX));
+	File::CreateFullPath(File::GetUserPath(D_SCREENSHOTS_IDX));
+	File::CreateFullPath(File::GetUserPath(D_SHADERS_IDX));
+	File::CreateFullPath(File::GetUserPath(D_STATESAVES_IDX));
+	File::CreateFullPath(File::GetUserPath(D_THEMES_IDX));
 
 
 	// TODO: Move this out of GUI code
@@ -86,7 +73,7 @@ int main(int argc, char* argv[])
 
 	// TODO?
 /*#if defined HAVE_X11 && HAVE_X11
-    XInitThreads();
+	XInitThreads();
 #endif */
 
 	QApplication app(argc, argv);
@@ -104,11 +91,11 @@ int main(int argc, char* argv[])
 	return app.exec();
 
 	// TODO: On exit:
-        // We'll do these in subclass of MainWindow/QMLViewer
+		// We'll do these in subclass of MainWindow/QMLViewer
 	// WiimoteReal::Shutdown();
 /*#ifdef _WIN32
-    if (SConfig::GetInstance().m_WiiAutoUnpair)
-        WiimoteReal::UnPair();
+	if (SConfig::GetInstance().m_WiiAutoUnpair)
+		WiimoteReal::UnPair();
 #endif*/
 	// VideoBackend::ClearList();
 	// SConfig::Shutdown();
@@ -118,9 +105,9 @@ int main(int argc, char* argv[])
 
 void Host_SetStartupDebuggingParameters()
 {
-    SCoreStartupParameter& StartUp = SConfig::GetInstance().m_LocalCoreStartupParameter;
-    StartUp.bEnableDebugging = false;
-    StartUp.bBootToPause = false;
+	SCoreStartupParameter& StartUp = SConfig::GetInstance().m_LocalCoreStartupParameter;
+	StartUp.bEnableDebugging = false;
+	StartUp.bBootToPause = false;
 }
 
 void* Host_GetInstance()

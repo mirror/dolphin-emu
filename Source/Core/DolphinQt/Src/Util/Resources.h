@@ -1,4 +1,5 @@
 #include <QPixmap>
+#include <QIcon>
 
 #include "Volume.h"
 

@@ -1,22 +1,11 @@
-// Copyright (C) 2003 Dolphin Project.
-
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 2.0.
-
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License 2.0 for more details.
-
-// A copy of the GPL 2.0 should have been included with the program.
-// If not, see http://www.gnu.org/licenses/
-
-// Official SVN repository and contact information can be found at
-// http://code.google.com/p/dolphin-emu/
+// Copyright 2013 Dolphin Emulator Project
+// Licensed under GPLv2
+// Refer to the license.txt file included.
 
 #include <string>
 #include <vector>
+#include <QDir>
+#include "Util/Resources.h"
 
 #include "Common.h"
 #include "CommonPaths.h"
@@ -25,63 +14,62 @@
 #include "ISOFile.h"
 #include "StringUtil.h"
 #include "Hash.h"
+#include "IniFile.h"
 
 #include "Filesystem.h"
 #include "BannerLoader.h"
 #include "FileSearch.h"
 #include "CompressedBlob.h"
 #include "ChunkFile.h"
-#include "../resources/no_banner.cpp"
+#include "ConfigManager.h"
 
-
-#define CACHE_REVISION 0x10B
+static const u32 CACHE_REVISION = 0x115;
 
 #define DVD_BANNER_WIDTH 96
 #define DVD_BANNER_HEIGHT 32
 
-static u32 g_ImageTemp[DVD_BANNER_WIDTH * DVD_BANNER_HEIGHT];
-
-GameListItem::GameListItem(const std::string& _rFileName)
-	: m_FileName(_rFileName)
+GameListItem::GameListItem(std::string rFileName)
+    : m_FileName(rFileName)
+	, m_emu_state(0)
 	, m_FileSize(0)
+	, m_Revision(0)
 	, m_Valid(false)
 	, m_BlobCompressed(false)
-{
+	, m_ImageWidth(0)
+	, m_ImageHeight(0)
+{	
+	bool hasBanner = false;
+
+	/* DON'T RUN THIS CODE. see note at SaveToCache below.
 	if (LoadFromCache())
 	{
 		m_Valid = true;
 	}
-	else
+	else */
 	{
-		DiscIO::IVolume* pVolume = DiscIO::CreateVolumeFromFilename(_rFileName);
+		DiscIO::IVolume* pVolume = DiscIO::CreateVolumeFromFilename(rFileName);
 
 		if (pVolume != NULL)
 		{
 			if (!DiscIO::IsVolumeWadFile(pVolume))
 				m_Platform = DiscIO::IsVolumeWiiDisc(pVolume) ? WII_DISC : GAMECUBE_DISC;
 			else
-				m_Platform = WII_WAD;
-
-			m_Company = "N/A";
-			for (int i = 0; i < 6; i++)
 			{
-				m_Name[i] = pVolume->GetName();
-				if(m_Name[i] == "") // Couldn't find the name in the WAD...
-				{
-					std::string FileName;
-					SplitPath(_rFileName, NULL, &FileName, NULL);
-					m_Name[i] = FileName; // Then just display the filename... Better than something like "No Name"
-				}
-				m_Description[i] = "No Description";
+				m_Platform = WII_WAD;
 			}
+
+			m_volume_names = pVolume->GetNames();
+
 			m_Country  = pVolume->GetCountry();
-			m_FileSize = File::GetSize(_rFileName.c_str());
+			m_FileSize = pVolume->GetRawSize();
 			m_VolumeSize = pVolume->GetSize();
 
 			m_UniqueID = pVolume->GetUniqueID();
-			m_BlobCompressed = DiscIO::IsCompressedBlob(_rFileName.c_str());
+			m_BlobCompressed = DiscIO::IsCompressedBlob(rFileName.c_str());
+			m_IsDiscTwo = pVolume->IsDiscTwo();
+			m_Revision = pVolume->GetRevision();
 
-			// check if we can get some infos from the banner file too
+			// check if we can get some info from the banner file too
 			DiscIO::IFileSystem* pFileSystem = DiscIO::CreateFileSystem(pVolume);
 
 			if (pFileSystem != NULL || m_Platform == WII_WAD)
@@ -92,23 +80,26 @@ GameListItem::GameListItem(const std::string& _rFileName)
 				{
 					if (pBannerLoader->IsValid())
 					{
-						pBannerLoader->GetName(m_Name); //m_Country == DiscIO::IVolume::COUNTRY_JAP ? 1 : 0);
-						pBannerLoader->GetCompany(m_Company);
-						pBannerLoader->GetDescription(m_Description);
-						if (pBannerLoader->GetBanner(g_ImageTemp))
-						{
-							m_Image.resize(DVD_BANNER_WIDTH * DVD_BANNER_HEIGHT * 3);
+						if (m_Platform != WII_WAD)
+							m_names = pBannerLoader->GetNames();
+						m_company = pBannerLoader->GetCompany();
+						m_descriptions = pBannerLoader->GetDescriptions();
 
-							for (size_t i = 0; i < DVD_BANNER_WIDTH * DVD_BANNER_HEIGHT; i++)
-							{
-								m_Image[i * 3 + 0] = (g_ImageTemp[i] & 0xFF0000) >> 16;
-								m_Image[i * 3 + 1] = (g_ImageTemp[i] & 0x00FF00) >>  8;
-								m_Image[i * 3 + 2] = (g_ImageTemp[i] & 0x0000FF) >>  0;
-							}
+						std::vector<u32> Buffer = pBannerLoader->GetBanner(&m_ImageWidth, &m_ImageHeight);
+						m_Banner = QImage(m_ImageWidth, m_ImageHeight, QImage::Format_RGB888);
+						for (int i = 0; i < m_ImageWidth * m_ImageHeight; i++)
+						{
+							int x = i % m_ImageWidth, y = i / m_ImageWidth;
+							m_Banner.setPixel(x, y, qRgb((Buffer[i] & 0xFF0000) >> 16,
+												(Buffer[i] & 0x00FF00) >>  8,
+												(Buffer[i] & 0x0000FF) >>  0));
 						}
+						m_Banner = m_Banner.scaled(DVD_BANNER_WIDTHok, DVD_BANNER_HEIGHT);
+						hasBanner = !m_Banner.isNull();
 					}
 					delete pBannerLoader;
 				}
+
 				delete pFileSystem;
 			}
 
@@ -116,11 +107,26 @@ GameListItem::GameListItem(const std::string& _rFileName)
 
 			m_Valid = true;
 
-			// If not Gamecube, create a cache file only if we have an image.
+			// Create a cache file only if we have an image.
 			// Wii isos create their images after you have generated the first savegame
-			if (m_Platform == GAMECUBE_DISC || !m_Image.empty())
-				SaveToCache();
+			/*if (hasBanner)
+				SaveToCache(); // TODO: QImage files aren't save to the cache file, so this breaks banners if run. */
 		}
+	}
+
+	if (IsValid())
+	{
+		IniFile ini;
+		ini.Load(File::GetSysDirectory() + GAMESETTINGS_DIR DIR_SEP + m_UniqueID + ".ini");
+		ini.Load(File::GetUserPath(D_GAMESETTINGS_IDX) + m_UniqueID + ".ini", true);
+		ini.Get("EmuState", "EmulationStateId", &m_emu_state);
+		ini.Get("EmuState", "EmulationIssues", &m_issues);
+	}
+
+	if(!hasBanner)
+	{
+		// default banner
+		m_Banner = Resources::GetPixmap(Resources::BANNER_MISSING).toImage();
 	}
 }
 
@@ -145,18 +151,20 @@ void GameListItem::SaveToCache()
 
 void GameListItem::DoState(PointerWrap &p)
 {
-	p.Do(m_Name[0]);	p.Do(m_Name[1]);	p.Do(m_Name[2]);
-	p.Do(m_Name[3]);	p.Do(m_Name[4]);	p.Do(m_Name[5]);
-	p.Do(m_Company);
-	p.Do(m_Description[0]);	p.Do(m_Description[1]);	p.Do(m_Description[2]);
-	p.Do(m_Description[3]);	p.Do(m_Description[4]);	p.Do(m_Description[5]);
+	p.Do(m_volume_names);
+	p.Do(m_company);
+	p.Do(m_names);
+	p.Do(m_descriptions);
 	p.Do(m_UniqueID);
 	p.Do(m_FileSize);
 	p.Do(m_VolumeSize);
 	p.Do(m_Country);
 	p.Do(m_BlobCompressed);
-	p.Do(m_Image);
+	p.Do(m_ImageWidth);
+	p.Do(m_ImageHeight);
 	p.Do(m_Platform);
+	p.Do(m_IsDiscTwo);
+	p.Do(m_Revision);
 }
 
 std::string GameListItem::CreateCacheFilename()
@@ -170,60 +178,111 @@ std::string GameListItem::CreateCacheFilename()
 	// Append hash to prevent ISO name-clashing in different folders.
 	Filename.append(StringFromFormat("%s_%x_%llx.cache",
 		extension.c_str(), HashFletcher((const u8 *)LegalPathname.c_str(), LegalPathname.size()),
-		File::GetSize(m_FileName.c_str())));
+		File::GetSize(m_FileName)));
 
-	std::string fullname(std::string(File::GetUserPath(D_CACHE_IDX)));
+	std::string fullname(File::GetUserPath(D_CACHE_IDX));
 	fullname += Filename;
 	return fullname;
 }
 
-const std::string& GameListItem::GetDescription(int index) const
+std::string GameListItem::GetCompany() const
 {
-	if ((index >=0) && (index < 6))
-	{
-		return m_Description[index];
-	} 
-	return m_Description[0];
+	if (m_company.empty())
+		return "N/A";
+	else
+		return m_company;
 }
 
-const std::string& GameListItem::GetName(int index) const
+// (-1 = Japanese, 0 = English, etc)?
+std::string GameListItem::GetDescription(int _index) const
 {
-	if ((index >=0) && (index < 6))
-	{
-		return m_Name[index];
-	} 
-	return m_Name[0];
+	const u32 index = _index;
+
+	if (index < m_descriptions.size())
+		return m_descriptions[index];
+	
+	if (!m_descriptions.empty())
+		return m_descriptions[0];
+
+	return "";
 }
 
-const std::string GameListItem::GetWiiFSPath() const
+// (-1 = Japanese, 0 = English, etc)?
+std::string GameListItem::GetVolumeName(int _index) const
 {
-	DiscIO::IVolume *Iso = DiscIO::CreateVolumeFromFilename(m_FileName);
+	u32 const index = _index;
 
-	std::string ret("NULL");
-	if (Iso != NULL)
+	if (index < m_volume_names.size() && !m_volume_names[index].empty())
+		return m_volume_names[index];
+
+	if (!m_volume_names.empty())
+		return m_volume_names[0];
+	
+	return "";
+}
+
+// (-1 = Japanese, 0 = English, etc)?
+std::string GameListItem::GetBannerName(int _index) const
+{
+	u32 const index = _index;
+
+	if (index < m_names.size() && !m_names[index].empty())
+		return m_names[index];
+	
+	if (!m_names.empty())
+		return m_names[0];
+
+	return "";
+}
+
+// (-1 = Japanese, 0 = English, etc)?
+std::string GameListItem::GetName(int _index) const
+{
+	// Prefer name from banner, fallback to name from volume, fallback to filename
+	
+	std::string name = GetBannerName(_index);
+	
+	if (name.empty())
+		name = GetVolumeName(_index);
+
+	if (name.empty())
 	{
-		if (DiscIO::IsVolumeWiiDisc(Iso) || DiscIO::IsVolumeWadFile(Iso))
-		{
-			char Path[250];
-			u64 Title;
-
-			Iso->GetTitleID((u8*)&Title);
-			Title = Common::swap64(Title);
-
-			sprintf(Path, "%stitle/%08x/%08x/data/", File::GetUserPath(D_WIIUSER_IDX).c_str(), (u32)(Title>>32), (u32)Title);
-
-			if (!File::Exists(Path))
-				File::CreateFullPath(Path);
-
-			if (Path[0] == '.')
-			{
-				ret = File::GetCurrentDir() + std::string(Path).substr(strlen(ROOT_DIR));
-			}
-			else
-				ret = std::string(Path);
-		}
-		delete Iso;
+		// No usable name, return filename (better than nothing)
+		SplitPath(GetFileName(), NULL, &name, NULL);
 	}
+
+	return name;
+}
+
+const QString GameListItem::GetWiiFSPath() const
+{
+    DiscIO::IVolume *Iso = DiscIO::CreateVolumeFromFilename(m_FileName);
+	QString ret;
+
+	if (Iso == NULL)
+		return ret;
+
+	if (DiscIO::IsVolumeWiiDisc(Iso) || DiscIO::IsVolumeWadFile(Iso))
+	{
+		char Path[250];
+		u64 Title;
+
+		Iso->GetTitleID((u8*)&Title);
+		Title = Common::swap64(Title);
+
+		sprintf(Path, "%stitle/%08x/%08x/data/",
+				File::GetUserPath(D_WIIUSER_IDX).c_str(), (u32)(Title>>32), (u32)Title);
+
+		if (!File::Exists(Path))
+			File::CreateFullPath(Path);
+
+		if (Path[0] == '.')
+			ret = QString(QDir::currentPath() + QString(Path).mid(strlen(ROOT_DIR)));
+		else
+			ret = QString::fromStdString(Path);
+	}
+	delete Iso;
 
 	return ret;
 }
+

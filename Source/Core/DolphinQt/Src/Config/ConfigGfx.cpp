@@ -11,12 +11,11 @@
 #include "VideoConfig.h"
 
 // TODO: Clean this up...
-static std::string GetIniName(const VideoBackend* backend)
+static std::string GetIniName(VideoBackend* backend)
 {
-	if (backend->GetName() == std::string("Direct3D9")) return std::string("gfx_dx9.ini");
-	else if (backend->GetName() == std::string("Direct3D11")) return std::string("gfx_dx11.ini");
-	else if (backend->GetName() == std::string("OpenGL")) return std::string("gfx_opengl.ini");
-	else if (backend->GetName() == std::string("Software Renderer")) return std::string(); // TODO: other stuff for VideoSoftware..
+	if (backend->GetName().compare("D3D") == 0) return std::string("gfx_dx11.ini");
+	else if (backend->GetName().compare("OGL") == 0) return std::string("gfx_opengl.ini");
+	else if (backend->GetName().compare("Software Renderer") == 0) return std::string(); // TODO: other stuff for VideoSoftware..
 	else return std::string();
 }
 

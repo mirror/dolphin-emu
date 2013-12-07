@@ -216,11 +216,6 @@ void VideoConfig::GameIniLoad()
 		OSD::AddMessage("Warning: Opening the graphics configuration will reset settings and might cause issues!", 10000);
 }
 
-void VideoConfig::UpdateProjectionHack()
-{
-	::UpdateProjectionHack(g_Config.iPhackvalue, g_Config.sPhackvalue);
-}
-
 void VideoConfig::VerifyValidity()
 {
 	// TODO: Check iMaxAnisotropy value
