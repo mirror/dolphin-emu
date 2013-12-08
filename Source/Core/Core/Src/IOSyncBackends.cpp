@@ -2,6 +2,7 @@
 #include "Timer.h"
 #include "CoreTiming.h"
 #include "HW/SystemTimers.h"
+#include "HW/Memmap.h"
 
 namespace IOSync
 {
@@ -370,6 +371,17 @@ void BackendNetPlay::NewLocalSubframe()
 	}
 
 	m_Client->ProcessPacketQueue();
+
+	// Desync detection.  Don't bother to optimize it; it's just for debugging.
+	if (m_Client->m_enable_memory_hash && m_SubframeId % 120 == 0)
+	{
+		u64 hash = Memory::GetMemoryHash();
+		Packet pac;
+		pac.W((MessageId) NP_MSG_DBG_MEMORY_HASH);
+		pac.W(m_SubframeId);
+		pac.W(hash);
+		m_Client->SendPacket(std::move(pac));
+	}
 }
 
 } // namespace

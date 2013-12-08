@@ -110,6 +110,7 @@ public:
 
 	std::function<void(NetPlayClient*)> m_state_callback;
 	PlayerId		m_pid;
+	bool m_enable_memory_hash;
 protected:
 	std::recursive_mutex m_crit;
 

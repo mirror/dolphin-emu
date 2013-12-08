@@ -96,6 +96,8 @@ public:
 
 	DeviceInfo m_device_info[IOSync::Class::NumClasses][IOSync::Class::MaxDeviceIndex];
 
+	bool m_enable_memory_hash;
+
 private:
 
 	void SendToClients(Packet&& packet, const PlayerId skip_pid = -1) NOT_ON(NET);
@@ -137,6 +139,9 @@ private:
 		WaitingForChangeover
 	}				m_reservation_state;
 	s64				m_reserved_subframe;
+
+	s64				m_hash_subframe;
+	u64				m_hash;
 
 #if defined(__APPLE__)
 	const void* m_dynamic_store;

@@ -44,6 +44,9 @@ NetPlayServer::NetPlayServer()
 	m_highest_known_subframe = 0;
 	m_target_buffer_size = 20;
 	m_reservation_state = Inactive;
+	m_hash_subframe = -1;
+	m_hash = 0;
+	m_enable_memory_hash = false;
 #ifdef __APPLE__
 	m_dynamic_store = SCDynamicStoreCreate(NULL, CFSTR("NetPlayServer"), NULL, NULL);
 	m_prefs = SCPreferencesCreate(NULL, CFSTR("NetPlayServer"), NULL);
@@ -610,6 +613,8 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 			s64 requested_subframe, actual_subframe;
 			packet.Do(requested_subframe);
 			packet.Do(actual_subframe);
+			if (packet.failure)
+				return OnDisconnect(pid);
 			m_highest_known_subframe = std::max(m_highest_known_subframe, actual_subframe);
 			if (requested_subframe != m_reserved_subframe)
 				break;
@@ -633,6 +638,25 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 				break;
 			player.reservation_ok = false;
 			CheckReservationResults();
+		}
+		break;
+
+	case NP_MSG_DBG_MEMORY_HASH:
+		{
+			s64 subframe;
+			u64 hash;
+			packet.Do(subframe);
+			packet.Do(hash);
+			WARN_LOG(NETPLAY, "Got memory hash %016llx for subframe %lld from player %d.", (unsigned long long) hash, (long long) subframe, pid);
+
+			if (m_hash_subframe == subframe && hash != m_hash)
+			{
+				PanicAlertT("Desync detected.");
+				return OnDisconnect(pid);
+			}
+
+			m_hash_subframe = subframe;
+			m_hash = hash;
 		}
 		break;
 
@@ -684,6 +708,7 @@ void NetPlayServer::StartGame(const std::string &path)
 		opacket.W(m_settings.m_WriteToMemcard);
 		opacket.W((int) m_settings.m_EXIDevice[0]);
 		opacket.W((int) m_settings.m_EXIDevice[1]);
+		opacket.W(m_enable_memory_hash);
 
 		SendToClientsOnThread(std::move(opacket));
 

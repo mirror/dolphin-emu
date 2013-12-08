@@ -86,6 +86,8 @@ private:
 	void OnCopyIP(wxCommandEvent& event);
 	void GetNetSettings(NetSettings &settings);
 	void OnErrorClosed(wxCommandEvent& event);
+	void OnRightClick(wxMouseEvent& event);
+	void OnDesyncDetection(wxCommandEvent& event);
 
 	void DoUpdateLagWarning();
 	void LagWarningTimerHit(wxTimerEvent& event);
@@ -109,6 +111,7 @@ private:
 	bool			m_is_hosting;
 	DeviceMapDiag*	m_device_map_diag;
 	wxTimer			m_lag_timer;
+	bool			m_is_running;
 
 	std::vector<int>	m_playerids;
 

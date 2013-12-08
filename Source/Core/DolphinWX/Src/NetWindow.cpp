@@ -94,6 +94,7 @@ static wxString ClassNameString(IOSync::Class::ClassID cls)
 
 BEGIN_EVENT_TABLE(NetPlayDiag, wxFrame)
 	EVT_COMMAND(wxID_ANY, wxEVT_THREAD, NetPlayDiag::OnThread)
+	EVT_MENU(IDM_DESYNC_DETECTION, NetPlayDiag::OnDesyncDetection)
 END_EVENT_TABLE()
 
 BEGIN_EVENT_TABLE(ConnectDiag, wxDialog)
@@ -113,7 +114,9 @@ NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const 
 {
 	npd = this;
 	wxPanel* const panel = new wxPanel(this);
+	panel->Bind(wxEVT_RIGHT_DOWN, &NetPlayDiag::OnRightClick, this);
 	m_device_map_diag = NULL;
+	m_is_running = false;
 	m_lag_timer.Bind(wxEVT_TIMER, &NetPlayDiag::LagWarningTimerHit, this);
 
 	// top crap
@@ -354,6 +357,7 @@ void NetPlayDiag::GameStopped()
 	if (m_start_btn)
 		m_start_btn->Enable();
 	m_record_chkbox->Enable();
+	m_is_running = false;
 }
 
 // NetPlayUI methods called from ---NETPLAY--- thread
@@ -536,6 +540,7 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 		if (m_start_btn)
 			m_start_btn->Disable();
 		m_record_chkbox->Disable();
+		m_is_running = true;
 		}
 		break;
 	case NP_GUI_EVT_FAILURE:
@@ -629,6 +634,22 @@ void NetPlayDiag::OnCopyIP(wxCommandEvent&)
 			wxTheClipboard->Close();
 		}
 	}
+}
+
+void NetPlayDiag::OnRightClick(wxMouseEvent& event)
+{
+	if (!netplay_server)
+		return;
+	wxMenu* menu = new wxMenu;
+	menu->AppendCheckItem(IDM_DESYNC_DETECTION, _("Desync Detection (slow)"));
+	menu->Check(IDM_DESYNC_DETECTION, netplay_server->m_enable_memory_hash);
+	menu->Enable(IDM_DESYNC_DETECTION, !m_is_running);
+	PopupMenu(menu);
+}
+
+void NetPlayDiag::OnDesyncDetection(wxCommandEvent& event)
+{
+	netplay_server->m_enable_memory_hash = !netplay_server->m_enable_memory_hash;
 }
 
 bool NetPlayDiag::IsRecording()

@@ -13,6 +13,7 @@
 #include "MemoryUtil.h"
 #include "MemArena.h"
 #include "ChunkFile.h"
+#include "Hash.h"
 
 #include "Memmap.h"
 #include "../Core.h"
@@ -371,6 +372,17 @@ void DoState(PointerWrap &p)
 	if (wii)
 		p.DoArray(m_pEXRAM, EXRAM_SIZE);
 	p.DoMarker("Memory EXRAM");
+}
+
+u64 GetMemoryHash()
+{
+	u64 hash = 0;
+	bool wii = SConfig::GetInstance().m_LocalCoreStartupParameter.bWii;
+	hash ^= GetMurmurHash3(m_pPhysicalRAM, RAM_SIZE, 0);
+	hash ^= GetMurmurHash3(m_pVirtualL1Cache, L1_CACHE_SIZE, 0);
+	if (wii)
+		hash ^= GetMurmurHash3(m_pEXRAM, EXRAM_SIZE, 0);
+	return hash;
 }
 
 void Shutdown()

@@ -55,6 +55,8 @@ enum
 	// [c->s] Reservation was executed.
 	NP_MSG_RESERVATION_DONE			= 0x67,
 
+	NP_MSG_DBG_MEMORY_HASH			= 0x70,
+
 	NP_MSG_START_GAME		= 0xA0,
 	NP_MSG_CHANGE_GAME		= 0xA1,
 	NP_MSG_STOP_GAME		= 0xA2,
