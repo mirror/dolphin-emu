@@ -28,8 +28,6 @@ using OGL::TextureCache;
 
 static GLuint s_texConvFrameBuffer = 0;
 static GLuint s_srcTexture = 0;			// for decoding from RAM
-static GLuint s_srcTextureWidth = 0;
-static GLuint s_srcTextureHeight = 0;
 static GLuint s_dstTexture = 0;		// for encoding to RAM
 
 const int renderBufferWidth = 1024;
@@ -44,11 +42,9 @@ static SHADER s_encodingPrograms[NUM_ENCODING_PROGRAMS];
 
 static GLuint s_encode_VBO = 0;
 static GLuint s_encode_VAO = 0;
-static GLuint s_decode_VBO = 0;
-static GLuint s_decode_VAO = 0;
 static TargetRectangle s_cached_sourceRc;
-static int s_cached_srcWidth = 0;
-static int s_cached_srcHeight = 0;
+
+static GLuint s_PBO = 0; // for readback with different strides
 
 static const char *VProgram =
 	"ATTRIN vec2 rawpos;\n"
@@ -62,15 +58,31 @@ static const char *VProgram =
 
 void CreatePrograms()
 {
+	/* TODO: Accuracy Improvements
+	 *
+	 * This shader doesn't really match what the gamecube does interally in the
+	 * copy pipeline.
+	 *  1. It uses Opengl's built in filtering when yscaling, someone could work
+	 *     out how the copypipeline does it's filtering and implement it correctly
+	 *     in this shader.
+	 *  2. Deflickering isn't implemented, a futher filtering over 3 lines.
+	 *     Isn't really needed on non-interlaced monitors (and would lower quality;
+	 *     But hey, accuracy!)
+	 *  3. Flipper's YUYV conversion implements a 3 pixel horozontal blur on the
+	 *     UV channels, centering the U channel on the Left pixel and the V channel
+	 *     on the Right pixel.
+	 *     The current implementation Centers both UV channels at the same place
+	 *     inbetween the two Pixels, and only blurs over these two pixels.
+	 */
 	// Output is BGRA because that is slightly faster than RGBA.
 	const char *FProgramRgbToYuyv =
 		"uniform sampler2DRect samp9;\n"
 		"VARYIN vec2 uv0;\n"
-		"COLOROUT(ocol0)\n"
+		"out vec4 ocol0;\n"
 		"void main()\n"
 		"{\n"
-		"	vec3 c0 = texture2DRect(samp9, uv0).rgb;\n"
-		"	vec3 c1 = texture2DRect(samp9, uv0 + vec2(1.0, 0.0)).rgb;\n"
+		"	vec3 c0 = texture2DRect(samp9, uv0 - dFdx(uv0) * 0.25).rgb;\n"
+		"	vec3 c1 = texture2DRect(samp9, uv0 + dFdx(uv0) * 0.25).rgb;\n"
 		"	vec3 c01 = (c0 + c1) * 0.5;\n"
 		"	vec3 y_const = vec3(0.257,0.504,0.098);\n"
 		"	vec3 u_const = vec3(-0.148,-0.291,0.439);\n"
@@ -79,15 +91,35 @@ void CreatePrograms()
 		"	ocol0 = vec4(dot(c1,y_const),dot(c01,u_const),dot(c0,y_const),dot(c01, v_const)) + const3;\n"
 		"}\n";
 
+	/* TODO: Accuracy Improvements
+	 *
+	 * The YVYU to RGB conversion here matches the RGB to YUYV done above, but
+	 * if a game modifies or adds images to the XFB then it should be using the
+	 * same algorithm as the flipper, and could result in slight colour inaccuracies
+	 * when run back through this shader.
+	 */
+	const char *VProgramYuyvToRgb =
+		"void main()\n"
+		"{\n"
+		"	vec2 rawpos = vec2(gl_VertexID&1, gl_VertexID&2);\n"
+		"	gl_Position = vec4(rawpos*2.0-1.0, 0.0, 1.0);\n"
+		"}\n";
 	const char *FProgramYuyvToRgb =
 		"uniform sampler2DRect samp9;\n"
 		"VARYIN vec2 uv0;\n"
-		"COLOROUT(ocol0)\n"
+		"out vec4 ocol0;\n"
 		"void main()\n"
 		"{\n"
-		"	vec4 c0 = texture2DRect(samp9, uv0).rgba;\n"
-		"	float f = step(0.5, fract(uv0.x));\n"
-		"	float y = mix(c0.b, c0.r, f);\n"
+		"	ivec2 uv = ivec2(gl_FragCoord.xy);\n"
+#ifdef USE_GLES3
+			// We switch top/bottom here. TODO: move this to screen blit.
+		"	ivec2 ts = textureSize(samp9, 0);\n"
+		"	vec4 c0 = texelFetch(samp9, ivec2(uv.x/2, ts.y-uv.y-1), 0);\n"
+#else
+		"	ivec2 ts = textureSize(samp9);\n"
+		"	vec4 c0 = texelFetch(samp9, ivec2(uv.x/2, ts.y-uv.y-1));\n"
+#endif
+		"	float y = mix(c0.b, c0.r, (uv.x & 1) == 1);\n"
 		"	float yComp = 1.164 * (y - 0.0625);\n"
 		"	float uComp = c0.g - 0.5;\n"
 		"	float vComp = c0.a - 0.5;\n"
@@ -98,7 +130,7 @@ void CreatePrograms()
 		"}\n";
 
 	ProgramShaderCache::CompileShader(s_rgbToYuyvProgram, VProgram, FProgramRgbToYuyv);
-	ProgramShaderCache::CompileShader(s_yuyvToRgbProgram, VProgram, FProgramYuyvToRgb);
+	ProgramShaderCache::CompileShader(s_yuyvToRgbProgram, VProgramYuyvToRgb, FProgramYuyvToRgb);
 }
 
 SHADER &GetOrCreateEncodingShader(u32 format)
@@ -146,20 +178,6 @@ void Init()
 	s_cached_sourceRc.left = -1;
 	s_cached_sourceRc.right = -1;
 
-	glGenBuffers(1, &s_decode_VBO );
-	glGenVertexArrays(1, &s_decode_VAO );
-	glBindBuffer(GL_ARRAY_BUFFER, s_decode_VBO );
-	glBindVertexArray( s_decode_VAO );
-	s_cached_srcWidth = -1;
-	s_cached_srcHeight = -1;
-	glEnableVertexAttribArray(SHADER_POSITION_ATTRIB);
-	glVertexAttribPointer(SHADER_POSITION_ATTRIB, 2, GL_FLOAT, 0, sizeof(GLfloat)*4, (GLfloat*)NULL);
-	glEnableVertexAttribArray(SHADER_TEXTURE0_ATTRIB);
-	glVertexAttribPointer(SHADER_TEXTURE0_ATTRIB, 2, GL_FLOAT, 0, sizeof(GLfloat)*4, (GLfloat*)NULL+2);
-
-	s_srcTextureWidth = 0;
-	s_srcTextureHeight = 0;
-
 	glActiveTexture(GL_TEXTURE0 + 9);
 	glGenTextures(1, &s_srcTexture);
 	glBindTexture(getFbType(), s_srcTexture);
@@ -169,6 +187,8 @@ void Init()
 	glBindTexture(GL_TEXTURE_2D, s_dstTexture);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, renderBufferWidth, renderBufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+	glGenBuffers(1, &s_PBO);
 
 	CreatePrograms();
 }
@@ -180,8 +200,7 @@ void Shutdown()
 	glDeleteFramebuffers(1, &s_texConvFrameBuffer);
 	glDeleteBuffers(1, &s_encode_VBO );
 	glDeleteVertexArrays(1, &s_encode_VAO );
-	glDeleteBuffers(1, &s_decode_VBO );
-	glDeleteVertexArrays(1, &s_decode_VAO );
+	glDeleteBuffers(1, &s_PBO);
 
 	s_rgbToYuyvProgram.Destroy();
 	s_yuyvToRgbProgram.Destroy();
@@ -192,11 +211,12 @@ void Shutdown()
 	s_srcTexture = 0;
 	s_dstTexture = 0;
 	s_texConvFrameBuffer = 0;
+	s_PBO = 0;
 }
 
 void EncodeToRamUsingShader(GLuint srcTexture, const TargetRectangle& sourceRc,
 						u8* destAddr, int dstWidth, int dstHeight, int readStride,
-							bool toTexture, bool linearFilter)
+						bool linearFilter)
 {
 
 
@@ -253,25 +273,36 @@ void EncodeToRamUsingShader(GLuint srcTexture, const TargetRectangle& sourceRc,
 	// TODO: make this less slow.
 
 	int writeStride = bpmem.copyMipMapStrideChannels * 32;
+	int dstSize = dstWidth*dstHeight*4;
+	int readHeight = readStride / dstWidth / 4; // 4 bytes per pixel
+	int readLoops = dstHeight / readHeight;
 
-	if (writeStride != readStride && toTexture)
+	if (writeStride != readStride && readLoops > 1)
 	{
 		// writing to a texture of a different size
+		// also copy more then one block line, so the different strides matters
+		// copy into one pbo first, map this buffer, and then memcpy into gc memory
+		// in this way, we only have one vram->ram transfer, but maybe a bigger
+		// cpu overhead because of the pbo
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, s_PBO);
+		glBufferData(GL_PIXEL_PACK_BUFFER, dstSize, NULL, GL_STREAM_READ);
+		glReadPixels(0, 0, (GLsizei)dstWidth, (GLsizei)dstHeight, GL_BGRA, GL_UNSIGNED_BYTE, 0);
+		u8* pbo = (u8*)glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, dstSize, GL_MAP_READ_BIT);
 
-		int readHeight = readStride / dstWidth;
-		readHeight /= 4; // 4 bytes per pixel
-
-		int readStart = 0;
-		int readLoops = dstHeight / readHeight;
 		for (int i = 0; i < readLoops; i++)
 		{
-			glReadPixels(0, readStart, (GLsizei)dstWidth, (GLsizei)readHeight, GL_BGRA, GL_UNSIGNED_BYTE, destAddr);
-			readStart += readHeight;
+			memcpy(destAddr, pbo, readStride);
+			pbo += readStride;
 			destAddr += writeStride;
 		}
+
+		glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+		glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 	}
 	else
+	{
 		glReadPixels(0, 0, (GLsizei)dstWidth, (GLsizei)dstHeight, GL_BGRA, GL_UNSIGNED_BYTE, destAddr);
+	}
 
 	GL_REPORT_ERRORD();
 
@@ -336,7 +367,7 @@ int EncodeToRamFromTexture(u32 address,GLuint source_texture, bool bFromZBuffer,
 		TexDecoder_GetBlockWidthInTexels(format);
 	EncodeToRamUsingShader(source_texture, scaledSource,
 		dest_ptr, expandedWidth / samples, expandedHeight, readStride,
-		true, bScaleByHalf > 0 && !bFromZBuffer);
+		bScaleByHalf > 0 && !bFromZBuffer);
 	return size_in_bytes; // TODO: D3D11 is calculating this value differently!
 
 }
@@ -347,7 +378,10 @@ void EncodeToRamYUYV(GLuint srcTexture, const TargetRectangle& sourceRc, u8* des
 
 	s_rgbToYuyvProgram.Bind();
 
-	EncodeToRamUsingShader(srcTexture, sourceRc, destAddr, dstWidth / 2, dstHeight, 0, false, false);
+	// We enable linear filtering, because the gamecube does filtering in the vertical direction when
+	// yscale is enabled.
+	// Otherwise we get jaggies when a game uses yscaling (most PAL games)
+	EncodeToRamUsingShader(srcTexture, sourceRc, destAddr, dstWidth / 2, dstHeight, dstWidth*dstHeight*2, true);
 	FramebufferManager::SetFramebuffer(0);
 	TextureCache::DisableStage(0);
 	g_renderer->RestoreAPIState();
@@ -365,8 +399,6 @@ void DecodeToTexture(u32 xfbAddr, int srcWidth, int srcHeight, GLuint destTextur
 		return;
 	}
 
-	int srcFmtWidth = srcWidth / 2;
-
 	g_renderer->ResetAPIState(); // reset any game specific settings
 
 	// switch to texture converter frame buffer
@@ -380,49 +412,12 @@ void DecodeToTexture(u32 xfbAddr, int srcWidth, int srcHeight, GLuint destTextur
 	// set srcAddr as data for source texture
 	glActiveTexture(GL_TEXTURE0+9);
 	glBindTexture(getFbType(), s_srcTexture);
-
-	// TODO: make this less slow.  (How?)
-	if ((GLsizei)s_srcTextureWidth == (GLsizei)srcFmtWidth && (GLsizei)s_srcTextureHeight == (GLsizei)srcHeight)
-	{
-		glTexSubImage2D(getFbType(), 0,0,0,s_srcTextureWidth, s_srcTextureHeight,
-				GL_BGRA, GL_UNSIGNED_BYTE, srcAddr);
-	}
-	else
-	{
-		glTexImage2D(getFbType(), 0, GL_RGBA, (GLsizei)srcFmtWidth, (GLsizei)srcHeight,
-				0, GL_BGRA, GL_UNSIGNED_BYTE, srcAddr);
-		s_srcTextureWidth = (GLsizei)srcFmtWidth;
-		s_srcTextureHeight = (GLsizei)srcHeight;
-	}
+	glTexImage2D(getFbType(), 0, GL_RGBA, srcWidth / 2, srcHeight, 0, GL_BGRA, GL_UNSIGNED_BYTE, srcAddr);
 
 	glViewport(0, 0, srcWidth, srcHeight);
 	s_yuyvToRgbProgram.Bind();
 
-	GL_REPORT_ERRORD();
-
-	if(s_cached_srcHeight != srcHeight || s_cached_srcWidth != srcWidth) {
-		GLfloat vertices[] = {
-			1.f, -1.f,
-			(float)srcFmtWidth, (float)srcHeight,
-			1.f, 1.f,
-			(float)srcFmtWidth, 0.f,
-			-1.f, -1.f,
-			0.f, (float)srcHeight,
-			-1.f, 1.f,
-			0.f, 0.f
-		};
-
-		glBindBuffer(GL_ARRAY_BUFFER, s_decode_VBO );
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*4*4, vertices, GL_STREAM_DRAW);
-
-		s_cached_srcHeight = srcHeight;
-		s_cached_srcWidth = srcWidth;
-	}
-
-	glBindVertexArray( s_decode_VAO );
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-	GL_REPORT_ERRORD();
 
 	FramebufferManager::SetFramebuffer(0);
 

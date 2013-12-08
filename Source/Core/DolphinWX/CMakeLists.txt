@@ -188,6 +188,7 @@ if(ANDROID)
 	target_link_libraries(${DOLPHIN_EXE} 
 	log
 	android
+	"-Wl,--no-warn-mismatch"
 	"-Wl,--whole-archive"
 	${LIBS}
 	"-Wl,--no-whole-archive"

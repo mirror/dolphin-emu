@@ -16,13 +16,61 @@ import android.view.Surface;
 public final class NativeLibrary
 {
 	/**
-	 * Handles touch events.
-	 * 
-	 * @param Action Mask for the action being performed.
-	 * @param X      Location on the screen's X-axis that the touch event occurred.
-	 * @param Y      Location on the screen's Y-axis that the touch event occurred.
+	 * Button type for use in onTouchEvent
 	 */
-	public static native void onTouchEvent(int Action, float X, float Y);
+	public static final class ButtonType
+	{
+		public static final int BUTTON_A         = 0;
+		public static final int BUTTON_B         = 1;
+		public static final int BUTTON_START     = 2;
+		public static final int BUTTON_X         = 3;
+		public static final int BUTTON_Y         = 4;
+		public static final int BUTTON_Z         = 5;
+		public static final int BUTTON_UP        = 6;
+		public static final int BUTTON_DOWN      = 7;
+		public static final int BUTTON_LEFT      = 8;
+		public static final int BUTTON_RIGHT     = 9;
+		public static final int STICK_MAIN       = 10;
+		public static final int STICK_MAIN_UP    = 11;
+		public static final int STICK_MAIN_DOWN  = 12;
+		public static final int STICK_MAIN_LEFT  = 13;
+		public static final int STICK_MAIN_RIGHT = 14;
+		public static final int STICK_C          = 15;
+		public static final int STICK_C_UP       = 16;
+		public static final int STICK_C_DOWN     = 17;
+		public static final int STICK_C_LEFT     = 18;
+		public static final int STICK_C_RIGHT    = 19;
+		public static final int TRIGGER_L        = 20;
+		public static final int TRIGGER_R        = 21;
+	}
+
+	/**
+	 * Button states
+	 */
+	public static final class ButtonState
+	{
+		public static final int RELEASED = 0;
+		public static final int PRESSED = 1;
+	}
+
+	/**
+	 * Handles touch events.
+	 *
+	 * @param padID Identifier for which GCpad 0-3,
+	 * @param Button Key code identifying which button was pressed,
+	 * @param Action Mask for the action being performed.
+	 */
+	public static native void onTouchEvent(int padID, int Button, int Action);
+
+	/**
+	 * Handles axis-related touch events.
+	 *
+	 * @param padID Identifier for which GCpad 0-3,
+	 * @param Axis  Axis ID for the type of axis being altered. (Example: Main stick up, down, left, right, etc),
+	 * @param force How 'far down' the joystick is pushed down. 0.0f indicates center (or no force), 
+	 *              1.0f indicates max force (or joystick pushed all the way down in any arbitrary direction).
+	 */
+	public static native void onTouchAxisEvent(int padID, int Axis, float force);
 
 	/**
 	 * Handles button press events for a gamepad.

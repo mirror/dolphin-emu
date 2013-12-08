@@ -4,9 +4,10 @@
  * Refer to the license.txt file included.
  */
 
-package org.dolphinemu.dolphinemu.settings;
+package org.dolphinemu.dolphinemu.settings.video;
 
-import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Bundle;
@@ -29,7 +30,7 @@ public final class VideoSettingsFragment extends PreferenceFragment
 	public static String m_GLRenderer;
 	public static String m_GLExtensions;
 	public static float m_QualcommVersion;
-	private Activity m_activity;
+	public static boolean m_Inited = false;
 
 	/**
 	 * Class which provides a means to retrieve various
@@ -147,20 +148,24 @@ public final class VideoSettingsFragment extends PreferenceFragment
 	 */
 	public static boolean SupportsGLES3()
 	{
-		VersionCheck mbuffer = new VersionCheck();
-		m_GLVersion = mbuffer.getVersion();
-		m_GLVendor = mbuffer.getVendor();
-		m_GLRenderer = mbuffer.getRenderer();
-		m_GLExtensions = mbuffer.getExtensions();
-
 		boolean mSupportsGLES3 = false;
+		if (!m_Inited)
+		{
+			VersionCheck mbuffer = new VersionCheck();
+			m_GLVersion = mbuffer.getVersion();
+			m_GLVendor = mbuffer.getVendor();
+			m_GLRenderer = mbuffer.getRenderer();
+			m_GLExtensions = mbuffer.getExtensions();
+			m_Inited = true;
+		}
+
 
 		// Check for OpenGL ES 3 support (General case).
 		if (m_GLVersion != null && m_GLVersion.contains("OpenGL ES 3.0"))
 			mSupportsGLES3 = true;
 
 		// Checking for OpenGL ES 3 support for certain Qualcomm devices.
-		if (!mSupportsGLES3 && m_GLVendor != null && m_GLVendor.equals("Qualcomm"))
+		if (m_GLVendor != null && m_GLVendor.equals("Qualcomm"))
 		{
 			if (m_GLRenderer.contains("Adreno (TM) 3"))
 			{
@@ -182,14 +187,7 @@ public final class VideoSettingsFragment extends PreferenceFragment
 					mSupportsGLES3 = true;
 			}
 		}
-		if (!mSupportsGLES3 &&
-				m_GLVendor != null && m_GLVendor.equals("NVIDIA Corporation") &&
-				m_GLRenderer != null && m_GLRenderer.equals("NVIDIA Tegra") &&
-				m_GLExtensions != null && m_GLExtensions.contains("GL_OES_depth24"))
-		{
-			// Is a Tegra 4 since it supports 24bit depth
-			mSupportsGLES3 = true;
-		}
+
 		return mSupportsGLES3;
 	}
 
@@ -225,7 +223,7 @@ public final class VideoSettingsFragment extends PreferenceFragment
 		// denotes the placement on the UI. So if more elements are
 		// added to the video settings, these may need to change.
 		//
-		final SharedPreferences sPrefs = PreferenceManager.getDefaultSharedPreferences(m_activity);
+		final SharedPreferences sPrefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
 		final PreferenceScreen mainScreen = getPreferenceScreen();
 
 		if (videoBackends.getValue().equals("Software Renderer"))
@@ -233,14 +231,12 @@ public final class VideoSettingsFragment extends PreferenceFragment
 			mainScreen.getPreference(0).setEnabled(false);
 			mainScreen.getPreference(1).setEnabled(false);
 			mainScreen.getPreference(3).setEnabled(false);
-			//mainScreen.getPreference(4).setEnabled(true);
 		}
 		else if (videoBackends.getValue().equals("OGL"))
 		{
 			mainScreen.getPreference(0).setEnabled(true);
 			mainScreen.getPreference(1).setEnabled(true);
 			mainScreen.getPreference(3).setEnabled(true);
-			//mainScreen.getPreference(4).setEnabled(false);
 		}
 
 		// Also set a listener, so that if someone changes the video backend, it will disable
@@ -257,7 +253,6 @@ public final class VideoSettingsFragment extends PreferenceFragment
 						mainScreen.getPreference(0).setEnabled(false);
 						mainScreen.getPreference(1).setEnabled(false);
 						mainScreen.getPreference(3).setEnabled(false);
-						//mainScreen.getPreference(4).setEnabled(true);
 					}
 					else if (preference.getString(key, "Software Renderer").equals("OGL"))
 					{
@@ -265,18 +260,37 @@ public final class VideoSettingsFragment extends PreferenceFragment
 						mainScreen.getPreference(1).setEnabled(true);
 						mainScreen.getPreference(3).setEnabled(true);
 						//mainScreen.getPreference(4).setEnabled(false);
+
+						// Create an alert telling them that their phone sucks
+						if (VideoSettingsFragment.SupportsGLES3()
+								&& VideoSettingsFragment.m_GLVendor != null
+								&& VideoSettingsFragment.m_GLVendor.equals("Qualcomm")
+								&& VideoSettingsFragment.m_QualcommVersion == 14.0f)
+						{
+							AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+							builder.setTitle(R.string.device_compat_warning);
+							builder.setMessage(R.string.device_gles3compat_warning_msg);
+							builder.setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog, int which) {
+									// Do Nothing. Just create the Yes button
+								}
+							});
+							builder.setNegativeButton(R.string.no, new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog, int which)
+								{
+									// Get an editor.
+									SharedPreferences.Editor editor = sPrefs.edit();
+									editor.putString("gpuPref", "Software Renderer");
+									editor.commit();
+									videoBackends.setValue("Software Renderer");
+									videoBackends.setSummary("Software Renderer");
+								}
+							});
+							builder.show();
+						}
 					}
 				}
 			}
 		});
-	}
-
-	@Override
-	public void onAttach(Activity activity)
-	{
-		super.onAttach(activity);
-
-		// Cache the activity instance.
-		m_activity = activity;
 	}
 }

@@ -29,11 +29,14 @@
     <!-- Game List Activity - Device Compatibility AlertDialog -->
     <string name="device_compat_warning">デバイスの互換性の警告</string>
     <string name="device_compat_warning_msg">この電話は、NEON拡張をサポートしていません。 おそらくDolphinを実行することはできません。\nあなたはとにかくそれを実行してみますか？</string>
+    <string name="device_gles3compat_warning_msg">デバイスはOpenGLES3のビデオドライバのバグがあります。\nあなたはとにかくそれを使用してみたいのですか？</string>
 
     <!-- Game List Fragment -->
     <string name="file_clicked">クリックされたファイル： %1$s</string>
 
     <!-- Emulation Window Overlay -->
+    <string name="enable_input_overlay">入力オーバーレイを有効</string>
+    <string name="disable_input_overlay">入力オーバーレイを無効</string>
     <string name="overlay_screenshot">スクリーンショットを撮る</string>
     <string name="overlay_savestate">ステートセーブ</string>
     <string name="overlay_loadstate">ステートロード</string>
@@ -47,8 +50,22 @@
 
     <!-- Input Config Fragment -->
     <string name="input_settings">入力</string>
+    <string name="input_overlay_layout">入力オーバーレイレイアウト</string>
+    <string name="input_overlay_layout_desc">入力オーバーレイのためのボタンのレイアウト。</string>
+    <string name="gamecube_bindings">ゲームキューブコントローラの入力バインディング</string>
+    <string name="controller_1">コントローラ1</string>
+    <string name="controller_2">コントローラ2</string>
+    <string name="controller_3">コントローラ3</string>
+    <string name="controller_4">コントローラ4</string>
+    <string name="enable_controller">コントローラを有効</string>
+    <string name="wiimote_bindings">Wiiリモコンの入力バインディング</string>
+    <string name="wiimote_1">Wiiリモコン1</string>
+    <string name="wiimote_2">Wiiリモコン2</string>
+    <string name="wiimote_3">Wiiリモコン3</string>
+    <string name="wiimote_4">Wiiリモコン4</string>
     <string name="input_binding">入力バインディング</string>
     <string name="input_binding_descrip">%1$sにバインドするための入力を移動または押してください。</string>
+    <!-- Gamecube buttons (May be shared with Wiimote stuff too) -->
     <string name="button_a">Aボタン</string>
     <string name="button_b">Bボタン</string>
     <string name="button_start">スタートボタン</string>
@@ -69,6 +86,29 @@
     <string name="c_stick_right">C-スティック: →</string>
     <string name="trigger_left">左のトリガー</string>
     <string name="trigger_right">右のトリガー</string>
+    <!-- Wiimote (+ extension) only buttons -->
+    <string name="button_one">ボタン1</string>
+    <string name="button_two">ボタン2</string>
+    <string name="button_plus">ボタン+</string>
+    <string name="button_minus">ボタン-</string>
+    <string name="button_home">ホームボタン</string>
+    <string name="ir_up">IR ↑</string>
+    <string name="ir_down">IR ↓</string>
+    <string name="ir_left">IR ←</string>
+    <string name="ir_right">IR →</string>
+    <string name="ir_forward">IR前方</string>
+    <string name="ir_backward">IR後方</string>
+    <string name="swing_up">スイング ↑</string>
+    <string name="swing_down">スイング ↓</string>
+    <string name="swing_left">スイング ←</string>
+    <string name="swing_right">スイング →</string>
+    <string name="tilt_forward">前方を傾</string>
+    <string name="tilt_backward">後方を傾</string>
+    <string name="tilt_left">左を傾</string>
+    <string name="tilt_right">右を傾</string>
+    <string name="shake_x">Xを振る</string>
+    <string name="shake_y">Yを振る</string>
+    <string name="shake_z">Zを振る</string>
 
     <!-- CPU Preference Fragment -->
     <string name="interpreter">Interpreter</string>
@@ -92,7 +132,6 @@
     <string name="video_backend_desc">%s</string>
     <string name="show_fps">FPSを表示</string>
     <string name="show_fps_descrip">エミュレーション速度の指標として、画面左上に毎秒レンダリングされた フレーム数を表示します。</string>
-    <string name="draw_onscreen_controls">画面上のコントロールを描画</string>
 
     <string name="enhancements">画質向上の設定</string>
     <string name="internal_resolution">内部解像度の変更</string>
