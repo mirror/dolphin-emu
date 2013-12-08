@@ -55,7 +55,8 @@ void Class::OnDisconnected(int index)
 
 void Class::DeviceInfo::DoState(PointerWrap& p)
 {
-	p.Do(m_OtherIndex);
+	if (p.GetMode() == PointerWrap::MODE_READ)
+		m_OtherIndex = -1;
 	p.Do(m_IsConnected);
 	p.Do(m_Subtype);
 }
@@ -63,10 +64,14 @@ void Class::DeviceInfo::DoState(PointerWrap& p)
 void Class::DoState(PointerWrap& p)
 {
 	for (int i = 0; i < MaxDeviceIndex; i++)
-	{
-		m_Local[i].DoState(p);
+		m_Local[i].m_OtherIndex = -1;
+	for (int i = 0; i < MaxDeviceIndex; i++)
 		m_Remote[i].DoState(p);
-	}
+}
+
+bool Class::CanReconnectDevice(int index, int localIndex)
+{
+	return *GetSubtype(index) == *GetLocalSubtype(localIndex);
 }
 
 void Init()

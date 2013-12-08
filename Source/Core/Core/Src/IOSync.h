@@ -169,6 +169,7 @@ public:
 	virtual void OnDisconnected(int index);
 	virtual void DoState(PointerWrap& p);
 	virtual int GetMaxDeviceIndex() = 0;
+	virtual bool CanReconnectDevice(int index, int localIndex);
 
 private:
 	struct DeviceInfo // local or remote
@@ -191,6 +192,7 @@ private:
 void Init();
 // Called after, to connect devices.
 void PostInit();
+
 void DoState(PointerWrap& p);
 void Stop();
 

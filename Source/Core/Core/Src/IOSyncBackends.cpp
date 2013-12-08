@@ -74,12 +74,16 @@ void BackendLocal::DoState(PointerWrap& p)
 		Class* cls = g_Classes[c];
 		for (int d = 0; d < Class::MaxDeviceIndex; d++)
 		{
+			if (cls->IsConnected(d) && cls->LocalIsConnected(d) &&
+				cls->CanReconnectDevice(d, d))
+			{
+				cls->SetIndex(d, d);
+				continue;
+			}
 			if (cls->IsConnected(d))
 				cls->OnDisconnected(d);
-			if (const PWBuffer* subtype = cls->GetLocalSubtype(d))
-			{
-				cls->OnConnected(d, d, subtype->copy());
-			}
+			if (cls->LocalIsConnected(d))
+				cls->OnConnected(d, d, cls->GetLocalSubtype(d)->copy());
 		}
 	}
 }

@@ -157,6 +157,14 @@ public:
 	const u8& operator[](size_t i) const { return m_Data[i]; }
 	size_t size() const { return m_Size; }
 	bool empty() const { return m_Size == 0; }
+	bool operator==(const PWBuffer& other) const
+	{
+		return m_Size == other.m_Size && !memcmp(m_Data, other.m_Data, m_Size);
+	}
+	bool operator!=(const PWBuffer& other) const
+	{
+		return !(*this == other);
+	}
 private:
 	void reallocMe(size_t newSize)
 	{
