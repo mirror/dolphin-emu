@@ -9,12 +9,12 @@ namespace IOSync
 
 void BackendLocal::ConnectLocalDevice(int classId, int localIndex, PWBuffer&& buf)
 {
-	g_Classes[classId]->OnConnected(localIndex, localIndex, std::move(buf));
+	m_Todos.Push(Todo { Todo::Connect, classId, localIndex, std::move(buf) });
 }
 
 void BackendLocal::DisconnectLocalDevice(int classId, int localIndex)
 {
-	g_Classes[classId]->OnDisconnected(localIndex);
+	m_Todos.Push(Todo { Todo::Disconnect, classId, localIndex, PWBuffer() });
 }
 
 void BackendLocal::EnqueueLocalReport(int classId, int localIndex, PWBuffer&& buf)
@@ -29,6 +29,29 @@ Packet BackendLocal::DequeueReport(int classId, int index, bool* keepGoing)
 	PWBuffer result = std::move(rq.front());
 	rq.pop_front();
 	return Packet(std::move(result));
+}
+
+void BackendLocal::StopGame()
+{
+	m_Todos.Clear();
+}
+
+void BackendLocal::NewLocalSubframe()
+{
+	while (!m_Todos.Empty())
+	{
+		Todo& todo = m_Todos.Front();
+		if (todo.m_Type == Todo::Connect)
+		{
+			g_Classes[todo.m_ClassId]->OnConnected(todo.m_LocalIndex, todo.m_LocalIndex, std::move(todo.m_Buf));
+		}
+		else
+		{
+			g_Classes[todo.m_ClassId]->OnDisconnected(todo.m_LocalIndex);
+			m_ReportQueue[todo.m_ClassId][todo.m_LocalIndex].clear();
+		}
+		m_Todos.Pop();
+	}
 }
 
 void BackendLocal::OnPacketError()

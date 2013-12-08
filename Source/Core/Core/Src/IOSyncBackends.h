@@ -21,11 +21,22 @@ public:
 	virtual void DisconnectLocalDevice(int classId, int localIndex) override;
 	virtual void EnqueueLocalReport(int classId, int localIndex, PWBuffer&& buf) override;
 	virtual Packet DequeueReport(int classId, int index, bool* keepGoing) override;
+	virtual void StopGame() override;
+	virtual void NewLocalSubframe() override;
 	virtual void OnPacketError() override;
 	virtual u32 GetTime() override;
 	virtual void DoState(PointerWrap& p) override;
 private:
 	std::deque<PWBuffer> m_ReportQueue[Class::NumClasses][Class::MaxDeviceIndex];
+
+	struct Todo
+	{
+		enum { Connect, Disconnect} m_Type;
+		int m_ClassId;
+		int m_LocalIndex;
+		PWBuffer m_Buf;
+	};
+	Common::FifoQueue<Todo, false> m_Todos;
 };
 
 class BackendNetPlay : public Backend
