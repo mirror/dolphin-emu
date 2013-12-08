@@ -27,8 +27,8 @@
 #define JIT_ICACHE_EXRAM_BIT 0x10000000
 #define JIT_ICACHE_VMEM_BIT 0x20000000
 // this corresponds to opcode 5 which is invalid in PowerPC
-#define JIT_ICACHE_INVALID_BYTE 0x80
-#define JIT_ICACHE_INVALID_WORD 0x80808080
+#define JIT_ICACHE_INVALID_BYTE 0
+#define JIT_ICACHE_INVALID_WORD 0
 
 struct JitBlock
 {
@@ -49,6 +49,7 @@ struct JitBlock
 		bool linkStatus; // is it already linked?
 	};
 	std::vector<LinkData> linkData;
+	std::vector<std::pair<u32, u32>> _mergepoints;
 
 #ifdef _WIN32
 	// we don't really need to save start and stop
@@ -68,7 +69,6 @@ typedef void (*CompiledCode)();
 
 class JitBaseBlockCache
 {
-	const u8 **blockCodePointers;
 	JitBlock *blocks;
 	int num_blocks;
 	std::multimap<u32, int> links_to;
@@ -89,11 +89,10 @@ class JitBaseBlockCache
 	virtual void WriteDestroyBlock(const u8* location, u32 address) = 0;
 
 public:
-	JitBaseBlockCache() :
-		blockCodePointers(0), blocks(0), num_blocks(0),
+	JitBaseBlockCache() : blocks(0), num_blocks(0),
 		iCache(0), iCacheEx(0), iCacheVMEM(0) {}
 	int AllocateBlock(u32 em_address);
-	void FinalizeBlock(int block_num, bool block_link, const u8 *code_ptr);
+	void FinalizeBlock(int block_num, bool block_link, PPCAnalyst::SuperBlock &Block);
 
 	void Clear();
 	void ClearSafe();
@@ -106,7 +105,6 @@ public:
 	// Code Cache
 	JitBlock *GetBlock(int block_num);
 	int GetNumBlocks() const;
-	const u8 **GetCodePointers();
 	u8 *iCache;
 	u8 *iCacheEx;
 	u8 *iCacheVMEM;
@@ -117,7 +115,6 @@ public:
 	int GetBlockNumberFromStartAddress(u32 em_address);
 
 	u32 GetOriginalFirstOp(int block_num);
-	CompiledCode GetCompiledCodeFromBlock(int block_num);
 
 	// DOES NOT WORK CORRECTLY WITH INLINING
 	void InvalidateICache(u32 address, const u32 length);

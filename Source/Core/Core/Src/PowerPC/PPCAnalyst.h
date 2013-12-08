@@ -98,9 +98,11 @@ public:
 class IBlock
 {
 	public:
-	enum Type {
-		SIMPLE,
-		COMPLEX,
+	enum {
+		FLAG_SIMPLE = (1 << 0),
+		FLAG_COMPLEX = (1 << 1),
+		FLAG_CONTAINS_INLINE = (1 << 2),
+		FLAG_CONTAINS_SYSTEMINST = (1 << 3),
 	};
 
 	const static u32 FLAG_EXTERNAL_JUMP = 1 << 0;
@@ -114,7 +116,9 @@ class IBlock
 		u32 _flags;
 		u32 _target;
 	};
-	private:
+	// Index of merged addresses
+	// key is address, size
+	std::vector<std::pair<u32, u32>> _mergepoints;
 	// Index of entry points
 	std::vector<u32> _entrypoints;
 	// Index of exit points
@@ -123,28 +127,36 @@ class IBlock
 	// Index of instruction hexes
 	std::vector<Inst> _instructions;
 	// Index of codeOps
-	std::map<u32, CodeOp> _code;
+	std::vector<CodeOp> _code;
 	BlockStats _stats;
 	BlockRegStats _gpa;
 	BlockRegStats _fpa;
-	Type _type;
+	u32 _flags;
 	u32 _blockStart;
 	bool _endsBLR;
+	bool _endsBranch;
 	public:
 	IBlock() {}
-	void Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, u32 blockSize, bool inlineJumps = true);
+	bool Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, u32 blockSize, bool inlineJumps = true);
 	bool EndsBLR() { return _endsBLR; }
 	bool ContainsEntryPoint(u32 addr) { for (auto it : _entrypoints) if (it == addr) return true; return false; }
 	std::vector<Inst>& GetInstructions() { return _instructions; }
 	u32 GetStart() { return _blockStart; }
 	u32 GetSize() { return _instructions.size(); }
-	Type GetType() { return _type; }
-	bool Merge(IBlock *block);
+	bool Merge(IBlock &block);
+	u32 Inline(IBlock &block);
 	
 };
-void FlattenNew(u32 address, std::map<u32, IBlock> &IBlocks, 
-			bool &broken_block, CodeBuffer *buffer,
-			int blockSize);
+class SuperBlock
+{
+	public:
+		std::map<u32, PPCAnalyst::IBlock> IBlocks;
+		// Key is address, value is the codePtr
+		std::map<u32, u32> _codeEntrypoints;
+		std::map<u32, u32> _codeLinkpoints;
+};
+void FlattenNew(u32 address, SuperBlock &Block, 
+			int &num_inst, int blockSize, int maxIBlocks);
 
 u32 Flatten(u32 address, int *realsize, BlockStats *st, BlockRegStats *gpa,
 			BlockRegStats *fpa, bool &broken_block, CodeBuffer *buffer,

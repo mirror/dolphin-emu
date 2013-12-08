@@ -39,7 +39,7 @@ public:
 	// Jit!
 
 	void Jit(u32 em_address);
-	const u8* DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buffer, JitBlock *b);
+	void DoJit(u32 em_address, JitBlock *b, PPCAnalyst::SuperBlock &Block, int blockSize);
 
 	JitBaseBlockCache *GetBlockCache() { return &blocks; }
 

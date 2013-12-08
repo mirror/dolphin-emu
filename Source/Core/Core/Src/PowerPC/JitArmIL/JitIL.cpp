@@ -188,28 +188,26 @@ void STACKALIGN JitArmIL::Jit(u32 em_address)
 	{
 		ClearCache();
 	}
-
-	int block_num = blocks.AllocateBlock(PowerPC::ppcState.pc);
-	JitBlock *b = blocks.GetBlock(block_num);
-	const u8* BlockPtr = DoJit(PowerPC::ppcState.pc, &code_buffer, b);
-	blocks.FinalizeBlock(block_num, jo.enableBlocklink, BlockPtr);
-}
-
-const u8* JitArmIL::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlock *b)
-{
-	int blockSize = code_buf->GetSize();
-	// Memory exception on instruction fetch
-	bool memory_exception = false;
-
-	// A broken block is a block that does not end in a branch
-	bool broken_block = false;
-
+	int num_inst = 0;
+	PPCAnalyst::SuperBlock Block;
+	int blockSize = code_buffer.GetSize();
 	if (Core::g_CoreStartupParameter.bEnableDebugging)
 	{
 		// Comment out the following to disable breakpoints (speed-up)
 		blockSize = 1;
-		broken_block = true;
 	}
+	FlattenNew(PowerPC::ppcState.pc, Block, num_inst, blockSize, 1); 
+
+	int block_num = blocks.AllocateBlock(PowerPC::ppcState.pc);
+	JitBlock *b = blocks.GetBlock(block_num);
+	DoJit(PowerPC::ppcState.pc, b, Block, blockSize);
+	blocks.FinalizeBlock(block_num, jo.enableBlocklink, Block);
+}
+
+void JitArmIL::DoJit(u32 em_address, JitBlock *b, PPCAnalyst::SuperBlock &Block, int blockSize)
+{
+	// Memory exception on instruction fetch
+	bool memory_exception = false;
 
 	if (em_address == 0)
 	{
@@ -226,58 +224,6 @@ const u8* JitArmIL::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitB
 		}
 	}
 
-
-	int size = 0;
-	js.isLastInstruction = false;
-	js.blockStart = em_address;
-	js.fifoBytesThisBlock = 0;
-	js.curBlock = b;
-	js.block_flags = 0;
-	js.cancel = false;
-
-	// Analyze the block, collect all instructions it is made of (including inlining,
-	// if that is enabled), reorder instructions for optimal performance, and join joinable instructions.
-	u32 nextPC = em_address;
-	u32 merged_addresses[32];
-	const int capacity_of_merged_addresses = sizeof(merged_addresses) / sizeof(merged_addresses[0]);
-	int size_of_merged_addresses = 0;
-	if (!memory_exception)
-	{
-		// If there is a memory exception inside a block (broken_block==true), compile up to that instruction.
-		nextPC = PPCAnalyst::Flatten(em_address, &size, &js.st, &js.gpa, &js.fpa, broken_block, code_buf, blockSize, merged_addresses, capacity_of_merged_addresses, size_of_merged_addresses);
-	}
-	PPCAnalyst::CodeOp *ops = code_buf->codebuffer;
-
-	const u8 *start = GetCodePtr();
-	b->checkedEntry = start;
-	b->runCount = 0;
-
-	// Downcount flag check, Only valid for linked blocks
-	{
-		// XXX
-	}
-
-	const u8 *normalEntry = GetCodePtr();
-	b->normalEntry = normalEntry;
-
-	if (js.fpa.any)
-	{
-		// XXX
-		// This block uses FPU - needs to add FP exception bailout
-	}
-	js.rewriteStart = (u8*)GetCodePtr();
-
-	u64 codeHash = -1;
-	{
-		// For profiling and IR Writer
-		for (int i = 0; i < (int)size; i++)
-		{
-			const u64 inst = ops[i].inst.hex;
-			// Ported from boost::hash
-			codeHash ^= inst + (codeHash << 6) + (codeHash >> 2);
-		}
-	}
-
 	// Conditionally add profiling code.
 	if (Profiler::g_ProfileBlocks) {
 		// XXX
@@ -286,83 +232,100 @@ const u8* JitArmIL::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitB
 	// instruction processed by the JIT routines)
 	ibuild.Reset();
 
-	js.downcountAmount = 0;
-	if (!Core::g_CoreStartupParameter.bEnableDebugging)
+	u64 codeHash = -1;
+	const u8 *normalEntry = GetCodePtr();
+
+	for (auto it = Block.IBlocks.begin(); it != Block.IBlocks.end(); ++it)
 	{
-		for (int i = 0; i < size_of_merged_addresses; ++i)
+		// Translate instructions
+		js.currentSuper = &Block;
+		js.downcountAmount = 0;
+		js.isLastInstruction = false;
+		js.blockStart = it->second._blockStart;
+		js.fifoBytesThisBlock = 0;
+		js.curBlock = b;
+		js.currentIBlock = &it->second;
+		js.block_flags = 0;
+		js.cancel = false;
+
+		js.skipnext = false;
+		js.blockSize = it->second.GetSize();
+		js.compilerPC = it->second._blockStart;
+
+		js.fpa = &it->second._fpa;
+		js.gpa = &it->second._gpa;
+		js.st = &it->second._stats;	
+
+		Block._codeEntrypoints[js.blockStart] = (u32)normalEntry;
+		js.rewriteStart = (u8*)GetCodePtr();
+
+		// For profiling and IR Writer
+		for (int i = 0; i < js.blockSize; i++)
 		{
-			const u32 address = merged_addresses[i];
-			js.downcountAmount += PatchEngine::GetSpeedhackCycles(address);
+			const u64 inst = it->second._code[i].inst.hex;
+			// Ported from boost::hash
+			codeHash ^= inst + (codeHash << 6) + (codeHash >> 2);
 		}
-	}
 
-	js.skipnext = false;
-	js.blockSize = size;
-	js.compilerPC = nextPC;
-	// Translate instructions
-	for (int i = 0; i < (int)size; i++)
-	{
-		js.compilerPC = ops[i].address;
-		js.op = &ops[i];
-		js.instructionNumber = i;
-		const GekkoOPInfo *opinfo = ops[i].opinfo;
-		js.downcountAmount += (opinfo->numCyclesMinusOne + 1);
-
-		if (i == (int)size - 1)
+		for (int i = 0; i < js.blockSize; i++)
 		{
-			// WARNING - cmp->branch merging will screw this up.
-			js.isLastInstruction = true;
-			js.next_inst = 0;
-			if (Profiler::g_ProfileBlocks) {
-				// CAUTION!!! push on stack regs you use, do your stuff, then pop
-				PROFILER_VPUSH;
-				// get end tic
-				PROFILER_QUERY_PERFORMANCE_COUNTER(&b->ticStop);
-				// tic counter += (end tic - start tic)
-				PROFILER_ADD_DIFF_LARGE_INTEGER(&b->ticCounter, &b->ticStop, &b->ticStart);
-				PROFILER_VPOP;
+			js.compilerPC = it->second._code[i].address;
+			js.op = &it->second._code[i];
+			js.instructionNumber = i;
+			const GekkoOPInfo *opinfo = it->second._code[i].opinfo;
+			js.downcountAmount += (opinfo->numCyclesMinusOne + 1);
+
+			if (i == (int)js.blockSize - 1)
+			{
+				// WARNING - cmp->branch merging will screw this up.
+				js.isLastInstruction = true;
+				js.next_inst = 0;
+				if (Profiler::g_ProfileBlocks) {
+					// CAUTION!!! push on stack regs you use, do your stuff, then pop
+					PROFILER_VPUSH;
+					// get end tic
+					PROFILER_QUERY_PERFORMANCE_COUNTER(&b->ticStop);
+					// tic counter += (end tic - start tic)
+					PROFILER_ADD_DIFF_LARGE_INTEGER(&b->ticCounter, &b->ticStop, &b->ticStart);
+					PROFILER_VPOP;
+				}
 			}
-		}
-		else
-		{
-			// help peephole optimizations
-			js.next_inst = ops[i + 1].inst;
-			js.next_compilerPC = ops[i + 1].address;
-		}
-		if (!ops[i].skip)
-		{
-				PrintDebug(ops[i].inst, 0);
+			else
+			{
+				// help peephole optimizations
+				js.next_inst = it->second._code[i + 1].inst;
+				js.next_compilerPC = it->second._code[i + 1].address;
+			}
+			if (!it->second._code[i].skip)
+			{
 				if (js.memcheck && (opinfo->flags & FL_USE_FPU))
 				{
 					// Don't do this yet
 					BKPT(0x7777);
 				}
-				JitArmILTables::CompileInstruction(ops[i]);
+				JitArmILTables::CompileInstruction(it->second._code[i]);
 				if (js.memcheck && (opinfo->flags & FL_LOADSTORE))
 				{
 					// Don't do this yet
 					BKPT(0x666);
 				}
+			}
 		}
-	}
-	if (memory_exception)
-		BKPT(0x500);
-	if	(broken_block)
-	{
-		printf("Broken Block going to 0x%08x\n", nextPC);
-		WriteExit(nextPC);
+		if (memory_exception)
+			BKPT(0x500);
+		if (!it->second._endsBranch)
+		{
+			printf("Broken Block going to 0x%08x\n", js.compilerPC + 4);
+			WriteExit(js.compilerPC + 4);
+		}
 	}
 
 	// Perform actual code generation
 
-	WriteCode(nextPC);
+	WriteCode(em_address);
 	b->flags = js.block_flags;
 	b->codeSize = (u32)(GetCodePtr() - normalEntry);
-	b->originalSize = size;
+	b->originalSize = js.blockSize;
 
-	{
-	}
 	FlushIcache();
-	return start;
-
 }

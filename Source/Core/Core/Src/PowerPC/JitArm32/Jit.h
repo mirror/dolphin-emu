@@ -70,6 +70,11 @@ private:
 	void Helper_UpdateCR1(ARMReg fpscr, ARMReg temp);
 
 	void SetFPException(ARMReg Reg, u32 Exception);
+	void DownCountCheck();
+
+	// Key is destination we are jumping to
+	// vector since multiple places can jump to the same destination
+	std::map<u32, std::vector<FixupBranch>> _fixupBranches;
 public:
 	JitArm() : code_buffer(32000) {}
 	~JitArm() {}
@@ -80,7 +85,7 @@ public:
 	// Jit!
 
 	void Jit(u32 em_address);
-	const u8* DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlock *b);
+	void DoJit(u32 em_address, JitBlock *b, PPCAnalyst::SuperBlock &Block, int blockSize);
 
 	JitBaseBlockCache *GetBlockCache() { return &blocks; }
 

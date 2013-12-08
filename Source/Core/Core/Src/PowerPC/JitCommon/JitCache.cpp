@@ -46,7 +46,6 @@ using namespace Gen;
 		agent = op_open_agent();
 #endif
 		blocks = new JitBlock[MAX_NUM_BLOCKS];
-		blockCodePointers = new const u8*[MAX_NUM_BLOCKS];
 		if (iCache == 0 && iCacheEx == 0 && iCacheVMEM == 0)
 		{
 			iCache = new u8[JIT_ICACHE_SIZE];
@@ -70,7 +69,6 @@ using namespace Gen;
 	void JitBaseBlockCache::Shutdown()
 	{
 		delete[] blocks;
-		delete[] blockCodePointers;
 		if (iCache != 0)
 			delete[] iCache;
 		iCache = 0;
@@ -81,7 +79,6 @@ using namespace Gen;
 			delete[] iCacheVMEM;
 		iCacheVMEM = 0;
 		blocks = 0;
-		blockCodePointers = 0;
 		num_blocks = 0;
 #if defined USE_OPROFILE && USE_OPROFILE
 		op_close_agent(agent);
@@ -111,7 +108,6 @@ using namespace Gen;
 		block_map.clear();
 		valid_block.reset();
 		num_blocks = 0;
-		memset(blockCodePointers, 0, sizeof(u8*)*MAX_NUM_BLOCKS);
 	}
 
 	void JitBaseBlockCache::ClearSafe()
@@ -169,14 +165,15 @@ using namespace Gen;
 		return num_blocks - 1;
 	}
 
-	void JitBaseBlockCache::FinalizeBlock(int block_num, bool block_link, const u8 *code_ptr)
+	void JitBaseBlockCache::FinalizeBlock(int block_num, bool block_link, PPCAnalyst::SuperBlock &Block)
 	{
-		blockCodePointers[block_num] = code_ptr;
-		JitBlock &b = blocks[block_num];
-		u32* icp = GetICachePtr(b.originalAddress);
-		*icp = block_num;
+		for (auto codeEntry = Block._codeEntrypoints.begin(); codeEntry != Block._codeEntrypoints.end(); ++codeEntry)
+			*GetICachePtr(codeEntry->first) = codeEntry->second;
 
+		JitBlock &b = blocks[block_num];
+		
 		// Convert the logical address to a physical address for the block map
+		
 		u32 pAddr = b.originalAddress & 0x1FFFFFFF;
 
 		for (u32 i = 0; i < (b.originalSize + 7) / 8; ++i)
@@ -193,11 +190,10 @@ using namespace Gen;
 			LinkBlock(block_num);
 			LinkBlockExits(block_num);
 		}
-
+		
 #if defined USE_OPROFILE && USE_OPROFILE
 		char buf[100];
 		sprintf(buf, "EmuCode%x", b.originalAddress);
-		const u8* blockStart = blockCodePointers[block_num];
 		op_write_native_code(agent, buf, (uint64_t)blockStart,
 		                     blockStart, b.codeSize);
 #endif
@@ -209,17 +205,11 @@ using namespace Gen;
 		jmethod.method_id = iJIT_GetNewMethodID();
 		jmethod.class_file_name = "";
 		jmethod.source_file_name = __FILE__;
-		jmethod.method_load_address = (void*)blockCodePointers[block_num];
 		jmethod.method_size = b.codeSize;
 		jmethod.line_number_size = 0;
 		jmethod.method_name = b.blockName;
 		iJIT_NotifyEvent(iJVM_EVENT_TYPE_METHOD_LOAD_FINISHED, (void*)&jmethod);
 #endif
-	}
-
-	const u8 **JitBaseBlockCache::GetCodePointers()
-	{
-		return blockCodePointers;
 	}
 
 	u32* JitBaseBlockCache::GetICachePtr(u32 addr)
@@ -245,11 +235,6 @@ using namespace Gen;
 		if (blocks[inst].originalAddress != addr)
 			return -1;
 		return inst;
-	}
-
-	CompiledCode JitBaseBlockCache::GetCompiledCodeFromBlock(int block_num)
-	{
-		return (CompiledCode)blockCodePointers[block_num];
 	}
 
 	//Block linker
@@ -348,7 +333,7 @@ using namespace Gen;
 		// Optimize the common case of length == 32 which is used by Interpreter::dcb*
 		bool destroy_block = true;
 		if (length == 32)
-	{
+		{
 			if (!valid_block[pAddr / 32])
 				destroy_block = false;
 			else
@@ -361,7 +346,7 @@ using namespace Gen;
 		{
 			std::map<pair<u32,u32>, u32>::iterator it1 = block_map.lower_bound(std::make_pair(pAddr, 0)), it2 = it1;
 			while (it2 != block_map.end() && it2->first.second < pAddr + length)
-		{
+			{
 				JitBlock &b = blocks[it2->second];
 				*GetICachePtr(b.originalAddress) = JIT_ICACHE_INVALID_WORD;
 				DestroyBlock(it2->second, true);

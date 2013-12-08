@@ -62,13 +62,15 @@ protected:
 
 		int fifoBytesThisBlock;
 
-		PPCAnalyst::BlockStats st;
-		PPCAnalyst::BlockRegStats gpa;
-		PPCAnalyst::BlockRegStats fpa;
+		PPCAnalyst::BlockStats *st;
+		PPCAnalyst::BlockRegStats *gpa;
+		PPCAnalyst::BlockRegStats *fpa;
 		PPCAnalyst::CodeOp *op;
 		u8* rewriteStart;
 
 		JitBlock *curBlock;
+		PPCAnalyst::SuperBlock *currentSuper;
+		PPCAnalyst::IBlock *currentIBlock;
 
 		std::unordered_set<u32> fifoWriteAddresses;
 	};
@@ -77,7 +79,7 @@ public:
 	// This should probably be removed from public:
 	JitOptions jo;
 	JitState js;
-
+	
 	virtual JitBaseBlockCache *GetBlockCache() = 0;
 
 	virtual void Jit(u32 em_address) = 0;

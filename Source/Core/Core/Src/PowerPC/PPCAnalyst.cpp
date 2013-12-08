@@ -13,6 +13,7 @@
 #include "PPCSymbolDB.h"
 #include "SignatureDB.h"
 #include "PPCAnalyst.h"
+#include "Timer.h"
 #include "../ConfigManager.h"
 #include "../GeckoCode.h"
 
@@ -279,24 +280,25 @@ u32 FindFunctionLastAddr(u32 address)
 		address += 4;
 	}
 }
-bool ShouldInlineAddr(u32 addr, u32 blockSize)
+bool ShouldInlineAddr(u32 addr, u32 blockSize, IBlock &block)
 {
 	if (!addr || blockSize == 1)
 		return false;
-	IBlock block;
 	u32 numInst = 0;
 	block.Flatten(addr, addr, addr, &numInst, blockSize, false);
-	if (block.EndsBLR())
+	if (block.EndsBLR() && !(block._flags & IBlock::FLAG_CONTAINS_SYSTEMINST))
 		return true;
 	return false;
 }
 
 #define CST1 0
-void IBlock::Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, u32 blockSize, bool inlineJumps)
+bool IBlock::Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, u32 blockSize, bool inlineJumps)
 {
 	_gpa.any = true;
 	_fpa.any = false;
 	_endsBLR = false;
+	_endsBranch = false;
+	bool Broken = false;
 	memset(&_stats, 0, sizeof(_stats));
 
 	for (int i = 0; i < 32; i++)
@@ -366,20 +368,20 @@ void IBlock::Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, 
 				// This case we can add a entrypoint since NOP does nothing of course.
 				_entrypoints.push_back(address + 4);
 			}
-			memset(&_code[i], 0, sizeof(CodeOp));
+			CodeOp code;
 			GekkoOPInfo *opinfo = GetOpInfo(inst);
-			_code[i].opinfo = opinfo;
+			code.opinfo = opinfo;
 			// FIXME: _code[i].address may not be correct due to CST1 _code.
-			_code[i].address = address;
-			_code[i].inst = inst;
-			_code[i].branchTo = 0;
-			_code[i].branchToIndex = -1;
-			_code[i].skip = false;
+			code.address = address;
+			code.inst = inst;
+			code.branchTo = 0;
+			code.branchToIndex = -1;
+			code.skip = false;
 			_stats.numCycles += opinfo->numCyclesMinusOne + 1;
 
-			_code[i].wantsCR0 = false;
-			_code[i].wantsCR1 = false;
-			_code[i].wantsPS1 = false;
+			code.wantsCR0 = false;
+			code.wantsCR1 = false;
+			code.wantsPS1 = false;
 
 			int flags = opinfo->flags;
 
@@ -391,66 +393,66 @@ void IBlock::Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, 
 
 			// Does the instruction output CR0?
 			if (flags & FL_RC_BIT)
-				_code[i].outputCR0 = inst.hex & 1; //todo fix
+				code.outputCR0 = inst.hex & 1; //todo fix
 			else if ((flags & FL_SET_CRn) && inst.CRFD == 0)
-				_code[i].outputCR0 = true;
+				code.outputCR0 = true;
 			else
-				_code[i].outputCR0 = (flags & FL_SET_CR0) ? true : false;
+				code.outputCR0 = (flags & FL_SET_CR0) ? true : false;
 
 			// Does the instruction output CR1?
 			if (flags & FL_RC_BIT_F)
-				_code[i].outputCR1 = inst.hex & 1; //todo fix
+				code.outputCR1 = inst.hex & 1; //todo fix
 			else if ((flags & FL_SET_CRn) && inst.CRFD == 1)
-				_code[i].outputCR1 = true;
+				code.outputCR1 = true;
 			else
-				_code[i].outputCR1 = (flags & FL_SET_CR1) ? true : false;
+				code.outputCR1 = (flags & FL_SET_CR1) ? true : false;
 
 			int numOut = 0;
 			int numIn = 0;
 			if (flags & FL_OUT_A)
 			{
-				_code[i].regsOut[numOut++] = inst.RA;
+				code.regsOut[numOut++] = inst.RA;
 				_gpa.SetOutputRegister(inst.RA, i);
 			}
 			if (flags & FL_OUT_D)
 			{
-				_code[i].regsOut[numOut++] = inst.RD;
+				code.regsOut[numOut++] = inst.RD;
 				_gpa.SetOutputRegister(inst.RD, i);
 			}
 			if (flags & FL_OUT_S)
 			{
-				_code[i].regsOut[numOut++] = inst.RS;
+				code.regsOut[numOut++] = inst.RS;
 				_gpa.SetOutputRegister(inst.RS, i);
 			}
 			if ((flags & FL_IN_A) || ((flags & FL_IN_A0) && inst.RA != 0))
 			{
-				_code[i].regsIn[numIn++] = inst.RA;
+				code.regsIn[numIn++] = inst.RA;
 				_gpa.SetInputRegister(inst.RA, i);
 			}
 			if (flags & FL_IN_B)
 			{
-				_code[i].regsIn[numIn++] = inst.RB;
+				code.regsIn[numIn++] = inst.RB;
 				_gpa.SetInputRegister(inst.RB, i);
 			}
 			if (flags & FL_IN_C)
 			{
-				_code[i].regsIn[numIn++] = inst.RC;
+				code.regsIn[numIn++] = inst.RC;
 				_gpa.SetInputRegister(inst.RC, i);
 			}
 			if (flags & FL_IN_S)
 			{
-				_code[i].regsIn[numIn++] = inst.RS;
+				code.regsIn[numIn++] = inst.RS;
 				_gpa.SetInputRegister(inst.RS, i);
 			}
 
 			// Set remaining register slots as unused (-1)
 			for (int j = numIn; j < 3; j++)
-				_code[i].regsIn[j] = -1;
+				code.regsIn[j] = -1;
 			for (int j = numOut; j < 2; j++)
-				_code[i].regsOut[j] = -1;
+				code.regsOut[j] = -1;
 			for (int j = 0; j < 3; j++)
-				_code[i].fregsIn[j] = -1;
-			_code[i].fregOut = -1;
+				code.fregsIn[j] = -1;
+			code.fregOut = -1;
 
 			switch (opinfo->type)
 			{
@@ -463,17 +465,18 @@ void IBlock::Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, 
 				case OPTYPE_FPU:
 					break;
 				case OPTYPE_BRANCH:
-					if (_code[i].inst.hex == 0x4e800020) // BLR
+					if (code.inst.hex == 0x4e800020) // BLR
 					{
 						// For analysis purposes, we can assume that blr eats flags.
-						_code[i].outputCR0 = true;
-						_code[i].outputCR1 = true;
+						code.outputCR0 = true;
+						code.outputCR1 = true;
 						_endsBLR = true;
 						instflags |= FLAG_FINAL_JUMP;
 					}
 					break;
 				case OPTYPE_SYSTEM:
 				case OPTYPE_SYSTEMFP:
+					_flags |= FLAG_CONTAINS_SYSTEMINST;
 					break;
 			}
 
@@ -491,7 +494,7 @@ void IBlock::Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, 
 						if (target >= _blockStart && target < address)
 						{
 							instflags |= FLAG_IBLOCK_JUMP;
-							_type = COMPLEX;
+							_flags |= FLAG_COMPLEX;
 						}
 						else
 							instflags |= FLAG_INTERNAL_JUMP;
@@ -503,15 +506,21 @@ void IBlock::Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, 
 				if (target)
 				{
 					if (target > maxAddress)
-						instflags |= FLAG_INLINE_JUMP;
+						if (inst.LK)
+							instflags |= FLAG_INLINE_JUMP;
+						else
+							instflags |= FLAG_EXTERNAL_JUMP;
 					else
 						if (target < minAddress)
-							instflags |= FLAG_INLINE_JUMP;
+							if (inst.LK)
+								instflags |= FLAG_INLINE_JUMP;
+							else
+								instflags |= FLAG_EXTERNAL_JUMP;
 						else
 							if (target >= _blockStart && target < address)
 							{
 								instflags |= FLAG_IBLOCK_JUMP;
-								_type = COMPLEX;
+								_flags |= FLAG_COMPLEX;
 							}
 							else
 								instflags |= FLAG_INTERNAL_JUMP;
@@ -522,13 +531,20 @@ void IBlock::Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, 
 					if (inst.SUBOP10 == 16) // bclrx
 						instflags |= FLAG_FINAL_JUMP;
 			}
-			if (instflags & FLAG_INLINE_JUMP && inlineJumps)
+			bool inlinedBranch = false;
+			// XXX: Requires block cache support
+			if (false && instflags & FLAG_INLINE_JUMP && inlineJumps)
 			{
 				// Check for inline capability
-				// XXX: Allow inline
-				//if (ShouldInlineAddr(target, blockSize))
-				//	;
-				//else
+				IBlock block;
+				if (ShouldInlineAddr(target, blockSize, block))
+				{
+					inlinedBranch = true;
+					u32 insts = 0;
+					insts = Inline(block);
+					i += insts;
+				}
+				else	
 				{
 					// Wipe the inline flag
 					instflags &= ~(FLAG_INLINE_JUMP);
@@ -536,7 +552,7 @@ void IBlock::Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, 
 					instflags |= FLAG_EXTERNAL_JUMP;
 				}
 			}
-			// Instructions that end the block but don't have any flags set
+			// Instructions that end the IBlock but don't have any flags set
 			// mtmsr
 			// tw
 			// icbi
@@ -544,45 +560,28 @@ void IBlock::Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, 
 			// twi
 			// sc
 			// rfi/rfid
-			_instructions.push_back({inst.hex, instflags, target});
-			_code[i].branchTo = target;
-			if (opinfo->flags & FL_ENDBLOCK) //right now we stop early
+			if (!inlinedBranch)
 			{
-				// Every exitpoint has an entry point as well
-				// The entrypoint will be right after the registers are flushed
-				_entrypoints.push_back(address);
-				_exitpoints.push_back(address);
-				break;
+				_instructions.push_back({inst.hex, instflags, target});
+				code.branchTo = target;
+				_code.push_back(code);
+				if (opinfo->flags & FL_ENDBLOCK) //right now we stop early
+				{
+					// Every exitpoint has an entry point as well
+					// The entrypoint will be right after the registers are flushed
+					_entrypoints.push_back(address);
+					_exitpoints.push_back(address);
+					_endsBranch = true;
+					break;
+				}
 			}
 			address += 4;
 		}
 		else
 		{
 			// ISI exception or other critical memory exception occurred (game over)
+			Broken = true;
 			break;
-		}
-	}
-	// Instruction Reordering Pass
-	if (_instructions.size() > 1)
-	{
-		// Bubble down compares towards branches, so that they can be merged.
-		// -2: -1 for the pair, -1 for not swapping with the final instruction which is probably the branch.
-		for (u32 i = 0; i < _instructions.size() - 2; i++)
-		{
-			CodeOp &a = _code[i];
-			CodeOp &b = _code[i + 1];
-			// All integer compares can be reordered.
-			if ((a.inst.OPCD == 10 || a.inst.OPCD == 11) ||
-				(a.inst.OPCD == 31 && (a.inst.SUBOP10 == 0 || a.inst.SUBOP10 == 32)))
-			{
-				// Got a compare instruction.
-				if (CanSwapAdjacentOps(a, b)) {
-					// Alright, let's bubble it down!
-					CodeOp c = a;
-					a = b;
-					b = c;
-				}
-			}
 		}
 	}
 	// Scan for CR0 dependency
@@ -607,33 +606,46 @@ void IBlock::Flatten(u32 address, u32 minAddress, u32 maxAddress, u32 *numInst, 
 	}
 
 	*numInst += _instructions.size();
+	return Broken;
 }
 
-bool IBlock::Merge(IBlock *block)
+bool IBlock::Merge(IBlock &block)
 {
 	bool canMerge = false;	
 	// Can only merge if one instruction in length
-	if (block->GetSize() == 1)
+	if (block.GetSize() == 1)
 	{
-		CodeOp *inst = &block->_code[0];
+		CodeOp *inst = &block._code[0];
 		if (inst->opinfo->flags & FL_ENDBLOCK)
 		{
 			canMerge = true;
 			_entrypoints.push_back(inst->address);
 			_exitpoints.push_back(inst->address);
-			_instructions.push_back(block->_instructions[0]);
-			_code[_code.size()] = block->_code[0];
+			_instructions.push_back(block._instructions[0]);
+			_code.push_back(block._code[0]);
 			// XXX: Merge stats
 		}
 	}
 	return canMerge;
+}
+u32 IBlock::Inline(IBlock &block)
+{
+	// Add the entry point to the mergepoints
+	_mergepoints.push_back(std::make_pair(block._entrypoints[0], block._instructions.size() - 1));
+
+	// Add all instructions -1 so we don't add the BLR at the end.
+	_instructions.insert(_instructions.end(), block._instructions.begin(), block._instructions.end() - 1);
+	_code.insert(_code.end(), block._code.begin(), block._code.end() - 1);
+
+	_flags |= FLAG_CONTAINS_INLINE;	
+	return block._instructions.size() - 1;
 }
 
 void CheckInternalJumps(std::map<u32, IBlock> &IBlocks)
 {
 	for (auto it = IBlocks.begin(); it != IBlocks.end(); ++it)
 	{
-		if (it->second.GetType() == IBlock::SIMPLE)
+		if (it->second._flags & IBlock::FLAG_SIMPLE)
 		{
 			std::vector<IBlock::Inst>& _instructions = it->second.GetInstructions();
 			for (u32 a = 0; a < _instructions.size(); ++a)
@@ -657,33 +669,38 @@ void CheckInternalJumps(std::map<u32, IBlock> &IBlocks)
 	}
 }
 
-void FlattenNew(u32 address, std::map<u32, IBlock> &IBlocks, 
-			bool &broken_block, CodeBuffer *buffer,
-			int blockSize)
+void FlattenNew(u32 address, SuperBlock &Block, int &num_inst,
+			int blockSize, int maxIBlocks)
 {
-	int num_inst = 0;
 	u32 prev_address = 0;
 	u32 minAddress = address;
 	u32 maxAddress = FindFunctionLastAddr(address);
 
-	for(;;)
+	for(int a = 0;a < maxIBlocks || maxIBlocks == -1; ++a)
 	{
 		u32 insts = 0;
-		IBlocks[address].Flatten(address, minAddress, maxAddress, &insts, blockSize);
-		if (prev_address && IBlocks[prev_address].Merge(&IBlocks[address]))
-			IBlocks.erase(address);
-		if (IBlocks[address].EndsBLR() || insts == 0)
+		bool Broken = Block.IBlocks[address].Flatten(address, minAddress, maxAddress, &insts, blockSize);
+		if (insts == 0 || Broken)
+		{
+			Block.IBlocks.erase(address);
 			break;
+		}
+		/*
+		 * XXX: Enable
+		if (prev_address && Block.IBlocks[prev_address].Merge(&Block.IBlocks[address]))
+			Block.IBlocks.erase(address);
+		*/
+		if (Block.IBlocks[address].EndsBLR())
+			break;
+		
 		prev_address = address;
 		address += insts * 4;
 		num_inst += insts;
+		if (num_inst >= blockSize)
+			break;
 	}
 	// Do internal loop checks
-	CheckInternalJumps(IBlocks);
-
-	// A broken block is a block that does not end in a branch
-	if (!IBlocks[address].EndsBLR() && num_inst > 0)
-		broken_block = true;
+	CheckInternalJumps(Block.IBlocks);
 }
 // Does not yet perform inlining - although there are plans for that.
 // Returns the exit address of the next PC
@@ -693,7 +710,8 @@ u32 Flatten(u32 address, int *realsize, BlockStats *st, BlockRegStats *gpa,
 			int capacity_of_merged_addresses, int& size_of_merged_addresses)
 {
 	//std::map<u32, IBlock> IBlocks;
-	//FlattenNew(address, IBlocks, broken_block, buffer, blockSize); 
+	//FlattenNew(address, IBlocks, broken_block, buffer, numinst, blockSize); 
+
 	if (capacity_of_merged_addresses < FUNCTION_FOLLOWING_THRESHOLD) {
 		PanicAlert("Capacity of merged_addresses is too small!");
 	}

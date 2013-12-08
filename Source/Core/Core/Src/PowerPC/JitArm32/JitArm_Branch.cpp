@@ -44,9 +44,6 @@ void JitArm::sc(UGeckoInstruction inst)
 	INSTRUCTION_START
 	JITDISABLE(bJITBranchOff)
 
-	gpr.Flush();
-	fpr.Flush();
-
 	ARMReg rA = gpr.GetReg();
 	MOVI2R(rA, js.compilerPC + 4);
 	STR(rA, R9, PPCSTATE_OFF(pc));
@@ -63,12 +60,9 @@ void JitArm::rfi(UGeckoInstruction inst)
 	INSTRUCTION_START
 	JITDISABLE(bJITBranchOff)
 
-	gpr.Flush();
-	fpr.Flush();
-
  	// See Interpreter rfi for details
 	const u32 mask = 0x87C0FFFF;
-		const u32 clearMSR13 = 0xFFFBFFFF; // Mask used to clear the bit MSR[13]
+	const u32 clearMSR13 = 0xFFFBFFFF; // Mask used to clear the bit MSR[13]
 	// MSR = ((MSR & ~mask) | (SRR1 & mask)) & clearMSR13;
 	// R0 = MSR location
 	// R1 = MSR contents
@@ -119,15 +113,6 @@ void JitArm::bx(UGeckoInstruction inst)
 		STR(rA, R9, PPCSTATE_OFF(spr[SPR_LR]));
 		//ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
 	}
-	// If this is not the last instruction of a block,
-	// we will skip the rest process.
-	// Because PPCAnalyst::Flatten() merged the blocks.
-	if (!js.isLastInstruction) {
-		return;
-	}
-
-	gpr.Flush();
-	fpr.Flush();
 
 	u32 destination;
 	if (inst.AA)
@@ -160,10 +145,6 @@ void JitArm::bcx(UGeckoInstruction inst)
 	INSTRUCTION_START
 	JITDISABLE(bJITBranchOff)
 	// USES_CR
-	_assert_msg_(DYNA_REC, js.isLastInstruction, "bcx not last instruction of block");
-
-	gpr.Flush();
-	fpr.Flush();
 
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
@@ -207,6 +188,7 @@ void JitArm::bcx(UGeckoInstruction inst)
 		destination = SignExt16(inst.BD << 2);
 	else
 		destination = js.compilerPC + SignExt16(inst.BD << 2);
+	
 	WriteExit(destination);
 
 	if ((inst.BO & BO_DONT_CHECK_CONDITION) == 0)
@@ -220,9 +202,6 @@ void JitArm::bcctrx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(bJITBranchOff)
-
-	gpr.Flush();
-	fpr.Flush();
 
 	// bcctrx doesn't decrement and/or test CTR
 	_dbg_assert_msg_(POWERPC, inst.BO_2 & BO_DONT_DECREMENT_FLAG, "bcctrx with decrement and test CTR option is invalid!");
@@ -283,20 +262,6 @@ void JitArm::bclrx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(bJITBranchOff)
-	if (!js.isLastInstruction &&
-		(inst.BO & (1 << 4)) && (inst.BO & (1 << 2))) {
-		if (inst.LK)
-		{
-			ARMReg rA = gpr.GetReg(false);
-			u32 Jumpto = js.compilerPC + 4;
-			MOVI2R(rA, Jumpto);
-			STR(rA, R9, PPCSTATE_OFF(spr[SPR_LR]));
-			// ARMABI_MOVI2M((u32)&LR, js.compilerPC + 4);
-		}
-		return;
-	}
-	gpr.Flush();
-	fpr.Flush();
 
 	ARMReg rA = gpr.GetReg();
 	ARMReg rB = gpr.GetReg();
@@ -307,7 +272,6 @@ void JitArm::bclrx(UGeckoInstruction inst)
 		SUBS(rB, rB, 1);
 		STR(rB, R9, PPCSTATE_OFF(spr[SPR_CTR]));
 
-		//SUB(32, M(&CTR), Imm8(1));
 		if (inst.BO & BO_BRANCH_IF_CTR_0)
 			pCTRDontBranch = B_CC(CC_NEQ);
 		else

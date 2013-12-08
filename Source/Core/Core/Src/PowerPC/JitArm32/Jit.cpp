@@ -191,6 +191,30 @@ void JitArm::WriteExit(u32 destination)
 	Cleanup();
 
 	DoDownCount();
+	if (js.currentIBlock->_instructions[js.instructionNumber]._flags & PPCAnalyst::IBlock::FLAG_IBLOCK_JUMP)
+	{
+		// Only occurs on non-LK instances
+		if (js.compilerPC > destination)
+		{
+			// Place will already be compiled
+			auto it = js.currentSuper->_codeLinkpoints.find(destination);
+			if (it == js.currentSuper->_codeLinkpoints.end())
+			{
+				_fixupBranches[destination].push_back(B());
+
+			}
+			else
+			{
+				B((const void*)it->second);
+				return;
+			}
+		}
+		else
+		{
+			_fixupBranches[destination].push_back(B());
+		}
+	}
+	// The rest of this is SuperBlock linking
 	//If nobody has taken care of this yet (this can be removed when all branches are done)
 	JitBlock *b = js.curBlock;
 	JitBlock::LinkData linkData;
@@ -292,10 +316,23 @@ void STACKALIGN JitArm::Jit(u32 em_address)
 		ClearCache();
 	}
 
+	int num_inst = 0;
+	PPCAnalyst::SuperBlock Block;
+	int blockSize = code_buffer.GetSize();
+	// XXX: Set to -1 for infinite size, breaks on BLR
+	int superBlockSize = 20;
+	if (Core::g_CoreStartupParameter.bEnableDebugging)
+	{
+		// Comment out the following to disable breakpoints (speed-up)
+		blockSize = 1;
+		superBlockSize = 1;
+	}
+	FlattenNew(PowerPC::ppcState.pc, Block, num_inst, blockSize, superBlockSize); 
+
 	int block_num = blocks.AllocateBlock(PowerPC::ppcState.pc);
 	JitBlock *b = blocks.GetBlock(block_num);
-	const u8* BlockPtr = DoJit(PowerPC::ppcState.pc, &code_buffer, b);
-	blocks.FinalizeBlock(block_num, jo.enableBlocklink, BlockPtr);
+	DoJit(PowerPC::ppcState.pc, b, Block, blockSize);
+	blocks.FinalizeBlock(block_num, jo.enableBlocklink, Block);
 }
 void JitArm::Break(UGeckoInstruction inst)
 {
@@ -303,29 +340,32 @@ void JitArm::Break(UGeckoInstruction inst)
 	BKPT(0x4444);
 }
 
-const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlock *b)
+void JitArm::DownCountCheck()
 {
-	int blockSize = code_buf->GetSize();
+	// Downcount flag check, Only valid for linked blocks
+	SetCC(CC_MI);
+	ARMReg rA = gpr.GetReg(false);
+	MOVI2R(rA, js.blockStart);
+	STR(rA, R9, PPCSTATE_OFF(pc));
+	MOVI2R(rA, (u32)asm_routines.doTiming);
+	B(rA);
+	SetCC();
+}
+
+void JitArm::DoJit(u32 em_address, JitBlock *b, PPCAnalyst::SuperBlock &Block, int blockSize)
+{
 	// Memory exception on instruction fetch
 	bool memory_exception = false;
-
-	// A broken block is a block that does not end in a branch
-	bool broken_block = false;
-
-	if (Core::g_CoreStartupParameter.bEnableDebugging)
-	{
-		// Comment out the following to disable breakpoints (speed-up)
-		blockSize = 1;
-		broken_block = true;
-		Trace();
-	}
 
 	if (em_address == 0)
 	{
 		Core::SetState(Core::CORE_PAUSE);
 		PanicAlert("ERROR: Compiling at 0. LR=%08x CTR=%08x", LR, CTR);
 	}
-
+	
+	if (blockSize == 1)
+		Trace();
+		
 	if (Core::g_CoreStartupParameter.bMMU && (em_address & JIT_ICACHE_VMEM_BIT))
 	{
 		if (!Memory::TranslateAddress(em_address, Memory::FLAG_OPCODE))
@@ -334,178 +374,199 @@ const u8* JitArm::DoJit(u32 em_address, PPCAnalyst::CodeBuffer *code_buf, JitBlo
 			memory_exception = true;
 		}
 	}
-
-
-	int size = 0;
-	js.isLastInstruction = false;
-	js.blockStart = em_address;
-	js.fifoBytesThisBlock = 0;
-	js.curBlock = b;
-	js.block_flags = 0;
-	js.cancel = false;
-
-	// Analyze the block, collect all instructions it is made of (including inlining,
-	// if that is enabled), reorder instructions for optimal performance, and join joinable instructions.
-	u32 nextPC = em_address;
-	u32 merged_addresses[32];
-	const int capacity_of_merged_addresses = sizeof(merged_addresses) / sizeof(merged_addresses[0]);
-	int size_of_merged_addresses = 0;
-	if (!memory_exception)
-	{
-		// If there is a memory exception inside a block (broken_block==true), compile up to that instruction.
-		nextPC = PPCAnalyst::Flatten(em_address, &size, &js.st, &js.gpa, &js.fpa, broken_block, code_buf, blockSize, merged_addresses, capacity_of_merged_addresses, size_of_merged_addresses);
-	}
-	PPCAnalyst::CodeOp *ops = code_buf->codebuffer;
-
+	// This is for superblock linking
 	const u8 *start = GetCodePtr();
 	b->checkedEntry = start;
 	b->runCount = 0;
+	DownCountCheck();
 
-	// Downcount flag check, Only valid for linked blocks
+	js.currentSuper = &Block;
+	_fixupBranches.clear();
+	for (auto it = Block.IBlocks.begin(); it != Block.IBlocks.end(); ++it)
 	{
-		SetCC(CC_MI);
-		ARMReg rA = gpr.GetReg(false);
-		MOVI2R(rA, js.blockStart);
-		STR(rA, R9, PPCSTATE_OFF(pc));
-		MOVI2R(rA, (u32)asm_routines.doTiming);
-		B(rA);
-		SetCC();
-	}
+		js.downcountAmount = 0;
+		js.isLastInstruction = false;
+		js.blockStart = it->second._blockStart;
+		js.fifoBytesThisBlock = 0;
+		js.curBlock = b;
+		js.currentIBlock = &it->second;
+		js.block_flags = 0;
+		js.cancel = false;
 
-	const u8 *normalEntry = GetCodePtr();
-	b->normalEntry = normalEntry;
+		js.skipnext = false;
+		js.blockSize = it->second.GetSize();
+		js.compilerPC = it->second._blockStart;
 
-	if(ImHereDebug)
-		QuickCallFunction(R14, (void *)&ImHere); //Used to get a trace of the last few blocks before a crash, sometimes VERY useful
+		js.fpa = &it->second._fpa;
+		js.gpa = &it->second._gpa;
+		js.st = &it->second._stats;	
 
-	if (js.fpa.any)
-	{
-		// This block uses FPU - needs to add FP exception bailout
-		ARMReg A = gpr.GetReg();
-		ARMReg C = gpr.GetReg();
-		Operand2 Shift(2, 10); // 1 << 13
-		MOVI2R(C, js.blockStart); // R3
-		LDR(A, R9, PPCSTATE_OFF(msr));
-		TST(A, Shift);
-		SetCC(CC_EQ);
-		STR(C, R9, PPCSTATE_OFF(pc));
-		MOVI2R(A, (u32)asm_routines.fpException);
-		B(A);
-		SetCC();
-		gpr.Unlock(A, C);
-	}
-	// Conditionally add profiling code.
-	if (Profiler::g_ProfileBlocks) {
-		ARMReg rA = gpr.GetReg();
-		ARMReg rB = gpr.GetReg();
-		MOVI2R(rA, (u32)&b->runCount); // Load in to register
-		LDR(rB, rA); // Load the actual value in to R11.
-		ADD(rB, rB, 1); // Add one to the value
-		STR(rB, rA); // Now store it back in the memory location
-		// get start tic
-		PROFILER_QUERY_PERFORMANCE_COUNTER(&b->ticStart);
-		gpr.Unlock(rA, rB);
-	}
-	gpr.Start(js.gpa);
-	fpr.Start(js.fpa);
-	js.downcountAmount = 0;
-	if (!Core::g_CoreStartupParameter.bEnableDebugging)
-	{
-		for (int i = 0; i < size_of_merged_addresses; ++i)
+		const u8 *linkedEntry = GetCodePtr();
+		Block._codeLinkpoints[js.blockStart] = (u32)linkedEntry;
+		
+		auto forwardLinks = _fixupBranches.find(js.compilerPC); 
+		if (forwardLinks != _fixupBranches.end())
+			for(auto link : forwardLinks->second)
+				SetJumpTarget(link);	
+
+		DownCountCheck();
+
+		const u8 *normalEntry = GetCodePtr();
+		Block._codeEntrypoints[js.blockStart] = (u32)normalEntry;
+		b->_mergepoints.insert(b->_mergepoints.end(), it->second._mergepoints.begin(), it->second._mergepoints.end());
+		
+		if(ImHereDebug)
+			QuickCallFunction(R14, (void *)&ImHere); //Used to get a trace of the last few blocks before a crash, sometimes VERY useful
+
+		if (js.fpa->any)
 		{
-			const u32 address = merged_addresses[i];
-			js.downcountAmount += PatchEngine::GetSpeedhackCycles(address);
+			// This block uses FPU - needs to add FP exception bailout
+			ARMReg A = gpr.GetReg();
+			ARMReg C = gpr.GetReg();
+			Operand2 Shift(2, 10); // 1 << 13
+			MOVI2R(C, js.blockStart); // R3
+			LDR(A, R9, PPCSTATE_OFF(msr));
+			TST(A, Shift);
+			SetCC(CC_EQ);
+			STR(C, R9, PPCSTATE_OFF(pc));
+			MOVI2R(A, (u32)asm_routines.fpException);
+			B(A);
+			SetCC();
+			gpr.Unlock(A, C);
 		}
-	}
-
-	js.skipnext = false;
-	js.blockSize = size;
-	js.compilerPC = nextPC;
-	// Translate instructions
-	for (int i = 0; i < (int)size; i++)
-	{
-		js.compilerPC = ops[i].address;
-		js.op = &ops[i];
-		js.instructionNumber = i;
-		const GekkoOPInfo *opinfo = ops[i].opinfo;
-		js.downcountAmount += (opinfo->numCyclesMinusOne + 1);
-
-		if (i == (int)size - 1)
+		// Conditionally add profiling code.
+		if (Profiler::g_ProfileBlocks) {
+			ARMReg rA = gpr.GetReg();
+			ARMReg rB = gpr.GetReg();
+			MOVI2R(rA, (u32)&b->runCount); // Load in to register
+			LDR(rB, rA); // Load the actual value in to R11.
+			ADD(rB, rB, 1); // Add one to the value
+			STR(rB, rA); // Now store it back in the memory location
+			// get start tic
+			PROFILER_QUERY_PERFORMANCE_COUNTER(&b->ticStart);
+			gpr.Unlock(rA, rB);
+		}
+		gpr.Start(*js.gpa);
+		fpr.Start(*js.fpa);
+		
+		bool inMergedBlock = false;
+		u32 mergedSize = 0;
+		u32 mergedAddr = 0;
+		// Translate instructions
+		for (int i = 0; i < js.blockSize; i++)
 		{
-			// WARNING - cmp->branch merging will screw this up.
-			js.isLastInstruction = true;
-			js.next_inst = 0;
-			if (Profiler::g_ProfileBlocks) {
-				// CAUTION!!! push on stack regs you use, do your stuff, then pop
-				PROFILER_VPUSH;
-				// get end tic
-				PROFILER_QUERY_PERFORMANCE_COUNTER(&b->ticStop);
-				// tic counter += (end tic - start tic)
-				PROFILER_ADD_DIFF_LARGE_INTEGER(&b->ticCounter, &b->ticStop, &b->ticStart);
-				PROFILER_VPOP;
+			js.compilerPC = it->second._code[i].address;
+			js.op = &it->second._code[i];
+			js.instructionNumber = i;
+			const GekkoOPInfo *opinfo = it->second._code[i].opinfo;
+			js.downcountAmount += (opinfo->numCyclesMinusOne + 1);
+
+			if (i == (int)js.blockSize - 1)
+			{
+				// WARNING - cmp->branch merging will screw this up.
+				js.isLastInstruction = true;
+				js.next_inst = 0;
+				if (Profiler::g_ProfileBlocks) {
+					// CAUTION!!! push on stack regs you use, do your stuff, then pop
+					PROFILER_VPUSH;
+					// get end tic
+					PROFILER_QUERY_PERFORMANCE_COUNTER(&b->ticStop);
+					// tic counter += (end tic - start tic)
+					PROFILER_ADD_DIFF_LARGE_INTEGER(&b->ticCounter, &b->ticStop, &b->ticStart);
+					PROFILER_VPOP;
+				}
 			}
-		}
-		else
-		{
-			// help peephole optimizations
-			js.next_inst = ops[i + 1].inst;
-			js.next_compilerPC = ops[i + 1].address;
-		}
-		if (jo.optimizeGatherPipe && js.fifoBytesThisBlock >= 32)
-		{
-			js.fifoBytesThisBlock -= 32;
-			PUSH(4, R0, R1, R2, R3);
-			QuickCallFunction(R14, (void*)&GPFifo::CheckGatherPipe);
-			POP(4, R0, R1, R2, R3);
-		}
-		if (Core::g_CoreStartupParameter.bEnableDebugging)
-		{
-			// Add run count
-			static const u64 One = 1;
-			ARMReg RA = gpr.GetReg();
-			ARMReg RB = gpr.GetReg();
-			ARMReg VA = fpr.GetReg();
-			ARMReg VB = fpr.GetReg();
-			MOVI2R(RA, (u32)&opinfo->runCount);
-			MOVI2R(RB, (u32)&One);
-			VLDR(VA, RA, 0);
-			VLDR(VB, RB, 0);
-			NEONXEmitter nemit(this);
-			nemit.VADD(I_64, VA, VA, VB);
-			VSTR(VA, RA, 0);
-			gpr.Unlock(RA, RB);
-			fpr.Unlock(VA);
-			fpr.Unlock(VB);
-		}
-		if (!ops[i].skip)
-		{
-				PrintDebug(ops[i].inst, 0);
+			else
+			{
+				// help peephole optimizations
+				js.next_inst = it->second._code[i + 1].inst;
+				js.next_compilerPC = it->second._code[i + 1].address;
+			}
+			if (jo.optimizeGatherPipe && js.fifoBytesThisBlock >= 32)
+			{
+				js.fifoBytesThisBlock -= 32;
+				PUSH(4, R0, R1, R2, R3);
+				QuickCallFunction(R14, (void*)&GPFifo::CheckGatherPipe);
+				POP(4, R0, R1, R2, R3);
+			}
+			if (Core::g_CoreStartupParameter.bEnableDebugging)
+			{
+				// Add run count
+				static const u64 One = 1;
+				ARMReg RA = gpr.GetReg();
+				ARMReg RB = gpr.GetReg();
+				ARMReg VA = fpr.GetReg();
+				ARMReg VB = fpr.GetReg();
+				MOVI2R(RA, (u32)&opinfo->runCount);
+				MOVI2R(RB, (u32)&One);
+				VLDR(VA, RA, 0);
+				VLDR(VB, RB, 0);
+				NEONXEmitter nemit(this);
+				nemit.VADD(I_64, VA, VA, VB);
+				VSTR(VA, RA, 0);
+				gpr.Unlock(RA, RB);
+				fpr.Unlock(VA);
+				fpr.Unlock(VB);
+			}
+			if (!it->second._code[i].skip)
+			{
+				if ((it->second._flags & PPCAnalyst::IBlock::FLAG_CONTAINS_INLINE) && !inMergedBlock)
+				{
+					for (auto inlineBlock = it->second._mergepoints.begin(); 
+							inlineBlock != it->second._mergepoints.end();
+							++inlineBlock)
+					{
+						if (inlineBlock->first == js.compilerPC)
+						{
+							inMergedBlock = true;
+							mergedAddr = inlineBlock->first;
+							mergedSize = inlineBlock->second - 1;
+
+							ARMReg RA = gpr.GetReg();
+							MOVI2R(RA, it->second._code[i - 1].address + 4);
+							STR(RA, R9, PPCSTATE_OFF(spr[SPR_LR]));
+							gpr.Unlock(RA);
+						}
+					}
+				}
+				PrintDebug(it->second._code[i].inst, 0);
 				if (js.memcheck && (opinfo->flags & FL_USE_FPU))
 				{
 					// Don't do this yet
 					BKPT(0x7777);
 				}
-				JitArmTables::CompileInstruction(ops[i]);
+
+				// We can allow entry inside of a full block
+				// We've got to make sure the register caches are flushed first
+				if (opinfo->flags & FL_ENDBLOCK)
+				{
+					gpr.Flush();
+					fpr.Flush();
+					const u8 *IBlockEntry = GetCodePtr();
+					Block._codeEntrypoints[js.compilerPC] = (u32)IBlockEntry;
+				}
+				
+				JitArmTables::CompileInstruction(it->second._code[i]);
 				fpr.Flush();
 				if (js.memcheck && (opinfo->flags & FL_LOADSTORE))
 				{
 					// Don't do this yet
 					BKPT(0x666);
 				}
+				if (inMergedBlock && js.compilerPC == (mergedAddr + (mergedSize * 4)))
+					inMergedBlock = false;
+			}
 		}
-	}
-	if (memory_exception)
-		BKPT(0x500);
-	if	(broken_block)
-	{
-		printf("Broken Block going to 0x%08x\n", nextPC);
-		WriteExit(nextPC);
+		if (memory_exception)
+			BKPT(0x500);
+		if (!it->second._endsBranch)
+			WriteExit(js.compilerPC + 4);
+
+		b->flags = js.block_flags;
+		b->originalSize = js.blockSize;
 	}
 
-	b->flags = js.block_flags;
-	b->codeSize = (u32)(GetCodePtr() - normalEntry);
-	b->originalSize = size;
+	BKPT(0x32); // Error if it hits here
 	FlushIcache();
-	return start;
 }
 
