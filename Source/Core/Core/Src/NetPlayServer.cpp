@@ -945,7 +945,7 @@ void NetPlayServer::EndReservation()
 void NetPlayServer::ForceDisconnectDevice(int classId, int index)
 {
 	Packet packet;
-	packet.W((MessageId)NP_MSG_DISCONNECT_DEVICE);
+	packet.W((MessageId)NP_MSG_FORCE_DISCONNECT_DEVICE);
 	packet.W((u8)classId);
 	packet.W((u8)index);
 	packet.W((u16)0);

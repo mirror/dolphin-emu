@@ -330,8 +330,9 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 			goto forward_to_iosync;
 		}
 
-	case NP_MSG_DISCONNECT_DEVICE:
 	case NP_MSG_CONNECT_DEVICE:
+	case NP_MSG_DISCONNECT_DEVICE:
+	case NP_MSG_FORCE_DISCONNECT_DEVICE:
 	case NP_MSG_REPORT:
 	case NP_MSG_SET_RESERVATION:
 	case NP_MSG_CLEAR_RESERVATION:

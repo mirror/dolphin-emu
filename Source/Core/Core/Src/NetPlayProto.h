@@ -25,7 +25,7 @@ struct Rpt : public std::vector<u8>
 	u16		channel;
 };
 
-#define NETPLAY_VERSION		"Dolphin NetPlay 2013-10-03"
+#define NETPLAY_VERSION		"Dolphin NetPlay 2013-12-09"
 
 const int NETPLAY_INITIAL_GCTIME = 1272737767;
 
@@ -43,17 +43,18 @@ enum
 
 	NP_MSG_CONNECT_DEVICE			= 0x61,
 	NP_MSG_DISCONNECT_DEVICE		= 0x62,
-	NP_MSG_REPORT					= 0x63,
+	NP_MSG_FORCE_DISCONNECT_DEVICE	= 0x63,
+	NP_MSG_REPORT					= 0x64,
 
 	// Todo: explain why this is a good idea.
 	// [s->c] Block on a specific subframe in the future.
-	NP_MSG_SET_RESERVATION			= 0x64,
+	NP_MSG_SET_RESERVATION			= 0x65,
 	// [s->c] Clear the reservation and optionally run some commands.
-	NP_MSG_CLEAR_RESERVATION		= 0x65,
+	NP_MSG_CLEAR_RESERVATION		= 0x66,
 	// [c->s] Reservation was either OK or failed because that frame already started.
-	NP_MSG_RESERVATION_RESULT		= 0x66,
+	NP_MSG_RESERVATION_RESULT		= 0x67,
 	// [c->s] Reservation was executed.
-	NP_MSG_RESERVATION_DONE			= 0x67,
+	NP_MSG_RESERVATION_DONE			= 0x68,
 
 	NP_MSG_DBG_MEMORY_HASH			= 0x70,
 

@@ -192,7 +192,7 @@ Packet BackendNetPlay::DequeueReport(int classId, int index, bool* keepGoing)
 			p.Do(flags);
 			if (packetType == NP_MSG_DISCONNECT_DEVICE)
 			{
-				WARN_LOG(NETPLAY, "Disconnecting remote class %u device %u", classId, index);
+				WARN_LOG(NETPLAY, "Force disconnecting remote class %u device %u", classId, index);
 				DoDisconnect(classId, index);
 				*keepGoing = false;
 				return PWBuffer();
@@ -300,7 +300,7 @@ void BackendNetPlay::ProcessPacket(Packet&& p)
 		    localIndex >= g_Classes[classId]->GetMaxDeviceIndex())
 			goto failure;
 
-		WARN_LOG(NETPLAY, "Connecting remote class %u device %u with local %u/pid%u", classId, index, localIndex, localPlayer);
+		WARN_LOG(NETPLAY, "Connecting remote class %u device %u with local %u/pid%u sf=%lld", classId, index, localIndex, localPlayer, m_SubframeId);
 		// The disconnect might be queued.
 		DoDisconnect(classId, index);
 		auto& di = m_DeviceInfo[classId][index];
@@ -312,6 +312,16 @@ void BackendNetPlay::ProcessPacket(Packet&& p)
 		}
 	case NP_MSG_DISCONNECT_DEVICE:
 		{
+		WARN_LOG(NETPLAY, "Disconnecting remote class %u device %u", classId, index);
+		g_Classes[classId]->SetIndex(index, -1);
+		DoDisconnect(classId, index);
+		break;
+		}
+	case NP_MSG_FORCE_DISCONNECT_DEVICE:
+		{
+		// A force disconnect needs to be queued because it's not part of a
+		// reservation (because waiting for a reservation would mean blocking on
+		// missing packets)
 		g_Classes[classId]->SetIndex(index, -1);
 		// fall through
 		}
