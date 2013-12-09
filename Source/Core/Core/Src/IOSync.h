@@ -31,6 +31,7 @@ public:
 	virtual void DoState(PointerWrap& p) = 0;
 	virtual void StartGame() {}
 	virtual void StopGame() {}
+	virtual bool ShouldResetAfterStop() = 0;
 	virtual void NewLocalSubframe() {}
 };
 
@@ -195,6 +196,7 @@ void PostInit();
 
 void DoState(PointerWrap& p);
 void Stop();
+void DidStop();
 
 }
 

@@ -31,17 +31,6 @@ Packet BackendLocal::DequeueReport(int classId, int index, bool* keepGoing)
 	return Packet(std::move(result));
 }
 
-void BackendLocal::StopGame()
-{
-	m_Todos.Clear();
-	for (int c = 0; c < Class::NumClasses; c++)
-	{
-		for (int d = 0; d < Class::MaxDeviceIndex; d++)
-			m_ReportQueue[c][d].clear();
-		g_Classes[c]->DisconnectAllLocalDevices();
-	}
-}
-
 void BackendLocal::NewLocalSubframe()
 {
 	while (!m_Todos.Empty())

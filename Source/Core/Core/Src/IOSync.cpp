@@ -100,6 +100,12 @@ void Stop()
 	g_Backend->StopGame();
 }
 
+void DidStop()
+{
+	if (g_Backend->ShouldResetAfterStop())
+		g_Backend.reset();
+}
+
 std::unique_ptr<Backend> g_Backend;
 Class* g_Classes[Class::NumClasses];
 

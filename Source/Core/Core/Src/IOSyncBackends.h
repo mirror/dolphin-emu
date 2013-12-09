@@ -21,11 +21,11 @@ public:
 	virtual void DisconnectLocalDevice(int classId, int localIndex) override;
 	virtual void EnqueueLocalReport(int classId, int localIndex, PWBuffer&& buf) override;
 	virtual Packet DequeueReport(int classId, int index, bool* keepGoing) override;
-	virtual void StopGame() override;
 	virtual void NewLocalSubframe() override;
 	virtual void OnPacketError() override;
 	virtual u32 GetTime() override;
 	virtual void DoState(PointerWrap& p) override;
+	virtual bool ShouldResetAfterStop() override { return true; }
 private:
 	std::deque<PWBuffer> m_ReportQueue[Class::NumClasses][Class::MaxDeviceIndex];
 
@@ -52,6 +52,7 @@ public:
 	virtual void DoState(PointerWrap& p) override;
 	virtual void StartGame() override;
 	virtual void StopGame() override;
+	virtual bool ShouldResetAfterStop() override { return false; }
 
 	// from netplay
 	void PreInitDevices() ON(NET);

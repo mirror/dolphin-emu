@@ -281,6 +281,7 @@ void Stop()  // - Hammertime!
 	INFO_LOG(CONSOLE, "Stop [Main Thread]\t\t---- Shutdown complete ----");
 	Movie::Shutdown();
 	PatchEngine::Shutdown();
+	IOSync::DidStop();
 
 	g_bStopping = false;
 }
