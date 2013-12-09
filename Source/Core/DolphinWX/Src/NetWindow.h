@@ -43,7 +43,7 @@ class DeviceMapDiag;
 class NetPlayDiag : public wxFrame, public NetPlayUI
 {
 public:
-	NetPlayDiag(wxWindow* const parent, const std::string& game, const bool is_hosting = false);
+	NetPlayDiag(wxWindow* const parent, const std::string& game, const bool is_hosting = false, bool print_host_id_to_stdout = false);
 	~NetPlayDiag();
 
 	Common::FifoQueue<std::string>	chat_msgs;
@@ -112,6 +112,7 @@ private:
 	DeviceMapDiag*	m_device_map_diag;
 	wxTimer			m_lag_timer;
 	bool			m_is_running;
+	bool			m_print_host_id_to_stdout;
 
 	std::vector<int>	m_playerids;
 
@@ -125,14 +126,14 @@ public:
 	~ConnectDiag();
 	std::string GetHost();
 	bool Validate();
+	bool IsHostOk();
 
+	wxTextCtrl* m_HostCtrl;
 private:
 	DECLARE_EVENT_TABLE()
 
 	void OnChange(wxCommandEvent& event);
 	void OnThread(wxCommandEvent& event);
-	bool IsHostOk();
-	wxTextCtrl* m_HostCtrl;
 	wxButton* m_ConnectBtn;
 };
 
@@ -154,7 +155,8 @@ namespace NetPlay
 {
 	void GameStopped();
 	void ShowConnectDialog(wxWindow* parent);
-	void StartHosting(std::string id, wxWindow* parent);
+	void ConnectFromCommandLine(wxWindow* parent, std::string host);
+	void StartHosting(wxWindow* parent, std::string id, bool print_host_id_to_stdout);
 }
 
 #endif // _NETWINDOW_H_

@@ -106,11 +106,12 @@ static std::unique_ptr<NetPlayClient> netplay_client;
 extern CFrame* main_frame;
 NetPlayDiag *NetPlayDiag::npd = NULL;
 
-NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const bool is_hosting)
+NetPlayDiag::NetPlayDiag(wxWindow* const parent, const std::string& game, const bool is_hosting, bool print_host_id_to_stdout)
 	: wxFrame(parent, wxID_ANY, wxT(NETPLAY_TITLEBAR), wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE | wxTAB_TRAVERSAL)
 	, m_selected_game(game)
 	, m_start_btn(NULL)
 	, m_is_hosting(is_hosting)
+	, m_print_host_id_to_stdout(print_host_id_to_stdout)
 {
 	npd = this;
 	wxPanel* const panel = new wxPanel(this);
@@ -426,6 +427,22 @@ void NetPlayDiag::OnQuit(wxCommandEvent&)
 
 void NetPlayDiag::UpdateHostLabel()
 {
+	if (m_print_host_id_to_stdout)
+	{
+		switch (g_TraversalClient->m_State)
+		{
+		case TraversalClient::Connecting:
+			printf("Traversal state: Connecting\n");
+			break;
+		case TraversalClient::Failure:
+			printf("Traversal state: Connecting\n");
+			break;
+		case TraversalClient::Connected:
+			printf("Traversal state: Connected %.*s\n", (int) g_TraversalClient->m_HostId.size(), g_TraversalClient->m_HostId.data());
+			break;
+		}
+		fflush(stdout);
+	}
 	wxString label = _(" (internal IP)");
 	auto DeLabel = [=](wxString str) {
 		return WxStrToStr(str.Left(str.Len() - label.Len()));
@@ -869,7 +886,20 @@ void NetPlay::ShowConnectDialog(wxWindow* parent)
 	diag.ShowModal();
 }
 
-void NetPlay::StartHosting(std::string id, wxWindow* parent)
+void NetPlay::ConnectFromCommandLine(wxWindow* parent, std::string host)
+{
+	ConnectDiag diag(parent);
+	diag.m_HostCtrl->SetValue(StrToWxStr(host));
+	if (!diag.IsHostOk())
+	{
+		ERROR_LOG(NETPLAY, "Invalid host specified on command line");
+		exit(1);
+	}
+	diag.Validate();
+	diag.ShowModal();
+}
+
+void NetPlay::StartHosting(wxWindow* parent, std::string id, bool print_host_id_to_stdout)
 {
 	if (NetPlayDiag::GetInstance() != NULL)
 	{
@@ -924,5 +954,5 @@ void NetPlay::StartHosting(std::string id, wxWindow* parent)
 		netplay_server.reset();
 		return;
 	}
-	new NetPlayDiag(parent, id, true);
+	new NetPlayDiag(parent, id, true, print_host_id_to_stdout);
 }

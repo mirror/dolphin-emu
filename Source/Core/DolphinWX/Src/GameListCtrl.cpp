@@ -1080,7 +1080,7 @@ void CGameListCtrl::OnHostNetplay(wxCommandEvent& WXUNUSED (event))
 	const GameListItem *iso = GetSelectedISO();
 	if (iso)
 	{
-		NetPlay::StartHosting(iso->GetRevisionSpecificUniqueID(), this);
+		NetPlay::StartHosting(this, iso->GetRevisionSpecificUniqueID(), false);
 		main_frame->UpdateGUI();
 	}
 }

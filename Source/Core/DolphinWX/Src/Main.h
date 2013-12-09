@@ -28,8 +28,12 @@ private:
 	bool BatchMode;
 	bool LoadFile;
 	bool playMovie;
+	bool ConnectToServer;
+	bool HostServer;
 	wxString FileToLoad;
 	wxString movieFile;
+	wxString Server;
+	wxString GameID;
 	wxLocale *m_locale;
 
 	void AfterInit(wxTimerEvent& WXUNUSED(event));

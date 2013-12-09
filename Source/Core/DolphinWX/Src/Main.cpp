@@ -28,6 +28,7 @@
 #include "ExtendedTrace.h"
 #include "BootManager.h"
 #include "Frame.h"
+#include "NetWindow.h"
 
 #include "VideoBackendBase.h"
 
@@ -181,6 +182,16 @@ bool DolphinApp::OnInit()
 			wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL
 		},
 		{
+			wxCMD_LINE_OPTION, "c", "connect",
+			"Connect to Netplay host",
+			wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL
+		},
+		{
+			wxCMD_LINE_OPTION, "H", "host",
+			"Host Netplay game (with game id, e.g. RSBE01 or GALE01r2)",
+			wxCMD_LINE_VAL_NONE, wxCMD_LINE_PARAM_OPTIONAL
+		},
+		{
 			wxCMD_LINE_NONE, NULL, NULL, NULL, wxCMD_LINE_VAL_NONE, 0
 		}
 	};
@@ -201,6 +212,8 @@ bool DolphinApp::OnInit()
 	selectAudioEmulation = parser.Found(wxT("audio_emulation"),
 		&audioEmulationName);
 	playMovie = parser.Found(wxT("movie"), &movieFile);
+	ConnectToServer = parser.Found(wxT("connect"), &Server);
+	HostServer = parser.Found(wxT("host"), &GameID);
 
 	if (parser.Found(wxT("user"), &userPath))
 	{
@@ -390,6 +403,14 @@ void DolphinApp::AfterInit(wxTimerEvent& WXUNUSED(event))
 		{
 			main_frame->BootGame("");
 		}
+	}
+	else if (ConnectToServer)
+	{
+		NetPlay::ConnectFromCommandLine(main_frame, WxStrToStr(Server));
+	}
+	else if (HostServer)
+	{
+		NetPlay::StartHosting(main_frame, WxStrToStr(GameID), true);
 	}
 }
 
