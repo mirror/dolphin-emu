@@ -35,7 +35,7 @@ public:
 	static void RotateView(float x, float y);
 	static void ResetView();
 
-	static VertexShaderConstants constants;
+	static VertexShaderConstants* constants;
 	static bool dirty;
 };
 

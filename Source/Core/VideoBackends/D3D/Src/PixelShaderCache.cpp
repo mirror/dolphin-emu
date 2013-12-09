@@ -340,7 +340,7 @@ ID3D11Buffer* &PixelShaderCache::GetConstantBuffer()
 	{
 		D3D11_MAPPED_SUBRESOURCE map;
 		D3D::context->Map(pscbuf, 0, D3D11_MAP_WRITE_DISCARD, 0, &map);
-		memcpy(map.pData, &PixelShaderManager::constants, sizeof(PixelShaderConstants));
+		memcpy(map.pData, PixelShaderManager::constants, sizeof(PixelShaderConstants));
 		D3D::context->Unmap(pscbuf, 0);
 		PixelShaderManager::dirty = false;
 

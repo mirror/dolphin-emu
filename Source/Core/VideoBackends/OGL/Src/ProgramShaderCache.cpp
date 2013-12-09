@@ -203,8 +203,8 @@ void ProgramShaderCache::UploadConstants()
 				// This is just a hack to support our BUFFERDATA upload method
 				// as it's broken to uploaded in a splited way
 				static u8 *tmpbuffer = new u8[s_ubo_buffer_size];
-				memcpy(tmpbuffer, &PixelShaderManager::constants, sizeof(PixelShaderConstants));
-				memcpy(tmpbuffer+ROUND_UP(sizeof(PixelShaderConstants), s_ubo_align), &VertexShaderManager::constants, sizeof(VertexShaderConstants));
+				memcpy(tmpbuffer, PixelShaderManager::constants, sizeof(PixelShaderConstants));
+				memcpy(tmpbuffer+ROUND_UP(sizeof(PixelShaderConstants), s_ubo_align), VertexShaderManager::constants, sizeof(VertexShaderConstants));
 				size_t offset = s_buffer->Upload(tmpbuffer, s_ubo_buffer_size);
 				glBindBufferRange(GL_UNIFORM_BUFFER, 1,
 						s_buffer->getBuffer(), offset, sizeof(PixelShaderConstants));
@@ -213,10 +213,10 @@ void ProgramShaderCache::UploadConstants()
 			}
 			else
 			{
-				size_t offset = s_buffer->Upload((u8*)&PixelShaderManager::constants, ROUND_UP(sizeof(PixelShaderConstants), s_ubo_align));
+				size_t offset = s_buffer->Upload((u8*)PixelShaderManager::constants, ROUND_UP(sizeof(PixelShaderConstants), s_ubo_align));
 				glBindBufferRange(GL_UNIFORM_BUFFER, 1,
 						s_buffer->getBuffer(), offset, sizeof(PixelShaderConstants));
-				offset = s_buffer->Upload((u8*)&VertexShaderManager::constants, ROUND_UP(sizeof(VertexShaderConstants), s_ubo_align));
+				offset = s_buffer->Upload((u8*)VertexShaderManager::constants, ROUND_UP(sizeof(VertexShaderConstants), s_ubo_align));
 				glBindBufferRange(GL_UNIFORM_BUFFER, 2,
 						s_buffer->getBuffer(), offset, sizeof(VertexShaderConstants));
 			}
@@ -234,12 +234,12 @@ void ProgramShaderCache::UploadConstants()
 		for (unsigned int a = 0; a < 10; ++a)
 		{
 			if(last_entry->shader.UniformSize[a] > 0)
-				glUniform4fv(last_entry->shader.UniformLocations[a], last_entry->shader.UniformSize[a], (float*) &PixelShaderManager::constants + 4*PSVar_Loc[a]);
+				glUniform4fv(last_entry->shader.UniformLocations[a], last_entry->shader.UniformSize[a], (float*) PixelShaderManager::constants + 4*PSVar_Loc[a]);
 		}
 		for (unsigned int a = 0; a < 9; ++a)
 		{
 			if(last_entry->shader.UniformSize[a+10] > 0)
-				glUniform4fv(last_entry->shader.UniformLocations[a+10], last_entry->shader.UniformSize[a+10], (float*) &VertexShaderManager::constants + 4*VSVar_Loc[a]);
+				glUniform4fv(last_entry->shader.UniformLocations[a+10], last_entry->shader.UniformSize[a+10], (float*) VertexShaderManager::constants + 4*VSVar_Loc[a]);
 		}
 
 		ADDSTAT(stats.thisFrame.bytesUniformStreamed, s_ubo_buffer_size);

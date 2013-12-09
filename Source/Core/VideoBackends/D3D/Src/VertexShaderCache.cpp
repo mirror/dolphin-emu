@@ -44,7 +44,7 @@ ID3D11Buffer* &VertexShaderCache::GetConstantBuffer()
 	{
 		D3D11_MAPPED_SUBRESOURCE map;
 		D3D::context->Map(vscbuf, 0, D3D11_MAP_WRITE_DISCARD, 0, &map);
-		memcpy(map.pData, &VertexShaderManager::constants, sizeof(VertexShaderConstants));
+		memcpy(map.pData, VertexShaderManager::constants, sizeof(VertexShaderConstants));
 		D3D::context->Unmap(vscbuf, 0);
 		VertexShaderManager::dirty = false;
 
