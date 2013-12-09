@@ -196,7 +196,7 @@ Packet BackendNetPlay::DequeueReport(int classId, int index, bool* keepGoing)
 			p.Do(_classId);
 			p.Do(_index);
 			p.Do(flags);
-			if (packetType == NP_MSG_DISCONNECT_DEVICE)
+			if (packetType == NP_MSG_FORCE_DISCONNECT_DEVICE)
 			{
 				WARN_LOG(NETPLAY, "Force disconnecting remote class %u device %u", classId, index);
 				DoDisconnect(classId, index);
@@ -280,6 +280,7 @@ void BackendNetPlay::ProcessPacket(Packet&& p)
 	{
 	case NP_MSG_CONNECT_DEVICE:
 	case NP_MSG_DISCONNECT_DEVICE:
+	case NP_MSG_FORCE_DISCONNECT_DEVICE:
 	case NP_MSG_REPORT:
 		p.Do(classId);
 		p.Do(index);
