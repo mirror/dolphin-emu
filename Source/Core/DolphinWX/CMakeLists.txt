@@ -105,6 +105,7 @@ else()
 	endif()
 endif()
 
+set(SRCS ${SRCS} Src/GLInterface.cpp)
 if(USE_EGL)
 	set(SRCS ${SRCS} Src/GLInterface/Platform.cpp
 		Src/GLInterface/EGL.cpp)	

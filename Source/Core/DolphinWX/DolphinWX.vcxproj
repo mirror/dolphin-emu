@@ -82,6 +82,7 @@
     <ClCompile Include="Src\FrameTools.cpp" />
     <ClCompile Include="Src\GameListCtrl.cpp" />
     <ClCompile Include="Src\GeckoCodeDiag.cpp" />
+    <ClCompile Include="Src\GLInterface.cpp" />
     <ClCompile Include="Src\GLInterface\WGL.cpp" />
     <ClCompile Include="Src\HotkeyDlg.cpp" />
     <ClCompile Include="Src\InputConfigDiag.cpp" />

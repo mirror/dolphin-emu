@@ -48,7 +48,6 @@
 #include <sys/types.h>
 
 #endif
-void InitInterface();
 
 // Helpers
 GLuint OpenGL_CompileProgram(const char *vertexShader, const char *fragmentShader);

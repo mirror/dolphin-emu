@@ -4,6 +4,9 @@
 
 #ifndef _GLINTERFACEBASE_H_
 #define _GLINTERFACEBASE_H_
+
+#include "VideoCommon.h"
+
 class cInterfaceBase
 {
 protected:

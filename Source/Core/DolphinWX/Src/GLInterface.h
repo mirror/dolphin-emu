@@ -5,6 +5,8 @@
 #ifndef _GLINTERFACE_H_
 #define _GLINTERFACE_H_
 
+#include "GLInterface/InterfaceBase.h"
+
 #if USE_EGL
 #include "GLInterface/Platform.h"
 #else
@@ -41,8 +43,11 @@ typedef struct {
 #endif
 } GLWindow;
 
+#endif
+
 extern cInterfaceBase *GLInterface;
 extern GLWindow GLWin;
 
-#endif
+void InitInterface();
+
 #endif

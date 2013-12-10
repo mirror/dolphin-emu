@@ -155,7 +155,4 @@ typedef struct {
 #endif
 } GLWindow;
 
-extern cInterfaceBase *GLInterface;
-extern GLWindow GLWin;
-
 #endif

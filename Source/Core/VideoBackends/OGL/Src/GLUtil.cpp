@@ -13,9 +13,6 @@
 
 #include "GLUtil.h"
 
-GLWindow GLWin;
-cInterfaceBase *GLInterface;
-
 namespace OGL
 {
 
@@ -33,18 +30,6 @@ void VideoBackend::UpdateFPSDisplay(const char *text)
 	return GLInterface->UpdateFPSDisplay(temp);
 }
 
-}
-void InitInterface()
-{
-	#if defined(USE_EGL) && USE_EGL
-		GLInterface = new cInterfaceEGL;
-	#elif defined(__APPLE__)
-		GLInterface = new cInterfaceAGL;
-	#elif defined(_WIN32)
-		GLInterface = new cInterfaceWGL;
-	#elif defined(HAVE_X11) && HAVE_X11
-		GLInterface = new cInterfaceGLX;
-	#endif
 }
 
 GLuint OpenGL_CompileProgram ( const char* vertexShader, const char* fragmentShader )
