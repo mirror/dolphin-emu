@@ -28,27 +28,14 @@
 #endif
 
 typedef struct {
-#if defined(USE_EGL) && USE_EGL // This is currently a X11/EGL implementation for desktop
-	int screen;
-	EGLSurface egl_surf;
-	EGLContext egl_ctx;
-	EGLDisplay egl_dpy;
-	int x, y;
-	unsigned int width, height;
-#elif defined(__APPLE__)
-	NSView *cocoaWin;
-	NSOpenGLContext *cocoaCtx;
-#elif defined(HAVE_X11) && HAVE_X11
+#if defined(HAVE_X11) && HAVE_X11
 	int screen;
 	Window win;
 	Window parent;
 	// dpy used for glx stuff, evdpy for window events etc.
 	// evdpy is to be used by XEventThread only
-	Display *dpy, *evdpy;
+	Display *evdpy;
 	XVisualInfo *vi;
-	GLXContext ctx;
-	XSetWindowAttributes attr;
-	std::thread xEventThread;
 	int x, y;
 	unsigned int width, height;
 #endif

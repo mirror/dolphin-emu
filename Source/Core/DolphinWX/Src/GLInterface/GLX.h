@@ -29,6 +29,9 @@ class cInterfaceGLX : public cInterfaceBase
 {
 private:
 	cX11Window XWindow;
+
+	Display *dpy;
+	GLXContext ctx;
 public:
 	friend class cX11Window;
 	void SwapInterval(int Interval);

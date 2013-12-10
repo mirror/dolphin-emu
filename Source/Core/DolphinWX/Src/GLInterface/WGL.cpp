@@ -11,8 +11,6 @@
 #include "WGL.h"
 
 #include "EmuWindow.h"
-static HDC hDC = NULL;       // Private GDI Device Context
-static HGLRC hRC = NULL;     // Permanent Rendering Context
 
 void cInterfaceWGL::SwapInterval(int Interval)
 {

@@ -28,7 +28,7 @@ void cInterfaceEGL::UpdateFPSDisplay(const char *text)
 }
 void cInterfaceEGL::Swap()
 {
-	eglSwapBuffers(GLWin.egl_dpy, GLWin.egl_surf);
+	eglSwapBuffers(GLWin.egl_dpy, egl_surf);
 }
 void cInterfaceEGL::SwapInterval(int Interval)
 {
@@ -116,17 +116,17 @@ bool cInterfaceEGL::Create(void *&window_handle)
 	s = eglQueryString(GLWin.egl_dpy, EGL_CLIENT_APIS);
 	INFO_LOG(VIDEO, "EGL_CLIENT_APIS = %s\n", s);
 
-	GLWin.egl_ctx = eglCreateContext(GLWin.egl_dpy, config, EGL_NO_CONTEXT, ctx_attribs );
-	if (!GLWin.egl_ctx) {
+	egl_ctx = eglCreateContext(GLWin.egl_dpy, config, EGL_NO_CONTEXT, ctx_attribs );
+	if (!egl_ctx) {
 		INFO_LOG(VIDEO, "Error: eglCreateContext failed\n");
 		exit(1);
 	}
 
 	GLWin.native_window = Platform.CreateWindow();
 
-	GLWin.egl_surf = eglCreateWindowSurface(GLWin.egl_dpy, config,
+	egl_surf = eglCreateWindowSurface(GLWin.egl_dpy, config,
 				GLWin.native_window, NULL);
-	if (!GLWin.egl_surf) {
+	if (!egl_surf) {
 		INFO_LOG(VIDEO, "Error: eglCreateWindowSurface failed\n");
 		exit(1);
 	}
@@ -139,23 +139,23 @@ bool cInterfaceEGL::Create(void *&window_handle)
 
 bool cInterfaceEGL::MakeCurrent()
 {
-	return eglMakeCurrent(GLWin.egl_dpy, GLWin.egl_surf, GLWin.egl_surf, GLWin.egl_ctx);
+	return eglMakeCurrent(GLWin.egl_dpy, egl_surf, egl_surf, egl_ctx);
 }
 // Close backend
 void cInterfaceEGL::Shutdown()
 {
 	Platform.DestroyWindow();
-	if (GLWin.egl_ctx && !eglMakeCurrent(GLWin.egl_dpy, GLWin.egl_surf, GLWin.egl_surf, GLWin.egl_ctx))
+	if (egl_ctx && !eglMakeCurrent(GLWin.egl_dpy, egl_surf, egl_surf, egl_ctx))
 		NOTICE_LOG(VIDEO, "Could not release drawing context.");
-	if (GLWin.egl_ctx)
+	if (egl_ctx)
 	{
 		eglMakeCurrent(GLWin.egl_dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-		if(!eglDestroyContext(GLWin.egl_dpy, GLWin.egl_ctx))
+		if(!eglDestroyContext(GLWin.egl_dpy, egl_ctx))
 			NOTICE_LOG(VIDEO, "Could not destroy drawing context.");
-		if(!eglDestroySurface(GLWin.egl_dpy, GLWin.egl_surf))
+		if(!eglDestroySurface(GLWin.egl_dpy, egl_surf))
 			NOTICE_LOG(VIDEO, "Could not destroy window surface.");
 		if(!eglTerminate(GLWin.egl_dpy))
 			NOTICE_LOG(VIDEO, "Could not destroy display connection.");
-		GLWin.egl_ctx = NULL;
+		egl_ctx = NULL;
 	}
 }

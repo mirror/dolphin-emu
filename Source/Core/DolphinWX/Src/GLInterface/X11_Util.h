@@ -26,6 +26,10 @@ class cXInterface
 {
 private:
 	void XEventThread();
+
+	XSetWindowAttributes attr;
+	std::thread xEventThread;
+	Display *dpy;
 public:
 	bool ServerConnect(void);
 	bool Initialize(void *config);
@@ -39,6 +43,9 @@ class cX11Window
 {
 private:
 	void XEventThread();
+
+	XSetWindowAttributes attr;
+	std::thread xEventThread;
 public:
 	void CreateXWindow(void);
 	void DestroyXWindow(void);

@@ -28,7 +28,7 @@
 
 void cInterfaceAGL::Swap()
 {
-	[GLWin.cocoaCtx flushBuffer];
+	[cocoaCtx flushBuffer];
 }
 
 // Create rendering window.
@@ -38,12 +38,12 @@ bool cInterfaceAGL::Create(void *&window_handle)
 	int _tx, _ty, _twidth, _theight;
 	Host_GetRenderWindowSize(_tx, _ty, _twidth, _theight);
 
-	GLWin.cocoaWin = (NSView*)(((wxPanel*)window_handle)->GetHandle());
+	cocoaWin = (NSView*)(((wxPanel*)window_handle)->GetHandle());
 
 	// Enable high-resolution display support.
-	[GLWin.cocoaWin setWantsBestResolutionOpenGLSurface:YES];
+	[cocoaWin setWantsBestResolutionOpenGLSurface:YES];
 
-	NSWindow *window = [GLWin.cocoaWin window];
+	NSWindow *window = [cocoaWin window];
 
 	float scale = [window backingScaleFactor];
 	_twidth *= scale;
@@ -61,21 +61,21 @@ bool cInterfaceAGL::Create(void *&window_handle)
 		return false;
 	}
 
-	GLWin.cocoaCtx = [[NSOpenGLContext alloc]
+	cocoaCtx = [[NSOpenGLContext alloc]
 		initWithFormat: fmt shareContext: nil];
 	[fmt release];
-	if (GLWin.cocoaCtx == nil) {
+	if (cocoaCtx == nil) {
 		ERROR_LOG(VIDEO, "failed to create context");
 		return false;
 	}
 
-	if (GLWin.cocoaWin == nil) {
+	if (cocoaWin == nil) {
 		ERROR_LOG(VIDEO, "failed to create window");
 		return false;
 	}
 
-	[window makeFirstResponder:GLWin.cocoaWin];
-	[GLWin.cocoaCtx setView: GLWin.cocoaWin];
+	[window makeFirstResponder:cocoaWin];
+	[cocoaCtx setView: cocoaWin];
 	[window makeKeyAndOrderFront: nil];
 
 	return true;
@@ -83,7 +83,7 @@ bool cInterfaceAGL::Create(void *&window_handle)
 
 bool cInterfaceAGL::MakeCurrent()
 {
-	[GLWin.cocoaCtx makeCurrentContext];
+	[cocoaCtx makeCurrentContext];
 	return true;
 }
 
@@ -97,15 +97,15 @@ bool cInterfaceAGL::ClearCurrent()
 // Close backend
 void cInterfaceAGL::Shutdown()
 {
-	[GLWin.cocoaCtx clearDrawable];
-	[GLWin.cocoaCtx release];
-	GLWin.cocoaCtx = nil;
+	[cocoaCtx clearDrawable];
+	[cocoaCtx release];
+	cocoaCtx = nil;
 }
 
 void cInterfaceAGL::Update()
 {
-	NSWindow *window = [GLWin.cocoaWin window];
-	NSSize size = [GLWin.cocoaWin frame].size;
+	NSWindow *window = [cocoaWin window];
+	NSSize size = [cocoaWin frame].size;
 
 	float scale = [window backingScaleFactor];
 	size.width *= scale;
@@ -118,7 +118,7 @@ void cInterfaceAGL::Update()
 	s_backbuffer_width = size.width;
 	s_backbuffer_height = size.height;
 
-	[GLWin.cocoaCtx update];
+	[cocoaCtx update];
 }
 
 

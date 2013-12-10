@@ -38,7 +38,7 @@ void cInterfaceGLX::SwapInterval(int Interval)
 
 void cInterfaceGLX::Swap()
 {
-	glXSwapBuffers(GLWin.dpy, GLWin.win);
+	glXSwapBuffers(dpy, GLWin.win);
 }
 
 // Create rendering window.
@@ -77,28 +77,28 @@ bool cInterfaceGLX::Create(void *&window_handle)
 		GLX_DOUBLEBUFFER,
 		None };
 
-	GLWin.dpy = XOpenDisplay(0);
+	dpy = XOpenDisplay(0);
 	GLWin.evdpy = XOpenDisplay(0);
 	GLWin.parent = (Window)window_handle;
-	GLWin.screen = DefaultScreen(GLWin.dpy);
+	GLWin.screen = DefaultScreen(dpy);
 	if (GLWin.parent == 0)
-		GLWin.parent = RootWindow(GLWin.dpy, GLWin.screen);
+		GLWin.parent = RootWindow(dpy, GLWin.screen);
 
-	glXQueryVersion(GLWin.dpy, &glxMajorVersion, &glxMinorVersion);
+	glXQueryVersion(dpy, &glxMajorVersion, &glxMinorVersion);
 	NOTICE_LOG(VIDEO, "glX-Version %d.%d", glxMajorVersion, glxMinorVersion);
 
 	// Get an appropriate visual
-	GLWin.vi = glXChooseVisual(GLWin.dpy, GLWin.screen, attrListDbl);
+	GLWin.vi = glXChooseVisual(dpy, GLWin.screen, attrListDbl);
 	if (GLWin.vi == NULL)
 	{
-		GLWin.vi = glXChooseVisual(GLWin.dpy, GLWin.screen, attrListSgl);
+		GLWin.vi = glXChooseVisual(dpy, GLWin.screen, attrListSgl);
 		if (GLWin.vi != NULL)
 		{
 			ERROR_LOG(VIDEO, "Only single buffered visual!");
 		}
 		else
 		{
-			GLWin.vi = glXChooseVisual(GLWin.dpy, GLWin.screen, attrListDefault);
+			GLWin.vi = glXChooseVisual(dpy, GLWin.screen, attrListDefault);
 			if (GLWin.vi == NULL)
 			{
 				ERROR_LOG(VIDEO, "Could not choose visual (glXChooseVisual)");
@@ -110,8 +110,8 @@ bool cInterfaceGLX::Create(void *&window_handle)
 		NOTICE_LOG(VIDEO, "Got double buffered visual!");
 
 	// Create a GLX context.
-	GLWin.ctx = glXCreateContext(GLWin.dpy, GLWin.vi, 0, GL_TRUE);
-	if (!GLWin.ctx)
+	ctx = glXCreateContext(dpy, GLWin.vi, 0, GL_TRUE);
+	if (!ctx)
 	{
 		PanicAlert("Unable to create GLX context.");
 		return false;
@@ -136,12 +136,12 @@ bool cInterfaceGLX::MakeCurrent()
 	XMoveResizeWindow(GLWin.evdpy, GLWin.win, GLWin.x, GLWin.y,
 			GLWin.width, GLWin.height);
 	#endif
-	return glXMakeCurrent(GLWin.dpy, GLWin.win, GLWin.ctx);
+	return glXMakeCurrent(dpy, GLWin.win, ctx);
 }
 
 bool cInterfaceGLX::ClearCurrent()
 {
-	return glXMakeCurrent(GLWin.dpy, None, NULL);
+	return glXMakeCurrent(dpy, None, NULL);
 }
 
 
@@ -149,12 +149,12 @@ bool cInterfaceGLX::ClearCurrent()
 void cInterfaceGLX::Shutdown()
 {
 	XWindow.DestroyXWindow();
-	if (GLWin.ctx)
+	if (ctx)
 	{
-		glXDestroyContext(GLWin.dpy, GLWin.ctx);
-		XCloseDisplay(GLWin.dpy);
+		glXDestroyContext(dpy, ctx);
+		XCloseDisplay(dpy);
 		XCloseDisplay(GLWin.evdpy);
-		GLWin.ctx = NULL;
+		ctx = NULL;
 	}
 }
 

@@ -34,6 +34,9 @@ public:
 	void Shutdown();
 	void Update();
 
+private:
+	NSView *cocoaWin;
+	NSOpenGLContext *cocoaCtx;
 };
 #endif
 

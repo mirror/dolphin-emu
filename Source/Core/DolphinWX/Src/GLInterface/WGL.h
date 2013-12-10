@@ -26,6 +26,10 @@ public:
 
 	void Update();
 	bool PeekMessages();
+
+private:
+	HDC hDC = NULL;       // Private GDI Device Context
+	HGLRC hRC = NULL;     // Permanent Rendering Context
 };
 #endif
 

@@ -36,6 +36,8 @@ class cInterfaceEGL : public cInterfaceBase
 {
 private:
 	cPlatform Platform;
+	EGLContext egl_ctx;
+	EGLSurface egl_surf;
 public:
 	friend class cPlatform;
 	void SwapInterval(int Interval);
