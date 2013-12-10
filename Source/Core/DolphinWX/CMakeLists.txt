@@ -14,6 +14,10 @@ set(LIBS	core
 			enet
 			${GTK2_LIBRARIES})
 
+if((NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin") AND (NOT ANDROID))
+	set(LIBS ${LIBS} rt)
+endif()
+
 if(NOT ANDROID)
 	if(USE_X11)
 	  set(LIBS  ${LIBS} ${X11_LIBRARIES}
