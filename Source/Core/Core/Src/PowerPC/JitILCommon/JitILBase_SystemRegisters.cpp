@@ -3,14 +3,10 @@
 // Refer to the license.txt file included.
 
 #include "Common.h"
-
-#include "../../Core.h"
-#include "../../CoreTiming.h"
-#include "../../HW/SystemTimers.h"
-#include "../PowerPC.h"
-#include "../PPCTables.h"
-
 #include "JitILBase.h"
+
+#include "../../HW/SystemTimers.h"
+
 
 void JitILBase::mtspr(UGeckoInstruction inst)
 {
@@ -175,12 +171,12 @@ void JitILBase::crXX(UGeckoInstruction inst)
 	switch (subop) {
 		case 257:
 			// crand
-			eax = ibuild.EmitAnd(eax, ecx);	
+			eax = ibuild.EmitAnd(eax, ecx);
 			break;
 		case 129:
 			// crandc
 			ecx = ibuild.EmitNot(ecx);
-			eax = ibuild.EmitAnd(eax, ecx);	
+			eax = ibuild.EmitAnd(eax, ecx);
 			break;
 		case 289:
 			// creqv

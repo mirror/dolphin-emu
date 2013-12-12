@@ -2,8 +2,8 @@
 // Licensed under GPLv2
 // Refer to the license.txt file included.
 
+#include <set>
 
-#include "Common.h"
 #include "MemoryUtil.h"
 #include "MemArena.h"
 
@@ -20,13 +20,7 @@
 #include <linux/ashmem.h>
 #endif
 #endif
-#include <set>
 
-#if defined(__APPLE__)
-static const char* ram_temp_file = "/tmp/gc_mem.tmp";
-#elif !defined(_WIN32) // non OSX unixes
-static const char* ram_temp_file = "/dev/shm/gc_mem.tmp";
-#endif
 #ifdef ANDROID
 #define ASHMEM_DEVICE "/dev/ashmem"
 
@@ -37,7 +31,7 @@ int AshmemCreateFileMapping(const char *name, size_t size)
 	if (fd < 0)
 		return fd;
 
-	// We don't really care if we can't set the name, it is optional	
+	// We don't really care if we can't set the name, it is optional
 	ret = ioctl(fd, ASHMEM_SET_NAME, name);
 
 	ret = ioctl(fd, ASHMEM_SET_SIZE, size);
@@ -63,12 +57,22 @@ void MemArena::GrabLowMemSpace(size_t size)
 		return;
 	}
 #else
-	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-	fd = open(ram_temp_file, O_RDWR | O_CREAT, mode);
-	unlink(ram_temp_file);
+	char fn[64];
+	for (int i = 0; i < 10000; i++)
+	{
+		sprintf(fn, "dolphinmem.%d", i);
+		fd = shm_open(fn, O_RDWR | O_CREAT | O_EXCL, 0600);
+		if (fd != -1)
+			break;
+		if (errno != EEXIST)
+		{
+			ERROR_LOG(MEMMAP, "shm_open failed: %s", strerror(errno));
+			return;
+		}
+	}
+	shm_unlink(fn);
 	if (ftruncate(fd, size) < 0)
 		ERROR_LOG(MEMMAP, "Failed to allocate low memory space");
-	return;
 #endif
 }
 
@@ -97,7 +101,7 @@ void *MemArena::CreateView(s64 offset, size_t size, void *base)
 
 	if (retval == MAP_FAILED)
 	{
-		NOTICE_LOG(MEMMAP, "mmap on %s failed", ram_temp_file);
+		NOTICE_LOG(MEMMAP, "mmap failed");
 		return nullptr;
 	}
 	else
@@ -258,13 +262,12 @@ u8 *MemoryMap_Setup(const MemoryView *views, int num_views, u32 flags, MemArena 
 	{
 		base_attempts++;
 		base = (u8 *)base_addr;
-		if (Memory_TryBase(base, views, num_views, flags, arena)) 
+		if (Memory_TryBase(base, views, num_views, flags, arena))
 		{
 			INFO_LOG(MEMMAP, "Found valid memory base at %p after %i tries.", base, base_attempts);
 			base_attempts = 0;
 			break;
 		}
-		
 	}
 #else
 	// Linux32 is fine with the x64 method, although limited to 32-bit with no automirrors.
@@ -290,9 +293,8 @@ void MemoryMap_Shutdown(const MemoryView *views, int num_views, u32 flags, MemAr
 	{
 		const MemoryView* view = &views[i];
 		u8** outptrs[2] = {view->out_ptr_low, view->out_ptr};
-		for (int j = 0; j < 2; j++)
+		for (auto outptr : outptrs)
 		{
-			u8** outptr = outptrs[j];
 			if (outptr && *outptr && !freeset.count(*outptr))
 			{
 				arena->ReleaseView(*outptr, view->size);

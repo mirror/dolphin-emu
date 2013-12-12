@@ -21,11 +21,11 @@ protected:
 	WaveFileWriter g_wave_writer;
 	bool m_muted;
 
-public:   
- SoundStream(CMixer *mixer) : m_mixer(mixer), threadData(0), m_logAudio(false), m_muted(false) {}
-	virtual ~SoundStream() { delete m_mixer;}
+public:
+	SoundStream(CMixer *mixer) : m_mixer(mixer), threadData(0), m_logAudio(false), m_muted(false) {}
+	virtual ~SoundStream() { delete m_mixer; }
 
-	static  bool isValid() { return false; }  
+	static  bool isValid() { return false; }
 	virtual CMixer *GetMixer() const { return m_mixer; }
 	virtual bool Start() { return false; }
 	virtual void SetVolume(int) {}
@@ -33,7 +33,7 @@ public:
 	virtual void Stop() {}
 	virtual void Update() {}
 	virtual void Clear(bool mute) { m_muted = mute; }
-	bool IsMuted() { return m_muted; }
+	bool IsMuted() const { return m_muted; }
 	virtual void StartLogAudio(const char *filename) {
 		if (! m_logAudio) {
 			m_logAudio = true;

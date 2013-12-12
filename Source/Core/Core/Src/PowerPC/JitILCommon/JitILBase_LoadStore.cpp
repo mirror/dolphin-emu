@@ -3,13 +3,6 @@
 // Refer to the license.txt file included.
 
 #include "Common.h"
-
-#include "../PowerPC.h"
-#include "../../Core.h"
-#include "../../HW/GPFifo.h"
-#include "../../HW/Memmap.h"
-#include "../PPCTables.h"
-
 #include "JitILBase.h"
 
 void JitILBase::lhax(UGeckoInstruction inst)
@@ -38,7 +31,7 @@ void JitILBase::lXz(UGeckoInstruction inst)
 	IREmitter::InstLoc val;
 	switch (inst.OPCD & ~0x1)
 	{
-	case 32: val = ibuild.EmitLoad32(addr); break; //lwz	
+	case 32: val = ibuild.EmitLoad32(addr); break; //lwz
 	case 40: val = ibuild.EmitLoad16(addr); break; //lhz
 	case 34: val = ibuild.EmitLoad8(addr);  break; //lbz
 	default: PanicAlert("lXz: invalid access size"); val = 0; break;
@@ -46,7 +39,8 @@ void JitILBase::lXz(UGeckoInstruction inst)
 	ibuild.EmitStoreGReg(val, inst.RD);
 }
 
-void JitILBase::lbzu(UGeckoInstruction inst) {
+void JitILBase::lbzu(UGeckoInstruction inst)
+{
 	INSTRUCTION_START
 	JITDISABLE(bJITLoadStoreOff)
 	const IREmitter::InstLoc uAddress = ibuild.EmitAdd(ibuild.EmitLoadGReg(inst.RA), ibuild.EmitIntConst((int)inst.SIMM_16));
@@ -75,11 +69,14 @@ void JitILBase::lXzx(UGeckoInstruction inst)
 	JITDISABLE(bJITLoadStoreOff)
 	if (js.memcheck) { Default(inst); return; }
 	IREmitter::InstLoc addr = ibuild.EmitLoadGReg(inst.RB);
-	if (inst.RA) {
+
+	if (inst.RA)
+	{
 		addr = ibuild.EmitAdd(addr, ibuild.EmitLoadGReg(inst.RA));
 		if (inst.SUBOP10 & 32)
 			ibuild.EmitStoreGReg(addr, inst.RA);
 	}
+
 	IREmitter::InstLoc val;
 	switch (inst.SUBOP10 & ~32)
 	{
@@ -114,7 +111,7 @@ void JitILBase::dcbz(UGeckoInstruction inst)
 	// TODO!
 #if 0
 	if(Core::g_CoreStartupParameter.bJITOff || Core::g_CoreStartupParameter.bJITLoadStoreOff)
-		{Default(inst); return;} // turn off from debugger	
+		{Default(inst); return;} // turn off from debugger
 	INSTRUCTION_START;
 		MOV(32, R(EAX), gpr.R(inst.RB));
 	if (inst.RA)

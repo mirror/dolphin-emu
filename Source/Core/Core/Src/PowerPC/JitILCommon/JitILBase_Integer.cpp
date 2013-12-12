@@ -6,14 +6,10 @@
 #pragma warning(disable:4146)  // unary minus operator applied to unsigned type, result still unsigned
 #endif
 
-#include "../../Core.h" // include "Common.h", "CoreParameter.h", SCoreStartupParameter
-#include "../PowerPC.h"
-#include "../PPCTables.h"
-
 #include "JitILBase.h"
 
-static void ComputeRC(IREmitter::IRBuilder& ibuild,
-		      IREmitter::InstLoc val) {
+static void ComputeRC(IREmitter::IRBuilder& ibuild, IREmitter::InstLoc val)
+{
 	IREmitter::InstLoc res =
 		ibuild.EmitICmpCRSigned(val, ibuild.EmitIntConst(0));
 	ibuild.EmitStoreCR(res, 0);
@@ -93,22 +89,32 @@ void JitILBase::cmpXX(UGeckoInstruction inst)
 	JITDISABLE(bJITIntegerOff)
 	IREmitter::InstLoc lhs, rhs, res;
 	lhs = ibuild.EmitLoadGReg(inst.RA);
-	if (inst.OPCD == 31) {
+
+	if (inst.OPCD == 31)
+	{
 		rhs = ibuild.EmitLoadGReg(inst.RB);
-		if (inst.SUBOP10 == 32) {
+		if (inst.SUBOP10 == 32)
+		{
 			res = ibuild.EmitICmpCRUnsigned(lhs, rhs);
-		} else {
+		}
+		else
+		{
 			res = ibuild.EmitICmpCRSigned(lhs, rhs);
 		}
-	} else if (inst.OPCD == 10) {
+	}
+	else if (inst.OPCD == 10)
+	{
 		rhs = ibuild.EmitIntConst(inst.UIMM);
 		res = ibuild.EmitICmpCRUnsigned(lhs, rhs);
-	} else { // inst.OPCD == 11
+	}
+	else // inst.OPCD == 11
+	{
 		rhs = ibuild.EmitIntConst(inst.SIMM_16);
 		res = ibuild.EmitICmpCRSigned(lhs, rhs);
 	}
+
 	js.downcountAmount++; //TODO: should this be somewhere else?
-	
+
 	ibuild.EmitStoreCR(res, inst.CRFD);
 }
 
@@ -194,19 +200,24 @@ void JitILBase::subfic(UGeckoInstruction inst)
 	IREmitter::InstLoc nota, lhs, val, test;
 	nota = ibuild.EmitXor(ibuild.EmitLoadGReg(inst.RA),
 			      ibuild.EmitIntConst(-1));
-	if (inst.SIMM_16 == -1) {
+
+	if (inst.SIMM_16 == -1)
+	{
 		val = nota;
 		test = ibuild.EmitIntConst(1);
-	} else {
+	}
+	else
+	{
 		lhs = ibuild.EmitIntConst(inst.SIMM_16 + 1);
 		val = ibuild.EmitAdd(nota, lhs);
 		test = ibuild.EmitICmpUgt(lhs, val);
 	}
+
 	ibuild.EmitStoreGReg(val, inst.RD);
 	ibuild.EmitStoreCarry(test);
 }
 
-void JitILBase::subfcx(UGeckoInstruction inst) 
+void JitILBase::subfcx(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(bJITIntegerOff)
@@ -223,7 +234,7 @@ void JitILBase::subfcx(UGeckoInstruction inst)
 		ComputeRC(ibuild, val);
 }
 
-void JitILBase::subfex(UGeckoInstruction inst) 
+void JitILBase::subfex(UGeckoInstruction inst)
 {
 	INSTRUCTION_START
 	JITDISABLE(bJITIntegerOff)
@@ -290,17 +301,23 @@ void JitILBase::mulhwux(UGeckoInstruction inst)
 }
 
 // skipped some of the special handling in here - if we get crashes, let the interpreter handle this op
-void JitILBase::divwux(UGeckoInstruction inst) {
+void JitILBase::divwux(UGeckoInstruction inst)
+{
 	Default(inst); return;
 #if 0
 	int a = inst.RA, b = inst.RB, d = inst.RD;
 	gpr.FlushLockX(EDX);
 	gpr.Lock(a, b, d);
-	if (d != a && d != b) {
+
+	if (d != a && d != b)
+	{
 		gpr.LoadToX64(d, false, true);
-	} else {
+	}
+	else
+	{
 		gpr.LoadToX64(d, true, true);
 	}
+
 	MOV(32, R(EAX), gpr.R(a));
 	XOR(32, R(EDX), R(EDX));
 	gpr.KillImmediate(b);
@@ -475,7 +492,7 @@ void JitILBase::srawx(UGeckoInstruction inst)
 	test = ibuild.EmitOr(val, mask2);
 	test = ibuild.EmitICmpUgt(test, mask);
 	ibuild.EmitStoreCarry(test);
-	
+
 	if (inst.Rc)
 		ComputeRC(ibuild, val);
 }
@@ -490,7 +507,7 @@ void JitILBase::srawix(UGeckoInstruction inst)
 	unsigned int mask = -1u << inst.SH;
 	test = ibuild.EmitOr(val, ibuild.EmitIntConst(mask & 0x7FFFFFFF));
 	test = ibuild.EmitICmpUgt(test, ibuild.EmitIntConst(mask));
-	
+
 	ibuild.EmitStoreCarry(test);
 	if (inst.Rc)
 		ComputeRC(ibuild, val);

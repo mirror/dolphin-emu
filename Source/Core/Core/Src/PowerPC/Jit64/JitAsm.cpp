@@ -2,21 +2,9 @@
 // Licensed under GPLv2
 // Refer to the license.txt file included.
 
-#include "x64ABI.h"
-#include "x64Emitter.h"
-
-#include "../../HW/Memmap.h"
-
-#include "../PowerPC.h"
-#include "../../CoreTiming.h"
 #include "MemoryUtil.h"
 
-#include "x64ABI.h"
 #include "Jit.h"
-#include "../JitCommon/JitCache.h"
-
-#include "../../HW/GPFifo.h"
-#include "../../Core.h"
 #include "JitAsm.h"
 
 using namespace Gen;
@@ -25,9 +13,9 @@ using namespace Gen;
 
 //TODO - make an option
 //#if _DEBUG
-static bool enableDebug = false; 
+static bool enableDebug = false;
 //#else
-//		bool enableDebug = false; 
+//		bool enableDebug = false;
 //#endif
 
 //static bool enableStatistics = false; //unused?
@@ -38,7 +26,7 @@ static bool enableDebug = false;
 //GLOBAL STATIC ALLOCATIONS x64
 //EAX - ubiquitous scratch register - EVERYBODY scratches this
 //RBX - Base pointer of memory
-//R15 - Pointer to array of block pointers 
+//R15 - Pointer to array of block pointers
 
 Jit64AsmRoutineManager asm_routines;
 
@@ -60,7 +48,7 @@ void Jit64AsmRoutineManager::Generate()
 	outerLoop = GetCodePtr();
 		ABI_CallFunction(reinterpret_cast<void *>(&CoreTiming::Advance));
 		FixupBranch skipToRealDispatch = J(); //skip the sync and compare first time
-	 
+
 		dispatcher = GetCodePtr();
 			// The result of slice decrementation should be in flags if somebody jumped here
 			// IMPORTANT - We jump on negative, not carry!!!
@@ -180,7 +168,7 @@ void Jit64AsmRoutineManager::Generate()
 		MOV(32, M(&NPC), R(EAX));
 		ABI_CallFunction(reinterpret_cast<void *>(&PowerPC::CheckExternalExceptions));
 		SetJumpTarget(noExtException);
-		
+
 		TEST(32, M((void*)PowerPC::GetStatePtr()), Imm32(0xFFFFFFFF));
 		J_CC(CC_Z, outerLoop, true);
 
@@ -206,14 +194,14 @@ void Jit64AsmRoutineManager::GenerateCommon()
 	GenFifoWrite(32);
 	fifoDirectWriteFloat = AlignCode4();
 	GenFifoFloatWrite();
-	fifoDirectWriteXmm64 = AlignCode4(); 
+	fifoDirectWriteXmm64 = AlignCode4();
 	GenFifoXmm64Write();
 
 	GenQuantizedLoads();
 	GenQuantizedStores();
 	GenQuantizedSingleStores();
 
-	//CMPSD(R(XMM0), M(&zero), 
+	//CMPSD(R(XMM0), M(&zero),
 	// TODO
 
 	// Fast write routines - special case the most common hardware write

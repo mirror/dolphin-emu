@@ -6,6 +6,15 @@
 
 namespace DriverDetails
 {
+	// Enum of supported operating systems
+	enum OS 
+	{
+		OS_ALL = (1 << 0),
+		OS_WINDOWS = (1 << 1),
+		OS_LINUX = (1 << 2),
+		OS_OSX = (1 << 3),
+		OS_ANDROID = (1 << 4),
+	};
 	// Enum of known vendors
 	// Tegra and Nvidia are separated out due to such substantial differences
 	enum Vendor
@@ -53,7 +62,7 @@ namespace DriverDetails
 		// Bug: No Dynamic UBO array object access
 		// Affected Devices: Qualcomm/Adreno
 		// Started Version: 14
-		// Ended Version: -1
+		// Ended Version: 53
 		// Accessing UBO array members dynamically causes the Adreno shader compiler to crash
 		// Errors out with "Internal Error"
 		BUG_NODYNUBOACCESS = 0,
@@ -69,7 +78,7 @@ namespace DriverDetails
 		// Affected devices: Qualcomm/Adreno
 		// Started Version: ? (Noticed on v14)
 		// Ended Version: -1
-		// When compiling a shader, it is important that when it fails, 
+		// When compiling a shader, it is important that when it fails,
 		// you first get the length of the information log prior to grabbing it.
 		// This allows you to allocate an array to store all of the log
 		// Adreno devices /always/ return 0 when querying GL_INFO_LOG_LENGTH
@@ -94,15 +103,16 @@ namespace DriverDetails
 		// Bug: The pinned memory extension isn't working for index buffers
 		// Affected devices: AMD as they are the only vendor providing this extension
 		// Started Version: ?
-		// Ended Version: -1
+		// Ended Version: 13.9 working for me (neobrain).
 		// Pinned memory is disabled for index buffer as the amd driver (the only one with pinned memory support) seems
 		// to be broken. We just get flickering/black rendering when using pinned memory here -- degasus - 2013/08/20
 		// Please see issue #6105 on google code. Let's hope buffer storage solves this issues.
+		// TODO: Detect broken drivers.
 		BUG_BROKENPINNEDMEMORY,
 		// Bug: Entirely broken UBOs
 		// Affected devices: Qualcomm/Adreno
 		// Started Version: ? (Noticed on v45)
-		// Ended Version: -1
+		// Ended Version: 53
 		// Uniform buffers are entirely broken on Qualcomm drivers with v45
 		// Trying to use the uniform buffers causes a malloc to fail inside the driver
 		// To be safe, blanket drivers from v41 - v45
@@ -115,25 +125,19 @@ namespace DriverDetails
 		// Drawing on screen text causes the whole screen to swizzle in a terrible fashion
 		// Clearing the framebuffer causes one to never see a frame.
 		BUG_BROKENSWAP,
-		// Bug: Running on a Tegra 4 device
-		// Affected devices: Nvidia Tegra
-		// Started Version: 4
-		// Ended Version: 5
-		// Tegra 4 hardware limitations don't allow it to support OpenGL ES 3
-		// This is fixed in Tegra 5
-		BUG_ISTEGRA,
-		// Bug: Running on a PowerVR5 device
-		// Affected devices: PowerVR54x
-		// Started Version: 540
-		// Ended Version: 6xxx
-		// PowerVR 5 hardware limitations don't allow it to support OpenGL ES 3
-		// This is fixed in PowerVR6
-		BUG_ISPOWERVR,
+		// Bug: glBufferSubData/glMapBufferRange stalls + OOM
+		// Affected devices: Adreno a3xx/Mali-t6xx
+		// Started Version: -1
+		// Ended Version: -1
+		// Both Adreno and Mali have issues when you call glBufferSubData or glMapBufferRange
+		// The driver stalls in each instance no matter what you do
+		// Apparently Mali and Adreno share code in this regard since it was wrote by the same person.
+		BUG_BROKENBUFFERSTREAM,
 	};
-	
-	// Initializes our internal vendor, device family, and driver version	
+
+	// Initializes our internal vendor, device family, and driver version
 	void Init(Vendor vendor, Driver driver, const double version);
-	
+
 	// Once Vendor and driver version is set, this will return if it has the applicable bug passed to it.
 	bool HasBug(Bug bug);
 }

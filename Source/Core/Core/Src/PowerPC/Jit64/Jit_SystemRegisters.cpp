@@ -4,17 +4,11 @@
 
 #include "Common.h"
 
-#include "../../Core.h"
-#include "../../CoreTiming.h"
 #include "../../HW/SystemTimers.h"
-#include "../PowerPC.h"
-#include "../PPCTables.h"
-#include "x64Emitter.h"
-#include "x64ABI.h"
+#include "HW/ProcessorInterface.h"
 
 #include "Jit.h"
 #include "JitRegCache.h"
-#include "HW/ProcessorInterface.h"
 
 void Jit64::mtspr(UGeckoInstruction inst)
 {
@@ -260,7 +254,7 @@ void Jit64::crXXX(UGeckoInstruction inst)
 	JITDISABLE(bJITSystemRegistersOff)
 	_dbg_assert_msg_(DYNA_REC, inst.OPCD == 19, "Invalid crXXX");
 
-	// USES_CR 
+	// USES_CR
 
 	// Get bit CRBA in EAX aligned with bit CRBD
 	int shiftA = (inst.CRBD & 3) - (inst.CRBA & 3);

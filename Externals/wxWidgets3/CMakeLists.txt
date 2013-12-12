@@ -1,4 +1,4 @@
-# gtk, msw, osx and shared files as of r74856
+# gtk, msw, osx and shared files as of r75363
 
 set(SRCS_AUI
 	"src/aui/auibar.cpp"
@@ -868,8 +868,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 		${SRCS_GENERICOSX}
 		${SRCS_OSX}
 		${SRCS_UNIX})
-	include_directories(../libpng)
-	add_subdirectory(../libpng ../libpng)
 	set(LIBS
 		png
 		iconv
@@ -908,6 +906,7 @@ add_definitions(-Wno-shadow)
 add_definitions(-Wno-parentheses-equality)
 add_definitions(-Wno-self-assign)
 add_definitions(-Wno-null-conversion)
+add_definitions(-Wno-sign-compare)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++98")
 
 enable_precompiled_headers(include/wx/wxprec.h src/common/dummy.cpp SRCS)

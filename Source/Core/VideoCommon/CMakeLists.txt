@@ -14,8 +14,6 @@ set(SRCS	Src/BPFunctions.cpp
 			Src/MainBase.cpp
 			Src/OnScreenDisplay.cpp
 			Src/OpcodeDecoding.cpp
-			Src/OpenCL.cpp
-			Src/OpenCL/OCLTextureDecoder.cpp
 			Src/PerfQueryBase.cpp
 			Src/PixelEngine.cpp
 			Src/PixelShaderGen.cpp
@@ -39,15 +37,14 @@ set(SRCS	Src/BPFunctions.cpp
 			Src/XFMemory.cpp
 			Src/XFStructs.cpp
 			Src/memcpy_amd.cpp)
-
-set(LIBS core)
+set(LIBS core png)
 
 if(NOT _M_GENERIC)
-	set(SRCS ${SRCS}	Src/x64TextureDecoder.cpp
-						Src/x64DLCache.cpp)
+	set(SRCS ${SRCS}	Src/TextureDecoder_x64.cpp
+						Src/DLCache_x64.cpp)
 else()
-	set(SRCS ${SRCS}	Src/GenericTextureDecoder.cpp
-						Src/GenericDLCache.cpp)
+	set(SRCS ${SRCS}	Src/TextureDecoder_Generic.cpp
+						Src/DLCache_Generic.cpp)
 endif()
 if(NOT ${CL} STREQUAL CL-NOTFOUND)
 	list(APPEND LIBS ${CL})
@@ -61,8 +58,7 @@ if(LIBAV_FOUND OR WIN32)
 	set(SRCS ${SRCS} Src/AVIDump.cpp)
 endif()
 
-add_library(videocommon STATIC ${SRCS})
-target_link_libraries(videocommon ${LIBS})
+add_dolphin_library(videocommon "${SRCS}" "${LIBS}")
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	if(LIBAV_FOUND)

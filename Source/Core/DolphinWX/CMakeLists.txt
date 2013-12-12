@@ -13,6 +13,10 @@ set(LIBS	core
 			sfml-network
 			${GTK2_LIBRARIES})
 
+if((NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin") AND (NOT ANDROID))
+	set(LIBS ${LIBS} rt)
+endif()
+
 if(NOT ANDROID)
 	if(USE_X11)
 	  set(LIBS  ${LIBS} ${X11_LIBRARIES}
@@ -94,11 +98,10 @@ if(wxWidgets_FOUND)
 				Src/WiimoteConfigDiag.cpp
 				Src/WxUtils.cpp)
 
-	set(WXLIBS ${wxWidgets_LIBRARIES})
+	set(WXLIBS ${wxWidgets_LIBRARIES} dl)
 else()
 	if(ANDROID)
-		set(SRCS Src/Android/TextureLoader.cpp
-			 Src/Android/ButtonManager.cpp
+		set(SRCS Src/Android/ButtonManager.cpp
 			 Src/MainAndroid.cpp)
 	else()
 		set(SRCS Src/MainNoGUI.cpp)
@@ -187,27 +190,16 @@ if(ANDROID)
 	target_link_libraries(${DOLPHIN_EXE} 
 	log
 	android
+	"-Wl,--no-warn-mismatch"
 	"-Wl,--whole-archive"
 	${LIBS}
 	"-Wl,--no-whole-archive"
 	)
-	if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "mips")
-		set (SO_TARGET "mips")
-	endif()
-	if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv7-a")
-		set (SO_TARGET "armeabi-v7a")
-	endif()
-	if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv5te")
-		set (SO_TARGET "armeabi")
-	endif()
-	if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "i686")
-		set (SO_TARGET "x86")
-	endif()
 	add_custom_command(TARGET ${DOLPHIN_EXE} POST_BUILD
-		COMMAND mkdir ARGS -p ${CMAKE_SOURCE_DIR}/Source/Android/libs/${SO_TARGET}
+		COMMAND mkdir ARGS -p ${CMAKE_SOURCE_DIR}/Source/Android/libs/${ANDROID_NDK_ABI_NAME}
 	)
 	add_custom_command(TARGET ${DOLPHIN_EXE} POST_BUILD
-		COMMAND cp ARGS ${CMAKE_SOURCE_DIR}/libs/${SO_TARGET}/lib${DOLPHIN_EXE}.so ${CMAKE_SOURCE_DIR}/Source/Android/libs/${SO_TARGET}/
+		COMMAND cp ARGS ${LIBRARY_OUTPUT_PATH_ROOT}/libs/${ANDROID_NDK_ABI_NAME}/lib${DOLPHIN_EXE}.so ${CMAKE_SOURCE_DIR}/Source/Android/libs/${ANDROID_NDK_ABI_NAME}/
 	)
 	add_custom_command(TARGET ${DOLPHIN_EXE} POST_BUILD
 		COMMAND cp ARGS ${CMAKE_SOURCE_DIR}/Data/Sys/GC/* ${CMAKE_SOURCE_DIR}/Source/Android/assets/
@@ -247,7 +239,7 @@ else()
 				)
 		else()
 			add_custom_command(OUTPUT ${BUNDLE_PATH}/Contents/Resources/Sys
-				COMMAND ln -nfs ../../../../Data/Sys ${BUNDLE_PATH}/Contents/Resources/Sys
+				COMMAND ln -nfs ${CMAKE_SOURCE_DIR}/Data/Sys ${BUNDLE_PATH}/Contents/Resources/Sys
 				VERBATIM
 				)
 			add_custom_target(CopyDataIntoBundle ALL

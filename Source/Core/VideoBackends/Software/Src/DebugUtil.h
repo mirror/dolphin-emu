@@ -9,7 +9,7 @@ namespace DebugUtil
 {
 	void Init();
 
-	void GetTextureBGRA(u8 *dst, u32 texmap, s32 mip, u32 width, u32 height);
+	void GetTextureRGBA(u8 *dst, u32 texmap, s32 mip, u32 width, u32 height);
 
 	void DumpActiveTextures();
 
@@ -24,4 +24,4 @@ namespace DebugUtil
 	void CopyTempBuffer(s16 x, s16 y, int bufferBase, int subBuffer, const char *name);
 }
 
-#endif 
+#endif

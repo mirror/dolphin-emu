@@ -57,11 +57,11 @@ void XFRegWritten(int transferSize, u32 baseAddress, u32 *pData)
 		case XFMEM_SETCHAN1_AMBCOLOR:
 			{
 				u8 chan = address - XFMEM_SETCHAN0_AMBCOLOR;
-				if (xfregs.ambColor[chan] != newValue) 
+				if (xfregs.ambColor[chan] != newValue)
 				{
 					VertexManager::Flush();
-					VertexShaderManager::SetMaterialColorChanged(chan);
-					PixelShaderManager::SetMaterialColorChanged(chan);
+					VertexShaderManager::SetMaterialColorChanged(chan, newValue);
+					PixelShaderManager::SetMaterialColorChanged(chan, newValue);
 				}
 				break;
 			}
@@ -73,8 +73,8 @@ void XFRegWritten(int transferSize, u32 baseAddress, u32 *pData)
 				if (xfregs.matColor[chan] != newValue)
 				{
 					VertexManager::Flush();
-					VertexShaderManager::SetMaterialColorChanged(chan + 2);
-					PixelShaderManager::SetMaterialColorChanged(chan + 2);
+					VertexShaderManager::SetMaterialColorChanged(chan + 2, newValue);
+					PixelShaderManager::SetMaterialColorChanged(chan + 2, newValue);
 				}
 				break;
 			}
@@ -226,7 +226,7 @@ void LoadXFReg(u32 transferSize, u32 baseAddress, u32 *pData)
 		{
 			transferSize = 0;
 		}
-		
+
 		XFMemWritten(xfMemTransferSize, xfMemBase);
 		memcpy_gc(&xfmem[xfMemBase], pData, xfMemTransferSize * 4);
 
@@ -235,9 +235,9 @@ void LoadXFReg(u32 transferSize, u32 baseAddress, u32 *pData)
 
 	// write to XF regs
 	if (transferSize > 0)
-	{	
+	{
 		XFRegWritten(transferSize, baseAddress, pData);
-		memcpy_gc((u32*)(&xfregs) + (baseAddress - 0x1000), pData, transferSize * 4);        
+		memcpy_gc((u32*)(&xfregs) + (baseAddress - 0x1000), pData, transferSize * 4);
 	}
 }
 

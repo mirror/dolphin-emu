@@ -304,7 +304,7 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 
 	if (ApiType == API_OPENGL)
 	{
-		out.Write("COLOROUT(ocol0)\n");
+		out.Write("out vec4 ocol0;\n");
 		if (dstAlphaMode == DSTALPHA_DUAL_SOURCE_BLEND)
 			out.Write("out vec4 ocol1;\n");
 
@@ -316,35 +316,14 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 
 		// compute window position if needed because binding semantic WPOS is not widely supported
 		// Let's set up attributes
-		if (xfregs.numTexGen.numTexGens < 7)
+		for (unsigned int i = 0; i < xfregs.numTexGen.numTexGens; ++i)
 		{
-			for (int i = 0; i < 8; ++i)
-				if(i < xfregs.numTexGen.numTexGens)
-					out.Write("VARYIN float3 uv%d_2;\n", i);
-			out.Write("VARYIN float4 clipPos_2;\n");
-			if (g_ActiveConfig.bEnablePixelLighting && g_ActiveConfig.backend_info.bSupportsPixelLighting)
-			{
-				out.Write("VARYIN float4 Normal_2;\n");
-			}
+			out.Write("VARYIN float3 uv%d_2;\n", i);
 		}
-		else
+		out.Write("VARYIN float4 clipPos_2;\n");
+		if (g_ActiveConfig.bEnablePixelLighting && g_ActiveConfig.backend_info.bSupportsPixelLighting)
 		{
-			// wpos is in w of first 4 texcoords
-			if (g_ActiveConfig.bEnablePixelLighting && g_ActiveConfig.backend_info.bSupportsPixelLighting)
-			{
-				for (int i = 0; i < 8; ++i)
-				{
-					out.Write("VARYIN float4 uv%d_2;\n", i);
-				}
-			}
-			else
-			{
-				for (unsigned int i = 0; i < xfregs.numTexGen.numTexGens; ++i)
-				{
-					out.Write("VARYIN float%d uv%d_2;\n", i < 4 ? 4 : 3 , i);
-				}
-			}
-			out.Write("float4 clipPos;\n");
+			out.Write("VARYIN float4 Normal_2;\n");
 		}
 
 		if (forced_early_z)
@@ -389,31 +368,12 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 		out.Write("  in %s float4 colors_1 : COLOR1", optCentroid);
 
 		// compute window position if needed because binding semantic WPOS is not widely supported
-		if (numTexgen < 7)
-		{
-			for (unsigned int i = 0; i < numTexgen; ++i)
-				out.Write(",\n  in %s float3 uv%d : TEXCOORD%d", optCentroid, i, i);
-			out.Write(",\n  in %s float4 clipPos : TEXCOORD%d", optCentroid, numTexgen);
-			if(g_ActiveConfig.bEnablePixelLighting && g_ActiveConfig.backend_info.bSupportsPixelLighting)
-				out.Write(",\n  in %s float4 Normal : TEXCOORD%d", optCentroid, numTexgen + 1);
-			out.Write("        ) {\n");
-		}
-		else
-		{
-			// wpos is in w of first 4 texcoords
-			if(g_ActiveConfig.bEnablePixelLighting && g_ActiveConfig.backend_info.bSupportsPixelLighting)
-			{
-				for (int i = 0; i < 8; ++i)
-					out.Write(",\n  in float4 uv%d : TEXCOORD%d", i, i);
-			}
-			else
-			{
-				for (unsigned int i = 0; i < xfregs.numTexGen.numTexGens; ++i)
-					out.Write(",\n  in float%d uv%d : TEXCOORD%d", i < 4 ? 4 : 3 , i, i);
-			}
-			out.Write("        ) {\n");
-			out.Write("\tfloat4 clipPos = float4(0.0, 0.0, 0.0, 0.0);");
-		}
+		for (unsigned int i = 0; i < numTexgen; ++i)
+			out.Write(",\n  in %s float3 uv%d : TEXCOORD%d", optCentroid, i, i);
+		out.Write(",\n  in %s float4 clipPos : TEXCOORD%d", optCentroid, numTexgen);
+		if(g_ActiveConfig.bEnablePixelLighting && g_ActiveConfig.backend_info.bSupportsPixelLighting)
+			out.Write(",\n  in %s float4 Normal : TEXCOORD%d", optCentroid, numTexgen + 1);
+		out.Write("        ) {\n");
 	}
 
 	out.Write("  float4 c0 = " I_COLORS"[1], c1 = " I_COLORS"[2], c2 = " I_COLORS"[3], prev = float4(0.0, 0.0, 0.0, 0.0), textemp = float4(0.0, 0.0, 0.0, 0.0), rastemp = float4(0.0, 0.0, 0.0, 0.0), konsttemp = float4(0.0, 0.0, 0.0, 0.0);\n"
@@ -434,50 +394,24 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 		out.Write("float4 colors_1 = colors_12;\n");
 		// compute window position if needed because binding semantic WPOS is not widely supported
 		// Let's set up attributes
-		if (xfregs.numTexGen.numTexGens < 7)
+		if (numTexgen)
 		{
-			if(numTexgen)
-				for (int i = 0; i < 8; ++i)
-					if(i < xfregs.numTexGen.numTexGens)
-						out.Write("float3 uv%d = uv%d_2;\n", i, i);
-			out.Write("float4 clipPos = clipPos_2;\n");
-			if (g_ActiveConfig.bEnablePixelLighting && g_ActiveConfig.backend_info.bSupportsPixelLighting)
+			for (unsigned int i = 0; i < xfregs.numTexGen.numTexGens; ++i)
 			{
-				out.Write("float4 Normal = Normal_2;\n");
+				out.Write("float3 uv%d = uv%d_2;\n", i, i);
 			}
 		}
-		else
+		out.Write("float4 clipPos = clipPos_2;\n");
+		if (g_ActiveConfig.bEnablePixelLighting && g_ActiveConfig.backend_info.bSupportsPixelLighting)
 		{
-			// wpos is in w of first 4 texcoords
-			if (g_ActiveConfig.bEnablePixelLighting && g_ActiveConfig.backend_info.bSupportsPixelLighting)
-			{
-				for (int i = 0; i < 8; ++i)
-				{
-					out.Write("float4 uv%d = uv%d_2;\n", i, i);
-				}
-			}
-			else
-			{
-				for (unsigned int i = 0; i < xfregs.numTexGen.numTexGens; ++i)
-				{
-					out.Write("float%d uv%d = uv%d_2;\n", i < 4 ? 4 : 3 , i, i);
-				}
-			}
+			out.Write("float4 Normal = Normal_2;\n");
 		}
 	}
 
 	if (g_ActiveConfig.bEnablePixelLighting && g_ActiveConfig.backend_info.bSupportsPixelLighting)
 	{
-		if (xfregs.numTexGen.numTexGens < 7)
-		{
-			out.Write("\tfloat3 _norm0 = normalize(Normal.xyz);\n\n");
-			out.Write("\tfloat3 pos = float3(clipPos.x,clipPos.y,Normal.w);\n");
-		}
-		else
-		{
-			out.Write("\tfloat3 _norm0 = normalize(float3(uv4.w,uv5.w,uv6.w));\n\n");
-			out.Write("\tfloat3 pos = float3(uv0.w,uv1.w,uv7.w);\n");
-		}
+		out.Write("\tfloat3 _norm0 = normalize(Normal.xyz);\n\n");
+		out.Write("\tfloat3 pos = float3(clipPos.x,clipPos.y,Normal.w);\n");
 
 		out.Write("\tfloat4 mat, lacc;\n"
 				"\tfloat3 ldir, h;\n"
@@ -489,10 +423,7 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 		GenerateLightingShader<T>(out, uid_data.lighting, components, I_PMATERIALS, I_PLIGHTS, "colors_", "colors_");
 	}
 
-	if (numTexgen < 7)
-		out.Write("\tclipPos = float4(rawpos.x, rawpos.y, clipPos.z, clipPos.w);\n");
-	else
-		out.Write("\tclipPos = float4(rawpos.x, rawpos.y, uv2.w, uv3.w);\n");
+	out.Write("\tclipPos = float4(rawpos.x, rawpos.y, clipPos.z, clipPos.w);\n");
 
 	// HACK to handle cases where the tex gen is not enabled
 	if (numTexgen == 0)
@@ -604,16 +535,16 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 	AlphaTest::TEST_RESULT Pretest = bpmem.alpha_test.TestResult();
 	uid_data.Pretest = Pretest;
 
-	// NOTE: Fragment may not be discarded if alpha test always fails and early depth test is enabled 
+	// NOTE: Fragment may not be discarded if alpha test always fails and early depth test is enabled
 	// (in this case we need to write a depth value if depth test passes regardless of the alpha testing result)
 	if (Pretest == AlphaTest::UNDETERMINED || (Pretest == AlphaTest::FAIL && bpmem.UseLateDepthTest()))
 		WriteAlphaTest<T>(out, uid_data, ApiType, dstAlphaMode, per_pixel_depth);
 
-
-	// TODO: Make more sense out of this comment
-	// D3D9 doesn't support readback of depth in pixel shader, so we always have to calculate it again.
-	// This shouldn't be a performance issue as the written depth is usually still from perspective division
-	// but this isn't true for z-textures, so there will be depth issues between enabled and disabled z-textures fragments
+	// FastDepth means to trust the depth generated in perspective division.
+	// It should be correct, but it seems not to be as accurate as required. TODO: Find out why!
+	// For disabled FastDepth we just calculate the depth value again.
+	// The performance impact of this additional calculation doesn't matter, but it prevents
+	// the host GPU driver from performing any early depth test optimizations.
 	if (g_ActiveConfig.bFastDepthCalc)
 		out.Write("float zCoord = rawpos.z;\n");
 	else

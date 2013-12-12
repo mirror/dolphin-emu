@@ -3,9 +3,9 @@
 // Refer to the license.txt file included.
 
 #include "Common.h"
-#include <math.h>
 
 #include "../../OGL/Src/GLUtil.h"
+#include "ImageWrite.h"
 #include "RasterFont.h"
 #include "SWRenderer.h"
 #include "SWStatistics.h"
@@ -18,6 +18,11 @@ static GLint attr_pos = -1, attr_tex = -1;
 static GLint uni_tex = -1;
 static GLuint program;
 
+static volatile bool s_bScreenshot;
+static std::mutex s_criticalScreenshot;
+static std::string s_sScreenshotName;
+
+
 // Rasterfont isn't compatible with GLES
 // degasus: I think it does, but I can't test it
 #ifndef USE_GLES
@@ -26,12 +31,13 @@ RasterFont* s_pfont = NULL;
 
 void SWRenderer::Init()
 {
+	s_bScreenshot = false;
 }
 
 void SWRenderer::Shutdown()
 {
 	glDeleteProgram(program);
-	glDeleteTextures(1, &s_RenderTarget);	
+	glDeleteTextures(1, &s_RenderTarget);
 #ifndef USE_GLES
 	delete s_pfont;
 	s_pfont = 0;
@@ -63,7 +69,7 @@ void CreateShaders()
 
 	uni_tex = glGetUniformLocation(program, "Texture");
 	attr_pos = glGetAttribLocation(program, "pos");
-	attr_tex = glGetAttribLocation(program, "TexCoordIn"); 
+	attr_tex = glGetAttribLocation(program, "TexCoordIn");
 }
 
 void SWRenderer::Prepare()
@@ -79,6 +85,13 @@ void SWRenderer::Prepare()
 	glEnable(GL_TEXTURE_2D);
 #endif
 	GL_REPORT_ERRORD();
+}
+
+void SWRenderer::SetScreenshot(const char *_szFilename)
+{
+	std::lock_guard<std::mutex> lk(s_criticalScreenshot);
+	s_sScreenshotName = _szFilename;
+	s_bScreenshot = true;
 }
 
 void SWRenderer::RenderText(const char* pstr, int left, int top, u32 color)
@@ -101,7 +114,7 @@ void SWRenderer::DrawDebugText()
 	char *p = debugtext_buffer;
 	p[0] = 0;
 
-	if (g_SWVideoConfig.bShowStats) 
+	if (g_SWVideoConfig.bShowStats)
 	{
 		p+=sprintf(p,"Objects: %i\n",swstats.thisFrame.numDrawnObjects);
 		p+=sprintf(p,"Primitives: %i\n",swstats.thisFrame.numPrimatives);
@@ -125,6 +138,15 @@ void SWRenderer::DrawDebugText()
 
 void SWRenderer::DrawTexture(u8 *texture, int width, int height)
 {
+	// Save screenshot
+	if (s_bScreenshot)
+	{
+		std::lock_guard<std::mutex> lk(s_criticalScreenshot);
+		TextureToPng(texture, width*4, s_sScreenshotName, width, height, false);
+		// Reset settings
+		s_sScreenshotName.clear();
+		s_bScreenshot = false;
+	}
 	GLsizei glWidth = (GLsizei)GLInterface->GetBackBufferWidth();
 	GLsizei glHeight = (GLsizei)GLInterface->GetBackBufferHeight();
 
@@ -137,7 +159,7 @@ void SWRenderer::DrawTexture(u8 *texture, int width, int height)
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)width, (GLsizei)height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	 
+
 	glUseProgram(program);
 	static const GLfloat verts[4][2] = {
 		{ -1, -1}, // Left top
@@ -162,13 +184,13 @@ void SWRenderer::DrawTexture(u8 *texture, int width, int height)
 	glDisableVertexAttribArray(attr_pos);
 	glDisableVertexAttribArray(attr_tex);
 
-	glBindTexture(GL_TEXTURE_2D, 0); 
+	glBindTexture(GL_TEXTURE_2D, 0);
 	GL_REPORT_ERRORD();
 }
 
 void SWRenderer::SwapBuffer()
 {
-	// Do our OSD callbacks	
+	// Do our OSD callbacks
 	OSD::DoCallbacks(OSD::OSD_ONFRAME);
 
 	DrawDebugText();
@@ -178,7 +200,7 @@ void SWRenderer::SwapBuffer()
 	GLInterface->Swap();
 
 	swstats.ResetFrame();
-	
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	GL_REPORT_ERRORD();

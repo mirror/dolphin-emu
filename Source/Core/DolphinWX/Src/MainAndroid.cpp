@@ -94,8 +94,8 @@ void Host_GetRenderWindowSize(int& x, int& y, int& width, int& height)
 {
 	x = SConfig::GetInstance().m_LocalCoreStartupParameter.iRenderWindowXPos;
 	y = SConfig::GetInstance().m_LocalCoreStartupParameter.iRenderWindowYPos;
-	width = g_width; 	
-	height = g_height; 
+	width = g_width;
+	height = g_height;
 }
 
 void Host_RequestRenderWindowSize(int width, int height) {}
@@ -227,32 +227,36 @@ JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_UnPauseEmula
 {
 	PowerPC::Start();
 }
-JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_PauseEmulation(JNIEnv *env, jobject obj) 
+JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_PauseEmulation(JNIEnv *env, jobject obj)
 {
 	PowerPC::Pause();
 }
 
-JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_StopEmulation(JNIEnv *env, jobject obj) 
+JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_StopEmulation(JNIEnv *env, jobject obj)
 {
 	Core::Stop();
 	updateMainFrameEvent.Set(); // Kick the waiting event
 }
-JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_onTouchEvent(JNIEnv *env, jobject obj, jint Action, jfloat X, jfloat Y)
+JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_onTouchEvent(JNIEnv *env, jobject obj, jint padID, jint Button, jint Action)
 {
-	ButtonManager::TouchEvent(Action, X, Y);
+	ButtonManager::TouchEvent(padID, (ButtonManager::ButtonType)Button, Action);
+}
+JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_onTouchAxisEvent(JNIEnv *env, jobject obj, jint padID, jint Button, jfloat Action)
+{
+	ButtonManager::TouchAxisEvent(padID, (ButtonManager::ButtonType)Button, Action);
 }
 JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_onGamePadEvent(JNIEnv *env, jobject obj, jstring jDevice, jint Button, jint Action)
 {
 	const char *Device = env->GetStringUTFChars(jDevice, NULL);
 	std::string strDevice = std::string(Device);
-	ButtonManager::GamepadEvent(strDevice, Button, Action);
+	ButtonManager::GamepadEvent(strDevice, (ButtonManager::ButtonType)Button, Action);
 	env->ReleaseStringUTFChars(jDevice, Device);
 }
 JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_onGamePadMoveEvent(JNIEnv *env, jobject obj, jstring jDevice, jint Axis, jfloat Value)
 {
 	const char *Device = env->GetStringUTFChars(jDevice, NULL);
 	std::string strDevice = std::string(Device);
-	ButtonManager::GamepadAxisEvent(strDevice, Axis, Value);
+	ButtonManager::GamepadAxisEvent(strDevice, (ButtonManager::ButtonType)Axis, Value);
 	env->ReleaseStringUTFChars(jDevice, Device);
 }
 
@@ -278,10 +282,22 @@ JNIEXPORT jstring JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_GetTitle(
 	env->ReleaseStringUTFChars(jFile, File);
 	return env->NewStringUTF(Name.c_str());
 }
+
 JNIEXPORT jstring JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_GetVersionString(JNIEnv *env, jobject obj)
 {
 	return env->NewStringUTF(scm_rev_str);
 }
+
+JNIEXPORT jboolean JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_SupportsNEON(JNIEnv *env, jobject obj)
+{
+	return cpu_info.bNEON;
+}
+
+JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_SaveScreenShot(JNIEnv *env, jobject obj)
+{
+	Core::SaveScreenShot();
+}
+
 JNIEXPORT jstring JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_GetConfig(JNIEnv *env, jobject obj, jstring jFile, jstring jKey, jstring jValue, jstring jDefault)
 {
 	IniFile ini;
@@ -289,12 +305,12 @@ JNIEXPORT jstring JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_GetConfig
 	const char *Key = env->GetStringUTFChars(jKey, NULL);
 	const char *Value = env->GetStringUTFChars(jValue, NULL);
 	const char *Default = env->GetStringUTFChars(jDefault, NULL);
-	
+
 	ini.Load(File::GetUserPath(D_CONFIG_IDX) + std::string(File));
 	std::string value;
-	
+
 	ini.Get(Key, Value, &value, Default);
-	
+
 	env->ReleaseStringUTFChars(jFile, File);
 	env->ReleaseStringUTFChars(jKey, Key);
 	env->ReleaseStringUTFChars(jValue, Value);
@@ -309,7 +325,7 @@ JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_SetConfig(JN
 	const char *Key = env->GetStringUTFChars(jKey, NULL);
 	const char *Value = env->GetStringUTFChars(jValue, NULL);
 	const char *Default = env->GetStringUTFChars(jDefault, NULL);
-	
+
 	ini.Load(File::GetUserPath(D_CONFIG_IDX) + std::string(File));
 
 	ini.Set(Key, Value, Default);
@@ -374,15 +390,6 @@ JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_Run(JNIEnv *
 	VideoBackend::PopulateList();
 	VideoBackend::ActivateBackend(SConfig::GetInstance().m_LocalCoreStartupParameter.m_strVideoBackend);
 	WiimoteReal::LoadSettings();
-
-	// Load our Android specific settings
-	IniFile ini;
-	bool onscreencontrols = true;
-	ini.Load(File::GetUserPath(D_CONFIG_IDX) + std::string("Dolphin.ini"));
-	ini.Get("Android", "ScreenControls", &onscreencontrols, true);
-
-	if (onscreencontrols)
-		OSD::AddCallback(OSD::OSD_ONFRAME, ButtonManager::DrawButtons);
 
 	// No use running the loop when booting fails
 	if ( BootManager::BootCore( g_filename.c_str() ) )

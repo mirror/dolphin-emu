@@ -6,15 +6,7 @@
 // Should give a very noticeable speed boost to paired single heavy code.
 
 #include "Common.h"
-
-#include "../PowerPC.h"
-#include "../../Core.h" // include "Common.h", "CoreParameter.h"
-#include "../../HW/GPFifo.h"
-#include "../../HW/Memmap.h"
-#include "../PPCTables.h"
 #include "CPUDetect.h"
-#include "x64Emitter.h"
-#include "x64ABI.h"
 
 #include "Jit.h"
 #include "JitAsm.h"
@@ -43,7 +35,7 @@ void Jit64::lfs(UGeckoInstruction inst)
 
 	int d = inst.RD;
 	int a = inst.RA;
-	if (!a) 
+	if (!a)
 	{
 		Default(inst);
 		return;
@@ -53,7 +45,7 @@ void Jit64::lfs(UGeckoInstruction inst)
 	SafeLoadToReg(EAX, gpr.R(a), 32, offset, RegistersInUse(), false);
 
 	MEMCHECK_START
-	
+
 	MOV(32, M(&temp32), R(EAX));
 	fpr.Lock(d);
 	fpr.BindToRegister(d, false);
@@ -75,7 +67,7 @@ void Jit64::lfd(UGeckoInstruction inst)
 
 	int d = inst.RD;
 	int a = inst.RA;
-	if (!a) 
+	if (!a)
 	{
 		Default(inst);
 		return;
@@ -116,7 +108,7 @@ void Jit64::lfd(UGeckoInstruction inst)
 		MOV(32, M((void*)((u8 *)&temp64+4)), R(EAX));
 
 		MEMCHECK_START
-		
+
 		MOV(32, R(EAX), MDisp(ABI_PARAM1, (u32)Memory::base + offset + 4));
 		BSWAP(32, EAX);
 		MOV(32, M(&temp64), R(EAX));
@@ -221,7 +213,7 @@ void Jit64::stfd(UGeckoInstruction inst)
 	fpr.UnlockAll();
 }
 
-// In Release on 32bit build, 
+// In Release on 32bit build,
 // this seemed to cause a problem with PokePark2
 // at start after talking to first pokemon,
 // you run and smash a box, then he goes on about
@@ -332,7 +324,7 @@ void Jit64::lfsx(UGeckoInstruction inst)
 		MOVD_xmm(r, MComplex(RBX, EAX, SCALE_1, 0));
 #endif
 		MEMCHECK_START
-		
+
 		PSHUFB(r, M((void *)bswapShuffle1x4));
 		CVTSS2SD(r, R(r));
 		MOVDDUP(r, R(r));

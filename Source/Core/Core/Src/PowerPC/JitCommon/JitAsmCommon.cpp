@@ -2,23 +2,12 @@
 // Licensed under GPLv2
 // Refer to the license.txt file included.
 
-#include "x64ABI.h"
-#include "CPUDetect.h"
-#include "x64Emitter.h"
-
-#include "../../HW/Memmap.h"
-
-#include "../PowerPC.h"
-#include "../../CoreTiming.h"
-#include "MemoryUtil.h"
-
-#include "x64ABI.h"
-#include "../JitCommon/JitCache.h"
-
-#include "../../HW/GPFifo.h"
-#include "../../Core.h"
 #include "JitAsmCommon.h"
 #include "JitBase.h"
+
+#include "CPUDetect.h"
+#include "MemoryUtil.h"
+
 
 #define QUANTIZED_REGS_TO_SAVE (ABI_ALL_CALLEE_SAVED & ~((1 << RAX) | (1 << RCX) | (1 << RDX) | \
                                                          (1 << XMM0) | (1 << XMM1)))
@@ -27,7 +16,7 @@ using namespace Gen;
 
 static int temp32;
 
-void CommonAsmRoutines::GenFifoWrite(int size) 
+void CommonAsmRoutines::GenFifoWrite(int size)
 {
 	// Assume value in ABI_PARAM1
 	PUSH(ESI);
@@ -50,7 +39,7 @@ void CommonAsmRoutines::GenFifoWrite(int size)
 	RET();
 }
 
-void CommonAsmRoutines::GenFifoFloatWrite() 
+void CommonAsmRoutines::GenFifoFloatWrite()
 {
 	// Assume value in XMM0
 	PUSH(ESI);
@@ -68,7 +57,7 @@ void CommonAsmRoutines::GenFifoFloatWrite()
 	RET();
 }
 
-void CommonAsmRoutines::GenFifoXmm64Write() 
+void CommonAsmRoutines::GenFifoXmm64Write()
 {
 	// Assume value in XMM0. Assume pre-byteswapped (unlike the others here!)
 	PUSH(ESI);
@@ -104,7 +93,7 @@ static const float GC_ALIGNED16(m_quantizeTableS[]) =
 	1.0 / (1 << 12),	1.0 / (1 << 11),	1.0 / (1 << 10),	1.0 / (1 <<  9),
 	1.0 / (1 <<  8),	1.0 / (1 <<  7),	1.0 / (1 <<  6),	1.0 / (1 <<  5),
 	1.0 / (1 <<  4),	1.0 / (1 <<  3),	1.0 / (1 <<  2),	1.0 / (1 <<  1),
-}; 
+};
 
 static const float GC_ALIGNED16(m_dequantizeTableS[]) =
 {
@@ -124,7 +113,7 @@ static const float GC_ALIGNED16(m_dequantizeTableS[]) =
 	(1 << 12),		(1 << 11),		(1 << 10),		(1 <<  9),
 	(1 <<  8),		(1 <<  7),		(1 <<  6),		(1 <<  5),
 	(1 <<  4),		(1 <<  3),		(1 <<  2),		(1 <<  1),
-};  
+};
 
 static float GC_ALIGNED16(psTemp[4]);
 
@@ -150,7 +139,8 @@ static void WriteDual32(u32 address)
 }
 
 // See comment in header for in/outs.
-void CommonAsmRoutines::GenQuantizedStores() {
+void CommonAsmRoutines::GenQuantizedStores()
+{
 	const u8* storePairedIllegal = AlignCode4();
 	UD2();
 	const u8* storePairedFloat = AlignCode4();
@@ -206,7 +196,7 @@ void CommonAsmRoutines::GenQuantizedStores() {
 	PACKSSDW(XMM0, R(XMM0));
 	PACKUSWB(XMM0, R(XMM0));
 	MOVD_xmm(R(EAX), XMM0);
-	SafeWriteRegToReg(AX, ECX, 16, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_SWAP | SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+	SafeWriteRegToReg(AX, ECX, 16, 0, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
 
 	RET();
 
@@ -215,7 +205,7 @@ void CommonAsmRoutines::GenQuantizedStores() {
 	MOVSS(XMM1, MDisp(EAX, (u32)(u64)m_quantizeTableS));
 	PUNPCKLDQ(XMM1, R(XMM1));
 	MULPS(XMM0, R(XMM1));
-#ifdef QUANTIZE_OVERFLOW_SAFE	
+#ifdef QUANTIZE_OVERFLOW_SAFE
 	MOVSS(XMM1, M((void *)&m_65535));
 	PUNPCKLDQ(XMM1, R(XMM1));
 	MINPS(XMM0, R(XMM1));
@@ -225,7 +215,7 @@ void CommonAsmRoutines::GenQuantizedStores() {
 	PACKSSWB(XMM0, R(XMM0));
 	MOVD_xmm(R(EAX), XMM0);
 
-	SafeWriteRegToReg(AX, ECX, 16, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_SWAP | SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+	SafeWriteRegToReg(AX, ECX, 16, 0, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
 
 	RET();
 
@@ -235,7 +225,7 @@ void CommonAsmRoutines::GenQuantizedStores() {
 	PUNPCKLDQ(XMM1, R(XMM1));
 	MULPS(XMM0, R(XMM1));
 
-	// PACKUSDW is available only in SSE4	
+	// PACKUSDW is available only in SSE4
 	PXOR(XMM1, R(XMM1));
 	MAXPS(XMM0, R(XMM1));
 	MOVSS(XMM1, M((void *)&m_65535));
@@ -251,7 +241,7 @@ void CommonAsmRoutines::GenQuantizedStores() {
 	MOV(16, R(AX), M((char*)psTemp + 4));
 
 	BSWAP(32, EAX);
-	SafeWriteRegToReg(EAX, ECX, 32, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_SWAP | SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+	SafeWriteRegToReg(EAX, ECX, 32, 0, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
 
 	RET();
 
@@ -261,7 +251,7 @@ void CommonAsmRoutines::GenQuantizedStores() {
 	// SHUFPS or UNPCKLPS might be a better choice here. The last one might just be an alias though.
 	PUNPCKLDQ(XMM1, R(XMM1));
 	MULPS(XMM0, R(XMM1));
-#ifdef QUANTIZE_OVERFLOW_SAFE	
+#ifdef QUANTIZE_OVERFLOW_SAFE
 	MOVSS(XMM1, M((void *)&m_65535));
 	PUNPCKLDQ(XMM1, R(XMM1));
 	MINPS(XMM0, R(XMM1));
@@ -271,7 +261,7 @@ void CommonAsmRoutines::GenQuantizedStores() {
 	MOVD_xmm(R(EAX), XMM0);
 	BSWAP(32, EAX);
 	ROL(32, R(EAX), Imm8(16));
-	SafeWriteRegToReg(EAX, ECX, 32, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_SWAP | SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+	SafeWriteRegToReg(EAX, ECX, 32, 0, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
 
 	RET();
 
@@ -289,13 +279,14 @@ void CommonAsmRoutines::GenQuantizedStores() {
 }
 
 // See comment in header for in/outs.
-void CommonAsmRoutines::GenQuantizedSingleStores() {
+void CommonAsmRoutines::GenQuantizedSingleStores()
+{
 	const u8* storeSingleIllegal = AlignCode4();
 	UD2();
 
 	// Easy!
 	const u8* storeSingleFloat = AlignCode4();
-	SafeWriteFloatToReg(XMM0, ECX, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+	SafeWriteFloatToReg(XMM0, ECX, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
 	RET();
 	/*
 	if (cpu_info.bSSSE3) {
@@ -303,11 +294,11 @@ void CommonAsmRoutines::GenQuantizedSingleStores() {
 		// TODO: SafeWriteFloat
 		MOVSS(M(&psTemp[0]), XMM0);
 		MOV(32, R(EAX), M(&psTemp[0]));
-		SafeWriteRegToReg(EAX, ECX, 32, 0, SAFE_WRITE_NO_SWAP | SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+		SafeWriteRegToReg(EAX, ECX, 32, 0, SAFE_LOADSTORE_NO_SWAP | SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
 	} else {
 		MOVSS(M(&psTemp[0]), XMM0);
 		MOV(32, R(EAX), M(&psTemp[0]));
-		SafeWriteRegToReg(EAX, ECX, 32, 0, SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+		SafeWriteRegToReg(EAX, ECX, 32, 0, SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
 	}*/
 
 	const u8* storeSingleU8 = AlignCode4();  // Used by MKWii
@@ -318,7 +309,7 @@ void CommonAsmRoutines::GenQuantizedSingleStores() {
 	MAXSS(XMM0, R(XMM1));
 	MINSS(XMM0, M((void *)&m_255));
 	CVTTSS2SI(EAX, R(XMM0));
-	SafeWriteRegToReg(AL, ECX, 8, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+	SafeWriteRegToReg(AL, ECX, 8, 0, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
 	RET();
 
 	const u8* storeSingleS8 = AlignCode4();
@@ -328,7 +319,7 @@ void CommonAsmRoutines::GenQuantizedSingleStores() {
 	MAXSS(XMM0, M((void *)&m_m128));
 	MINSS(XMM0, M((void *)&m_127));
 	CVTTSS2SI(EAX, R(XMM0));
-	SafeWriteRegToReg(AL, ECX, 8, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+	SafeWriteRegToReg(AL, ECX, 8, 0, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
 	RET();
 
 	const u8* storeSingleU16 = AlignCode4();  // Used by MKWii
@@ -339,7 +330,7 @@ void CommonAsmRoutines::GenQuantizedSingleStores() {
 	MAXSS(XMM0, R(XMM1));
 	MINSS(XMM0, M((void *)&m_65535));
 	CVTTSS2SI(EAX, R(XMM0));
-	SafeWriteRegToReg(EAX, ECX, 16, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+	SafeWriteRegToReg(EAX, ECX, 16, 0, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
 	RET();
 
 	const u8* storeSingleS16 = AlignCode4();
@@ -349,7 +340,7 @@ void CommonAsmRoutines::GenQuantizedSingleStores() {
 	MAXSS(XMM0, M((void *)&m_m32768));
 	MINSS(XMM0, M((void *)&m_32767));
 	CVTTSS2SI(EAX, R(XMM0));
-	SafeWriteRegToReg(EAX, ECX, 16, 0, QUANTIZED_REGS_TO_SAVE, SAFE_WRITE_NO_PROLOG | SAFE_WRITE_NO_FASTMEM);
+	SafeWriteRegToReg(EAX, ECX, 16, 0, QUANTIZED_REGS_TO_SAVE, SAFE_LOADSTORE_NO_PROLOG | SAFE_LOADSTORE_NO_FASTMEM);
 	RET();
 
 	singleStoreQuantized = reinterpret_cast<const u8**>(const_cast<u8*>(AlignCode16()));
@@ -365,7 +356,8 @@ void CommonAsmRoutines::GenQuantizedSingleStores() {
 	singleStoreQuantized[7] = storeSingleS16;
 }
 
-void CommonAsmRoutines::GenQuantizedLoads() {
+void CommonAsmRoutines::GenQuantizedLoads()
+{
 	const u8* loadPairedIllegal = AlignCode4();
 	UD2();
 

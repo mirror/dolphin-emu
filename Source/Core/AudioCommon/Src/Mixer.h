@@ -14,7 +14,7 @@
 #define RESERVED_SAMPLES	(256)
 
 class CMixer {
-	
+
 public:
 	CMixer(unsigned int AISampleRate = 48000, unsigned int DACSampleRate = 48000, unsigned int BackendSampleRate = 32000)
 		: m_aiSampleRate(AISampleRate)
@@ -45,12 +45,12 @@ public:
 
 	// Called from main thread
 	virtual void PushSamples(const short* samples, unsigned int num_samples);
-	unsigned int GetSampleRate() {return m_sampleRate;}
+	unsigned int GetSampleRate() const {return m_sampleRate;}
 
 	void SetThrottle(bool use) { m_throttle = use;}
 
 	// TODO: do we need this
-	bool IsHLEReady() { return m_HLEready;}
+	bool IsHLEReady() const { return m_HLEready;}
 	void SetHLEReady(bool ready) { m_HLEready = ready;}
 	// ---------------------
 
@@ -89,7 +89,7 @@ protected:
 	int m_channels;
 
 	WaveFileWriter g_wave_writer;
-	
+
 	bool m_HLEready;
 	bool m_logAudio;
 

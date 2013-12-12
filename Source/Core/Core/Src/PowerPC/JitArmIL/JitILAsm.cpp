@@ -31,15 +31,15 @@ void JitArmILAsmRoutineManager::Generate()
 	MOVI2R(R9, (u32)&PowerPC::ppcState.spr[0]);
 
 	FixupBranch skipToRealDispatcher = B();
-	dispatcher = GetCodePtr();	
+	dispatcher = GetCodePtr();
 		printf("ILDispatcher is %p\n", dispatcher);
 
-		// Downcount Check	
+		// Downcount Check
 		// The result of slice decrementation should be in flags if somebody jumped here
 		// IMPORTANT - We jump on negative, not carry!!!
 		FixupBranch bail = B_CC(CC_MI);
 
-		SetJumpTarget(skipToRealDispatcher); 
+		SetJumpTarget(skipToRealDispatcher);
 		dispatcherNoCheck = GetCodePtr();
 
 		// This block of code gets the address of the compiled block of code
@@ -49,19 +49,18 @@ void JitArmILAsmRoutineManager::Generate()
 			Operand2 iCacheMask = Operand2(0xE, 2); // JIT_ICACHE_MASK
 			BIC(R12, R12, iCacheMask); // R12 contains PC & JIT_ICACHE_MASK here.
 
-			MOVI2R(R14, (u32)jit->GetBlockCache()->GetICache());
+			MOVI2R(R14, (u32)jit->GetBlockCache()->iCache);
 
 			LDR(R12, R14, R12); // R12 contains iCache[PC & JIT_ICACHE_MASK] here
 			// R12 Confirmed this is the correct iCache Location loaded.
-			TST(R12, 0xFC); // Test  to see if it is a JIT block.
+			TST(R12, 0x80); // Test  to see if it is a JIT block.
 
 			SetCC(CC_EQ);
 				// Success, it is our Jitblock.
 				MOVI2R(R14, (u32)jit->GetBlockCache()->GetCodePointers());
 				// LDR R14 right here to get CodePointers()[0] pointer.
-				REV(R12, R12); // Reversing this gives us our JITblock.
-				LSL(R12, R12, 2); // Multiply by four because address locations are u32 in size 
-				LDR(R14, R14, R12); // Load the block address in to R14 
+				LSL(R12, R12, 2); // Multiply by four because address locations are u32 in size
+				LDR(R14, R14, R12); // Load the block address in to R14
 
 				B(R14);
 				// No need to jump anywhere after here, the block will go back to dispatcher start
@@ -69,9 +68,9 @@ void JitArmILAsmRoutineManager::Generate()
 
 		// If we get to this point, that means that we don't have the block cached to execute
 		// So call ArmJit to compile the block and then execute it.
-		MOVI2R(R14, (u32)&Jit);	
+		MOVI2R(R14, (u32)&Jit);
 		BL(R14);
-			
+
 		B(dispatcherNoCheck);
 
 		// fpException()
@@ -86,12 +85,12 @@ void JitArmILAsmRoutineManager::Generate()
 		B(dispatcher);
 
 		SetJumpTarget(bail);
-		doTiming = GetCodePtr();			
+		doTiming = GetCodePtr();
 		// XXX: In JIT64, Advance() gets called /after/ the exception checking
-		// once it jumps back to the start of outerLoop 
+		// once it jumps back to the start of outerLoop
 		QuickCallFunction(R14, (void*)&CoreTiming::Advance);
 
-		// Does exception checking 
+		// Does exception checking
 		testExceptions = GetCodePtr();
 			LDR(R0, R9, PPCSTATE_OFF(pc));
 			STR(R0, R9, PPCSTATE_OFF(npc));
@@ -107,13 +106,13 @@ void JitArmILAsmRoutineManager::Generate()
 			FixupBranch Exit = B_CC(CC_NEQ);
 
 	B(dispatcher);
-	
+
 	SetJumpTarget(Exit);
 
 	ADD(_SP, _SP, 4);
 
 	POP(9, R4, R5, R6, R7, R8, R9, R10, R11, _PC);  // Returns
-	
+
 	GenerateCommon();
 
 	FlushIcache();

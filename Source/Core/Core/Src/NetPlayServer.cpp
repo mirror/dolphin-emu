@@ -51,7 +51,7 @@ void NetPlayServer::ThreadFunc()
 			sf::Packet spac;
 			spac << (MessageId)NP_MSG_PING;
 			spac << m_ping_key;
-			
+
 			std::lock_guard<std::recursive_mutex> lks(m_crit.send);
 			m_ping_timer.Start();
 			SendToClients(spac);
@@ -153,7 +153,7 @@ unsigned int NetPlayServer::OnConnect(sf::SocketTCP& socket)
 	rpac >> player.name;
 
 	// give new client first available id
-	player.pid = m_players.size() + 1;
+	player.pid = (PlayerId)(m_players.size() + 1);
 
 	// try to automatically assign new user a pad
 	for (unsigned int m = 0; m < 4; ++m)
@@ -217,7 +217,7 @@ unsigned int NetPlayServer::OnConnect(sf::SocketTCP& socket)
 	UpdatePadMapping();	// sync pad mappings with everyone
 	UpdateWiimoteMapping();
 	}
-	
+
 
 	// add client to selector/ used for receiving
 	m_selector.Add(socket);
@@ -228,27 +228,34 @@ unsigned int NetPlayServer::OnConnect(sf::SocketTCP& socket)
 // called from ---NETPLAY--- thread
 unsigned int NetPlayServer::OnDisconnect(sf::SocketTCP& socket)
 {
+	PlayerId pid = m_players[socket].pid;
+
 	if (m_is_running)
 	{
-		PanicAlertT("Client disconnect while game is running!! NetPlay is disabled. You must manually stop the game.");
-		std::lock_guard<std::recursive_mutex> lkg(m_crit.game);
-		m_is_running = false;
+		for (int i = 0; i < 4; i++)
+		{
+			if (m_pad_map[i] == pid)
+			{
+				PanicAlertT("Client disconnect while game is running!! NetPlay is disabled. You must manually stop the game.");
+				std::lock_guard<std::recursive_mutex> lkg(m_crit.game);
+				m_is_running = false;
 
-		sf::Packet spac;
-		spac << (MessageId)NP_MSG_DISABLE_GAME;
-		// this thread doesn't need players lock
-		std::lock_guard<std::recursive_mutex> lks(m_crit.send);
-		SendToClients(spac);
+				sf::Packet spac;
+				spac << (MessageId)NP_MSG_DISABLE_GAME;
+				// this thread doesn't need players lock
+				std::lock_guard<std::recursive_mutex> lks(m_crit.send);
+				SendToClients(spac);
+				break;
+			}
+		}
 	}
-
-	PlayerId pid = m_players[socket].pid;
 
 	sf::Packet spac;
 	spac << (MessageId)NP_MSG_PLAYER_LEAVE;
 	spac << pid;
 
 	m_selector.Remove(socket);
-	
+
 	std::lock_guard<std::recursive_mutex> lkp(m_crit.players);
 	m_players.erase(m_players.find(socket));
 
@@ -379,7 +386,7 @@ unsigned int NetPlayServer::OnData(sf::Packet& packet, sf::SocketTCP& socket)
 			// then disconnect them.
 			if (m_pad_map[map] != player.pid)
 				return 1;
-				
+
 			// Relay to clients
 			sf::Packet spac;
 			spac << (MessageId)NP_MSG_PAD_DATA;
@@ -428,12 +435,14 @@ unsigned int NetPlayServer::OnData(sf::Packet& packet, sf::SocketTCP& socket)
 
 	case NP_MSG_PONG :
 		{
-			const u32 ping = m_ping_timer.GetTimeElapsed();
+			const u32 ping = (u32)m_ping_timer.GetTimeElapsed();
 			u32 ping_key = 0;
 			packet >> ping_key;
 
 			if (m_ping_key == ping_key)
+			{
 				player.ping = ping;
+			}
 
 			sf::Packet spac;
 			spac << (MessageId)NP_MSG_PLAYER_PING_DATA;
