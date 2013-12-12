@@ -57,6 +57,7 @@ set(LIBS		core
 			audiocommon
 			z
 			sfml-network
+			rt
 			${OPENGL_LIBRARIES}
 			${X11_LIBRARIES}
 			${XINPUT2_LIBRARIES}

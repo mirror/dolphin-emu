@@ -94,7 +94,7 @@ GameListItem::GameListItem(std::string rFileName)
 												(Buffer[i] & 0x00FF00) >>  8,
 												(Buffer[i] & 0x0000FF) >>  0));
 						}
-						m_Banner = m_Banner.scaled(DVD_BANNER_WIDTHok, DVD_BANNER_HEIGHT);
+						m_Banner = m_Banner.scaled(DVD_BANNER_WIDTH, DVD_BANNER_HEIGHT);
 						hasBanner = !m_Banner.isNull();
 					}
 					delete pBannerLoader;
