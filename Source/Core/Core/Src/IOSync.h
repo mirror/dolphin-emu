@@ -180,6 +180,8 @@ public:
 	virtual bool CanReconnectDevice(int index, int localIndex);
 
 	bool m_AutoConnect;
+	bool m_AllowInGameSwap;
+	bool m_WiiOnly;
 	// Sort of a hack - shouldn't be required.
 	bool m_Synchronous;
 

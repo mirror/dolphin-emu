@@ -16,6 +16,8 @@ IOSync::Class::Class(int classId)
 : m_ClassId(classId)
 {
 	m_AutoConnect = true;
+	m_AllowInGameSwap = true;
+	m_WiiOnly = false;
 	m_Synchronous = false;
 	g_Classes[classId] = this;
 }

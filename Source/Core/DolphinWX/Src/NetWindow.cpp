@@ -338,12 +338,27 @@ void NetPlayDiag::GetNetSettings(NetSettings &settings)
 	settings.m_WriteToMemcard = m_memcard_write->GetValue();
 }
 
+void NetPlayDiag::UpdateDevicesOnGUI()
+{
+	if (m_device_map_diag && netplay_server)
+	{
+		g_MainNetHost->RunOnThisThreadSync([&]() {
+			m_device_map_diag->UpdateDeviceMap(m_is_wii, m_is_running);
+		});
+	}
+}
+
 void NetPlayDiag::OnStart(wxCommandEvent&)
 {
 	NetSettings settings;
 	GetNetSettings(settings);
 	netplay_server->SetNetSettings(settings);
 	netplay_server->StartGame(FindISO(m_selected_game)->GetFileName());
+	if (m_start_btn)
+		m_start_btn->Disable();
+	m_record_chkbox->Disable();
+	m_is_running = true;
+	UpdateDevices();
 }
 
 void NetPlayDiag::BootGame(const std::string& filename)
@@ -536,7 +551,11 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 		// update selected game :/
 		{
 		m_selected_game.assign(WxStrToStr(event.GetString()));
+		// Would sure be nice if this enum weren't inside DolphinWX.
+		auto iso = FindISO(m_selected_game);
+		m_is_wii = iso ? iso->GetPlatform() >= GameListItem::WII_DISC : false;
 		UpdateGameName();
+		UpdateDevicesOnGUI(); // for selectively enabled classes
 		}
 		break;
 	case NP_GUI_EVT_START_GAME :
@@ -552,10 +571,6 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 			PanicAlertT("The host chose a game that was not found locally.");
 			netplay_client->GameStopped();
 		}
-		if (m_start_btn)
-			m_start_btn->Disable();
-		m_record_chkbox->Disable();
-		m_is_running = true;
 		}
 		break;
 	case NP_GUI_EVT_FAILURE:
@@ -570,10 +585,7 @@ void NetPlayDiag::OnThread(wxCommandEvent& event)
 		}
 	case NP_GUI_EVT_UPDATE_DEVICES:
 		{
-		if (m_device_map_diag && netplay_server)
-			g_MainNetHost->RunOnThisThreadSync([&]() {
-				m_device_map_diag->UpdateDeviceMap();
-			});
+		UpdateDevicesOnGUI();
 		}
 		break;
 	case NP_GUI_EVT_WARN_LAGGING:
@@ -786,7 +798,7 @@ DeviceMapDiag::DeviceMapDiag(wxWindow* parent, NetPlayServer* server)
 	SetFocus();
 }
 
-void DeviceMapDiag::UpdateDeviceMap()
+void DeviceMapDiag::UpdateDeviceMap(bool is_wii, bool is_running)
 {
 	// It's unsafe to use DestroyChildren here!
 	for (auto& child : GetChildren())
@@ -797,6 +809,8 @@ void DeviceMapDiag::UpdateDeviceMap()
 
 	for (int classId = 0; classId < IOSync::Class::NumClasses; classId++)
 	{
+		if (IOSync::g_Classes[classId]->m_WiiOnly && !is_wii)
+			continue;
 		auto class_szr = new wxStaticBoxSizer(wxHORIZONTAL, this, ClassNameString((IOSync::Class::ClassID) classId));
 		main_szr->AddSpacer(10);
 		main_szr->Add(class_szr, 0, wxEXPAND | wxLEFT | wxRIGHT, 5);
@@ -828,6 +842,8 @@ void DeviceMapDiag::UpdateDeviceMap()
 		{
 			auto v_szr = new wxBoxSizer(wxVERTICAL);
 			wxChoice* choice = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, options);
+			if (!IOSync::g_Classes[classId]->m_AllowInGameSwap && is_running)
+				choice->Disable();
 			choice->Bind(wxEVT_COMMAND_CHOICE_SELECTED, &DeviceMapDiag::OnAdjust, this);
 			m_choice_to_cls_idx[choice] = std::make_pair(classId, idx);
 			auto cur = m_server->m_device_info[classId][idx].desired_mapping;

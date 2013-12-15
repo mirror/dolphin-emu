@@ -91,6 +91,7 @@ private:
 
 	void DoUpdateLagWarning();
 	void LagWarningTimerHit(wxTimerEvent& event);
+	void UpdateDevicesOnGUI();
 
 	wxTextCtrl*		m_name_text;
 	wxListBox*		m_player_lbox;
@@ -104,6 +105,7 @@ private:
 	bool			m_host_copy_btn_is_retry;
 
 	std::string		m_selected_game;
+	bool			m_is_wii;
 	wxStaticText*	m_game_label;
 	wxBoxSizer*		m_top_szr;
 	wxStaticText*	m_warn_label;
@@ -142,7 +144,7 @@ class DeviceMapDiag : public wxDialog
 public:
 	DeviceMapDiag(wxWindow* parent, NetPlayServer* server);
 
-	void UpdateDeviceMap();
+	void UpdateDeviceMap(bool is_wii, bool is_running);
 private:
 	void OnAdjust(wxCommandEvent& event);
 
