@@ -709,8 +709,6 @@ void NetPlayServer::StartGame(const std::string &path)
 		opacket.W(m_settings.m_DSPEnableJIT);
 		opacket.W(m_settings.m_DSPHLE);
 		opacket.W(m_settings.m_WriteToMemcard);
-		opacket.W((int) m_settings.m_EXIDevice[0]);
-		opacket.W((int) m_settings.m_EXIDevice[1]);
 		opacket.W(m_enable_memory_hash);
 
 		SendToClientsOnThread(std::move(opacket));

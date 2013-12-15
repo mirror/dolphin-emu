@@ -315,11 +315,6 @@ void NetPlayClient::OnData(ENetEvent* event, Packet&& packet)
 				packet.Do(g_NetPlaySettings.m_DSPEnableJIT);
 				packet.Do(g_NetPlaySettings.m_DSPHLE);
 				packet.Do(g_NetPlaySettings.m_WriteToMemcard);
-				int tmp;
-				packet.Do(tmp);
-				g_NetPlaySettings.m_EXIDevice[0] = (TEXIDevices) tmp;
-				packet.Do(tmp);
-				g_NetPlaySettings.m_EXIDevice[1] = (TEXIDevices) tmp;
 				packet.Do(m_enable_memory_hash);
 				if (packet.failure)
 					return OnDisconnect(InvalidPacket);

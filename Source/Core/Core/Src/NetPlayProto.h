@@ -15,7 +15,6 @@ struct NetSettings
 	bool m_DSPHLE;
 	bool m_DSPEnableJIT;
 	bool m_WriteToMemcard;
-	TEXIDevices m_EXIDevice[2];
 };
 
 extern NetSettings g_NetPlaySettings;
