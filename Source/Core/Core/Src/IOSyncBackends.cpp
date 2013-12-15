@@ -26,6 +26,8 @@ Packet BackendLocal::DequeueReport(int classId, int index, bool* keepGoing)
 {
 	*keepGoing = false;
 	auto& rq = m_ReportQueue[classId][index];
+	if (rq.empty())
+		PanicAlert("Empty queue in BackendLocal - sync class code is messed up.");
 	PWBuffer result = std::move(rq.front());
 	rq.pop_front();
 	return Packet(std::move(result));
@@ -152,8 +154,9 @@ void BackendNetPlay::EnqueueLocalReport(int classId, int localIndex, PWBuffer&& 
 	pac.W((u8) classId);
 	pac.W((u8) ri);
 	auto& last = m_DeviceInfo[classId][ri].m_LastSentSubframeId;
-	s16 skippedFrames = m_FutureSubframeId - last;
-	last = m_FutureSubframeId;
+	s64 futureId = g_Classes[classId]->m_Synchronous ? m_SubframeId : m_FutureSubframeId;
+	s16 skippedFrames = futureId - last;
+	last = futureId;
 	pac.W(skippedFrames);
 	pac.vec->append(buf);
 	// server won't send our own reports back to us

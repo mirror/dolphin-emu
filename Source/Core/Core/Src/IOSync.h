@@ -51,11 +51,7 @@ public:
 		MaxDeviceIndex = 4
 	};
 
-	Class(int classId)
-	: m_ClassId(classId)
-	{
-		g_Classes[classId] = this;
-	}
+	Class(int classId);
 
 	// Emulation code should only use this to test if a device is
 	// in use as an optimization, if necessary.
@@ -80,6 +76,10 @@ public:
 	// and is sent along with the connection notice.
 	void ConnectLocalDevice(int localIndex, PWBuffer&& subtypeData)
 	{
+		if (!g_Backend)
+			return;
+		if (m_Local[localIndex].m_IsConnected)
+			g_Backend->DisconnectLocalDevice(m_ClassId, localIndex);
 		m_Local[localIndex].m_IsConnected = true;
 		m_Local[localIndex].m_Subtype = subtypeData.copy();
 		g_Backend->ConnectLocalDevice(m_ClassId, localIndex, std::move(subtypeData));
@@ -87,6 +87,8 @@ public:
 
 	void DisconnectLocalDevice(int localIndex)
 	{
+		if (!g_Backend)
+			return;
 		m_Local[localIndex].m_IsConnected = false;
 		g_Backend->DisconnectLocalDevice(m_ClassId, localIndex);
 	}
@@ -98,11 +100,16 @@ public:
 	}
 
 	template <typename Report>
-	void EnqueueLocalReport(int localIndex, Report&& reportData)
+	void EnqueueLocalReport(int localIndex, Report& reportData)
 	{
 		Packet p;
 		reportData.DoReport(p);
-		g_Backend->EnqueueLocalReport(m_ClassId, localIndex, std::move(*p.vec));
+		EnqueueRawLocalReport(localIndex, std::move(*p.vec));
+	}
+
+	void EnqueueRawLocalReport(int localIndex, PWBuffer&& reportData)
+	{
+		g_Backend->EnqueueLocalReport(m_ClassId, localIndex, std::move(reportData));
 	}
 
 	const PWBuffer* GetSubtype(int index)
@@ -172,6 +179,10 @@ public:
 	virtual int GetMaxDeviceIndex() = 0;
 	virtual bool CanReconnectDevice(int index, int localIndex);
 
+	bool m_AutoConnect;
+	// Sort of a hack - shouldn't be required.
+	bool m_Synchronous;
+
 private:
 	struct DeviceInfo // local or remote
 	{
@@ -199,14 +210,3 @@ void Stop();
 void DidStop();
 
 }
-
-// temporary
-class EXISyncClass : public IOSync::Class
-{
-public:
-	EXISyncClass() : IOSync::Class(ClassEXI) {}
-    virtual void OnConnected(int index, int localIndex, PWBuffer&& subtype) override {};
-    virtual void OnDisconnected(int index) override {};
-	virtual int GetMaxDeviceIndex() override { return 2; }
-};
-extern EXISyncClass g_EXISyncClass;

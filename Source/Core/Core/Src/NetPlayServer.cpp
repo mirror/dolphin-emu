@@ -461,18 +461,21 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 				if (player.devices_present.find(idx) != player.devices_present.end())
 					return OnDisconnect(pid);
 				player.devices_present[idx] = std::move(subtype);
-				int i;
-				for (i = 0; i < limit; i++)
+				if (IOSync::g_Classes[classId]->m_AutoConnect)
 				{
-					auto& di = m_device_info[classId][i];
-					if (di.desired_mapping.second == -1)
+					int i;
+					for (i = 0; i < limit; i++)
 					{
-						SetDesiredDeviceMapping(classId, i, pid, localIndex);
-						break;
+						auto& di = m_device_info[classId][i];
+						if (di.desired_mapping.second == -1)
+						{
+							SetDesiredDeviceMapping(classId, i, pid, localIndex);
+							break;
+						}
 					}
+					if (i == limit)
+						WARN_LOG(NETPLAY, "   --> no assignment");
 				}
-				if (i == limit)
-					WARN_LOG(NETPLAY, "   --> no assignment");
 			}
 			else // DISCONNECT
 			{

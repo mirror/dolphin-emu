@@ -1112,14 +1112,9 @@ void CConfigMain::ChooseMemcardPath(std::string& strMemcard, bool isSlotA)
 		{
 			strMemcard = filename;
 
-			if (Core::GetState() != Core::CORE_UNINITIALIZED)
-			{
-				// Change memcard to the new file
-				ExpansionInterface::ChangeDevice(
-					isSlotA ? 0 : 1, // SlotA: channel 0, SlotB channel 1
-					EXIDEVICE_MEMORYCARD,
-					0);	// SP1 is device 2, slots are device 0
-			}
+			// Change memcard to the new file
+			ExpansionInterface::ChangeLocalDevice(isSlotA ? 0 : 1, EXIDEVICE_NONE);
+			ExpansionInterface::ChangeLocalDevice(isSlotA ? 0 : 1, EXIDEVICE_MEMORYCARD);
 		}
 		else
 		{
@@ -1180,14 +1175,8 @@ void CConfigMain::ChooseEXIDevice(wxString deviceName, int deviceNum)
 
 	SConfig::GetInstance().m_EXIDevice[deviceNum] = tempType;
 
-	if (Core::GetState() != Core::CORE_UNINITIALIZED)
-	{
-		// Change plugged device! :D
-		ExpansionInterface::ChangeDevice(
-			(deviceNum == 1) ? 1 : 0,	// SlotB is on channel 1, slotA and SP1 are on 0
-			tempType,					// The device enum to change to
-			(deviceNum == 2) ? 2 : 0);	// SP1 is device 2, slots are device 0
-	}
+	// Change plugged device! :D
+	ExpansionInterface::ChangeLocalDevice(deviceNum, tempType);
 }
 
 

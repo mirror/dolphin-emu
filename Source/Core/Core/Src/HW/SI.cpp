@@ -634,8 +634,6 @@ void ChangeLocalDevice(SIDevices device, int channel)
 
 	if (old == device)
 		return;
-	if (old != SIDEVICE_NONE)
-		g_SISyncClass.DisconnectLocalDevice(channel);
 	if (device != SIDEVICE_NONE)
 		g_SISyncClass.ConnectLocalDevice(channel, g_SISyncClass.PushSubtype(device));
 }

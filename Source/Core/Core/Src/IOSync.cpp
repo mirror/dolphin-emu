@@ -12,6 +12,14 @@ Backend::Backend()
 	}
 }
 
+IOSync::Class::Class(int classId)
+: m_ClassId(classId)
+{
+	m_AutoConnect = true;
+	m_Synchronous = false;
+	g_Classes[classId] = this;
+}
+
 void Class::SetIndex(int index, int localIndex)
 {
 	if (localIndex != -1)
@@ -110,5 +118,3 @@ std::unique_ptr<Backend> g_Backend;
 Class* g_Classes[Class::NumClasses];
 
 }
-
-EXISyncClass g_EXISyncClass;
