@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-debug=0
+debugger=0
 if [ "$1" = "-d" ]; then
 	debugger=1
 	# gdb doesn't like a <<< argument
@@ -24,7 +24,7 @@ launch() {
 		xterm -sl 100000 -e bash -ic "$gdb -x $dir/run $exec" &
 		cat "$dir/fifo"
 	else
-		"$@"
+		"$exec" "$@"
 	fi
 }
 launch "$@" -H "$gameid" | {
