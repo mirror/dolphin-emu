@@ -74,6 +74,7 @@ public:
 	{
 		MaxPacketSends = 4,
 		MaxShortPacketLength = 128,
+		MinCompressedPacketLength = 16 * 1024,
 		// This is in here because it needs to be set before a client or server
 		// actually exists.  A bunch of things in enet linearly iterate over
 		// peerCount peers; probably doesn't matter in practice, but it might

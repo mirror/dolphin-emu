@@ -4,6 +4,7 @@
 
 #include "NetHost.h"
 #include "TraversalClient.h"
+#include "zlib.h"
 
 inline ENetPacket* ENetUtil::MakeENetPacket(Packet&& pac, enet_uint32 flags)
 {
@@ -48,7 +49,67 @@ void ENetUtil::Wakeup(ENetHost* host)
 	enet_socket_send(host->socket, &address, &buf, 1);
 }
 
+#define DEBUG_LOG WARN_LOG
+static void CompressIntoPacket(PWBuffer& vec, Packet& container)
+{
+	z_stream strm = {0};
+	strm.next_in = vec.data();
+	strm.avail_in = vec.size();
+	u32 sizeOff = container.readOff;
+	container.W((s32) 0);
+	container.W((u32) vec.size());
+	if (deflateInit(&strm, Z_DEFAULT_COMPRESSION) != Z_OK)
+		abort();
+	container.vec->reserve(strm.avail_in);
+	u32 compressed = 0;
+	while (1)
+	{
+		size_t offset = container.readOff + compressed;
+		strm.next_out = container.vec->data() + offset;
+		size_t avail_out = container.vec->capacity() - offset;
+		strm.avail_out = avail_out;
+		int ret = deflate(&strm, Z_FINISH);
+		compressed += avail_out - strm.avail_out;
+		if (ret == Z_STREAM_END)
+			break;
+		if (ret != Z_OK)
+			abort();
+		// Probably will never happen
+		container.vec->reserve(container.vec->capacity() * 2);
+	}
+	container.vec->resize(container.vec->size() + compressed);
+	container.readOff += compressed;
+	*(s32*) (container.vec->data() + sizeOff) = -compressed;
+	deflateEnd(&strm);
+	DEBUG_LOG(NETPLAY, "CompressIntoPacket: uncompressed:%u compressed:%u\n", (unsigned) vec.size(), (unsigned) compressed);
+}
 
+static void DecompressFromPacket(PWBuffer& vec, Packet& container)
+{
+	s32 compressed = 0;
+	u32 uncompressed = 0;
+	container.Do(compressed);
+	compressed = -compressed;
+	container.Do(uncompressed);
+	if (container.failure || (size_t) compressed > container.vec->size() - container.readOff || uncompressed > 128 * 1024 * 1024)
+	{
+		container.failure = true;
+		return;
+	}
+	vec.resize(uncompressed);
+	z_stream strm = {0};
+	strm.next_in = container.vec->data() + container.readOff;
+	strm.avail_in = compressed;
+	strm.next_out = vec.data();
+	strm.avail_out = vec.size();
+	if (inflateInit(&strm) != Z_OK)
+		abort();
+	int ret = inflate(&strm, Z_FINISH);
+	inflateEnd(&strm);
+	if (ret != Z_STREAM_END)
+		container.failure = true;
+	container.readOff += compressed;
+}
 
 NetHost::NetHost(size_t peerCount, u16 port)
 {
@@ -166,7 +227,14 @@ void NetHost::BroadcastPacket(Packet&& packet, ENetPeer* except)
 	{
 		Packet container;
 		container.W((u16) 0);
-		container.W((PointerWrap&) packet);
+		if (packet.vec->size() < MinCompressedPacketLength)
+		{
+			container.W((PointerWrap&) packet);
+		}
+		else
+		{
+			CompressIntoPacket(*packet.vec, container);
+		}
 
 		// avoid copying
 		ENetPacket* epacket = NULL;
@@ -407,7 +475,13 @@ void NetHost::OnReceive(ENetEvent* event, Packet&& packet)
 				goto skip;
 			}
 
-			packet.Do(buf);
+			s32 size;
+			packet.Do(size);
+			packet.readOff -= 4;
+			if (size >= 0)
+				packet.Do(buf);
+			else
+				DecompressFromPacket(buf, packet);
 			if (packet.failure)
 				goto failure;
 			continue;
@@ -415,11 +489,12 @@ void NetHost::OnReceive(ENetEvent* event, Packet&& packet)
 
 		skip:
 		{
-			u32 size;
+			s32 size;
 			packet.Do(size);
-			if (packet.vec->size() - packet.readOff < size)
+			size_t realsize = abs(size);
+			if (packet.vec->size() - packet.readOff < realsize)
 				goto failure;
-			packet.readOff += size;
+			packet.readOff += realsize;
 			continue;
 		}
 

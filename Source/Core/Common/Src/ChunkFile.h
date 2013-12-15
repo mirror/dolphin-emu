@@ -156,6 +156,7 @@ public:
 	u8& operator[](size_t i) { return m_Data[i]; }
 	const u8& operator[](size_t i) const { return m_Data[i]; }
 	size_t size() const { return m_Size; }
+	size_t capacity() const { return m_Capacity; }
 	bool empty() const { return m_Size == 0; }
 	bool operator==(const PWBuffer& other) const
 	{
