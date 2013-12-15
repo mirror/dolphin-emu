@@ -49,7 +49,6 @@ void ENetUtil::Wakeup(ENetHost* host)
 	enet_socket_send(host->socket, &address, &buf, 1);
 }
 
-#define DEBUG_LOG WARN_LOG
 static void CompressIntoPacket(PWBuffer& vec, Packet& container)
 {
 	z_stream strm = {0};
