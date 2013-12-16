@@ -609,13 +609,12 @@ void CConfigMain::CreateGUIControls()
 	// theme selection
 	auto const theme_selection = new wxChoice(DisplayPage, wxID_ANY);
 
-	CFileSearch::XStringVector theme_dirs;
+	std::vector<std::string> theme_dirs;
 	theme_dirs.push_back(File::GetUserPath(D_THEMES_IDX));
 	theme_dirs.push_back(File::GetSysDirectory() + THEMES_DIR);
 
-	CFileSearch cfs(CFileSearch::XStringVector(1, "*"), theme_dirs);
-	auto const& sv = cfs.GetFileNames();
-	std::for_each(sv.begin(), sv.end(), [theme_selection](const std::string& filename)
+	auto sv = DoFileSearch({"*"}, theme_dirs);
+	for (const std::string& filename : sv)
 	{
 		std::string name, ext;
 		SplitPath(filename, NULL, &name, &ext);
@@ -624,7 +623,7 @@ void CConfigMain::CreateGUIControls()
 		auto const wxname = StrToWxStr(name);
 		if (-1 == theme_selection->FindString(wxname))
 			theme_selection->Append(wxname);
-	});
+	}
 
 	theme_selection->SetStringSelection(StrToWxStr(SConfig::GetInstance().m_LocalCoreStartupParameter.theme_name));
 

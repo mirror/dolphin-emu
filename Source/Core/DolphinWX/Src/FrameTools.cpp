@@ -1776,13 +1776,7 @@ void CFrame::GameListChanged(wxCommandEvent& event)
 		SConfig::GetInstance().m_ListDrives = event.IsChecked();
 		break;
 	case IDM_PURGECACHE:
-		CFileSearch::XStringVector Directories;
-		Directories.push_back(File::GetUserPath(D_CACHE_IDX).c_str());
-		CFileSearch::XStringVector Extensions;
-		Extensions.push_back("*.cache");
-
-		CFileSearch FileSearch(Extensions, Directories);
-		const CFileSearch::XStringVector& rFilenames = FileSearch.GetFileNames();
+		auto rFilenames = DoFileSearch({"*.cache"}, {File::GetUserPath(D_CACHE_IDX)});
 
 		for (auto& rFilename : rFilenames)
 		{

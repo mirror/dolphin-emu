@@ -454,7 +454,7 @@ bool CreateEmptyFile(const std::string &filename)
 
 // Scans the directory tree gets, starting from _Directory and adds the
 // results into parentEntry. Returns the number of files+directories found
-u32 ScanDirectoryTree(const std::string &directory, FSTEntry& parentEntry)
+u32 ScanDirectoryTree(const std::string &directory, FSTEntry& parentEntry, bool recursive)
 {
 	INFO_LOG(COMMON, "ScanDirectoryTree: directory %s", directory.c_str());
 	// How many files + directories we found
@@ -500,7 +500,8 @@ u32 ScanDirectoryTree(const std::string &directory, FSTEntry& parentEntry)
 		{
 			entry.isDirectory = true;
 			// is a directory, lets go inside
-			entry.size = ScanDirectoryTree(entry.physicalName, entry);
+			if (recursive)
+				entry.size = ScanDirectoryTree(entry.physicalName, entry);
 			foundEntries += (u32)entry.size;
 		}
 		else
