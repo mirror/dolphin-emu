@@ -16,6 +16,7 @@
 #include "../HW/SystemTimers.h"
 
 #include "../VolumeHandler.h"
+#include <algorithm>
 
 #define MAX_NAME				(12)
 
@@ -35,7 +36,7 @@ bool CWII_IPC_HLE_Device_fs::Open(u32 _CommandAddress, u32 _Mode)
 {
 	// clear tmp folder
 	{
-		std::string Path = File::GetUserPath(D_WIIUSER_IDX) + "tmp";
+		std::string Path = HLE_IPC_BuildFilename("/tmp", 4);
 		File::DeleteDirRecursively(Path);
 		File::CreateDir(Path.c_str());
 	}
@@ -128,6 +129,11 @@ bool CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 
 				size_t numFiles = 0;
 				char* pFilename = (char*)Memory::GetPointer((u32)(CommandBuffer.PayloadBuffer[0].m_Address));
+
+				// Sort for much determinism
+				std::sort(ParentDir.children.begin(), ParentDir.children.end(), [](const File::FSTEntry& First, const File::FSTEntry& Second) {
+					return First.virtualName < Second.virtualName;
+				});
 
 				for (size_t i=0, max = std::min(ParentDir.children.size(), (size_t) MaxEntries); i < max; i++)
 				{

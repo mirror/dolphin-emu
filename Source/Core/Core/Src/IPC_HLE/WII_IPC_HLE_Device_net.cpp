@@ -383,7 +383,7 @@ bool CWII_IPC_HLE_Device_net_ncd_manage::IOCtlV(u32 _CommandAddress)
 	case IOCTLV_NCD_GETWIRELESSMACADDRESS:
 		INFO_LOG(WII_IPC_NET, "NET_NCD_MANAGE: IOCTLV_NCD_GETWIRELESSMACADDRESS");
 
-		if (!SConfig::GetInstance().m_WirelessMac.empty())
+		if (!SConfig::GetInstance().m_WirelessMac.empty() && !WII_IPC_HLE_Interface::g_HeadlessDeterminism)
 		{
 			int x = 0;
 			int tmpaddress[6];
@@ -638,6 +638,13 @@ bool CWII_IPC_HLE_Device_net_ip_top::IOCtl(u32 _CommandAddress)
 	u32 BufferInSize	= Memory::Read_U32(_CommandAddress + 0x14);
 	u32 BufferOut		= Memory::Read_U32(_CommandAddress + 0x18);
 	u32 BufferOutSize	= Memory::Read_U32(_CommandAddress + 0x1C);
+
+	if (WII_IPC_HLE_Interface::g_HeadlessDeterminism)
+	{
+		// no net 4 u
+		Memory::Write_U32(-1, _CommandAddress + 0x4);
+		return true;
+	}
 
 	u32 ReturnValue = 0;
 	switch (Command)

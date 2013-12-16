@@ -64,6 +64,10 @@ enum ECommandType
 	COMMAND_IOCTLV			= 7,
 };
 
+// Use a minimal FS, network calls fail, etc.  Netplay does not need this since
+// it can use the host's FS and such, but a TAS might want it. 
+extern bool g_HeadlessDeterminism;
+
 } // end of namespace WII_IPC_HLE_Interface
 
 #endif

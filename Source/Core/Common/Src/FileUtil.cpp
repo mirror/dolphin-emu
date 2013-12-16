@@ -672,6 +672,31 @@ bool SetCurrentDir(const std::string &directory)
 	return __chdir(directory.c_str()) == 0;
 }
 
+std::string CreateTempDir()
+{
+#ifdef _WIN32
+	TCHAR temp[MAX_PATH];
+	if (!GetTempPath(MAX_PATH, temp))
+		return "";
+
+	GUID guid;
+	CoCreateGuid(&guid);
+	TCHAR tguid[40];
+	StringFromGUID2(guid, tguid, 39);
+	tguid[39] = 0;
+	std::string dir = TStrToUTF8(temp) + "/" + TStrToUTF8(tguid);
+	if (!CreateDir(dir))
+		return "";
+	return dir;
+#else
+	const char* base = getenv("TMPDIR") ?: "/tmp";
+	std::string path = std::string(base) + "/DolphinWii.XXXXXX";
+	if (!mkdtemp(&path[0]))
+		return "";
+	return path;
+#endif
+}
+
 std::string GetTempFilenameForAtomicWrite(const std::string &path)
 {
 	std::string abs = path;

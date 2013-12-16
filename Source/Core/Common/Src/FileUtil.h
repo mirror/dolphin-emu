@@ -122,6 +122,9 @@ void CopyDir(const std::string &source_path, const std::string &dest_path);
 // Set the current directory to given directory
 bool SetCurrentDir(const std::string &directory);
 
+// Creates and returns the path to a new temporary directory.
+std::string CreateTempDir();
+
 // Get a filename that can hopefully be atomically renamed to the given path.
 std::string GetTempFilenameForAtomicWrite(const std::string &path);
 

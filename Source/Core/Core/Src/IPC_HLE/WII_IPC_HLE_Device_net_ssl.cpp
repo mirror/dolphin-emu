@@ -128,6 +128,13 @@ bool CWII_IPC_HLE_Device_net_ssl::IOCtlV(u32 _CommandAddress)
 		BufferOutSize3 = CommandBuffer.PayloadBuffer.at(2).m_Size;
 	}
 
+	// Righto, then...
+	if (WII_IPC_HLE_Interface::g_HeadlessDeterminism)
+	{
+		Memory::Write_U32(-1, _CommandAddress + 0x4);
+		return true;
+	}
+
 	switch (CommandBuffer.Parameter)
 	{
 	case IOCTLV_NET_SSL_NEW:

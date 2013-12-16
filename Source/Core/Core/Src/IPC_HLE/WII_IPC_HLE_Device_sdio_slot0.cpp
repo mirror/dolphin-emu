@@ -37,8 +37,9 @@ void CWII_IPC_HLE_Device_sdio_slot0::DoState(PointerWrap& p)
 
 void CWII_IPC_HLE_Device_sdio_slot0::EventNotify()
 {
-	if ((SConfig::GetInstance().m_WiiSDCard && m_event.type == EVENT_INSERT) ||
-		(!SConfig::GetInstance().m_WiiSDCard && m_event.type == EVENT_REMOVE))
+	bool Enable = SConfig::GetInstance().m_WiiSDCard && !WII_IPC_HLE_Interface::g_HeadlessDeterminism;
+	if ((Enable && m_event.type == EVENT_INSERT) ||
+		(!Enable && m_event.type == EVENT_REMOVE))
 	{
 		Memory::Write_U32(m_event.type, m_event.addr + 4);
 		WII_IPC_HLE_Interface::EnqReply(m_event.addr);
@@ -183,7 +184,7 @@ bool CWII_IPC_HLE_Device_sdio_slot0::IOCtl(u32 _CommandAddress)
 		break;
 
 	case IOCTL_GETSTATUS:
-		if (SConfig::GetInstance().m_WiiSDCard)
+		if (SConfig::GetInstance().m_WiiSDCard && !WII_IPC_HLE_Interface::g_HeadlessDeterminism)
 			m_Status |= CARD_INSERTED;
 		else
 			m_Status = CARD_NOT_EXIST;
