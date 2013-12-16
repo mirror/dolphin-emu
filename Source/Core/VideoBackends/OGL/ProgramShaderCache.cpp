@@ -48,7 +48,8 @@ const char *UniformNames[NUM_UNIFORMS] =
 	I_ZBIAS ,
 	I_INDTEXSCALE ,
 	I_INDTEXMTX,
-	I_FOG,
+	I_FOGI,
+	I_FOGF,
 	I_PLIGHTS,
 	I_PMATERIALS,
 	// VERTEX SHADER UNIFORMS
@@ -71,7 +72,8 @@ const static int PSVar_Loc[] = {
 	offsetof(PixelShaderConstants, zbias)/16,
 	offsetof(PixelShaderConstants, indtexscale)/16,
 	offsetof(PixelShaderConstants, indtexmtx)/16,
-	offsetof(PixelShaderConstants, fog)/16,
+	offsetof(PixelShaderConstants, fogi)/16,
+	offsetof(PixelShaderConstants, fogf)/16,
 	offsetof(PixelShaderConstants, plights)/16,
 	offsetof(PixelShaderConstants, pmaterials)/16,
 };
@@ -229,7 +231,7 @@ void ProgramShaderCache::UploadConstants()
 	{
 		// UBO workaround
 		// this must be updated per shader switch, so also update it when it's not dirty
-		for (unsigned int a = 0; a < 10; ++a)
+		for (unsigned int a = 0; a < 11; ++a) // TODO: Why is this not sizeof'd?
 		{
 			if(last_entry->shader.UniformSize[a] > 0)
 				glUniform4fv(last_entry->shader.UniformLocations[a], last_entry->shader.UniformSize[a], (float*) &PixelShaderManager::constants + 4*PSVar_Loc[a]);

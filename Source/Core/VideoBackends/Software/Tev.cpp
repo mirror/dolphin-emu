@@ -748,7 +748,8 @@ void Tev::Draw()
 
 		}
 
-		if(bpmem.fogRange.Base.Enabled)
+//		if(bpmem.fogRange.Base.Enabled)
+		if(false)
 		{
 			// TODO: This is untested and should definitely be checked against real hw.
 			// - No idea if offset is really normalized against the viewport width or against the projection matrix or yet something else
