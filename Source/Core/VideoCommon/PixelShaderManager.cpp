@@ -284,10 +284,10 @@ void PixelShaderManager::SetFogParamChanged()
 {
 	if(!g_ActiveConfig.bDisableFog)
 	{
-		constants.fog[1][0] = bpmem.fog.a.GetA();
-		constants.fog[1][1] = (float)bpmem.fog.b_magnitude / 0xFFFFFF;
-		constants.fog[1][2] = bpmem.fog.c_proj_fsel.GetC();
-		constants.fog[1][3] = (float)(1 << bpmem.fog.b_shift);
+		constants.fog[0][0] = bpmem.fog.a.GetA();
+		constants.fog[0][1] = (float)bpmem.fog.b_magnitude / 0xFFFFFF;
+		constants.fog[0][2] = bpmem.fog.c_proj_fsel.GetC();
+		constants.fog[0][3] = (float)(1 << bpmem.fog.b_shift);
 	}
 	else
 	{
