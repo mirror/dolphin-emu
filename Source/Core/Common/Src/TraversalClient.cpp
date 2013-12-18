@@ -244,7 +244,7 @@ void TraversalClient::HandleResends()
 void TraversalClient::HandlePing()
 {
 	enet_uint32 now = enet_time_get();
-	if (m_State == Connected && now - m_PingTime >= 5000)
+	if (m_State == Connected && now - m_PingTime >= 500)
 	{
 		TraversalPacket ping = {0};
 		ping.type = TraversalPacketPing;
