@@ -831,11 +831,11 @@ void NetPlayServer::CheckReservationResults()
 				auto& di = m_device_info[c][i];
 				if (di.new_mapping != di.actual_mapping)
 				{
+					di.actual_mapping = di.new_mapping;
+					WARN_LOG(NETPLAY, "Changing over class %d index %d -> pid %u local %d subframe %lld", c, i, di.new_mapping.first, di.new_mapping.second, (long long) di.subframe);
 					for (auto& todo : di.todo)
 						todo();
 					di.todo.clear();
-					di.actual_mapping = di.new_mapping;
-					WARN_LOG(NETPLAY, "Changing over class %d index %d -> pid %u local %d subframe %lld", c, i, di.new_mapping.first, di.new_mapping.second, (long long) di.subframe);
 				}
 			}
 		}
