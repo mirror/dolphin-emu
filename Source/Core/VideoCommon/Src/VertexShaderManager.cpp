@@ -36,7 +36,7 @@ static Matrix33 s_viewInvRotationMatrix;
 static float s_fViewTranslationVector[3];
 static float s_fViewRotation[2];
 
-VertexShaderConstants VertexShaderManager::constants;
+VertexShaderConstants* VertexShaderManager::constants;
 bool VertexShaderManager::dirty;
 
 struct ProjectionHack
@@ -181,7 +181,11 @@ void VertexShaderManager::Init()
 
 	memset(&xfregs, 0, sizeof(xfregs));
 	memset(xfmem, 0, sizeof(xfmem));
-	memset(&constants, 0 , sizeof(constants));
+	delete[] constants;
+	// The extra element is just to avoid tools complaining about uninitialized
+	// reads.
+	constants = new VertexShaderConstants[2];
+	memset(constants, 0, 2 * sizeof(*constants));
 	ResetView();
 
 	// TODO: should these go inside ResetView()?
@@ -228,7 +232,7 @@ void VertexShaderManager::SetConstants()
 	{
 		int startn = nTransformMatricesChanged[0] / 4;
 		int endn = (nTransformMatricesChanged[1] + 3) / 4;
-		memcpy(constants.transformmatrices[startn], &xfmem[startn * 4], (endn - startn) * 16);
+		memcpy(constants->transformmatrices[startn], &xfmem[startn * 4], (endn - startn) * 16);
 		dirty = true;
 		nTransformMatricesChanged[0] = nTransformMatricesChanged[1] = -1;
 	}
@@ -239,7 +243,7 @@ void VertexShaderManager::SetConstants()
 		int endn = (nNormalMatricesChanged[1] + 2) / 3;
 		for(int i=startn; i<endn; i++)
 		{
-			memcpy(constants.normalmatrices[i], &xfmem[XFMEM_NORMALMATRICES + 3*i], 12);
+			memcpy(constants->normalmatrices[i], &xfmem[XFMEM_NORMALMATRICES + 3*i], 12);
 		}
 		dirty = true;
 		nNormalMatricesChanged[0] = nNormalMatricesChanged[1] = -1;
@@ -249,7 +253,7 @@ void VertexShaderManager::SetConstants()
 	{
 		int startn = nPostTransformMatricesChanged[0] / 4;
 		int endn = (nPostTransformMatricesChanged[1] + 3 ) / 4;
-		memcpy(constants.posttransformmatrices[startn], &xfmem[XFMEM_POSTMATRICES + startn * 4], (endn - startn) * 16);
+		memcpy(constants->posttransformmatrices[startn], &xfmem[XFMEM_POSTMATRICES + startn * 4], (endn - startn) * 16);
 		dirty = true;
 		nPostTransformMatricesChanged[0] = nPostTransformMatricesChanged[1] = -1;
 	}
@@ -264,10 +268,10 @@ void VertexShaderManager::SetConstants()
 		for (int i = istart; i < iend; ++i)
 		{
 			u32 color = *(const u32*)(xfmemptr + 3);
-			constants.lights[5*i][0] = ((color >> 24) & 0xFF) / 255.0f;
-			constants.lights[5*i][1] = ((color >> 16) & 0xFF) / 255.0f;
-			constants.lights[5*i][2] = ((color >> 8)  & 0xFF) / 255.0f;
-			constants.lights[5*i][3] = ((color)       & 0xFF) / 255.0f;
+			constants->lights[5*i][0] = ((color >> 24) & 0xFF) / 255.0f;
+			constants->lights[5*i][1] = ((color >> 16) & 0xFF) / 255.0f;
+			constants->lights[5*i][2] = ((color >> 8)  & 0xFF) / 255.0f;
+			constants->lights[5*i][3] = ((color)       & 0xFF) / 255.0f;
 			xfmemptr += 4;
 
 			for (int j = 0; j < 4; ++j, xfmemptr += 3)
@@ -278,12 +282,12 @@ void VertexShaderManager::SetConstants()
 					fabs(xfmemptr[2]) < 0.00001f)
 				{
 					// dist attenuation, make sure not equal to 0!!!
-					constants.lights[5*i+j+1][0] = 0.00001f;
+					constants->lights[5*i+j+1][0] = 0.00001f;
 				}
 				else
-					constants.lights[5*i+j+1][0] = xfmemptr[0];
-				constants.lights[5*i+j+1][1] = xfmemptr[1];
-				constants.lights[5*i+j+1][2] = xfmemptr[2];
+					constants->lights[5*i+j+1][0] = xfmemptr[0];
+				constants->lights[5*i+j+1][1] = xfmemptr[1];
+				constants->lights[5*i+j+1][2] = xfmemptr[2];
 			}
 		}
 		dirty = true;
@@ -298,10 +302,10 @@ void VertexShaderManager::SetConstants()
 			if (nMaterialsChanged & (1 << i))
 			{
 				u32 data = *(xfregs.ambColor + i);
-				constants.materials[i][0] = ((data >> 24) & 0xFF) / 255.0f;
-				constants.materials[i][1] = ((data >> 16) & 0xFF) / 255.0f;
-				constants.materials[i][2] = ((data >>  8) & 0xFF) / 255.0f;
-				constants.materials[i][3] = ( data        & 0xFF) / 255.0f;
+				constants->materials[i][0] = ((data >> 24) & 0xFF) / 255.0f;
+				constants->materials[i][1] = ((data >> 16) & 0xFF) / 255.0f;
+				constants->materials[i][2] = ((data >>  8) & 0xFF) / 255.0f;
+				constants->materials[i][3] = ( data        & 0xFF) / 255.0f;
 			}
 		}
 
@@ -310,10 +314,10 @@ void VertexShaderManager::SetConstants()
 			if (nMaterialsChanged & (1 << (i + 2)))
 			{
 				u32 data = *(xfregs.matColor + i);
-				constants.materials[i+2][0] = ((data >> 24) & 0xFF) / 255.0f;
-				constants.materials[i+2][1] = ((data >> 16) & 0xFF) / 255.0f;
-				constants.materials[i+2][2] = ((data >>  8) & 0xFF) / 255.0f;
-				constants.materials[i+2][3] = ( data        & 0xFF) / 255.0f;
+				constants->materials[i+2][0] = ((data >> 24) & 0xFF) / 255.0f;
+				constants->materials[i+2][1] = ((data >> 16) & 0xFF) / 255.0f;
+				constants->materials[i+2][2] = ((data >>  8) & 0xFF) / 255.0f;
+				constants->materials[i+2][3] = ( data        & 0xFF) / 255.0f;
 			}
 		}
 		dirty = true;
@@ -328,10 +332,10 @@ void VertexShaderManager::SetConstants()
 		const float *pos = (const float *)xfmem + MatrixIndexA.PosNormalMtxIdx * 4;
 		const float *norm = (const float *)xfmem + XFMEM_NORMALMATRICES + 3 * (MatrixIndexA.PosNormalMtxIdx & 31);
 
-		memcpy(constants.posnormalmatrix, pos, 3*16);
-		memcpy(constants.posnormalmatrix[3], norm, 12);
-		memcpy(constants.posnormalmatrix[4], norm+3, 12);
-		memcpy(constants.posnormalmatrix[5], norm+6, 12);
+		memcpy(constants->posnormalmatrix, pos, 3*16);
+		memcpy(constants->posnormalmatrix[3], norm, 12);
+		memcpy(constants->posnormalmatrix[4], norm+3, 12);
+		memcpy(constants->posnormalmatrix[5], norm+6, 12);
 		dirty = true;
 	}
 
@@ -346,7 +350,7 @@ void VertexShaderManager::SetConstants()
 
 		for (int i = 0; i < 4; ++i)
 		{
-			memcpy(constants.texmatrices[3*i], fptrs[i], 3*16);
+			memcpy(constants->texmatrices[3*i], fptrs[i], 3*16);
 		}
 		dirty = true;
 	}
@@ -361,7 +365,7 @@ void VertexShaderManager::SetConstants()
 
 		for (int i = 0; i < 4; ++i)
 		{
-			memcpy(constants.texmatrices[3*i+12], fptrs[i], 3*16);
+			memcpy(constants->texmatrices[3*i+12], fptrs[i], 3*16);
 		}
 		dirty = true;
 	}
@@ -369,8 +373,8 @@ void VertexShaderManager::SetConstants()
 	if (bViewportChanged)
 	{
 		bViewportChanged = false;
-		constants.depthparams[0] = xfregs.viewport.farZ / 16777216.0f;
-		constants.depthparams[1] = xfregs.viewport.zRange / 16777216.0f;
+		constants->depthparams[0] = xfregs.viewport.farZ / 16777216.0f;
+		constants->depthparams[1] = xfregs.viewport.zRange / 16777216.0f;
 		dirty = true;
 		// This is so implementation-dependent that we can't have it here.
 		UpdateViewport();
@@ -506,7 +510,7 @@ void VertexShaderManager::SetConstants()
 			Matrix44::Set(mtxB, g_fProjectionMatrix);
 			Matrix44::Multiply(mtxB, viewMtx, mtxA); // mtxA = projection x view
 			Matrix44::Multiply(s_viewportCorrection, mtxA, mtxB); // mtxB = viewportCorrection x mtxA
-			memcpy(constants.projection, mtxB.data, 4*16);
+			memcpy(constants->projection, mtxB.data, 4*16);
 		}
 		else
 		{
@@ -515,7 +519,7 @@ void VertexShaderManager::SetConstants()
 
 			Matrix44 correctedMtx;
 			Matrix44::Multiply(s_viewportCorrection, projMtx, correctedMtx);
-			memcpy(constants.projection, correctedMtx.data, 4*16);
+			memcpy(constants->projection, correctedMtx.data, 4*16);
 		}
 		dirty = true;
 	}

@@ -454,7 +454,7 @@ bool CreateEmptyFile(const std::string &filename)
 
 // Scans the directory tree gets, starting from _Directory and adds the
 // results into parentEntry. Returns the number of files+directories found
-u32 ScanDirectoryTree(const std::string &directory, FSTEntry& parentEntry)
+u32 ScanDirectoryTree(const std::string &directory, FSTEntry& parentEntry, bool recursive)
 {
 	INFO_LOG(COMMON, "ScanDirectoryTree: directory %s", directory.c_str());
 	// How many files + directories we found
@@ -500,7 +500,8 @@ u32 ScanDirectoryTree(const std::string &directory, FSTEntry& parentEntry)
 		{
 			entry.isDirectory = true;
 			// is a directory, lets go inside
-			entry.size = ScanDirectoryTree(entry.physicalName, entry);
+			if (recursive)
+				entry.size = ScanDirectoryTree(entry.physicalName, entry);
 			foundEntries += (u32)entry.size;
 		}
 		else
@@ -669,6 +670,31 @@ std::string GetCurrentDir()
 bool SetCurrentDir(const std::string &directory)
 {
 	return __chdir(directory.c_str()) == 0;
+}
+
+std::string CreateTempDir()
+{
+#ifdef _WIN32
+	TCHAR temp[MAX_PATH];
+	if (!GetTempPath(MAX_PATH, temp))
+		return "";
+
+	GUID guid;
+	CoCreateGuid(&guid);
+	TCHAR tguid[40];
+	StringFromGUID2(guid, tguid, 39);
+	tguid[39] = 0;
+	std::string dir = TStrToUTF8(temp) + "/" + TStrToUTF8(tguid);
+	if (!CreateDir(dir))
+		return "";
+	return dir;
+#else
+	const char* base = getenv("TMPDIR") ?: "/tmp";
+	std::string path = std::string(base) + "/DolphinWii.XXXXXX";
+	if (!mkdtemp(&path[0]))
+		return "";
+	return path;
+#endif
 }
 
 std::string GetTempFilenameForAtomicWrite(const std::string &path)

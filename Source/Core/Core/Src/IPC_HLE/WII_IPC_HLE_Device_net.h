@@ -12,6 +12,7 @@
 #endif
 #include "Timer.h"
 #include "FileUtil.h"
+#include "IOSync.h"
 
 // data layout of the network configuration file (/shared2/sys/net/02/config.dat)
 // needed for /dev/net/ncd/manage
@@ -538,14 +539,14 @@ private:
 	// +/- any bias set from IOCTL_NW24_SET_UNIVERSAL_TIME
 	u64 GetAdjustedUTC() const
 	{
-		return Common::Timer::GetTimeSinceJan1970() - wii_bias + utcdiff;
+		return IOSync::g_Backend->GetTime() - wii_bias + utcdiff;
 	}
 
 	// Store the difference between what the wii thinks is UTC and
 	// what the host OS thinks
 	void SetAdjustedUTC(u64 wii_utc)
 	{
-		utcdiff = Common::Timer::GetTimeSinceJan1970() - wii_bias - wii_utc;
+		utcdiff = IOSync::g_Backend->GetTime() - wii_bias - wii_utc;
 	}
 };
 

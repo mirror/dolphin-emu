@@ -35,10 +35,6 @@
 
 #include "WII_IPC_HLE_Device_es.h"
 
-// need to include this before polarssl/aes.h,
-// otherwise we may not get __STDC_FORMAT_MACROS
-#include <cinttypes>
-
 #include "../PowerPC/PowerPC.h"
 #include "../VolumeHandler.h"
 #include "FileUtil.h"

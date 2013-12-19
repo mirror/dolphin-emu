@@ -74,6 +74,7 @@
     <ClInclude Include="Src\MemoryUtil.h" />
     <ClInclude Include="Src\MsgHandler.h" />
     <ClInclude Include="Src\NandPaths.h" />
+    <ClInclude Include="Src\NetHost.h" />
     <ClInclude Include="Src\SDCardUtil.h" />
     <ClInclude Include="Src\SettingsHandler.h" />
     <ClInclude Include="Src\stdafx.h" />
@@ -85,6 +86,8 @@
     <ClInclude Include="Src\SysConf.h" />
     <ClInclude Include="Src\Thread.h" />
     <ClInclude Include="Src\Timer.h" />
+    <ClInclude Include="Src\TraversalClient.h" />
+    <ClInclude Include="Src\TraversalProto.h" />
     <ClInclude Include="Src\x64ABI.h" />
     <ClInclude Include="Src\x64Analyzer.h" />
     <ClInclude Include="Src\x64Emitter.h" />
@@ -108,6 +111,7 @@
     <ClCompile Include="Src\Misc.cpp" />
     <ClCompile Include="Src\MsgHandler.cpp" />
     <ClCompile Include="Src\NandPaths.cpp" />
+    <ClCompile Include="Src\NetHost.cpp" />
     <ClCompile Include="Src\SDCardUtil.cpp" />
     <ClCompile Include="Src\SettingsHandler.cpp" />
     <ClCompile Include="Src\stdafx.cpp">
@@ -118,6 +122,7 @@
     <ClCompile Include="Src\SysConf.cpp" />
     <ClCompile Include="Src\Thread.cpp" />
     <ClCompile Include="Src\Timer.cpp" />
+    <ClCompile Include="Src\TraversalClient.cpp" />
     <ClCompile Include="Src\Version.cpp" />
     <ClCompile Include="Src\x64ABI.cpp" />
     <ClCompile Include="Src\x64Analyzer.cpp" />
@@ -131,6 +136,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Externals\polarssl\visualc\PolarSSL.vcxproj">
       <Project>{bdb6578b-0691-4e80-a46c-df21639fd3b8}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Externals\enet\enet.vcxproj">
+      <Project>{CBC76802-C128-4B17-BF6C-23B08C313E5E}</Project>
     </ProjectReference>
     <ProjectReference Include="SCMRevGen.vcxproj">
       <Project>{41279555-f94f-4ebc-99de-af863c10c5c4}</Project>

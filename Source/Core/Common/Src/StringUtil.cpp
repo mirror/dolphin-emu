@@ -185,6 +185,12 @@ bool TryParse(const std::string &str, bool *const output)
 	return true;
 }
 
+bool TryParse(const std::string &str, std::string *output)
+{
+	*output = str;
+	return true;
+}
+
 std::string StringFromInt(int value)
 {
 	char temp[16];

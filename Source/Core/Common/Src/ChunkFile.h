@@ -15,6 +15,7 @@
 // - Zero backwards/forwards compatibility
 // - Serialization code for anything complex has to be manually written.
 
+#include <algorithm>
 #include <map>
 #include <set>
 #include <vector>
@@ -25,6 +26,12 @@
 
 #include "Common.h"
 #include "FileUtil.h"
+
+#ifdef __GNUC__
+#define NO_WARN_UNINIT_POINTER(data) asm("" :: "X"(data));
+#else
+#define NO_WARN_UNINIT_POINTER(data)
+#endif
 
 // ewww
 #if _LIBCPP_VERSION
@@ -40,12 +47,141 @@
 #error No version of is_trivially_copyable
 #endif
 
-
 template <class T>
 struct LinkedListItem : public T
 {
 	LinkedListItem<T> *next;
 };
+
+// Like std::vector<u8> but without initialization to 0 and some extra methods.
+class PWBuffer
+#if !defined(__APPLE__)
+	: public NonCopyable
+#endif
+{
+public:
+	static struct _NoCopy {} NoCopy;
+
+	PWBuffer()
+	{
+		init();
+	}
+	PWBuffer(void* inData, size_t _size, _NoCopy&)
+	{
+		m_Data = (u8*) inData;
+		m_Size = m_Capacity = _size;
+	}
+	PWBuffer(void* inData, size_t _size)
+	{
+		init();
+		append(inData, _size);
+	}
+	PWBuffer(size_t _size)
+	{
+		init();
+		resize(_size);
+	}
+	PWBuffer(PWBuffer&& buffer)
+	{
+		init();
+		swap(buffer);
+	}
+	void operator=(PWBuffer&& buffer)
+	{
+		swap(buffer);
+	}
+	~PWBuffer()
+	{
+		free(m_Data);
+	}
+	PWBuffer copy() const
+	{
+		return PWBuffer(m_Data, m_Size);
+	}
+#if !defined(__APPLE__)
+	// Get rid of this crap when we switch to VC2013.
+	PWBuffer(const PWBuffer& buffer)
+	{
+		init();
+		append(buffer.data(), buffer.size());
+	}
+	void operator=(const PWBuffer& buffer)
+	{
+		clear();
+		append(buffer.data(), buffer.size());
+	}
+#endif
+	void swap(PWBuffer& other)
+	{
+		std::swap(m_Data, other.m_Data);
+		std::swap(m_Size, other.m_Size);
+		std::swap(m_Capacity, other.m_Capacity);
+	}
+	void resize(size_t newSize)
+	{
+		reserve(newSize);
+		m_Size = newSize;
+	}
+	void reserve(size_t newSize)
+	{
+		if (newSize > m_Capacity)
+		{
+			reallocMe(std::max(newSize, m_Capacity * 2));
+		}
+		else if (newSize * 4 < m_Capacity)
+		{
+			reallocMe(newSize);
+		}
+	}
+	void clear() { resize(0); }
+	void append(const void* inData, size_t _size)
+	{
+		size_t old = m_Size;
+		resize(old + _size);
+		memcpy(&m_Data[old], inData, _size);
+	}
+	void append(const PWBuffer& other)
+	{
+		append(other.m_Data, other.m_Size);
+	}
+	u8* release_data()
+	{
+		u8* _data = m_Data;
+		m_Data = NULL;
+		m_Size = m_Capacity = 0;
+		return _data;
+	}
+	u8* data() { return m_Data; }
+	const u8* data() const { return m_Data; }
+	u8& operator[](size_t i) { return m_Data[i]; }
+	const u8& operator[](size_t i) const { return m_Data[i]; }
+	size_t size() const { return m_Size; }
+	size_t capacity() const { return m_Capacity; }
+	bool empty() const { return m_Size == 0; }
+	bool operator==(const PWBuffer& other) const
+	{
+		return m_Size == other.m_Size && !memcmp(m_Data, other.m_Data, m_Size);
+	}
+	bool operator!=(const PWBuffer& other) const
+	{
+		return !(*this == other);
+	}
+private:
+	void reallocMe(size_t newSize)
+	{
+		m_Data = (u8*) realloc(m_Data, newSize);
+		m_Capacity = newSize;
+	}
+	void init()
+	{
+		m_Data = NULL;
+		m_Size = m_Capacity = 0;
+	}
+	u8* m_Data;
+	size_t m_Size;
+	size_t m_Capacity;
+};
+class Packet;
 
 // Wrapper class
 class PointerWrap
@@ -55,19 +191,26 @@ public:
 	{
 		MODE_READ = 1, // load
 		MODE_WRITE, // save
-		MODE_MEASURE, // calculate size
 		MODE_VERIFY, // compare
 	};
 
-	u8 **ptr;
+	PWBuffer* vec;
+	size_t readOff;
+	bool failure;
 	Mode mode;
 
 public:
-	PointerWrap(u8 **ptr_, Mode mode_) : ptr(ptr_), mode(mode_) {}
+	PointerWrap(PWBuffer* vec_, Mode mode_) : vec(vec_) { SetMode(mode_); }
 
-	void SetMode(Mode mode_) { mode = mode_; }
+	void SetMode(Mode mode_)
+	{
+		mode = mode_;
+		readOff = 0;
+		failure = false;
+		if (mode_ == MODE_WRITE && vec)
+			vec->clear();
+	}
 	Mode GetMode() const { return mode; }
-	u8** GetPPtr() { return ptr; }
 
 	template <typename K, class V>
 	void Do(std::map<K, V>& x)
@@ -88,7 +231,6 @@ public:
 			break;
 
 		case MODE_WRITE:
-		case MODE_MEASURE:
 		case MODE_VERIFY:
 			for (auto& elem : x)
 			{
@@ -117,11 +259,10 @@ public:
 			break;
 
 		case MODE_WRITE:
-		case MODE_MEASURE:
 		case MODE_VERIFY:
-			for (auto itr = x.begin(); itr != x.end(); ++itr)
+			for (auto& el : x)
 			{
-				Do(*itr);
+				Do(el);
 			}
 			break;
 		}
@@ -132,7 +273,15 @@ public:
 	{
 		u32 size = (u32)x.size();
 		Do(size);
-		x.resize(size);
+		if (mode == MODE_READ)
+		{
+			if (size >= 1000000)
+			{
+				failure = true;
+				return;
+			}
+			x.resize(size);
+		}
 
 		for (auto& elem : x)
 			Do(elem);
@@ -141,7 +290,34 @@ public:
 	template <typename T>
 	void Do(std::vector<T>& x)
 	{
-		DoContainer(x);
+		if (std::is_pod<T>::value)
+		{
+			u32 size = (u32)x.size();
+			Do(size);
+			if (mode == MODE_READ)
+				x.resize(size);
+			DoArray(x.data(), size);
+		}
+		else
+		{
+			DoContainer(x);
+		}
+	}
+
+	void Do(PointerWrap& x)
+	{
+		x.mode = mode;
+		x.readOff = 0;
+		Do(*x.vec);
+	}
+
+	void Do(PWBuffer& x)
+	{
+		u32 size = (u32)x.size();
+		Do(size);
+		if (mode == MODE_READ)
+			x.resize(size);
+		DoArray(x.data(), size);
 	}
 
 	template <typename T>
@@ -172,8 +348,15 @@ public:
 	template <typename T>
 	void DoArray(T* x, u32 count)
 	{
-		for (u32 i = 0; i != count; ++i)
-			Do(x[i]);
+		if (std::is_pod<T>::value)
+		{
+			DoVoid(x, count * sizeof(T));
+		}
+		else
+		{
+			for (u32 i = 0; i != count; ++i)
+				Do(x[i]);
+		}
 	}
 
 	template <typename T>
@@ -271,44 +454,83 @@ public:
 		{
 			PanicAlertT("Error: After \"%s\", found %d (0x%X) instead of save marker %d (0x%X). Aborting savestate load...",
 				prevName, cookie, cookie, arbitraryNumber, arbitraryNumber);
-			mode = PointerWrap::MODE_MEASURE;
+			failure = true;
 		}
 	}
 
 private:
-	__forceinline void DoByte(u8& x)
+	void DoVoid(void *data, u32 size)
 	{
+		NO_WARN_UNINIT_POINTER(data);
 		switch (mode)
 		{
 		case MODE_READ:
-			x = **ptr;
+			if (size > vec->size() - readOff)
+			{
+				failure = true;
+				return;
+			}
+			else
+			{
+				memcpy(data, vec->data() + readOff, size);
+			}
 			break;
 
 		case MODE_WRITE:
-			**ptr = x;
-			break;
-
-		case MODE_MEASURE:
+			vec->append(data, size);
 			break;
 
 		case MODE_VERIFY:
-			_dbg_assert_msg_(COMMON, (x == **ptr),
-				"Savestate verification failure: %d (0x%X) (at %p) != %d (0x%X) (at %p).\n",
-					x, x, &x, **ptr, **ptr, *ptr);
+			if (size > vec->size() - readOff)
+				failure = true;
+			else
+				_dbg_assert_msg_(COMMON, !memcmp(data, vec->data() + readOff, size),
+					"Savestate verification failure at %u\n", (unsigned) readOff);
 			break;
 
 		default:
 			break;
 		}
 
-		++(*ptr);
+		readOff += size;
+	}
+};
+
+// Convenience methods for packets.
+class Packet : public PointerWrap, public NonCopyable
+{
+public:
+	Packet() : PointerWrap(NULL, MODE_WRITE)
+	{
+		vec = &store;
 	}
 
-	void DoVoid(void *data, u32 size)
+	// c++
+	Packet(Packet&& other_) : PointerWrap(std::move(other_)), store(std::move(other_.store))
 	{
-		for(u32 i = 0; i != size; ++i)
-			DoByte(reinterpret_cast<u8*>(data)[i]);
+		vec = &store;
 	}
+	void operator=(Packet&& other_)
+	{
+		PointerWrap::operator=(std::move(other_));
+		store = std::move(other_.store);
+		vec = &store;
+	}
+
+	Packet(PWBuffer&& vec_) : PointerWrap(NULL, MODE_READ), store(std::move(vec_))
+	{
+		vec = &store;
+	}
+
+	// Write an rvalue.
+	template <typename T>
+	void W(const T& t)
+	{
+		PointerWrap::Do((T&) t);
+	}
+
+private:
+	PWBuffer store;
 };
 
 class CChunkFileReader
@@ -365,15 +587,14 @@ public:
 		}
 
 		// read the state
-		std::vector<u8> buffer(sz);
-		if (!pFile.ReadArray(&buffer[0], sz))
+		PWBuffer buffer(sz);
+		if (!pFile.ReadBytes(buffer.data(), sz))
 		{
 			ERROR_LOG(COMMON,"ChunkReader: Error reading file");
 			return false;
 		}
 
-		u8* ptr = &buffer[0];
-		PointerWrap p(&ptr, PointerWrap::MODE_READ);
+		PointerWrap p(&buffer, PointerWrap::MODE_READ);
 		_class.DoState(p);
 
 		INFO_LOG(COMMON, "ChunkReader: Done loading %s" , _rFilename.c_str());
@@ -392,20 +613,14 @@ public:
 			return false;
 		}
 
-		// Get data
-		u8 *ptr = 0;
-		PointerWrap p(&ptr, PointerWrap::MODE_MEASURE);
-		_class.DoState(p);
-		size_t const sz = (size_t)ptr;
-		std::vector<u8> buffer(sz);
-		ptr = &buffer[0];
-		p.SetMode(PointerWrap::MODE_WRITE);
+		PWBuffer buffer;
+		PointerWrap p(&buffer, PointerWrap::MODE_WRITE);
 		_class.DoState(p);
 
 		// Create header
 		SChunkHeader header;
 		header.Revision = _Revision;
-		header.ExpectedSize = (u32)sz;
+		header.ExpectedSize = (u32)buffer.size();
 
 		// Write to file
 		if (!pFile.WriteArray(&header, 1))
@@ -414,7 +629,7 @@ public:
 			return false;
 		}
 
-		if (!pFile.WriteArray(&buffer[0], sz))
+		if (!pFile.WriteBytes(buffer.data(), buffer.size()))
 		{
 			ERROR_LOG(COMMON,"ChunkReader: Failed writing data");
 			return false;

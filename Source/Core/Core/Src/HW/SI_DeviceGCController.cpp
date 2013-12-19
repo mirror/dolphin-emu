@@ -11,8 +11,6 @@
 
 #include "GCPad.h"
 
-#include "../Movie.h"
-
 #include "../CoreTiming.h"
 #include "SystemTimers.h"
 #include "ProcessorInterface.h"
@@ -102,6 +100,14 @@ int CSIDevice_GCController::RunBuffer(u8* _pBuffer, int _iLength)
 }
 
 
+void CSIDevice_GCController::EnqueueLocalData()
+{
+	SReport PadStatus;
+	memset(&PadStatus, 0, sizeof(PadStatus));
+	Pad::GetStatus(GetLocalIndex(), &PadStatus);
+	g_SISyncClass.EnqueueLocalReport(GetLocalIndex(), PadStatus);
+}
+
 // GetData
 
 // Return true on new data (max 7 Bytes and 6 bits ;)
@@ -110,92 +116,78 @@ int CSIDevice_GCController::RunBuffer(u8* _pBuffer, int _iLength)
 //  |_ ERR_STATUS (error on last GetData or SendCmd?)
 bool CSIDevice_GCController::GetData(u32& _Hi, u32& _Low)
 {
-	SPADStatus PadStatus;
-	memset(&PadStatus, 0, sizeof(PadStatus));
+	_Hi = 0x80000000;
+	_Low = 0;
+	g_SISyncClass.DequeueReport<SReport>(ISIDevice::m_iDeviceNumber, [&](SReport&& PadStatus) {
+		_Hi = MapPadStatus(PadStatus);
 
-	Pad::GetStatus(ISIDevice::m_iDeviceNumber, &PadStatus);
-	Movie::CallInputManip(&PadStatus, ISIDevice::m_iDeviceNumber);
+		// Low bits are packed differently per mode
+		if (m_Mode == 0 || m_Mode == 5 || m_Mode == 6 || m_Mode == 7)
+		{
+			_Low  = (u8)(PadStatus.analogB >> 4);					// Top 4 bits
+			_Low |= (u32)((u8)(PadStatus.analogA >> 4) << 4);		// Top 4 bits
+			_Low |= (u32)((u8)(PadStatus.triggerRight >> 4) << 8);	// Top 4 bits
+			_Low |= (u32)((u8)(PadStatus.triggerLeft >> 4) << 12);	// Top 4 bits
+			_Low |= (u32)((u8)(PadStatus.substickY) << 16);			// All 8 bits
+			_Low |= (u32)((u8)(PadStatus.substickX) << 24);			// All 8 bits
+		}
+		else if (m_Mode == 1)
+		{
+			_Low  = (u8)(PadStatus.analogB >> 4);					// Top 4 bits
+			_Low |= (u32)((u8)(PadStatus.analogA >> 4) << 4);		// Top 4 bits
+			_Low |= (u32)((u8)PadStatus.triggerRight << 8);			// All 8 bits
+			_Low |= (u32)((u8)PadStatus.triggerLeft << 16);			// All 8 bits
+			_Low |= (u32)((u8)PadStatus.substickY << 24);			// Top 4 bits
+			_Low |= (u32)((u8)PadStatus.substickX << 28);			// Top 4 bits
+		}
+		else if (m_Mode == 2)
+		{
+			_Low  = (u8)(PadStatus.analogB);						// All 8 bits
+			_Low |= (u32)((u8)(PadStatus.analogA) << 8);			// All 8 bits
+			_Low |= (u32)((u8)(PadStatus.triggerRight >> 4) << 16);	// Top 4 bits
+			_Low |= (u32)((u8)(PadStatus.triggerLeft >> 4) << 20);	// Top 4 bits
+			_Low |= (u32)((u8)PadStatus.substickY << 24);			// Top 4 bits
+			_Low |= (u32)((u8)PadStatus.substickX << 28);			// Top 4 bits
+		}
+		else if (m_Mode == 3)
+		{
+			// Analog A/B are always 0
+			_Low  = (u8)PadStatus.triggerRight;						// All 8 bits
+			_Low |= (u32)((u8)PadStatus.triggerLeft << 8);			// All 8 bits
+			_Low |= (u32)((u8)PadStatus.substickY << 16);			// All 8 bits
+			_Low |= (u32)((u8)PadStatus.substickX << 24);			// All 8 bits
+		}
+		else if (m_Mode == 4)
+		{
+			_Low  = (u8)(PadStatus.analogB);						// All 8 bits
+			_Low |= (u32)((u8)(PadStatus.analogA) << 8);			// All 8 bits
+			// triggerLeft/Right are always 0
+			_Low |= (u32)((u8)PadStatus.substickY << 16);			// All 8 bits
+			_Low |= (u32)((u8)PadStatus.substickX << 24);			// All 8 bits
+		}
 
-	u32 netValues[2];
-	if (NetPlay_GetInput(ISIDevice::m_iDeviceNumber, PadStatus, netValues))
-	{
-		_Hi  = netValues[0];	// first 4 bytes
-		_Low = netValues[1];	// last  4 bytes
-		return true;
-	}
+		HandleButtonCombos(PadStatus);
+	});
+	return true;
+}
 
-	Movie::SetPolledDevice();
-
-	if(Movie::IsPlayingInput())
-	{
-		Movie::PlayController(&PadStatus, ISIDevice::m_iDeviceNumber);
-		Movie::InputUpdate();
-	}
-	else if(Movie::IsRecordingInput())
-	{
-		Movie::RecordInput(&PadStatus, ISIDevice::m_iDeviceNumber);
-		Movie::InputUpdate();
-	}
-	else
-	{
-		Movie::CheckPadStatus(&PadStatus, ISIDevice::m_iDeviceNumber);
-	}
-
+u32 CSIDevice_GCController::MapPadStatus(const SPADStatus& padStatus)
+{
 	// Thankfully changing mode does not change the high bits ;)
-	_Hi  = (u32)((u8)PadStatus.stickY);
-	_Hi |= (u32)((u8)PadStatus.stickX << 8);
-	_Hi |= (u32)((u16)(PadStatus.button | PAD_USE_ORIGIN) << 16);
+	u32 _Hi = 0;
+	_Hi  = (u32)((u8)padStatus.stickY);
+	_Hi |= (u32)((u8)padStatus.stickX << 8);
+	_Hi |= (u32)((u16)(padStatus.button | PAD_USE_ORIGIN) << 16);
+	return _Hi;
+}
 
-	// Low bits are packed differently per mode
-	if (m_Mode == 0 || m_Mode == 5 || m_Mode == 6 || m_Mode == 7)
-	{
-		_Low  = (u8)(PadStatus.analogB >> 4);					// Top 4 bits
-		_Low |= (u32)((u8)(PadStatus.analogA >> 4) << 4);		// Top 4 bits
-		_Low |= (u32)((u8)(PadStatus.triggerRight >> 4) << 8);	// Top 4 bits
-		_Low |= (u32)((u8)(PadStatus.triggerLeft >> 4) << 12);	// Top 4 bits
-		_Low |= (u32)((u8)(PadStatus.substickY) << 16);			// All 8 bits
-		_Low |= (u32)((u8)(PadStatus.substickX) << 24);			// All 8 bits
-	}
-	else if (m_Mode == 1)
-	{
-		_Low  = (u8)(PadStatus.analogB >> 4);					// Top 4 bits
-		_Low |= (u32)((u8)(PadStatus.analogA >> 4) << 4);		// Top 4 bits
-		_Low |= (u32)((u8)PadStatus.triggerRight << 8);			// All 8 bits
-		_Low |= (u32)((u8)PadStatus.triggerLeft << 16);			// All 8 bits
-		_Low |= (u32)((u8)PadStatus.substickY << 24);			// Top 4 bits
-		_Low |= (u32)((u8)PadStatus.substickX << 28);			// Top 4 bits
-	}
-	else if (m_Mode == 2)
-	{
-		_Low  = (u8)(PadStatus.analogB);						// All 8 bits
-		_Low |= (u32)((u8)(PadStatus.analogA) << 8);			// All 8 bits
-		_Low |= (u32)((u8)(PadStatus.triggerRight >> 4) << 16);	// Top 4 bits
-		_Low |= (u32)((u8)(PadStatus.triggerLeft >> 4) << 20);	// Top 4 bits
-		_Low |= (u32)((u8)PadStatus.substickY << 24);			// Top 4 bits
-		_Low |= (u32)((u8)PadStatus.substickX << 28);			// Top 4 bits
-	}
-	else if (m_Mode == 3)
-	{
-		// Analog A/B are always 0
-		_Low  = (u8)PadStatus.triggerRight;						// All 8 bits
-		_Low |= (u32)((u8)PadStatus.triggerLeft << 8);			// All 8 bits
-		_Low |= (u32)((u8)PadStatus.substickY << 16);			// All 8 bits
-		_Low |= (u32)((u8)PadStatus.substickX << 24);			// All 8 bits
-	}
-	else if (m_Mode == 4)
-	{
-		_Low  = (u8)(PadStatus.analogB);						// All 8 bits
-		_Low |= (u32)((u8)(PadStatus.analogA) << 8);			// All 8 bits
-		// triggerLeft/Right are always 0
-		_Low |= (u32)((u8)PadStatus.substickY << 16);			// All 8 bits
-		_Low |= (u32)((u8)PadStatus.substickX << 24);			// All 8 bits
-	}
-
+void CSIDevice_GCController::HandleButtonCombos(const SPADStatus& padStatus)
+{
 	// Keep track of the special button combos (embedded in controller hardware... :( )
 	EButtonCombo tempCombo;
-	if ((PadStatus.button & 0xff00) == (PAD_BUTTON_Y|PAD_BUTTON_X|PAD_BUTTON_START))
+	if ((padStatus.button & 0xff00) == (PAD_BUTTON_Y|PAD_BUTTON_X|PAD_BUTTON_START))
 		tempCombo = COMBO_ORIGIN;
-	else if ((PadStatus.button & 0xff00) == (PAD_BUTTON_B|PAD_BUTTON_X|PAD_BUTTON_START))
+	else if ((padStatus.button & 0xff00) == (PAD_BUTTON_B|PAD_BUTTON_X|PAD_BUTTON_START))
 		tempCombo = COMBO_RESET;
 	else
 		tempCombo = COMBO_NONE;
@@ -214,20 +206,17 @@ bool CSIDevice_GCController::GetData(u32& _Hi, u32& _Low)
 				ProcessorInterface::ResetButton_Tap();
 			else if (m_LastButtonCombo == COMBO_ORIGIN)
 			{
-				m_Origin.uOriginStickX		= PadStatus.stickX;
-				m_Origin.uOriginStickY		= PadStatus.stickY;
-				m_Origin.uSubStickStickX	= PadStatus.substickX;
-				m_Origin.uSubStickStickY	= PadStatus.substickY;
-				m_Origin.uTrigger_L			= PadStatus.triggerLeft;
-				m_Origin.uTrigger_R			= PadStatus.triggerRight;
+				m_Origin.uOriginStickX		= padStatus.stickX;
+				m_Origin.uOriginStickY		= padStatus.stickY;
+				m_Origin.uSubStickStickX	= padStatus.substickX;
+				m_Origin.uSubStickStickY	= padStatus.substickY;
+				m_Origin.uTrigger_L			= padStatus.triggerLeft;
+				m_Origin.uTrigger_R			= padStatus.triggerRight;
 			}
 			m_LastButtonCombo = COMBO_NONE;
 		}
 	}
-
-	return true;
 }
-
 
 // SendCommand
 void CSIDevice_GCController::SendCommand(u32 _Cmd, u8 _Poll)
@@ -245,11 +234,9 @@ void CSIDevice_GCController::SendCommand(u32 _Cmd, u8 _Poll)
 			unsigned int uType = command.Parameter1;  // 0 = stop, 1 = rumble, 2 = stop hard
 			unsigned int uStrength = command.Parameter2;
 
-			// get the correct pad number that should rumble locally when using netplay
-			const u8 numPAD = NetPlay_InGamePadToLocalPad(ISIDevice::m_iDeviceNumber);
-
-			if (numPAD < 4)
-				Pad::Rumble(numPAD, uType, uStrength);
+			int li = GetLocalIndex();
+			if (li != -1)
+				Pad::Rumble(li, uType, uStrength);
 
 			if (!_Poll)
 			{

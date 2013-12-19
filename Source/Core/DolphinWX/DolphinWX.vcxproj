@@ -180,9 +180,6 @@
     <ProjectReference Include="..\..\..\Externals\LZO\LZO.vcxproj">
       <Project>{ab993f38-c31d-4897-b139-a620c42bc565}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\Externals\miniupnpc\miniupnpc.vcxproj">
-      <Project>{31643fdb-1bb8-4965-9de7-000fc88d35ae}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\..\..\Externals\SFML\build\vc2010\SFML_Network.vcxproj">
       <Project>{93d73454-2512-424e-9cda-4bb357fe13dd}</Project>
     </ProjectReference>

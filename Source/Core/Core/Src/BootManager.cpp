@@ -127,7 +127,7 @@ bool BootCore(const std::string& _rFilename)
 		game_ini.Get("Core", "BlockMerging",		&StartUp.bMergeBlocks, StartUp.bMergeBlocks);
 		game_ini.Get("Core", "DSPHLE",				&StartUp.bDSPHLE, StartUp.bDSPHLE);
 		game_ini.Get("Core", "DSPThread",			&StartUp.bDSPThread, StartUp.bDSPThread);
-		game_ini.Get("Core", "GFXBackend", &StartUp.m_strVideoBackend, StartUp.m_strVideoBackend.c_str());
+		game_ini.Get("Core", "GFXBackend", &StartUp.m_strVideoBackend, StartUp.m_strVideoBackend);
 		game_ini.Get("Core", "CPUCore",				&StartUp.iCPUCore, StartUp.iCPUCore);
 		game_ini.Get("Core", "HLE_BS2",				&StartUp.bHLE_BS2, StartUp.bHLE_BS2);
 		game_ini.Get("Core", "FrameLimit",			&SConfig::GetInstance().m_Framelimit, SConfig::GetInstance().m_Framelimit);
@@ -169,8 +169,6 @@ bool BootCore(const std::string& _rFilename)
 		StartUp.bDSPHLE = g_NetPlaySettings.m_DSPHLE;
 		StartUp.bEnableMemcardSaving = g_NetPlaySettings.m_WriteToMemcard;
 		SConfig::GetInstance().m_EnableJIT = g_NetPlaySettings.m_DSPEnableJIT;
-		SConfig::GetInstance().m_EXIDevice[0] = g_NetPlaySettings.m_EXIDevice[0];
-		SConfig::GetInstance().m_EXIDevice[1] = g_NetPlaySettings.m_EXIDevice[1];
 	}
 
 	// Run the game

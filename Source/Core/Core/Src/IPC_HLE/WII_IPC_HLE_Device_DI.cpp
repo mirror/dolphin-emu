@@ -19,7 +19,6 @@
 
 #include "../../DiscIO/Src/FileMonitor.h"
 
-#include <cinttypes>
 
 using namespace DVDInterface;
 

@@ -549,6 +549,8 @@
     <ClCompile Include="Src\DSP\LabelMap.cpp">
       <Filter>DSPCore</Filter>
     </ClCompile>
+    <ClCompile Include="Src\IOSync.cpp" />
+    <ClCompile Include="Src\IOSyncBackends.cpp" />
     <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE.cpp">
       <Filter>IPC HLE %28IOS/Starlet%29</Filter>
     </ClCompile>
@@ -1082,6 +1084,8 @@
     <ClInclude Include="Src\DSP\LabelMap.h">
       <Filter>DSPCore</Filter>
     </ClInclude>
+    <ClInclude Include="Src\IOSync.h" />
+    <ClInclude Include="Src\IOSyncBackends.h" />
     <ClInclude Include="Src\IPC_HLE\WII_IPC_HLE.h">
       <Filter>IPC HLE %28IOS/Starlet%29</Filter>
     </ClInclude>

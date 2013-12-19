@@ -12,8 +12,7 @@
 // standard gamecube controller
 class CSIDevice_GCController : public ISIDevice
 {
-private:
-
+protected:
 	// Commands
 	enum EBufferCommands
 	{
@@ -65,6 +64,14 @@ private:
 		COMBO_RESET
 	};
 
+	struct SReport : public SPADStatus
+	{
+		void DoReport(PointerWrap& p)
+		{
+			p.Do(*this);
+		}
+	};
+
 	// struct to compare input against
 	// Set on connection and (standard pad only) on button combo
 	SOrigin m_Origin;
@@ -88,12 +95,13 @@ public:
 	// Run the SI Buffer
 	virtual int RunBuffer(u8* _pBuffer, int _iLength);
 
-	// Send and Receive pad input from network
-	static bool NetPlay_GetInput(u8 numPAD, SPADStatus status, u32 *PADStatus);
-	static u8 NetPlay_InGamePadToLocalPad(u8 numPAD);
+	virtual void EnqueueLocalData();
 
 	// Return true on new data
 	virtual bool GetData(u32& _Hi, u32& _Low);
+
+	virtual u32 MapPadStatus(const SPADStatus& padStatus);
+	virtual void HandleButtonCombos(const SPADStatus& padStatus);
 
 	// Send a command directly
 	virtual void SendCommand(u32 _Cmd, u8 _Poll);

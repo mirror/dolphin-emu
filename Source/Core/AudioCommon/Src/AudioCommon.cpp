@@ -134,7 +134,7 @@ namespace AudioCommon
 		return SConfig::GetInstance().m_EnableJIT;
 	}
 
-	void PauseAndLock(bool doLock, bool unpauseOnUnlock)
+	void PauseAndLock(bool doLock, bool unpauseOnUnlock) IGNORE_THREAD_SAFETY
 	{
 		if (soundStream)
 		{

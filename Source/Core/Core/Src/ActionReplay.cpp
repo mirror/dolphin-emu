@@ -120,34 +120,33 @@ void LoadCodes(IniFile &globalIni, IniFile &localIni, bool forceLoad)
 
 	arCodes.clear();
 
-	std::vector<std::string> enabledLines;
 	std::set<std::string> enabledNames;
-	localIni.GetLines("ActionReplay_Enabled", enabledLines);
-	for (auto& line : enabledLines)
+	if (const IniFile::Section* sect = localIni.GetSection("ActionReplay_Enabled"))
 	{
-		if (line.size() != 0 && line[0] == '$')
+		auto enabledLines = sect->GetLines();
+		for (const std::string& line : enabledLines)
 		{
-			std::string name = line.substr(1, line.size() - 1);
-			enabledNames.insert(name);
+			if (line.size() != 0 && line[0] == '$')
+			{
+				std::string name = line.substr(1, line.size() - 1);
+				enabledNames.insert(name);
+			}
 		}
 	}
 
 	IniFile* inis[] = {&globalIni, &localIni};
 	for (size_t i = 0; i < ArraySize(inis); ++i)
 	{
-		std::vector<std::string> lines;
 		std::vector<std::string> encryptedLines;
 		ARCode currentCode;
 
-		inis[i]->GetLines("ActionReplay", lines);
+		IniFile::Section* sect = inis[i]->GetSection("ActionReplay");
+		if (!sect)
+			continue;
+		std::vector<std::string> lines = sect->GetLines();
 
-		std::vector<std::string>::const_iterator
-			it = lines.begin(),
-			lines_end = lines.end();
-		for (; it != lines_end; ++it)
+		for (const std::string& line : lines)
 		{
-			const std::string line = *it;
-
 			if (line.empty())
 				continue;
 

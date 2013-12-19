@@ -3,6 +3,7 @@
 // Refer to the license.txt file included.
 
 #include "Common.h"
+#include "ChunkFile.h"
 
 // Neither Android nor OS X support TLS
 #if  defined(__APPLE__) || (ANDROID && __clang__)
@@ -31,3 +32,5 @@ const char* GetLastErrorMsg()
 
 	return err_str;
 }
+
+PWBuffer::_NoCopy PWBuffer::NoCopy;

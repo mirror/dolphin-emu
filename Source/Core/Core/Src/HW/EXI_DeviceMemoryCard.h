@@ -6,14 +6,18 @@
 #define _EXI_DEVICEMEMORYCARD_H
 
 #include "Thread.h"
+#include <memory>
+#include <vector>
 
-// Data structure to be passed to the flushing thread.
-struct FlushData
+class CLocalMemoryCard
 {
-	bool bExiting;
-	std::string filename;
-	u8 *memcardContent;
-	int memcardSize, memcardIndex;
+public:
+	CLocalMemoryCard(int index);
+	bool Read(int offset, void* buffer, int size);
+	bool Write(int offset, const void* buffer, int size);
+
+	File::IOFile m_File;
+	bool m_Good;
 };
 
 class CEXIMemoryCard : public IEXIDevice
@@ -22,29 +26,29 @@ public:
 	CEXIMemoryCard(const int index);
 	virtual ~CEXIMemoryCard();
 	void SetCS(int cs) override;
-	void Update() override;
 	bool IsInterruptSet() override;
 	bool IsPresent() override;
 	void DoState(PointerWrap &p) override;
-	void PauseAndLock(bool doLock, bool unpauseOnUnlock=true) override;
 	IEXIDevice* FindDevice(TEXIDevices device_type, int customIndex=-1) override;
 
 private:
-	// This is scheduled whenever a page write is issued. The this pointer is passed
-	// through the userdata parameter, so that it can then call Flush on the right card.
-	static void FlushCallback(u64 userdata, int cyclesLate);
+	enum
+	{
+		ChunkSize = 64*1024
+	};
 
 	// Scheduled when a command that required delayed end signaling is done.
 	static void CmdDoneCallback(u64 userdata, int cyclesLate);
-
-	// Flushes the memory card contents to disk.
-	void Flush(bool exiting = false);
 
 	// Signals that the command that was previously executed is now done.
 	void CmdDone();
 
 	// Variant of CmdDone which schedules an event later in the future to complete the command.
 	void CmdDoneLater(u64 cycles);
+
+	void RequestChunk(unsigned int chunk);
+	u8* GetSector(unsigned int addr);
+	void WriteSector(unsigned int addr);
 
 	enum
 	{
@@ -65,9 +69,6 @@ private:
 		cmdChipErase			= 0xF4,
 	};
 
-	std::string m_strFilename;
-	int card_index;
-	int et_this_card, et_cmd_done;
 	//! memory card state
 
 	// STATE_TO_SAVE
@@ -77,16 +78,31 @@ private:
 	int status;
 	u32 m_uPosition;
 	u8 programming_buffer[128];
-	u32 formatDelay;
-	bool m_bDirty;
+	int card_index;
+	int et_cmd_done;
 	//! memory card parameters
-	unsigned int nintendo_card_id, card_id;
 	unsigned int address;
-	int memory_card_size; //! in bytes, must be power of 2.
-	u8 *memory_card_content;
 
-	FlushData flushData;
-	std::thread flushThread;
+	struct ChunkReport
+	{
+	public:
+		void DoReport(Packet& p)
+		{
+			p.Do(m_Chunk);
+			p.Do(m_Data);
+		}
+		unsigned int m_Chunk;
+		PWBuffer m_Data;
+	};
+	struct ChunkInfo
+	{
+		ChunkInfo() { m_Requested = m_Present = false; }
+		PWBuffer m_Data;
+		bool m_Requested;
+		bool m_Present;
+	};
+	std::vector<ChunkInfo> current_chunks;
+	std::unique_ptr<CLocalMemoryCard> local_card;
 
 protected:
 	virtual void TransferByte(u8 &byte) override;

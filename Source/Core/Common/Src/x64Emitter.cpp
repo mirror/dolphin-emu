@@ -7,7 +7,6 @@
 #include "x64ABI.h"
 #include "CPUDetect.h"
 
-#include <cinttypes>
 
 namespace Gen
 {

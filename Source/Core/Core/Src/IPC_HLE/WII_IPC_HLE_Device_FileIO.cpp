@@ -7,18 +7,64 @@
 #include "StringUtil.h"
 #include "ChunkFile.h"
 
+#include "WII_IPC_HLE.h"
 #include "WII_IPC_HLE_Device_fs.h"
 #include "WII_IPC_HLE_Device_FileIO.h"
 #include "NandPaths.h"
+#include "CommonPaths.h"
 #include <algorithm>
 
-
 static Common::replace_v replacements;
+
+static std::string GetWiiRoot();
+
+static std::string g_WiiRoot;
+
+static void DeleteWiiRoot()
+{
+	if (!g_WiiRoot.empty())
+		File::DeleteDirRecursively(g_WiiRoot);
+}
+
+static std::string GetWiiRoot()
+{
+	if (g_WiiRoot.empty())
+	{
+		if (WII_IPC_HLE_Interface::g_HeadlessDeterminism)
+		{
+			g_WiiRoot = File::CreateTempDir();
+			if (g_WiiRoot.empty())
+			{
+				ERROR_LOG(WII_IPC_FILEIO, "Could not create temporary directory");
+				return g_WiiRoot;
+			}
+			File::CopyDir(File::GetSysDirectory() + WII_USER_DIR, g_WiiRoot);
+			WARN_LOG(WII_IPC_FILEIO, "Using temporary directory %s for minimal Wii FS", g_WiiRoot.c_str());
+			static bool Registered;
+			if (!Registered)
+			{
+				Registered = true;
+				atexit(DeleteWiiRoot);
+			}
+		}
+		else
+		{
+			g_WiiRoot = File::GetUserPath(D_WIIROOT_IDX);
+		}
+	}
+	return g_WiiRoot;
+}
+
+void HLE_IPC_InitFS()
+{
+	DeleteWiiRoot();
+	g_WiiRoot.clear();
+}
 
 // This is used by several of the FileIO and /dev/fs functions
 std::string HLE_IPC_BuildFilename(std::string path_wii, int _size)
 {
-	std::string path_full = File::GetUserPath(D_WIIROOT_IDX);
+	std::string path_full = GetWiiRoot();
 
 	// Replaces chars that FAT32 can't support with strings defined in /sys/replace
 	for (auto& replacement : replacements)

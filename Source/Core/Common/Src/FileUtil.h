@@ -108,7 +108,7 @@ bool CreateEmptyFile(const std::string &filename);
 
 // Scans the directory tree gets, starting from _Directory and adds the
 // results into parentEntry. Returns the number of files+directories found
-u32 ScanDirectoryTree(const std::string &directory, FSTEntry& parentEntry);
+u32 ScanDirectoryTree(const std::string &directory, FSTEntry& parentEntry, bool recursive = true);
 
 // deletes the given directory and anything under it. Returns true on success.
 bool DeleteDirRecursively(const std::string &directory);
@@ -121,6 +121,9 @@ void CopyDir(const std::string &source_path, const std::string &dest_path);
 
 // Set the current directory to given directory
 bool SetCurrentDir(const std::string &directory);
+
+// Creates and returns the path to a new temporary directory.
+std::string CreateTempDir();
 
 // Get a filename that can hopefully be atomically renamed to the given path.
 std::string GetTempFilenameForAtomicWrite(const std::string &path);

@@ -144,19 +144,12 @@ void InputConfigDialog::UpdateProfileComboBox()
 	pname += PROFILES_PATH;
 	pname += m_plugin.profile_name;
 
-	CFileSearch::XStringVector exts;
-	exts.push_back("*.ini");
-	CFileSearch::XStringVector dirs;
-	dirs.push_back(pname);
-	CFileSearch cfs(exts, dirs);
-	const CFileSearch::XStringVector& sv = cfs.GetFileNames();
+	auto sv = DoFileSearch({"*.ini"}, {pname});
 
 	wxArrayString strs;
-	CFileSearch::XStringVector::const_iterator si = sv.begin(),
-		se = sv.end();
-	for (; si!=se; ++si)
+	for (auto& filename : sv)
 	{
-		std::string str(si->begin() + si->find_last_of('/') + 1 , si->end() - 4) ;
+		std::string str(filename.begin() + filename.find_last_of('/') + 1 , filename.end() - 4) ;
 		strs.push_back(StrToWxStr(str));
 	}
 

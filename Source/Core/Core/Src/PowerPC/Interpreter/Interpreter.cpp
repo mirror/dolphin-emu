@@ -14,7 +14,6 @@
 #include "../GDBStub.h"
 #endif
 
-#include <cinttypes>
 
 namespace {
 	u32 last_pc;

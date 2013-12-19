@@ -237,22 +237,26 @@ JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_StopEmulatio
 	Core::Stop();
 	updateMainFrameEvent.Set(); // Kick the waiting event
 }
-JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_onTouchEvent(JNIEnv *env, jobject obj, jint Action, jfloat X, jfloat Y)
+JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_onTouchEvent(JNIEnv *env, jobject obj, jint padID, jint Button, jint Action)
 {
-	ButtonManager::TouchEvent(Action, X, Y);
+	ButtonManager::TouchEvent(padID, (ButtonManager::ButtonType)Button, Action);
+}
+JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_onTouchAxisEvent(JNIEnv *env, jobject obj, jint padID, jint Button, jfloat Action)
+{
+	ButtonManager::TouchAxisEvent(padID, (ButtonManager::ButtonType)Button, Action);
 }
 JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_onGamePadEvent(JNIEnv *env, jobject obj, jstring jDevice, jint Button, jint Action)
 {
 	const char *Device = env->GetStringUTFChars(jDevice, NULL);
 	std::string strDevice = std::string(Device);
-	ButtonManager::GamepadEvent(strDevice, Button, Action);
+	ButtonManager::GamepadEvent(strDevice, (ButtonManager::ButtonType)Button, Action);
 	env->ReleaseStringUTFChars(jDevice, Device);
 }
 JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_onGamePadMoveEvent(JNIEnv *env, jobject obj, jstring jDevice, jint Axis, jfloat Value)
 {
 	const char *Device = env->GetStringUTFChars(jDevice, NULL);
 	std::string strDevice = std::string(Device);
-	ButtonManager::GamepadAxisEvent(strDevice, Axis, Value);
+	ButtonManager::GamepadAxisEvent(strDevice, (ButtonManager::ButtonType)Axis, Value);
 	env->ReleaseStringUTFChars(jDevice, Device);
 }
 
@@ -386,15 +390,6 @@ JNIEXPORT void JNICALL Java_org_dolphinemu_dolphinemu_NativeLibrary_Run(JNIEnv *
 	VideoBackend::PopulateList();
 	VideoBackend::ActivateBackend(SConfig::GetInstance().m_LocalCoreStartupParameter.m_strVideoBackend);
 	WiimoteReal::LoadSettings();
-
-	// Load our Android specific settings
-	IniFile ini;
-	bool onscreencontrols = true;
-	ini.Load(File::GetUserPath(D_CONFIG_IDX) + std::string("Dolphin.ini"));
-	ini.Get("Android", "ScreenControls", &onscreencontrols, true);
-
-	if (onscreencontrols)
-		OSD::AddCallback(OSD::OSD_ONFRAME, ButtonManager::DrawButtons);
 
 	// No use running the loop when booting fails
 	if ( BootManager::BootCore( g_filename.c_str() ) )

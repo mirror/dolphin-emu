@@ -37,8 +37,9 @@ void CWII_IPC_HLE_Device_sdio_slot0::DoState(PointerWrap& p)
 
 void CWII_IPC_HLE_Device_sdio_slot0::EventNotify()
 {
-	if ((SConfig::GetInstance().m_WiiSDCard && m_event.type == EVENT_INSERT) ||
-		(!SConfig::GetInstance().m_WiiSDCard && m_event.type == EVENT_REMOVE))
+	bool Enable = SConfig::GetInstance().m_WiiSDCard;
+	if ((Enable && m_event.type == EVENT_INSERT) ||
+		(!Enable && m_event.type == EVENT_REMOVE))
 	{
 		Memory::Write_U32(m_event.type, m_event.addr + 4);
 		WII_IPC_HLE_Interface::EnqReply(m_event.addr);
@@ -302,6 +303,7 @@ u32 CWII_IPC_HLE_Device_sdio_slot0::ExecuteCommand(u32 _BufferIn, u32 _BufferInS
 
 	// Note: req.addr is the virtual address of _rwBuffer
 
+	bool write_protected = WII_IPC_HLE_Interface::g_HeadlessDeterminism;
 
 	u32 ret = RET_OK;
 
@@ -335,6 +337,7 @@ u32 CWII_IPC_HLE_Device_sdio_slot0::ExecuteCommand(u32 _BufferIn, u32 _BufferInS
 		//	CSD: 0xff928040 0xc93efbcf 0x325f5a83 0x00002600
 
 		// Values used currently are from lpfaint99
+		// XX comex - doesn't this always have TMP_WRITE_PROTECT set?  Not that the SDK cares.
 		Memory::Write_U32(0x80168000, _BufferOut);
 		Memory::Write_U32(0xa9ffffff, _BufferOut + 4);
 		Memory::Write_U32(0x325b5a83, _BufferOut + 8);
@@ -417,7 +420,11 @@ u32 CWII_IPC_HLE_Device_sdio_slot0::ExecuteCommand(u32 _BufferIn, u32 _BufferInS
 		DEBUG_LOG(WII_IPC_SD, "%sWrite %i Block(s) from 0x%08x bsize %i to offset 0x%08x!",
 			req.isDMA ? "DMA " : "", req.blocks, req.addr, req.bsize, req.arg);
 
-		if (m_Card)
+		if (write_protected)
+		{
+			ret = RET_FAIL;
+		}
+		else if (m_Card)
 		{
 			u32 size = req.bsize * req.blocks;
 

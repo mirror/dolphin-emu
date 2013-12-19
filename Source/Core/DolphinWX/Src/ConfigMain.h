@@ -59,6 +59,8 @@ private:
 		ID_DSPTHREAD,
 
 		ID_NTSCJ,
+		ID_NETPLAY_PORT_ENABLED,
+		ID_NETPLAY_PORT,
 
 		// Audio Settings
 		ID_DSPENGINE,
@@ -130,6 +132,8 @@ private:
 	wxRadioBox* CPUEngine;
 	wxCheckBox* DSPThread;
 	wxCheckBox* _NTSCJ;
+	wxCheckBox* NetPlayPortEnabled;
+	wxSpinCtrl* NetPlayPort;
 
 
 	wxBoxSizer* sDisplayPage; // Display settings

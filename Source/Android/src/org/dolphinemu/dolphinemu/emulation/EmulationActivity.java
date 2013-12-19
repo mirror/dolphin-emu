@@ -21,8 +21,8 @@ import android.view.WindowManager.LayoutParams;
 
 import org.dolphinemu.dolphinemu.NativeLibrary;
 import org.dolphinemu.dolphinemu.R;
-import org.dolphinemu.dolphinemu.settings.InputConfigFragment;
-import org.dolphinemu.dolphinemu.settings.VideoSettingsFragment;
+import org.dolphinemu.dolphinemu.settings.input.InputConfigFragment;
+import org.dolphinemu.dolphinemu.settings.video.VideoSettingsFragment;
 
 import java.util.List;
 
@@ -36,6 +36,7 @@ public final class EmulationActivity extends Activity
 	private boolean IsActionBarHidden = false;
 	private float screenWidth;
 	private float screenHeight;
+	private SharedPreferences sharedPrefs;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState)
@@ -43,11 +44,9 @@ public final class EmulationActivity extends Activity
 		super.onCreate(savedInstanceState);
 
 		// Retrieve screen dimensions.
-		DisplayMetrics displayMetrics = new DisplayMetrics();
-		WindowManager wm = getWindowManager();
-		wm.getDefaultDisplay().getMetrics(displayMetrics);
-		this.screenHeight = displayMetrics.heightPixels;
-		this.screenWidth = displayMetrics.widthPixels;
+		DisplayMetrics dm = getResources().getDisplayMetrics();
+		this.screenHeight = dm.heightPixels;
+		this.screenWidth = dm.widthPixels;
 
 		// Request window features for the emulation view.
 		getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -60,18 +59,13 @@ public final class EmulationActivity extends Activity
 		getActionBar().setBackgroundDrawable(actionBarBackground);
 
 		// Set the native rendering screen width/height.
-		// Also get the intent passed from the GameList when the game
-		// was selected. This is so the path of the game can be retrieved
-		// and set on the native side of the code so the emulator can actually
-		// load the game.
-		Intent gameToEmulate = getIntent();
-
+		//
 		// Due to a bug in Adreno, it renders the screen rotated 90 degrees when using OpenGL
 		// Flip the width and height when on Adreno to work around this.
 		// This bug is fixed in Qualcomm driver v53
 		// Mali isn't affected by this bug.
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-		if (prefs.getString("gpuPref", "Software Rendering").equals("OGL")
+		sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+		if (sharedPrefs.getString("gpuPref", "Software Rendering").equals("OGL")
 				&& VideoSettingsFragment.SupportsGLES3()
 				&& VideoSettingsFragment.m_GLVendor != null
 				&& VideoSettingsFragment.m_GLVendor.equals("Qualcomm")
@@ -79,11 +73,23 @@ public final class EmulationActivity extends Activity
 			NativeLibrary.SetDimensions((int)screenHeight, (int)screenWidth);
 		else
 			NativeLibrary.SetDimensions((int)screenWidth, (int)screenHeight);
+
+		// Get the intent passed from the GameList when the game
+		// was selected. This is so the path of the game can be retrieved
+		// and set on the native side of the code so the emulator can actually
+		// load the game.
+		Intent gameToEmulate = getIntent();
 		NativeLibrary.SetFilename(gameToEmulate.getStringExtra("SelectedGame"));
 		Running = true;
 
 		// Set the emulation window.
 		setContentView(R.layout.emulation_view);
+
+		// If the input overlay was previously disabled, then don't show it.
+		if (!sharedPrefs.getBoolean("showInputOverlay", true))
+		{
+			findViewById(R.id.emulationControlOverlay).setVisibility(View.INVISIBLE);
+		}
 
 		// Hide the action bar by default so it doesn't get in the way.
 		getActionBar().hide();
@@ -130,22 +136,6 @@ public final class EmulationActivity extends Activity
 	}
 	
 	@Override
-	public boolean onTouchEvent(MotionEvent event)
-	{
-		float X = event.getX();
-		float Y = event.getY();
-		int Action = event.getActionMasked();
-
-		// Converts button locations 0 - 1 to OGL screen coords -1.0 - 1.0
-		float ScreenX = ((X / screenWidth) * 2.0f) - 1.0f;
-		float ScreenY = ((Y / screenHeight) * -2.0f) + 1.0f;
-
-		NativeLibrary.onTouchEvent(Action, ScreenX, ScreenY);
-		
-		return false;
-	}
-	
-	@Override
 	public void onBackPressed()
 	{
 		// The back button in the emulation
@@ -171,10 +161,49 @@ public final class EmulationActivity extends Activity
 	}
 
 	@Override
+	public boolean onPrepareOptionsMenu(Menu menu)
+	{
+		// Determine which string the "Enable Input Overlay" menu item should have
+		// depending on its visibility at the time of preparing the options menu.
+		if (!sharedPrefs.getBoolean("showInputOverlay", true))
+		{
+			menu.findItem(R.id.enableInputOverlay).setTitle(R.string.enable_input_overlay);
+		}
+		else
+		{
+			menu.findItem(R.id.enableInputOverlay).setTitle(R.string.disable_input_overlay);
+		}
+
+		return true;
+	}
+
+	@Override
 	public boolean onMenuItemSelected(int itemId, MenuItem item)
 	{
 		switch(item.getItemId())
 		{
+			// Enable/Disable input overlay.
+			case R.id.enableInputOverlay:
+			{
+				View overlay = findViewById(R.id.emulationControlOverlay);
+
+				// Show the overlay
+				if (item.getTitle().equals(getString(R.string.enable_input_overlay)))
+				{
+					overlay.setVisibility(View.VISIBLE);
+					item.setTitle(R.string.disable_input_overlay);
+					sharedPrefs.edit().putBoolean("showInputOverlay", true).commit();
+				}
+				else // Hide the overlay
+				{
+					overlay.setVisibility(View.INVISIBLE);
+					item.setTitle(R.string.enable_input_overlay);
+					sharedPrefs.edit().putBoolean("showInputOverlay", false).commit();
+				}
+
+				return true;
+			}
+
 			// Screenshot capturing
 			case R.id.takeScreenshot:
 				NativeLibrary.SaveScreenShot();
@@ -201,7 +230,7 @@ public final class EmulationActivity extends Activity
 				NativeLibrary.SaveState(4);
 				return true;
 
-			// Load state slot
+			// Load state slots
 			case R.id.loadSlot1:
 				NativeLibrary.LoadState(0);
 				return true;

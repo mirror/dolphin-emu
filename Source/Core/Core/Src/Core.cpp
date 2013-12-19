@@ -254,6 +254,8 @@ void Stop()  // - Hammertime!
 
 	INFO_LOG(CONSOLE, "Stop [Main Thread]\t\t---- Shutting down ----");
 
+	IOSync::Stop();
+
 	// Stop the CPU
 	INFO_LOG(CONSOLE, "%s", StopMessage(true, "Stop CPU").c_str());
 	PowerPC::Stop();
@@ -294,6 +296,7 @@ void Stop()  // - Hammertime!
 	INFO_LOG(CONSOLE, "Stop [Main Thread]\t\t---- Shutdown complete ----");
 	Movie::Shutdown();
 	PatchEngine::Shutdown();
+	IOSync::DidStop();
 
 	g_bStopping = false;
 }

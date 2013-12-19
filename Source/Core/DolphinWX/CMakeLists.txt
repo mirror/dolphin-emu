@@ -11,7 +11,12 @@ set(LIBS	core
 			audiocommon
 			z
 			sfml-network
+			enet
 			${GTK2_LIBRARIES})
+
+if((NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin") AND (NOT ANDROID))
+	set(LIBS ${LIBS} rt)
+endif()
 
 if(NOT ANDROID)
 	if(USE_X11)
@@ -44,6 +49,10 @@ endif()
 
 if(LIBAV_FOUND)
 	set(LIBS	${LIBS} ${LIBAV_LIBRARIES})
+endif()
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	set(LIBS	${LIBS} ${SYSTEMCONFIGURATION_LIBRARY})
 endif()
 
 if(wxWidgets_FOUND)
@@ -170,10 +179,6 @@ else()
 	set(DOLPHIN_EXE ${DOLPHIN_EXE_BASE}-nogui)
 endif()
 
-if(USE_UPNP)
-  set(LIBS  ${LIBS} miniupnpc)
-endif()
-
 include(FindGettext)
 if(GETTEXT_MSGMERGE_EXECUTABLE AND GETTEXT_MSGFMT_EXECUTABLE AND wxWidgets_FOUND)
 	file(GLOB LINGUAS ${CMAKE_SOURCE_DIR}/Languages/po/*.po)
@@ -187,6 +192,7 @@ if(ANDROID)
 	target_link_libraries(${DOLPHIN_EXE} 
 	log
 	android
+	"-Wl,--no-warn-mismatch"
 	"-Wl,--whole-archive"
 	${LIBS}
 	"-Wl,--no-whole-archive"

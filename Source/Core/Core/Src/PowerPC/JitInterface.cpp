@@ -3,7 +3,6 @@
 // Refer to the license.txt file included.
 
 #include <algorithm>
-#include <cinttypes>
 
 #ifdef _WIN32
 #include <windows.h>

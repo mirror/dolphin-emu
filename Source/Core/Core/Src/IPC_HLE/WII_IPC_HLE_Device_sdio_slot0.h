@@ -55,9 +55,9 @@ private:
 	enum
 	{
 		RET_OK,
-		RET_FAIL,
 		RET_EVENT_REGISTER, // internal state only - not actually returned
-		RET_EVENT_UNREGISTER
+		RET_EVENT_UNREGISTER,
+		RET_FAIL			= 0xFFFFFFFF,
 	};
 
 	// Status

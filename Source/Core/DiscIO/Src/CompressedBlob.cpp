@@ -9,7 +9,6 @@
 #include <unistd.h>
 #endif
 
-#include <cinttypes>
 
 #include "CompressedBlob.h"
 #include "DiscScrubber.h"

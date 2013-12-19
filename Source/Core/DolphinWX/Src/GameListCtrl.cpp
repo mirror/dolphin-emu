@@ -3,13 +3,13 @@
 // Refer to the license.txt file included.
 
 #include "Globals.h"
+#include "NetWindow.h"
 
 #include <wx/imaglist.h>
 #include <wx/fontmap.h>
 #include <wx/filename.h>
 
 #include <algorithm>
-#include <cinttypes>
 #include <memory>
 
 #include "FileSearch.h"
@@ -45,6 +45,7 @@
 size_t CGameListCtrl::m_currentItem = 0;
 size_t CGameListCtrl::m_numberItem = 0;
 std::string CGameListCtrl::m_currentFilename;
+CGameListCtrl* CGameListCtrl::s_Instance;
 bool sorted = false;
 
 extern CFrame* main_frame;
@@ -60,29 +61,8 @@ static int CompareGameListItems(const GameListItem* iso1, const GameListItem* is
 		sortData = -sortData;
 	}
 
-	int indexOne = 0;
-	int indexOther = 0;
-
-
-	// index only matters for WADS and PAL GC games, but invalid indicies for the others
-	// will return the (only) language in the list
-	if (iso1->GetPlatform() == GameListItem::WII_WAD)
-	{
-		indexOne = SConfig::GetInstance().m_SYSCONF->GetData<u8>("IPL.LNG");
-	}
-	else
-	{	// GC
-		indexOne = SConfig::GetInstance().m_LocalCoreStartupParameter.SelectedLanguage;
-	}
-
-	if (iso2->GetPlatform() == GameListItem::WII_WAD)
-	{
-		indexOther = SConfig::GetInstance().m_SYSCONF->GetData<u8>("IPL.LNG");
-	}
-	else
-	{	// GC
-		indexOther = SConfig::GetInstance().m_LocalCoreStartupParameter.SelectedLanguage;
-	}
+	int indexOne = iso1->GetLang();
+	int indexOther = iso2->GetLang();
 
 	switch(sortData)
 	{
@@ -161,8 +141,11 @@ BEGIN_EVENT_TABLE(CGameListCtrl, wxListCtrl)
 	EVT_MOTION(CGameListCtrl::OnMouseMotion)
 	EVT_LIST_COL_BEGIN_DRAG(LIST_CTRL, CGameListCtrl::OnColBeginDrag)
 	EVT_LIST_COL_CLICK(LIST_CTRL, CGameListCtrl::OnColumnClick)
+	EVT_LIST_ITEM_SELECTED(LIST_CTRL, CGameListCtrl::OnItemSelectedDeselected)
+	EVT_LIST_ITEM_DESELECTED(LIST_CTRL, CGameListCtrl::OnItemSelectedDeselected)
 	EVT_MENU(IDM_PROPERTIES, CGameListCtrl::OnProperties)
 	EVT_MENU(IDM_GAMEWIKI, CGameListCtrl::OnWiki)
+	EVT_MENU(IDM_HOSTNETPLAY, CGameListCtrl::OnHostNetplay)
 	EVT_MENU(IDM_OPENCONTAININGFOLDER, CGameListCtrl::OnOpenContainingFolder)
 	EVT_MENU(IDM_OPENSAVEFOLDER, CGameListCtrl::OnOpenSaveFolder)
 	EVT_MENU(IDM_EXPORTSAVE, CGameListCtrl::OnExportSave)
@@ -179,6 +162,7 @@ CGameListCtrl::CGameListCtrl(wxWindow* parent, const wxWindowID id, const
 {
 	DragAcceptFiles(true);
 	Connect(wxEVT_DROP_FILES, wxDropFilesEventHandler(CGameListCtrl::OnDropFiles), NULL, this);
+	s_Instance = this;
 }
 
 CGameListCtrl::~CGameListCtrl()
@@ -187,6 +171,7 @@ CGameListCtrl::~CGameListCtrl()
 		delete m_imageListSmall;
 
 	ClearIsoFiles();
+	s_Instance = NULL;
 }
 
 void CGameListCtrl::InitBitmaps()
@@ -409,13 +394,7 @@ void CGameListCtrl::InsertItemInReportView(long _Index)
 	// Set the game's banner in the second column
 	SetItemColumnImage(_Index, COLUMN_BANNER, ImageIndex);
 
-	int SelectedLanguage = SConfig::GetInstance().m_LocalCoreStartupParameter.SelectedLanguage;
-
-	// Is this sane?
-	if  (rISOFile.GetPlatform() == GameListItem::WII_WAD)
-	{
-		SelectedLanguage = SConfig::GetInstance().m_SYSCONF->GetData<u8>("IPL.LNG");
-	}
+	int SelectedLanguage = rISOFile.GetLang();
 
 	std::string const name = rISOFile.GetName(SelectedLanguage);
 	SetItem(_Index, COLUMN_TITLE, StrToWxStr(name), -1);
@@ -468,37 +447,7 @@ void CGameListCtrl::ScanForISOs()
 {
 	ClearIsoFiles();
 
-	CFileSearch::XStringVector Directories(SConfig::GetInstance().m_ISOFolder);
-
-	if (SConfig::GetInstance().m_RecursiveISOFolder)
-	{
-		for (u32 i = 0; i < Directories.size(); i++)
-		{
-			File::FSTEntry FST_Temp;
-			File::ScanDirectoryTree(Directories[i], FST_Temp);
-			for (auto& Entry : FST_Temp.children)
-			{
-				if (Entry.isDirectory)
-				{
-					bool duplicate = false;
-					for (auto& Directory : Directories)
-					{
-						if (strcmp(Directory.c_str(),
-									Entry.physicalName.c_str()) == 0)
-						{
-							duplicate = true;
-							break;
-						}
-					}
-					if (!duplicate)
-						Directories.push_back(
-								Entry.physicalName.c_str());
-				}
-			}
-		}
-	}
-
-	CFileSearch::XStringVector Extensions;
+	std::vector<std::string> Extensions;
 
 	if (SConfig::GetInstance().m_ListGC)
 		Extensions.push_back("*.gcm");
@@ -512,8 +461,7 @@ void CGameListCtrl::ScanForISOs()
 	if (SConfig::GetInstance().m_ListWad)
 		Extensions.push_back("*.wad");
 
-	CFileSearch FileSearch(Extensions, Directories);
-	const CFileSearch::XStringVector& rFilenames = FileSearch.GetFileNames();
+	auto rFilenames = DoFileSearch(Extensions, {SConfig::GetInstance().m_ISOFolder}, SConfig::GetInstance().m_RecursiveISOFolder);
 
 	if (rFilenames.size() > 0)
 	{
@@ -622,10 +570,10 @@ void CGameListCtrl::OnColBeginDrag(wxListEvent& event)
 		event.Veto();
 }
 
-const GameListItem *CGameListCtrl::GetISO(size_t index) const
+const GameListItem *CGameListCtrl::GetISO(size_t index)
 {
-	if (index < m_ISOFiles.size())
-		return m_ISOFiles[index];
+	if (s_Instance && index < s_Instance->m_ISOFiles.size())
+		return s_Instance->m_ISOFiles[index];
 	else
 		return NULL;
 }
@@ -721,6 +669,7 @@ void CGameListCtrl::OnKeyPress(wxListEvent& event)
 			SetItemState(i, wxLIST_STATE_SELECTED|wxLIST_STATE_FOCUSED,
 					wxLIST_STATE_SELECTED|wxLIST_STATE_FOCUSED);
 			EnsureVisible(i);
+			UpdateFileMenu();
 			break;
 		}
 
@@ -731,6 +680,11 @@ void CGameListCtrl::OnKeyPress(wxListEvent& event)
 	}
 
 	event.Skip();
+}
+
+void CGameListCtrl::OnItemSelectedDeselected(wxListEvent& event)
+{
+	UpdateFileMenu();
 }
 
 // This shows a little tooltip with the current Game's emulation state
@@ -837,59 +791,106 @@ void CGameListCtrl::OnRightClick(wxMouseEvent& event)
 		{
 			UnselectAll();
 			SetItemState(item, wxLIST_STATE_SELECTED, wxLIST_STATE_SELECTED );
+			UpdateFileMenu();
 		}
 		SetItemState(item, wxLIST_STATE_FOCUSED, wxLIST_STATE_FOCUSED);
 	}
-	if (GetSelectedItemCount() == 1)
-	{
-		const GameListItem *selected_iso = GetSelectedISO();
-		if (selected_iso)
-		{
-			wxMenu* popupMenu = new wxMenu;
-			popupMenu->Append(IDM_PROPERTIES, _("&Properties"));
-			popupMenu->Append(IDM_GAMEWIKI, _("&Wiki"));
-			popupMenu->AppendSeparator();
-
-			if (selected_iso->GetPlatform() != GameListItem::GAMECUBE_DISC)
-			{
-				popupMenu->Append(IDM_OPENSAVEFOLDER, _("Open Wii &save folder"));
-				popupMenu->Append(IDM_EXPORTSAVE, _("Export Wii save (Experimental)"));
-			}
-			popupMenu->Append(IDM_OPENCONTAININGFOLDER, _("Open &containing folder"));
-			popupMenu->AppendCheckItem(IDM_SETDEFAULTGCM, _("Set as &default ISO"));
-
-			// First we have to decide a starting value when we append it
-			if(selected_iso->GetFileName() == SConfig::GetInstance().
-				m_LocalCoreStartupParameter.m_strDefaultGCM)
-				popupMenu->FindItem(IDM_SETDEFAULTGCM)->Check();
-
-			popupMenu->AppendSeparator();
-			popupMenu->Append(IDM_DELETEGCM, _("&Delete ISO..."));
-
-			if (selected_iso->GetPlatform() != GameListItem::WII_WAD)
-			{
-				if (selected_iso->IsCompressed())
-					popupMenu->Append(IDM_COMPRESSGCM, _("Decompress ISO..."));
-				else if (selected_iso->GetFileName().substr(selected_iso->GetFileName().find_last_of(".")) != ".ciso"
-						 && selected_iso->GetFileName().substr(selected_iso->GetFileName().find_last_of(".")) != ".wbfs")
-					popupMenu->Append(IDM_COMPRESSGCM, _("Compress ISO..."));
-			}
-			else
-			{
-				popupMenu->Append(IDM_LIST_INSTALLWAD, _("Install to Wii Menu"));
-			}
-
-			PopupMenu(popupMenu);
-		}
-	}
-	else if (GetSelectedItemCount() > 1)
+	if (GetSelectedISO())
 	{
 		wxMenu* popupMenu = new wxMenu;
-		popupMenu->Append(IDM_DELETEGCM, _("&Delete selected ISOs..."));
-		popupMenu->AppendSeparator();
-		popupMenu->Append(IDM_MULTICOMPRESSGCM, _("Compress selected ISOs..."));
-		popupMenu->Append(IDM_MULTIDECOMPRESSGCM, _("Decompress selected ISOs..."));
+		AppendContextMenuOptions(popupMenu);
 		PopupMenu(popupMenu);
+	}
+}
+
+void CGameListCtrl::SetFileMenu(wxMenu* fileMenu)
+{
+	m_FileMenu = fileMenu;
+	UpdateFileMenu();
+}
+
+// Call this after changing the selection.
+void CGameListCtrl::UpdateFileMenu()
+{
+	// Remove the old stuff
+	wxMenuItemList& list = m_FileMenu->GetMenuItems();
+	for (auto it = list.begin(); it != list.end(); ++it)
+	{
+		int id = (*it)->GetId();
+		if (id == IDM_PROPERTIES || id == IDM_DELETEGCM)
+		{
+			for (; it != list.end();)
+			{
+				m_FileMenu->Delete(*it++);
+			}
+			break;
+		}
+	}
+	AppendContextMenuOptions(m_FileMenu);
+}
+
+void CGameListCtrl::AppendContextMenuOptions(wxMenu* menu)
+{
+	if (GetSelectedItemCount() <= 1)
+	{
+		const GameListItem *selected_iso = GetSelectedISO();
+
+		menu->Append(IDM_PROPERTIES, _("&Properties"));
+		menu->Append(IDM_GAMEWIKI, _("&Wiki"));
+		if (NetPlayDiag::GetInstance() != NULL)
+			menu->Append(IDM_HOSTNETPLAY, _("Change &Netplay Game"));
+		else
+			menu->Append(IDM_HOSTNETPLAY, _("Host &Netplay Game"));
+		if (main_frame && main_frame->IsGameRunning())
+			menu->Enable(IDM_HOSTNETPLAY, false);
+		menu->AppendSeparator();
+
+		if (selected_iso && selected_iso->GetPlatform() != GameListItem::GAMECUBE_DISC)
+		{
+			menu->Append(IDM_OPENSAVEFOLDER, _("Open Wii &save folder"));
+			menu->Append(IDM_EXPORTSAVE, _("Export Wii save (Experimental)"));
+		}
+		menu->Append(IDM_OPENCONTAININGFOLDER, _("Open &containing folder"));
+		menu->AppendCheckItem(IDM_SETDEFAULTGCM, _("Set as &default ISO"));
+
+		// First we have to decide a starting value when we append it
+		if (selected_iso && 
+		    selected_iso->GetFileName() == SConfig::GetInstance().
+		    m_LocalCoreStartupParameter.m_strDefaultGCM)
+		    menu->FindItem(IDM_SETDEFAULTGCM)->Check();
+
+		menu->AppendSeparator();
+		menu->Append(IDM_DELETEGCM, _("&Delete ISO..."));
+
+		if (selected_iso && selected_iso->GetPlatform() != GameListItem::WII_WAD)
+		{
+			if (selected_iso->IsCompressed())
+				menu->Append(IDM_COMPRESSGCM, _("Decompress ISO..."));
+			else if (selected_iso->GetFileName().substr(selected_iso->GetFileName().find_last_of(".")) != ".ciso"
+					 && selected_iso->GetFileName().substr(selected_iso->GetFileName().find_last_of(".")) != ".wbfs")
+				menu->Append(IDM_COMPRESSGCM, _("Compress ISO..."));
+		}
+		else
+		{
+			menu->Append(IDM_LIST_INSTALLWAD, _("Install to Wii Menu"));
+		}
+
+		if (!selected_iso)
+		{
+			menu->Enable(IDM_PROPERTIES, false);
+			menu->Enable(IDM_GAMEWIKI, false);
+			menu->Enable(IDM_OPENCONTAININGFOLDER, false);
+			menu->Enable(IDM_SETDEFAULTGCM, false);
+			menu->Enable(IDM_DELETEGCM, false);
+			menu->Enable(IDM_LIST_INSTALLWAD, false);
+		}
+	}
+	else
+	{
+		menu->Append(IDM_DELETEGCM, _("&Delete selected ISOs..."));
+		menu->AppendSeparator();
+		menu->Append(IDM_MULTICOMPRESSGCM, _("Compress selected ISOs..."));
+		menu->Append(IDM_MULTIDECOMPRESSGCM, _("Decompress selected ISOs..."));
 	}
 }
 
@@ -982,6 +983,7 @@ void CGameListCtrl::OnSetDefaultGCM(wxCommandEvent& event)
 		SConfig::GetInstance().m_LocalCoreStartupParameter.m_strDefaultGCM = "";
 		SConfig::GetInstance().SaveSettings();
 	}
+	UpdateFileMenu();
 }
 
 void CGameListCtrl::OnDeleteGCM(wxCommandEvent& WXUNUSED (event))
@@ -1040,6 +1042,16 @@ void CGameListCtrl::OnWiki(wxCommandEvent& WXUNUSED (event))
 		wikiUrl = ReplaceAll(wikiUrl, "[GAME_NAME]", "");
 
 	WxUtils::Launch(wikiUrl.c_str());
+}
+
+void CGameListCtrl::OnHostNetplay(wxCommandEvent& WXUNUSED (event))
+{
+	const GameListItem *iso = GetSelectedISO();
+	if (iso)
+	{
+		NetPlay::StartHosting(this, iso->GetRevisionSpecificUniqueID(), false);
+		main_frame->UpdateGUI();
+	}
 }
 
 void CGameListCtrl::MultiCompressCB(const char* text, float percent, void* arg)

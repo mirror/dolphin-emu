@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <cinttypes>
 
 #include "FileSystemGCWii.h"
 #include "StringUtil.h"

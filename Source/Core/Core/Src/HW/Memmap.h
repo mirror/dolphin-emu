@@ -89,6 +89,8 @@ bool IsInitialized();
 void Init();
 void Shutdown();
 void DoState(PointerWrap &p);
+// For debugging.
+u64 GetMemoryHash();
 
 void Clear();
 bool AreMemoryBreakpointsActivated();

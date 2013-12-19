@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <vector>
-#include <cinttypes>
 
 #include "Common.h"
 #include "PPCTables.h"

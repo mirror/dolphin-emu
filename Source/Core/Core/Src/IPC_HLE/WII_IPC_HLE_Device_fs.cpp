@@ -16,6 +16,7 @@
 #include "../HW/SystemTimers.h"
 
 #include "../VolumeHandler.h"
+#include <algorithm>
 
 #define MAX_NAME				(12)
 
@@ -35,7 +36,7 @@ bool CWII_IPC_HLE_Device_fs::Open(u32 _CommandAddress, u32 _Mode)
 {
 	// clear tmp folder
 	{
-		std::string Path = File::GetUserPath(D_WIIUSER_IDX) + "tmp";
+		std::string Path = HLE_IPC_BuildFilename("/tmp", 4);
 		File::DeleteDirRecursively(Path);
 		File::CreateDir(Path.c_str());
 	}
@@ -109,19 +110,13 @@ bool CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 				break;
 			}
 
-			// make a file search
-			CFileSearch::XStringVector Directories;
-			Directories.push_back(DirName);
-
-			CFileSearch::XStringVector Extensions;
-			Extensions.push_back("*.*");
-
-			CFileSearch FileSearch(Extensions, Directories);
+			File::FSTEntry ParentDir;
+			File::ScanDirectoryTree(DirName, ParentDir);
 
 			// it is one
 			if ((CommandBuffer.InBuffer.size() == 1) && (CommandBuffer.PayloadBuffer.size() == 1))
 			{
-				size_t numFile = FileSearch.GetFileNames().size();
+				size_t numFile = ParentDir.children.size();
 				INFO_LOG(WII_IPC_FILEIO, "\t%lu files found", (unsigned long)numFile);
 
 				Memory::Write_U32((u32)numFile, CommandBuffer.PayloadBuffer[0].m_Address);
@@ -135,14 +130,14 @@ bool CWII_IPC_HLE_Device_fs::IOCtlV(u32 _CommandAddress)
 				size_t numFiles = 0;
 				char* pFilename = (char*)Memory::GetPointer((u32)(CommandBuffer.PayloadBuffer[0].m_Address));
 
-				for (size_t i=0; i<FileSearch.GetFileNames().size(); i++)
-				{
-					if (i >= MaxEntries)
-						break;
+				// Sort for much determinism
+				std::sort(ParentDir.children.begin(), ParentDir.children.end(), [](const File::FSTEntry& First, const File::FSTEntry& Second) {
+					return First.virtualName < Second.virtualName;
+				});
 
-					std::string name, ext;
-					SplitPath(FileSearch.GetFileNames()[i], NULL, &name, &ext);
-					std::string FileName = name + ext;
+				for (size_t i=0, max = std::min(ParentDir.children.size(), (size_t) MaxEntries); i < max; i++)
+				{
+					std::string FileName = ParentDir.children[i].virtualName;
 
 					// Decode entities of invalid file system characters so that
 					// games (such as HP:HBP) will be able to find what they expect.

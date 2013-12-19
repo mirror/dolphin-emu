@@ -91,6 +91,7 @@ void Init()
 
 	_dbg_assert_msg_(WII_IPC_HLE, g_DeviceMap.empty(), "DeviceMap isn't empty on init");
 	CWII_IPC_HLE_Device_es::m_ContentFile = "";
+	HLE_IPC_InitFS();
 	u32 i;
 	for (i=0; i<IPC_MAX_FDS; i++)
 	{
@@ -615,6 +616,7 @@ void UpdateDevices()
 	}
 }
 
+bool g_HeadlessDeterminism = true;
 
 } // end of namespace WII_IPC_HLE_Interface
 

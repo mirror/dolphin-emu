@@ -6,8 +6,6 @@
 #include "ChunkFile.h"
 #include "../ConfigManager.h"
 #include "../CoreTiming.h"
-#include "../Movie.h"
-#include "../NetPlayProto.h"
 
 #include "SystemTimers.h"
 #include "ProcessorInterface.h"
@@ -18,12 +16,6 @@
 
 namespace SerialInterface
 {
-
-static int changeDevice;
-
-void RunSIBuffer();
-void UpdateInterrupts();
-
 // SI Interrupt Types
 enum SIInterruptType
 {
@@ -106,7 +98,7 @@ struct SSIChannel
 	USIChannelOut	m_Out;
 	USIChannelIn_Hi m_InHi;
 	USIChannelIn_Lo m_InLo;
-	ISIDevice*		m_pDevice;
+	std::unique_ptr<ISIDevice> m_pDevice;
 };
 
 // SI Poll: Controls how often a device is polled
@@ -215,6 +207,41 @@ static USIStatusReg			g_StatusReg;
 static USIEXIClockCount		g_EXIClockCount;
 static u8					g_SIBuffer[128];
 
+static int changeDevice[4];
+}
+
+void SISyncClass::PreInit()
+{
+	SerialInterface::PreInit();
+}
+
+void SISyncClass::OnConnected(int channel, int localIndex, PWBuffer&& subtype)
+{
+	IOSync::Class::OnConnected(channel, localIndex, std::move(subtype));
+	SIDevices type = GrabSubtype<SIDevices>(GetSubtype(channel));
+
+	CoreTiming::RemoveAllEvents(SerialInterface::changeDevice[channel]);
+	auto& sidev = SerialInterface::g_Channel[channel].m_pDevice;
+	if (!sidev || type != sidev->GetDeviceType())
+	{
+		CoreTiming::ScheduleEvent(0, SerialInterface::changeDevice[channel], ((u64)channel << 32) | SIDEVICE_NONE);
+		CoreTiming::ScheduleEvent(50000000, SerialInterface::changeDevice[channel], ((u64)channel << 32) | type);
+	}
+}
+
+void SISyncClass::OnDisconnected(int channel)
+{
+	IOSync::Class::OnDisconnected(channel);
+	CoreTiming::RemoveAllEvents(SerialInterface::changeDevice[channel]);
+	CoreTiming::ScheduleEvent(0, SerialInterface::changeDevice[channel], ((u64)channel << 32) | SIDEVICE_NONE);
+}
+
+namespace SerialInterface
+{
+
+void RunSIBuffer();
+void UpdateInterrupts();
+
 void DoState(PointerWrap &p)
 {
 	for(int i = 0; i < NUMBER_OF_CHANNELS; i++)
@@ -223,26 +250,15 @@ void DoState(PointerWrap &p)
 		p.Do(g_Channel[i].m_InLo.Hex);
 		p.Do(g_Channel[i].m_Out.Hex);
 
-		ISIDevice* pDevice = g_Channel[i].m_pDevice;
+		ISIDevice* pDevice = g_Channel[i].m_pDevice.get();
 		SIDevices type = pDevice->GetDeviceType();
 		p.Do(type);
-		ISIDevice* pSaveDevice = (type == pDevice->GetDeviceType()) ? pDevice : SIDevice_Create(type, i);
-		pSaveDevice->DoState(p);
-		if(pSaveDevice != pDevice)
+		if (p.GetMode() == PointerWrap::MODE_READ)
 		{
-			// if we had to create a temporary device, discard it if we're not loading.
-			// also, if no movie is active, we'll assume the user wants to keep their current devices
-			// instead of the ones they had when the savestate was created.
-			if(p.GetMode() != PointerWrap::MODE_READ ||
-				(!Movie::IsRecordingInput() && !Movie::IsPlayingInput()))
-			{
-				delete pSaveDevice;
-			}
-			else
-			{
-				AddDevice(pSaveDevice);
-			}
+			AddDevice(type, i);
+			pDevice = g_Channel[i].m_pDevice.get();
 		}
+		pDevice->DoState(p);
 	}
 	p.Do(g_Poll);
 	p.DoPOD(g_ComCSR);
@@ -251,19 +267,32 @@ void DoState(PointerWrap &p)
 	p.Do(g_SIBuffer);
 }
 
+void PreInit()
+{
+	for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
+	{
+		ChangeLocalDevice(SConfig::GetInstance().m_SIDevice[i], i);
+	}
+}
 
 void Init()
 {
+	for (int i = 0; i < 4; i++)
+	{
+		char buf[64];
+		sprintf(buf, "ChangeSIDevice%d", i);
+		changeDevice[i] = CoreTiming::RegisterEvent(strdup(buf), ChangeDeviceCallback);
+	}
+
+	PreInit();
+
 	for (int i = 0; i < NUMBER_OF_CHANNELS; i++)
 	{
 		g_Channel[i].m_Out.Hex = 0;
 		g_Channel[i].m_InHi.Hex = 0;
 		g_Channel[i].m_InLo.Hex = 0;
 
-		if (Movie::IsRecordingInput() || Movie::IsPlayingInput())
-			AddDevice(Movie::IsUsingPad(i) ?  (Movie::IsUsingBongo(i) ? SIDEVICE_GC_TARUKONGA : SIDEVICE_GC_CONTROLLER) : SIDEVICE_NONE, i);
-		else if (!NetPlay::IsNetPlayRunning())
-			AddDevice(SConfig::GetInstance().m_SIDevice[i], i);
+		AddDevice(SIDEVICE_NONE, i);
 	}
 
 	g_Poll.Hex = 0;
@@ -276,8 +305,6 @@ void Init()
 	g_EXIClockCount.Hex = 0;
 	//g_EXIClockCount.LOCK = 1; // Supposedly set on reset, but logs from real wii don't look like it is...
 	memset(g_SIBuffer, 0, 128);
-
-	changeDevice = CoreTiming::RegisterEvent("ChangeSIDevice", ChangeDeviceCallback);
 }
 
 void Shutdown()
@@ -484,10 +511,11 @@ void Write32(const u32 _iValue, const u32 _iAddress)
 			// send command to devices
 			if (tmpStatus.WR)
 			{
-				g_Channel[0].m_pDevice->SendCommand(g_Channel[0].m_Out.Hex, g_Poll.EN0);
-				g_Channel[1].m_pDevice->SendCommand(g_Channel[1].m_Out.Hex, g_Poll.EN1);
-				g_Channel[2].m_pDevice->SendCommand(g_Channel[2].m_Out.Hex, g_Poll.EN2);
-				g_Channel[3].m_pDevice->SendCommand(g_Channel[3].m_Out.Hex, g_Poll.EN3);
+				u32 poll[] = { g_Poll.EN0, g_Poll.EN1, g_Poll.EN2, g_Poll.EN3 };
+				for (int i = 0; i < 4; i++)
+				{
+					g_Channel[i].m_pDevice->SendCommand(g_Channel[i].m_Out.Hex, poll[i]);
+				}
 
 				g_StatusReg.WR = 0;
 				g_StatusReg.WRST0 = 0;
@@ -546,8 +574,9 @@ void GenerateSIInterrupt(SIInterruptType _SIInterrupt)
 
 void RemoveDevice(int _iDeviceNumber)
 {
-	delete g_Channel[_iDeviceNumber].m_pDevice;
-	g_Channel[_iDeviceNumber].m_pDevice = NULL;
+	auto& pDevice = g_Channel[_iDeviceNumber].m_pDevice;
+	if (pDevice)
+		pDevice.reset();
 }
 
 void AddDevice(ISIDevice* pDevice)
@@ -560,7 +589,7 @@ void AddDevice(ISIDevice* pDevice)
 	RemoveDevice(_iDeviceNumber);
 
 	// create the new one
-	g_Channel[_iDeviceNumber].m_pDevice = pDevice;
+	g_Channel[_iDeviceNumber].m_pDevice.reset(pDevice);
 }
 
 void AddDevice(const SIDevices _device, int _iDeviceNumber)
@@ -595,23 +624,40 @@ void ChangeDeviceCallback(u64 userdata, int cyclesLate)
 	AddDevice((SIDevices)(u32)userdata, channel);
 }
 
-void ChangeDevice(SIDevices device, int channel)
+void ChangeLocalDevice(SIDevices device, int channel)
 {
-	// Called from GUI, so we need to make it thread safe.
-	// Let the hardware see no device for .5b cycles
-	CoreTiming::ScheduleEvent_Threadsafe(0, changeDevice, ((u64)channel << 32) | SIDEVICE_NONE);
-	CoreTiming::ScheduleEvent_Threadsafe(500000000, changeDevice, ((u64)channel << 32) | device);
+	SIDevices old;
+	if (g_SISyncClass.LocalIsConnected(channel))
+		old = g_SISyncClass.GrabSubtype<SIDevices>(g_SISyncClass.GetLocalSubtype(channel));
+	else
+		old = SIDEVICE_NONE;
+
+	if (old == device)
+		return;
+	if (device != SIDEVICE_NONE)
+		g_SISyncClass.ConnectLocalDevice(channel, g_SISyncClass.PushSubtype(device));
 }
 
 void UpdateDevices()
 {
 	// Update channels and set the status bit if there's new data
+	for (int i = 0; i < 4; i++)
+	{
+		auto& dev = g_Channel[i].m_pDevice;
+		if (dev->GetLocalIndex() != -1)
+			dev->EnqueueLocalData();
+	}
+
 	g_StatusReg.RDST0 = !!g_Channel[0].m_pDevice->GetData(g_Channel[0].m_InHi.Hex, g_Channel[0].m_InLo.Hex);
 	g_StatusReg.RDST1 = !!g_Channel[1].m_pDevice->GetData(g_Channel[1].m_InHi.Hex, g_Channel[1].m_InLo.Hex);
 	g_StatusReg.RDST2 = !!g_Channel[2].m_pDevice->GetData(g_Channel[2].m_InHi.Hex, g_Channel[2].m_InLo.Hex);
 	g_StatusReg.RDST3 = !!g_Channel[3].m_pDevice->GetData(g_Channel[3].m_InHi.Hex, g_Channel[3].m_InLo.Hex);
 
 	UpdateInterrupts();
+
+	// This doesn't really have to be synced with SI, but we do it here to
+	// minimize the time before packets are sent out
+	IOSync::g_Backend->NewLocalSubframe();
 }
 
 void RunSIBuffer()
@@ -641,23 +687,24 @@ void RunSIBuffer()
 
 int GetTicksToNextSIPoll()
 {
-	// Poll for input at regular intervals (once per frame) when playing or recording a movie
-	if (Movie::IsPlayingInput() || Movie::IsRecordingInput())
+	// I don't understand the point of the previous code in here
+	// that had different rates for normal, movie, and netplay.
+	// None of this is nondeterministic, and the usual rate seems
+	// to be 120fps anyway, which was the netplay rate.
+	// Or why this is polling in the first place, but... -comex
+
+	if (g_Poll.Y)
 	{
-		if (Movie::IsNetPlayRecording())
-			return SystemTimers::GetTicksPerSecond() / VideoInterface::TargetRefreshRate / 2;
-		else
-			return SystemTimers::GetTicksPerSecond() / VideoInterface::TargetRefreshRate;
+		return min(VideoInterface::GetTicksPerFrame() / g_Poll.Y, VideoInterface::GetTicksPerLine() * g_Poll.X);
 	}
-	if (NetPlay::IsNetPlayRunning())
-		return SystemTimers::GetTicksPerSecond() / VideoInterface::TargetRefreshRate / 2;
+	else
+	{
+		if (g_Poll.X)
+			return VideoInterface::GetTicksPerLine() * g_Poll.X;
+		else
+			return SystemTimers::GetTicksPerSecond() / 60;
+	}
 
-	if (!g_Poll.Y && g_Poll.X)
-		return VideoInterface::GetTicksPerLine() * g_Poll.X;
-	else if (!g_Poll.Y)
-		return SystemTimers::GetTicksPerSecond() / 60;
-
-	return min(VideoInterface::GetTicksPerFrame() / g_Poll.Y, VideoInterface::GetTicksPerLine() * g_Poll.X);
 }
 
 } // end of namespace SerialInterface

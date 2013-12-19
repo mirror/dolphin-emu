@@ -119,6 +119,8 @@ EVT_CHECKBOX(ID_IDLESKIP, CConfigMain::CoreSettingsChanged)
 EVT_CHECKBOX(ID_ENABLECHEATS, CConfigMain::CoreSettingsChanged)
 EVT_CHOICE(ID_FRAMELIMIT, CConfigMain::CoreSettingsChanged)
 EVT_CHECKBOX(ID_FRAMELIMIT_USEFPSFORLIMITING, CConfigMain::CoreSettingsChanged)
+EVT_CHECKBOX(ID_NETPLAY_PORT_ENABLED, CConfigMain::CoreSettingsChanged)
+EVT_TEXT(ID_NETPLAY_PORT, CConfigMain::CoreSettingsChanged)
 
 EVT_RADIOBOX(ID_CPUENGINE, CConfigMain::CoreSettingsChanged)
 EVT_CHECKBOX(ID_NTSCJ, CConfigMain::CoreSettingsChanged)
@@ -331,6 +333,9 @@ void CConfigMain::InitializeGUIValues()
 		if (CPUCores[a].CPUid == startup_params.iCPUCore)
 			CPUEngine->SetSelection(a);
 	_NTSCJ->SetValue(startup_params.bForceNTSCJ);
+	NetPlayPortEnabled->SetValue(startup_params.iNetPlayListenPort != 0);
+	NetPlayPort->SetValue(startup_params.iNetPlayListenPort);
+	NetPlayPort->Enable(NetPlayPortEnabled->IsChecked());
 
 
 	// Display - Interface
@@ -553,6 +558,8 @@ void CConfigMain::CreateGUIControls()
 	// Core Settings - Advanced
 	CPUEngine = new wxRadioBox(GeneralPage, ID_CPUENGINE, _("CPU Emulator Engine"), wxDefaultPosition, wxDefaultSize, arrayStringFor_CPUEngine, 0, wxRA_SPECIFY_ROWS);
 	_NTSCJ = new wxCheckBox(GeneralPage, ID_NTSCJ, _("Force Console as NTSC-J"), wxDefaultPosition, wxDefaultSize, 0, wxDefaultValidator);
+	NetPlayPortEnabled = new wxCheckBox(GeneralPage, ID_NETPLAY_PORT_ENABLED, _("Force Netplay Listen Port: "));
+	NetPlayPort = new wxSpinCtrl(GeneralPage, ID_NETPLAY_PORT, "", wxDefaultPosition, wxSize(80, -1), wxSP_ARROW_KEYS, 1, 65535);
 
 	// Populate the General settings
 	wxBoxSizer* sFramelimit = new wxBoxSizer(wxHORIZONTAL);
@@ -568,6 +575,11 @@ void CConfigMain::CreateGUIControls()
 	wxStaticBoxSizer* const sbAdvanced = new wxStaticBoxSizer(wxVERTICAL, GeneralPage, _("Advanced Settings"));
 	sbAdvanced->Add(CPUEngine, 0, wxALL, 5);
 	sbAdvanced->Add(_NTSCJ, 0, wxALL, 5);
+
+	wxBoxSizer* sNetPlayPort = new wxBoxSizer(wxHORIZONTAL);
+	sNetPlayPort->Add(NetPlayPortEnabled, 0, wxCENTER);
+	sNetPlayPort->Add(NetPlayPort, 0, wxCENTER);
+	sbAdvanced->Add(sNetPlayPort, 0, wxALL, 5);
 
 	wxBoxSizer* const sGeneralPage = new wxBoxSizer(wxVERTICAL);
 	sGeneralPage->Add(sbBasic, 0, wxEXPAND | wxALL, 5);
@@ -597,13 +609,12 @@ void CConfigMain::CreateGUIControls()
 	// theme selection
 	auto const theme_selection = new wxChoice(DisplayPage, wxID_ANY);
 
-	CFileSearch::XStringVector theme_dirs;
+	std::vector<std::string> theme_dirs;
 	theme_dirs.push_back(File::GetUserPath(D_THEMES_IDX));
 	theme_dirs.push_back(File::GetSysDirectory() + THEMES_DIR);
 
-	CFileSearch cfs(CFileSearch::XStringVector(1, "*"), theme_dirs);
-	auto const& sv = cfs.GetFileNames();
-	std::for_each(sv.begin(), sv.end(), [theme_selection](const std::string& filename)
+	auto sv = DoFileSearch({"*"}, theme_dirs);
+	for (const std::string& filename : sv)
 	{
 		std::string name, ext;
 		SplitPath(filename, NULL, &name, &ext);
@@ -612,7 +623,7 @@ void CConfigMain::CreateGUIControls()
 		auto const wxname = StrToWxStr(name);
 		if (-1 == theme_selection->FindString(wxname))
 			theme_selection->Append(wxname);
-	});
+	}
 
 	theme_selection->SetStringSelection(StrToWxStr(SConfig::GetInstance().m_LocalCoreStartupParameter.theme_name));
 
@@ -903,6 +914,12 @@ void CConfigMain::CoreSettingsChanged(wxCommandEvent& event)
 	case ID_NTSCJ:
 		SConfig::GetInstance().m_LocalCoreStartupParameter.bForceNTSCJ = _NTSCJ->IsChecked();
 		break;
+
+	case ID_NETPLAY_PORT_ENABLED:
+	case ID_NETPLAY_PORT:
+		SConfig::GetInstance().m_LocalCoreStartupParameter.iNetPlayListenPort = NetPlayPortEnabled->IsChecked() ? NetPlayPort->GetValue() : 0;
+		NetPlayPort->Enable(NetPlayPortEnabled->IsChecked());
+		break;
 	}
 }
 
@@ -1094,14 +1111,9 @@ void CConfigMain::ChooseMemcardPath(std::string& strMemcard, bool isSlotA)
 		{
 			strMemcard = filename;
 
-			if (Core::GetState() != Core::CORE_UNINITIALIZED)
-			{
-				// Change memcard to the new file
-				ExpansionInterface::ChangeDevice(
-					isSlotA ? 0 : 1, // SlotA: channel 0, SlotB channel 1
-					EXIDEVICE_MEMORYCARD,
-					0);	// SP1 is device 2, slots are device 0
-			}
+			// Change memcard to the new file
+			ExpansionInterface::ChangeLocalDevice(isSlotA ? 0 : 1, EXIDEVICE_NONE);
+			ExpansionInterface::ChangeLocalDevice(isSlotA ? 0 : 1, EXIDEVICE_MEMORYCARD);
 		}
 		else
 		{
@@ -1131,11 +1143,8 @@ void CConfigMain::ChooseSIDevice(wxString deviceName, int deviceNum)
 
 	SConfig::GetInstance().m_SIDevice[deviceNum] = tempType;
 
-	if (Core::GetState() != Core::CORE_UNINITIALIZED)
-	{
-		// Change plugged device! :D
-		SerialInterface::ChangeDevice(tempType, deviceNum);
-	}
+	// Change plugged device! :D
+	SerialInterface::ChangeLocalDevice(tempType, deviceNum);
 }
 
 void CConfigMain::ChooseEXIDevice(wxString deviceName, int deviceNum)
@@ -1165,14 +1174,8 @@ void CConfigMain::ChooseEXIDevice(wxString deviceName, int deviceNum)
 
 	SConfig::GetInstance().m_EXIDevice[deviceNum] = tempType;
 
-	if (Core::GetState() != Core::CORE_UNINITIALIZED)
-	{
-		// Change plugged device! :D
-		ExpansionInterface::ChangeDevice(
-			(deviceNum == 1) ? 1 : 0,	// SlotB is on channel 1, slotA and SP1 are on 0
-			tempType,					// The device enum to change to
-			(deviceNum == 2) ? 2 : 0);	// SP1 is device 2, slots are device 0
-	}
+	// Change plugged device! :D
+	ExpansionInterface::ChangeLocalDevice(deviceNum, tempType);
 }
 
 

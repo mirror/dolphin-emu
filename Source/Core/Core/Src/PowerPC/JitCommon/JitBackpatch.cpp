@@ -3,7 +3,6 @@
 // Refer to the license.txt file included.
 
 #include <string>
-#include <cinttypes>
 
 #include "Common.h"
 #include "disasm.h"

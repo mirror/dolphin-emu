@@ -269,14 +269,14 @@ CFrame::CFrame(wxFrame* parent,
 		bool ShowLogWindow,
 		long style)
 	: CRenderFrame(parent, id, title, pos, size, style)
-	, g_pCodeWindow(NULL), g_NetPlaySetupDiag(NULL), g_CheatsWindow(NULL)
+	, g_pCodeWindow(NULL), g_CheatsWindow(NULL)
 	, m_ToolBar(NULL), m_ToolBarDebug(NULL), m_ToolBarAui(NULL)
 	, m_GameListCtrl(NULL), m_Panel(NULL)
 	, m_RenderFrame(NULL), m_RenderParent(NULL)
 	, m_LogWindow(NULL), m_LogConfigWindow(NULL)
 	, m_FifoPlayerDlg(NULL), UseDebugger(_UseDebugger)
 	, m_bBatchMode(_BatchMode), m_bEdit(false), m_bTabSplit(false), m_bNoDocking(false)
-	, m_bGameLoading(false)
+	, m_bGameLoading(false), m_bInDestructor(false)
 {
 	for (int i = 0; i <= IDM_CODEWINDOW - IDM_LOGWINDOW; i++)
 		bFloatWindow[i] = false;
@@ -305,9 +305,6 @@ CFrame::CFrame(wxFrame* parent,
 	if (!SConfig::GetInstance().m_InterfaceStatusbar)
 		GetStatusBar()->Hide();
 
-	// Give it a menu bar
-	CreateMenu();
-
 	// ---------------
 	// Main panel
 	// This panel is the parent for rendering and it holds the gamelistctrl
@@ -321,6 +318,9 @@ CFrame::CFrame(wxFrame* parent,
 	sizerPanel->Add(m_GameListCtrl, 1, wxEXPAND | wxALL);
 	m_Panel->SetSizer(sizerPanel);
 	// ---------------
+
+	// Give it a menu bar (must be done after creating the GameListCtrl)
+	CreateMenu();
 
 	// Manager
 	m_Mgr = new wxAuiManager(this, wxAUI_MGR_DEFAULT | wxAUI_MGR_LIVE_RESIZE);
@@ -395,6 +395,7 @@ CFrame::CFrame(wxFrame* parent,
 // Destructor
 CFrame::~CFrame()
 {
+	m_bInDestructor = true;
 	drives.clear();
 
 	#if defined(HAVE_XRANDR) && HAVE_XRANDR
@@ -1028,6 +1029,59 @@ void CFrame::OnMouse(wxMouseEvent& event)
 					event.GetPosition().x, event.GetPosition().y, event.ButtonDown());
 	}
 #endif
+
+	// next handlers are all for FreeLook, so we don't need to check them if disabled
+	if(!g_Config.bFreeLook)
+	{
+		event.Skip();
+		return;
+	}
+
+	// Free look variables
+	static bool mouseLookEnabled = false;
+	static bool mouseMoveEnabled = false;
+	static float lastMouse[2];
+
+	if(event.MiddleDown())
+	{
+		lastMouse[0] = event.GetX();
+		lastMouse[1] = event.GetY();
+		mouseMoveEnabled = true;
+	}
+	else if(event.RightDown())
+	{
+		lastMouse[0] = event.GetX();
+		lastMouse[1] = event.GetY();
+		mouseLookEnabled = true;
+	}
+	else if(event.MiddleUp())
+	{
+		mouseMoveEnabled = false;
+	}
+	else if(event.RightUp())
+	{
+		mouseLookEnabled = false;
+	}
+	// no button, so it's a move event
+	else if(event.GetButton() == wxMOUSE_BTN_NONE)
+	{
+		if (mouseLookEnabled)
+		{
+			VertexShaderManager::RotateView((event.GetX() - lastMouse[0]) / 200.0f,
+					(event.GetY() - lastMouse[1]) / 200.0f);
+			lastMouse[0] = event.GetX();
+			lastMouse[1] = event.GetY();
+		}
+
+		if (mouseMoveEnabled)
+		{
+			VertexShaderManager::TranslateView((event.GetX() - lastMouse[0]) / 50.0f,
+					(event.GetY() - lastMouse[1]) / 50.0f);
+			lastMouse[0] = event.GetX();
+			lastMouse[1] = event.GetY();
+		}
+	}
+
 	event.Skip();
 }
 
@@ -1067,7 +1121,17 @@ void CFrame::DoFullscreen(bool bF)
 	}
 }
 
-const CGameListCtrl *CFrame::GetGameListCtrl() const
+bool CFrame::ProcessEvent(wxEvent& event)
 {
-	return m_GameListCtrl;
+	// Try us first...
+	if (wxEvtHandler::ProcessEvent(event))
+		return true;
+	if (event.GetId() >= IDM_LOADSTATE && event.GetId() <= IDM_HOST_MESSAGE && 
+	    m_GameListCtrl)
+	{
+		// but it might be from the game list control's contextual menu added
+		// to File.
+		return m_GameListCtrl->ProcessWindowEventLocally(event);
+	}
+	return false;
 }

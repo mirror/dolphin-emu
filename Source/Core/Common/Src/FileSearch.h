@@ -9,20 +9,7 @@
 #include <string>
 #include <vector>
 
-class CFileSearch
-{
-public:
-	typedef std::vector<std::string>XStringVector;
-
-	CFileSearch(const XStringVector& _rSearchStrings, const XStringVector& _rDirectories);
-	const XStringVector& GetFileNames() const;
-
-private:
-
-	void FindFiles(const std::string& _searchString, const std::string& _strPath);
-
-	XStringVector m_FileNames;
-};
+std::vector<std::string> DoFileSearch(const std::vector<std::string>& _rSearchStrings, const std::vector<std::string>& _rDirectories, bool recursive = false);
 
 #endif // _FILESEARCH_H_
 

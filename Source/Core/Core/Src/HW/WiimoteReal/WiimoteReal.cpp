@@ -567,12 +567,12 @@ void LoadSettings()
 		secname += (char)('1' + i);
 		IniFile::Section& sec = *inifile.GetOrCreateSection(secname.c_str());
 
-		sec.Get("Source", &g_wiimote_sources[i], i ? WIIMOTE_SRC_NONE : WIIMOTE_SRC_EMU);
+		sec.Get("Source", &g_wiimote_sources[i], (unsigned int) (i ? WIIMOTE_SRC_NONE : WIIMOTE_SRC_EMU));
 	}
 
 	std::string secname("BalanceBoard");
 	IniFile::Section& sec = *inifile.GetOrCreateSection(secname.c_str());
-	sec.Get("Source", &g_wiimote_sources[WIIMOTE_BALANCE_BOARD], WIIMOTE_SRC_NONE);
+	sec.Get("Source", &g_wiimote_sources[WIIMOTE_BALANCE_BOARD], (unsigned int) WIIMOTE_SRC_NONE);
 }
 
 // config dialog calls this when some settings change
@@ -765,6 +765,7 @@ void HandleFoundWiimotes(const std::vector<Wiimote*>& wiimotes)
 }
 
 // This is called from the GUI thread
+IGNORE_THREAD_SAFETY
 void Refresh()
 {
 	g_wiimote_scanner.StopScanning();

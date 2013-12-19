@@ -52,18 +52,10 @@ struct XFBSource : public XFBSourceBase
 	void CopyEFB(float Gamma) override;
 	void DecodeToTexture(u32 xfbAddr, u32 fbWidth, u32 fbHeight) override;
 	void Draw(const MathUtil::Rectangle<float> &sourcerc,
-		const MathUtil::Rectangle<float> &drawrc, int width, int height) const override;
+		const MathUtil::Rectangle<float> &drawrc) const override;
 
 	const GLuint texture;
 };
-
-inline GLenum getFbType()
-{
-#ifndef USE_GLES3
-	return GL_TEXTURE_RECTANGLE;
-#endif
-	return GL_TEXTURE_2D;
-}
 
 class FramebufferManager : public FramebufferManagerBase
 {
@@ -121,8 +113,6 @@ private:
 	static GLuint m_xfbFramebuffer; // Only used in MSAA mode
 
 	// For pixel format draw
-	static GLuint m_pixel_format_vbo;
-	static GLuint m_pixel_format_vao;
 	static SHADER m_pixel_format_shaders[2];
 };
 

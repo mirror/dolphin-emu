@@ -18,7 +18,6 @@
 #include "Core.h" // for bWii
 #include "FifoPlayer/FifoDataFile.h"
 
-#include <cinttypes>
 
 SCoreStartupParameter::SCoreStartupParameter()
 : hInstance(0),

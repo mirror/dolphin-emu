@@ -7,7 +7,6 @@
 #include "SI_Device.h"
 #include "SI_DeviceAMBaseboard.h"
 
-#include "GCPadStatus.h"
 #include "GCPad.h"
 
 // where to put baseboard debug
@@ -135,9 +134,7 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 					case 0x10:
 						{
 							DEBUG_LOG(AMBASEBOARDDEBUG, "GC-AM: Command 10, %02x (READ STATUS&SWITCHES)", ptr(1));
-							SPADStatus PadStatus;
-							memset(&PadStatus, 0 ,sizeof(PadStatus));
-							Pad::GetStatus(ISIDevice::m_iDeviceNumber, &PadStatus);
+							auto PadStatus = m_CurrentPadStatus;
 							res[resp++] = 0x10;
 							res[resp++] = 0x2;
 							int d10_0 = 0xdf;
@@ -300,8 +297,7 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 										msg.addData(0); // tilt
 										for (i=0; i<nr_players; ++i)
 										{
-											SPADStatus PadStatus;
-											Pad::GetStatus(i, &PadStatus);
+											auto PadStatus = m_CurrentPadStatus;
 											unsigned char player_data[2] = {0,0};
 											if (PadStatus.button & PAD_BUTTON_START)
 												player_data[0] |= 0x80;
@@ -337,12 +333,10 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 									{
 										int slots = *jvs_io++;
 										msg.addData(1);
-										SPADStatus PadStatus;
-										Pad::GetStatus(0, &PadStatus);
 										while (slots--)
 										{
 											msg.addData(0);
-											msg.addData((PadStatus.button & PAD_BUTTON_START) ? 1 : 0);
+											msg.addData((m_CurrentPadStatus.button & PAD_BUTTON_START) ? 1 : 0);
 										}
 										break;
 									}
@@ -440,13 +434,29 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 	return iPosition;
 }
 
+void CSIDevice_AMBaseboard::EnqueueLocalData()
+{
+	SReport PadStatus;
+	memset(&PadStatus, 0, sizeof(PadStatus));
+	Pad::GetStatus(GetLocalIndex(), &PadStatus);
+	g_SISyncClass.EnqueueLocalReport(GetLocalIndex(), PadStatus);
+}
+
 // Not really used on GC-AM
 bool CSIDevice_AMBaseboard::GetData(u32& _Hi, u32& _Low)
 {
+	g_SISyncClass.DequeueReport<SReport>(ISIDevice::m_iDeviceNumber, [=](SReport&& report) {
+		m_CurrentPadStatus = report;
+	});
 	_Low = 0;
 	_Hi  = 0x00800000;
 
 	return true;
+}
+
+void CSIDevice_AMBaseboard::DoState(PointerWrap& p)
+{
+	p.Do(m_CurrentPadStatus);
 }
 
 void CSIDevice_AMBaseboard::SendCommand(u32 _Cmd, u8 _Poll)

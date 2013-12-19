@@ -15,12 +15,16 @@ static bool s_bFogRangeAdjustChanged;
 static bool s_bViewPortChanged;
 static int nLightsChanged[2]; // min,max
 
-PixelShaderConstants PixelShaderManager::constants;
+PixelShaderConstants* PixelShaderManager::constants;
 bool PixelShaderManager::dirty;
 
 void PixelShaderManager::Init()
 {
-	memset(&constants, 0, sizeof(constants));
+	delete[] constants;
+	// The extra element is just to avoid tools complaining about uninitialized
+	// reads.
+	constants = new PixelShaderConstants[2];
+	memset(constants, 0, 2 * sizeof(*constants));
 	Dirty();
 }
 
@@ -83,15 +87,15 @@ void PixelShaderManager::SetConstants(u32 components)
 			// they always seems to be larger than 256 so my theory is :
 			// they are the coefficients from the center to the border of the screen
 			// so to simplify I use the hi coefficient as K in the shader taking 256 as the scale
-			constants.fog[2][0] = ScreenSpaceCenter;
-			constants.fog[2][1] = (float)Renderer::EFBToScaledX((int)(2.0f * xfregs.viewport.wd));
-			constants.fog[2][2] = bpmem.fogRange.K[4].HI / 256.0f;
+			constants->fog[2][0] = ScreenSpaceCenter;
+			constants->fog[2][1] = (float)Renderer::EFBToScaledX((int)(2.0f * xfregs.viewport.wd));
+			constants->fog[2][2] = bpmem.fogRange.K[4].HI / 256.0f;
 		}
 		else
 		{
-			constants.fog[2][0] = 0;
-			constants.fog[2][1] = 1;
-			constants.fog[2][2] = 1;
+			constants->fog[2][0] = 0;
+			constants->fog[2][1] = 1;
+			constants->fog[2][2] = 1;
 		}
 		dirty = true;
 
@@ -110,10 +114,10 @@ void PixelShaderManager::SetConstants(u32 components)
 			for (int i = istart; i < iend; ++i)
 			{
 				u32 color = *(const u32*)(xfmemptr + 3);
-				constants.plights[5*i][0] = ((color >> 24) & 0xFF) / 255.0f;
-				constants.plights[5*i][1] = ((color >> 16) & 0xFF) / 255.0f;
-				constants.plights[5*i][2] = ((color >> 8)  & 0xFF) / 255.0f;
-				constants.plights[5*i][3] = ((color)       & 0xFF) / 255.0f;
+				constants->plights[5*i][0] = ((color >> 24) & 0xFF) / 255.0f;
+				constants->plights[5*i][1] = ((color >> 16) & 0xFF) / 255.0f;
+				constants->plights[5*i][2] = ((color >> 8)  & 0xFF) / 255.0f;
+				constants->plights[5*i][3] = ((color)       & 0xFF) / 255.0f;
 				xfmemptr += 4;
 
 				for (int j = 0; j < 4; ++j, xfmemptr += 3)
@@ -123,11 +127,11 @@ void PixelShaderManager::SetConstants(u32 components)
 						fabs(xfmemptr[1]) < 0.00001f &&
 						fabs(xfmemptr[2]) < 0.00001f)
 						// dist attenuation, make sure not equal to 0!!!
-						constants.plights[5*i+j+1][0] = 0.00001f;
+						constants->plights[5*i+j+1][0] = 0.00001f;
 					else
-						constants.plights[5*i+j+1][0] = xfmemptr[0];
-					constants.plights[5*i+j+1][1] = xfmemptr[1];
-					constants.plights[5*i+j+1][2] = xfmemptr[2];
+						constants->plights[5*i+j+1][0] = xfmemptr[0];
+					constants->plights[5*i+j+1][1] = xfmemptr[1];
+					constants->plights[5*i+j+1][2] = xfmemptr[2];
 				}
 			}
 			dirty = true;
@@ -138,9 +142,10 @@ void PixelShaderManager::SetConstants(u32 components)
 
 	if(s_bViewPortChanged)
 	{
-		constants.zbias[1][0] = xfregs.viewport.farZ / 16777216.0f;
-		constants.zbias[1][1] = xfregs.viewport.zRange / 16777216.0f;
+		constants->zbias[1][0] = xfregs.viewport.farZ / 16777216.0f;
+		constants->zbias[1][1] = xfregs.viewport.zRange / 16777216.0f;
 		dirty = true;
+		s_bViewPortChanged = false;
 	}
 }
 
@@ -150,7 +155,7 @@ void PixelShaderManager::SetConstants(u32 components)
 // TODO: Conversion should be checked in the context of tev_fixes..
 void PixelShaderManager::SetColorChanged(int type, int num)
 {
-	float4* c = type ? constants.kcolors : constants.colors;
+	float4* c = type ? constants->kcolors : constants->colors;
 	c[num][0] = bpmem.tevregs[num].low.a / 255.0f;
 	c[num][3] = bpmem.tevregs[num].low.b / 255.0f;
 	c[num][2] = bpmem.tevregs[num].high.a / 255.0f;
@@ -162,14 +167,14 @@ void PixelShaderManager::SetColorChanged(int type, int num)
 
 void PixelShaderManager::SetAlpha()
 {
-	constants.alpha[0] = bpmem.alpha_test.ref0 / 255.0f;
-	constants.alpha[1] = bpmem.alpha_test.ref1 / 255.0f;
+	constants->alpha[0] = bpmem.alpha_test.ref0 / 255.0f;
+	constants->alpha[1] = bpmem.alpha_test.ref1 / 255.0f;
 	dirty = true;
 }
 
 void PixelShaderManager::SetDestAlpha()
 {
-	constants.alpha[3] = bpmem.dstalpha.alpha / 255.0f;
+	constants->alpha[3] = bpmem.dstalpha.alpha / 255.0f;
 	dirty = true;
 }
 
@@ -177,16 +182,16 @@ void PixelShaderManager::SetTexDims(int texmapid, u32 width, u32 height, u32 wra
 {
 	// TODO: move this check out to callee. There we could just call this function on texture changes
 	// or better, use textureSize() in glsl
-	if(constants.texdims[texmapid][0] != 1.0f/width || constants.texdims[texmapid][1] != 1.0f/height)
+	if(constants->texdims[texmapid][0] != 1.0f/width || constants->texdims[texmapid][1] != 1.0f/height)
 		dirty = true;
 
-	constants.texdims[texmapid][0] = 1.0f/width;
-	constants.texdims[texmapid][1] = 1.0f/height;
+	constants->texdims[texmapid][0] = 1.0f/width;
+	constants->texdims[texmapid][1] = 1.0f/height;
 }
 
 void PixelShaderManager::SetZTextureBias()
 {
-	constants.zbias[1][3] = bpmem.ztex1.bias/16777215.0f;
+	constants->zbias[1][3] = bpmem.ztex1.bias/16777215.0f;
 	dirty = true;
 }
 
@@ -198,10 +203,10 @@ void PixelShaderManager::SetViewportChanged()
 
 void PixelShaderManager::SetIndTexScaleChanged(bool high)
 {
-	constants.indtexscale[high][0] = bpmem.texscale[high].getScaleS(0);
-	constants.indtexscale[high][1] = bpmem.texscale[high].getScaleT(0);
-	constants.indtexscale[high][2] = bpmem.texscale[high].getScaleS(1);
-	constants.indtexscale[high][3] = bpmem.texscale[high].getScaleT(1);
+	constants->indtexscale[high][0] = bpmem.texscale[high].getScaleS(0);
+	constants->indtexscale[high][1] = bpmem.texscale[high].getScaleT(0);
+	constants->indtexscale[high][2] = bpmem.texscale[high].getScaleS(1);
+	constants->indtexscale[high][3] = bpmem.texscale[high].getScaleT(1);
 	dirty = true;
 }
 
@@ -215,14 +220,14 @@ void PixelShaderManager::SetIndMatrixChanged(int matrixidx)
 	// xyz - static matrix
 	// TODO w - dynamic matrix scale / 256...... somehow / 4 works better
 	// rev 2972 - now using / 256.... verify that this works
-	constants.indtexmtx[2*matrixidx][0] = bpmem.indmtx[matrixidx].col0.ma * fscale;
-	constants.indtexmtx[2*matrixidx][1] = bpmem.indmtx[matrixidx].col1.mc * fscale;
-	constants.indtexmtx[2*matrixidx][2] = bpmem.indmtx[matrixidx].col2.me * fscale;
-	constants.indtexmtx[2*matrixidx][3] = fscale * 4.0f;
-	constants.indtexmtx[2*matrixidx+1][0] = bpmem.indmtx[matrixidx].col0.mb * fscale;
-	constants.indtexmtx[2*matrixidx+1][1] = bpmem.indmtx[matrixidx].col1.md * fscale;
-	constants.indtexmtx[2*matrixidx+1][2] = bpmem.indmtx[matrixidx].col2.mf * fscale;
-	constants.indtexmtx[2*matrixidx+1][3] = fscale * 4.0f;
+	constants->indtexmtx[2*matrixidx][0] = bpmem.indmtx[matrixidx].col0.ma * fscale;
+	constants->indtexmtx[2*matrixidx][1] = bpmem.indmtx[matrixidx].col1.mc * fscale;
+	constants->indtexmtx[2*matrixidx][2] = bpmem.indmtx[matrixidx].col2.me * fscale;
+	constants->indtexmtx[2*matrixidx][3] = fscale * 4.0f;
+	constants->indtexmtx[2*matrixidx+1][0] = bpmem.indmtx[matrixidx].col0.mb * fscale;
+	constants->indtexmtx[2*matrixidx+1][1] = bpmem.indmtx[matrixidx].col1.md * fscale;
+	constants->indtexmtx[2*matrixidx+1][2] = bpmem.indmtx[matrixidx].col2.mf * fscale;
+	constants->indtexmtx[2*matrixidx+1][3] = fscale * 4.0f;
 	dirty = true;
 
 	PRIM_LOG("indmtx%d: scale=%f, mat=(%f %f %f; %f %f %f)\n",
@@ -237,22 +242,22 @@ void PixelShaderManager::SetZTextureTypeChanged()
 	switch (bpmem.ztex2.type)
 	{
 		case TEV_ZTEX_TYPE_U8:
-			constants.zbias[0][0] = 0;
-			constants.zbias[0][1] = 0;
-			constants.zbias[0][2] = 0;
-			constants.zbias[0][3] = 255.0f/16777215.0f;
+			constants->zbias[0][0] = 0;
+			constants->zbias[0][1] = 0;
+			constants->zbias[0][2] = 0;
+			constants->zbias[0][3] = 255.0f/16777215.0f;
 			break;
 		case TEV_ZTEX_TYPE_U16:
-			constants.zbias[0][0] = 255.0f/16777215.0f;
-			constants.zbias[0][1] = 0;
-			constants.zbias[0][2] = 0;
-			constants.zbias[0][3] = 65280.0f/16777215.0f;
+			constants->zbias[0][0] = 255.0f/16777215.0f;
+			constants->zbias[0][1] = 0;
+			constants->zbias[0][2] = 0;
+			constants->zbias[0][3] = 65280.0f/16777215.0f;
 			break;
 		case TEV_ZTEX_TYPE_U24:
-			constants.zbias[0][0] = 16711680.0f/16777215.0f;
-			constants.zbias[0][1] = 65280.0f/16777215.0f;
-			constants.zbias[0][2] = 255.0f/16777215.0f;
-			constants.zbias[0][3] = 0;
+			constants->zbias[0][0] = 16711680.0f/16777215.0f;
+			constants->zbias[0][1] = 65280.0f/16777215.0f;
+			constants->zbias[0][2] = 255.0f/16777215.0f;
+			constants->zbias[0][3] = 0;
 			break;
 		default:
 			break;
@@ -263,16 +268,16 @@ void PixelShaderManager::SetZTextureTypeChanged()
 void PixelShaderManager::SetTexCoordChanged(u8 texmapid)
 {
 	TCoordInfo& tc = bpmem.texcoords[texmapid];
-	constants.texdims[texmapid][2] = (float)(tc.s.scale_minus_1 + 1);
-	constants.texdims[texmapid][3] = (float)(tc.t.scale_minus_1 + 1);
+	constants->texdims[texmapid][2] = (float)(tc.s.scale_minus_1 + 1);
+	constants->texdims[texmapid][3] = (float)(tc.t.scale_minus_1 + 1);
 	dirty = true;
 }
 
 void PixelShaderManager::SetFogColorChanged()
 {
-	constants.fog[0][0] = bpmem.fog.color.r / 255.0f;
-	constants.fog[0][1] = bpmem.fog.color.g / 255.0f;
-	constants.fog[0][2] = bpmem.fog.color.b / 255.0f;
+	constants->fog[0][0] = bpmem.fog.color.r / 255.0f;
+	constants->fog[0][1] = bpmem.fog.color.g / 255.0f;
+	constants->fog[0][2] = bpmem.fog.color.b / 255.0f;
 	dirty = true;
 }
 
@@ -280,17 +285,17 @@ void PixelShaderManager::SetFogParamChanged()
 {
 	if(!g_ActiveConfig.bDisableFog)
 	{
-		constants.fog[1][0] = bpmem.fog.a.GetA();
-		constants.fog[1][1] = (float)bpmem.fog.b_magnitude / 0xFFFFFF;
-		constants.fog[1][2] = bpmem.fog.c_proj_fsel.GetC();
-		constants.fog[1][3] = (float)(1 << bpmem.fog.b_shift);
+		constants->fog[1][0] = bpmem.fog.a.GetA();
+		constants->fog[1][1] = (float)bpmem.fog.b_magnitude / 0xFFFFFF;
+		constants->fog[1][2] = bpmem.fog.c_proj_fsel.GetC();
+		constants->fog[1][3] = (float)(1 << bpmem.fog.b_shift);
 	}
 	else
 	{
-		constants.fog[1][0] = 0;
-		constants.fog[1][1] = 1;
-		constants.fog[1][2] = 0;
-		constants.fog[1][3] = 1;
+		constants->fog[1][0] = 0;
+		constants->fog[1][1] = 1;
+		constants->fog[1][2] = 0;
+		constants->fog[1][3] = 1;
 	}
 	dirty = true;
 }
@@ -324,10 +329,10 @@ void PixelShaderManager::SetMaterialColorChanged(int index, u32 color)
 {
 	if(g_ActiveConfig.bEnablePixelLighting && g_ActiveConfig.backend_info.bSupportsPixelLighting)
 	{
-		constants.pmaterials[index][0] = ((color >> 24) & 0xFF) / 255.0f;
-		constants.pmaterials[index][1] = ((color >> 16) & 0xFF) / 255.0f;
-		constants.pmaterials[index][2] = ((color >>  8) & 0xFF) / 255.0f;
-		constants.pmaterials[index][3] = ( color        & 0xFF) / 255.0f;
+		constants->pmaterials[index][0] = ((color >> 24) & 0xFF) / 255.0f;
+		constants->pmaterials[index][1] = ((color >> 16) & 0xFF) / 255.0f;
+		constants->pmaterials[index][2] = ((color >>  8) & 0xFF) / 255.0f;
+		constants->pmaterials[index][3] = ( color        & 0xFF) / 255.0f;
 		dirty = true;
 	}
 }

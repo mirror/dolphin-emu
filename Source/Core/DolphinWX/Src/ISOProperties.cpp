@@ -7,7 +7,6 @@
 #endif
 
 #include <type_traits>
-#include <cinttypes>
 
 #include "Common.h"
 #include "CommonPaths.h"
@@ -1020,32 +1019,32 @@ void CISOProperties::LoadGameConfig()
 		PHackEnable->SetValue(iTemp);
 
 	GameIniDefault.Get("Video", "PH_SZNear", &PHack_Data.PHackSZNear);
-	if (GameIniLocal.GetIfExists("Video", "PH_SZNear", &iTemp))
+	if (GameIniLocal.Get("Video", "PH_SZNear", &iTemp))
 		PHack_Data.PHackSZNear = iTemp;
 	GameIniDefault.Get("Video", "PH_SZFar", &PHack_Data.PHackSZFar);
-	if (GameIniLocal.GetIfExists("Video", "PH_SZFar", &iTemp))
+	if (GameIniLocal.Get("Video", "PH_SZFar", &iTemp))
 		PHack_Data.PHackSZFar = iTemp;
 	GameIniDefault.Get("Video", "PH_ExtraParam", &PHack_Data.PHackExP);
-	if (GameIniLocal.GetIfExists("Video", "PH_ExtraParam", &iTemp))
+	if (GameIniLocal.Get("Video", "PH_ExtraParam", &iTemp))
 		PHack_Data.PHackExP = iTemp;
 
 	std::string sTemp;
 	GameIniDefault.Get("Video", "PH_ZNear", &PHack_Data.PHZNear);
-	if (GameIniLocal.GetIfExists("Video", "PH_ZNear", &sTemp))
+	if (GameIniLocal.Get("Video", "PH_ZNear", &sTemp))
 		PHack_Data.PHZNear = sTemp;
 	GameIniDefault.Get("Video", "PH_ZFar", &PHack_Data.PHZFar);
-	if (GameIniLocal.GetIfExists("Video", "PH_ZFar", &sTemp))
+	if (GameIniLocal.Get("Video", "PH_ZFar", &sTemp))
 		PHack_Data.PHZFar = sTemp;
 
 	GameIniDefault.Get("EmuState", "EmulationStateId", &iTemp, 0/*Not Set*/);
 	EmuState->SetSelection(iTemp);
-	if (GameIniLocal.GetIfExists("EmuState", "EmulationStateId", &iTemp))
+	if (GameIniLocal.Get("EmuState", "EmulationStateId", &iTemp))
 		EmuState->SetSelection(iTemp);
 
 	GameIniDefault.Get("EmuState", "EmulationIssues", &sTemp);
 	if (!sTemp.empty())
 		EmuIssues->SetValue(StrToWxStr(sTemp));
-	if (GameIniLocal.GetIfExists("EmuState", "EmulationIssues", &sTemp))
+	if (GameIniLocal.Get("EmuState", "EmulationIssues", &sTemp))
 		EmuIssues->SetValue(StrToWxStr(sTemp));
 
 	EmuIssues->Enable(EmuState->GetSelection() != 0);
@@ -1256,8 +1255,8 @@ void CISOProperties::PatchList_Save()
 		}
 		++index;
 	}
-	GameIniLocal.SetLines("OnFrame_Enabled", enabledLines);
-	GameIniLocal.SetLines("OnFrame", lines);
+	GameIniLocal.GetOrCreateSection("OnFrame_Enabled")->SetLines(enabledLines);
+	GameIniLocal.GetOrCreateSection("OnFrame")->SetLines(lines);
 }
 
 void CISOProperties::PHackButtonClicked(wxCommandEvent& event)
@@ -1346,8 +1345,8 @@ void CISOProperties::ActionReplayList_Save()
 		}
 		++index;
 	}
-	GameIniLocal.SetLines("ActionReplay_Enabled", enabledLines);
-	GameIniLocal.SetLines("ActionReplay", lines);
+	GameIniLocal.GetOrCreateSection("ActionReplay_Enabled")->SetLines(enabledLines);
+	GameIniLocal.GetOrCreateSection("ActionReplay")->SetLines(lines);
 }
 
 void CISOProperties::ActionReplayButtonClicked(wxCommandEvent& event)

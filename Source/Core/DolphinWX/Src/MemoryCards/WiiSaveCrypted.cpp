@@ -8,7 +8,6 @@
 // http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 #include <algorithm>
-#include <cinttypes>
 
 #include "WiiSaveCrypted.h"
 #include "FileUtil.h"

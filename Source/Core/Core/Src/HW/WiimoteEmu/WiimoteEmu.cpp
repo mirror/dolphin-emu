@@ -771,16 +771,6 @@ void Wiimote::Update()
 			}
 		}
 	}
-	if (NetPlay::IsNetPlayRunning())
-	{
-		NetPlay_GetWiimoteData(m_index, data, rptf.size);
-		if (rptf.core)
-			m_status.buttons = *(wm_core*)(data + rptf.core);
-	}
-	if (!Movie::IsPlayingInput())
-	{
-		Movie::CheckWiimoteStatus(m_index, data, rptf, m_reg_ir.mode);
-	}
 
 	// don't send a data report if auto reporting is off
 	if (false == m_reporting_auto && data[2] >= WM_REPORT_CORE)

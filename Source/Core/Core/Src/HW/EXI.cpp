@@ -12,38 +12,90 @@
 
 #include "EXI.h"
 #include "Sram.h"
+#include "Core.h"
 #include "../Movie.h"
 SRAM g_SRAM;
 
 namespace ExpansionInterface
 {
-
-static int changeDevice;
-
 enum
 {
 	NUM_CHANNELS = 3
 };
 
+static int changeDevice[NUM_CHANNELS];
 CEXIChannel *g_Channels[NUM_CHANNELS];
+}
+
+EXISyncClass::EXISyncClass()
+: IOSync::Class(ClassEXI)
+{
+	m_AutoConnect = false;
+	m_Synchronous = true;
+}
+
+// (This is almost identical to the SI code, but too short to bother
+// templating.)
+void EXISyncClass::PreInit()
+{
+	ExpansionInterface::PreInit();
+}
+
+void EXISyncClass::OnConnected(int channel, int localIndex, PWBuffer&& subtype)
+{
+	IOSync::Class::OnConnected(channel, localIndex, std::move(subtype));
+	TEXIDevices type = GrabSubtype<TEXIDevices>(GetSubtype(channel));
+
+	CoreTiming::RemoveAllEvents(ExpansionInterface::changeDevice[channel]);
+
+	// card 0 -> channel 0 device 0; card 1 -> channel 1 device 0
+	IEXIDevice* exidev = ExpansionInterface::g_Channels[channel]->GetDevice(1);
+	if (!exidev || type != exidev->m_deviceType)
+	{
+		u64 info = (u64)channel << 32 | (u64)0 << 16;
+		CoreTiming::ScheduleEvent(0, ExpansionInterface::changeDevice[channel], info | EXIDEVICE_NONE);
+		CoreTiming::ScheduleEvent(50000000, ExpansionInterface::changeDevice[channel], info | type);
+	}
+}
+
+void EXISyncClass::OnDisconnected(int channel)
+{
+	IOSync::Class::OnDisconnected(channel);
+	CoreTiming::RemoveAllEvents(ExpansionInterface::changeDevice[channel]);
+	CoreTiming::ScheduleEvent(0, ExpansionInterface::changeDevice[channel], ((u64)channel << 32) | ((u64)0 << 16) | EXIDEVICE_NONE);
+}
+
+EXISyncClass g_EXISyncClass;
+
+namespace ExpansionInterface
+{
+
+void PreInit()
+{
+	for (int i = 0; i < NUM_CHANNELS; i++)
+	{
+		ChangeLocalDevice(i, SConfig::GetInstance().m_EXIDevice[i]);
+	}
+}
+
 void Init()
 {
+	for (int i = 0; i < 4; i++)
+	{
+		char buf[64];
+		sprintf(buf, "ChangeEXIDevice%d", i);
+		changeDevice[i] = CoreTiming::RegisterEvent(strdup(buf), ChangeDeviceCallback);
+	}
+
+	PreInit();
+
 	initSRAM();
 	for (u32 i = 0; i < NUM_CHANNELS; i++)
 		g_Channels[i] = new CEXIChannel(i);
 
-	if (Movie::IsPlayingInput() && Movie::IsUsingMemcard() && Movie::IsConfigSaved())
-		g_Channels[0]->AddDevice(EXIDEVICE_MEMORYCARD,	0); // SlotA
-	else if(Movie::IsPlayingInput() && !Movie::IsUsingMemcard() && Movie::IsConfigSaved())
-		g_Channels[0]->AddDevice(EXIDEVICE_NONE,		0); // SlotA
-	else
-		g_Channels[0]->AddDevice(SConfig::GetInstance().m_EXIDevice[0],	0); // SlotA
 	g_Channels[0]->AddDevice(EXIDEVICE_MASKROM,						1);
 	g_Channels[0]->AddDevice(SConfig::GetInstance().m_EXIDevice[2],	2); // Serial Port 1
-	g_Channels[1]->AddDevice(SConfig::GetInstance().m_EXIDevice[1],	0); // SlotB
 	g_Channels[2]->AddDevice(EXIDEVICE_AD16,						0);
-
-	changeDevice = CoreTiming::RegisterEvent("ChangeEXIDevice", ChangeDeviceCallback);
 }
 
 void Shutdown()
@@ -71,18 +123,36 @@ void PauseAndLock(bool doLock, bool unpauseOnUnlock)
 void ChangeDeviceCallback(u64 userdata, int cyclesLate)
 {
 	u8 channel = (u8)(userdata >> 32);
-	u8 type = (u8)(userdata >> 16);
-	u8 num = (u8)userdata;
+	u8 num = (u8)(userdata >> 16);
+	u8 type = (u8)userdata;
 
 	g_Channels[channel]->AddDevice((TEXIDevices)type, num);
 }
 
-void ChangeDevice(const u8 channel, const TEXIDevices device_type, const u8 device_num)
+void ChangeLocalDevice(int channel, TEXIDevices device_type)
 {
-	// Called from GUI, so we need to make it thread safe.
-	// Let the hardware see no device for .5b cycles
-	CoreTiming::ScheduleEvent_Threadsafe(0, changeDevice, ((u64)channel << 32) | ((u64)EXIDEVICE_NONE << 16) | device_num);
-	CoreTiming::ScheduleEvent_Threadsafe(500000000, changeDevice, ((u64)channel << 32) | ((u64)device_type << 16) | device_num);
+	if (channel == 2)
+	{
+		if (Core::GetState() == Core::CORE_UNINITIALIZED)
+			return;
+		// not synced yet; card 2 -> channel 0 device 2
+		u64 info = (u64)0 << 32 | (u64)2 << 16;
+		CoreTiming::ScheduleEvent(0, ExpansionInterface::changeDevice[channel], info | EXIDEVICE_NONE);
+		CoreTiming::ScheduleEvent(50000000, ExpansionInterface::changeDevice[channel], info | device_type);
+	}
+	else
+	{
+		TEXIDevices old;
+		if (g_EXISyncClass.LocalIsConnected(channel))
+			old = g_EXISyncClass.GrabSubtype<TEXIDevices>(g_EXISyncClass.GetLocalSubtype(channel));
+		else
+			old = EXIDEVICE_NONE;
+
+		if (old == device_type)
+			return;
+		if (device_type != EXIDEVICE_NONE)
+			g_EXISyncClass.ConnectLocalDevice(channel, g_EXISyncClass.PushSubtype(device_type));
+	}
 }
 
 IEXIDevice* FindDevice(TEXIDevices device_type, int customIndex)
@@ -94,14 +164,6 @@ IEXIDevice* FindDevice(TEXIDevices device_type, int customIndex)
 			return device;
 	}
 	return NULL;
-}
-
-// Unused (?!)
-void Update()
-{
-	g_Channels[0]->Update();
-	g_Channels[1]->Update();
-	g_Channels[2]->Update();
 }
 
 void Read32(u32& _uReturnValue, const u32 _iAddress)

@@ -6,6 +6,15 @@
 
 namespace DriverDetails
 {
+	// Enum of supported operating systems
+	enum OS 
+	{
+		OS_ALL = (1 << 0),
+		OS_WINDOWS = (1 << 1),
+		OS_LINUX = (1 << 2),
+		OS_OSX = (1 << 3),
+		OS_ANDROID = (1 << 4),
+	};
 	// Enum of known vendors
 	// Tegra and Nvidia are separated out due to such substantial differences
 	enum Vendor
@@ -94,10 +103,11 @@ namespace DriverDetails
 		// Bug: The pinned memory extension isn't working for index buffers
 		// Affected devices: AMD as they are the only vendor providing this extension
 		// Started Version: ?
-		// Ended Version: -1
+		// Ended Version: 13.9 working for me (neobrain).
 		// Pinned memory is disabled for index buffer as the amd driver (the only one with pinned memory support) seems
 		// to be broken. We just get flickering/black rendering when using pinned memory here -- degasus - 2013/08/20
 		// Please see issue #6105 on google code. Let's hope buffer storage solves this issues.
+		// TODO: Detect broken drivers.
 		BUG_BROKENPINNEDMEMORY,
 		// Bug: Entirely broken UBOs
 		// Affected devices: Qualcomm/Adreno
@@ -115,20 +125,6 @@ namespace DriverDetails
 		// Drawing on screen text causes the whole screen to swizzle in a terrible fashion
 		// Clearing the framebuffer causes one to never see a frame.
 		BUG_BROKENSWAP,
-		// Bug: Running on a Tegra 4 device
-		// Affected devices: Nvidia Tegra
-		// Started Version: 4
-		// Ended Version: 5
-		// Tegra 4 hardware limitations don't allow it to support OpenGL ES 3
-		// This is fixed in Tegra 5
-		BUG_ISTEGRA,
-		// Bug: Running on a PowerVR5 device
-		// Affected devices: PowerVR54x
-		// Started Version: 540
-		// Ended Version: 6xxx
-		// PowerVR 5 hardware limitations don't allow it to support OpenGL ES 3
-		// This is fixed in PowerVR6
-		BUG_ISPOWERVR,
 		// Bug: glBufferSubData/glMapBufferRange stalls + OOM
 		// Affected devices: Adreno a3xx/Mali-t6xx
 		// Started Version: -1

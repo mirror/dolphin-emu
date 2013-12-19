@@ -24,6 +24,7 @@ public:
 
 	bool IsValid() const {return m_Valid;}
 	const std::string& GetFileName() const {return m_FileName;}
+	int GetLang() const;
 	std::string GetBannerName(int index) const;
 	std::string GetVolumeName(int index) const;
 	std::string GetName(int index) const;
@@ -31,6 +32,7 @@ public:
 	std::string GetDescription(int index = 0) const;
 	int GetRevision() const { return m_Revision; }
 	const std::string& GetUniqueID() const {return m_UniqueID;}
+	std::string GetRevisionSpecificUniqueID() const;
 	const std::string GetWiiFSPath() const;
 	DiscIO::IVolume::ECountry GetCountry() const {return m_Country;}
 	int GetPlatform() const {return m_Platform;}

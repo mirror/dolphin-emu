@@ -172,6 +172,8 @@
     <ClCompile Include="Src\HW\WiimoteReal\WiimoteReal.cpp" />
     <ClCompile Include="Src\HW\WII_IOB.cpp" />
     <ClCompile Include="Src\HW\WII_IPC.cpp" />
+    <ClCompile Include="Src\IOSync.cpp" />
+    <ClCompile Include="Src\IOSyncBackends.cpp" />
     <ClCompile Include="Src\IPC_HLE\ICMPWin.cpp" />
     <ClCompile Include="Src\IPC_HLE\WiiMote_HID_Attr.cpp" />
     <ClCompile Include="Src\IPC_HLE\WII_IPC_HLE.cpp" />
@@ -370,6 +372,8 @@
     <ClInclude Include="Src\HW\WiimoteReal\WiimoteRealBase.h" />
     <ClInclude Include="Src\HW\WII_IOB.h" />
     <ClInclude Include="Src\HW\WII_IPC.h" />
+    <ClInclude Include="Src\IOSync.h" />
+    <ClInclude Include="Src\IOSyncBackends.h" />
     <ClInclude Include="Src\IPC_HLE\fakepoll.h" />
     <ClInclude Include="Src\IPC_HLE\hci.h" />
     <ClInclude Include="Src\IPC_HLE\ICMP.h" />
@@ -435,6 +439,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Externals\Bochs_disasm\Bochs_disasm.vcxproj">
       <Project>{8ada04d7-6db1-4da4-ab55-64fb12a0997b}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Externals\enet\enet.vcxproj">
+      <Project>{CBC76802-C128-4B17-BF6C-23B08C313E5E}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\..\Externals\libusbx\msvc\libusb_static_2013.vcxproj">
       <Project>{349ee8f9-7d25-4909-aaf5-ff3fade72187}</Project>

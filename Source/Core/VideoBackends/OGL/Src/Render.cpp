@@ -9,7 +9,6 @@
 #include <vector>
 #include <cmath>
 #include <cstdio>
-#include <cinttypes>
 
 #include "GLUtil.h"
 #if defined(HAVE_WX) && HAVE_WX
@@ -371,10 +370,7 @@ Renderer::Renderer()
 	g_ogl_config.bSupportSampleShading = false;
 	g_ogl_config.bSupportOGL31 = false;
 	g_ogl_config.bSupportViewportFloat = false;
-	if (DriverDetails::HasBug(DriverDetails::BUG_ISTEGRA) || DriverDetails::HasBug(DriverDetails::BUG_ISPOWERVR))
-		g_ogl_config.eSupportedGLSLVersion = GLSLES2;
-	else
-		g_ogl_config.eSupportedGLSLVersion = GLSLES3;
+	g_ogl_config.eSupportedGLSLVersion = GLSLES3;
 #else
 #ifdef __APPLE__
 	glewExperimental = 1;
@@ -668,7 +664,7 @@ void Renderer::Init()
 		"	c = vec4(color0, 1.0);\n"
 		"}\n",
 		"VARYIN vec4 c;\n"
-		"COLOROUT(ocol0)\n"
+		"out vec4 ocol0;\n"
 		"void main(void) {\n"
 		"	ocol0 = c;\n"
 		"}\n");
@@ -1379,7 +1375,7 @@ void Renderer::Swap(u32 xfbAddr, u32 fbWidth, u32 fbHeight,const EFBRectangle& r
 			sourceRc.top = xfbSource->sourceRc.top;
 			sourceRc.bottom = xfbSource->sourceRc.bottom;
 
-			xfbSource->Draw(sourceRc, drawRc, 0, 0);
+			xfbSource->Draw(sourceRc, drawRc);
 		}
 	}
 	else

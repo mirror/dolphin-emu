@@ -6,6 +6,7 @@
 #define _SIDEVICE_H
 
 #include "Common.h"
+#include "IOSync.h"
 
 class PointerWrap;
 
@@ -55,6 +56,16 @@ enum SIDevices
 	SIDEVICE_AM_BASEBOARD
 };
 
+class SISyncClass : public IOSync::Class
+{
+public:
+	SISyncClass() : IOSync::Class(ClassSI) {}
+	virtual void PreInit() override;
+    virtual void OnConnected(int index, int localIndex, PWBuffer&& subtype) override;
+    virtual void OnDisconnected(int index) override;
+	virtual int GetMaxDeviceIndex() override { return 4; }
+};
+extern SISyncClass g_SISyncClass;
 
 class ISIDevice
 {
@@ -72,14 +83,17 @@ public:
 	// Destructor
 	virtual ~ISIDevice() {}
 
-	// Run the SI Buffer
-	virtual int RunBuffer(u8* _pBuffer, int _iLength);
+	// Enqueue the data for a local device.  Must not block.
+	virtual void EnqueueLocalData() {}
 
-	// Return true on new data
+	// Return true on new data.  Might block on dequeue.
 	virtual bool GetData(u32& _Hi, u32& _Low) = 0;
 
-	// Send a command directly (no detour per buffer)
+	// Send a command directly (no detour per buffer).
 	virtual void SendCommand(u32 _Cmd, u8 _Poll) = 0;
+
+	// Run the SI Buffer.  Might block on dequeue.
+	virtual int RunBuffer(u8* _pBuffer, int _iLength);
 
 	// Savestate support
 	virtual void DoState(PointerWrap& p) {}
@@ -93,6 +107,11 @@ public:
 	SIDevices GetDeviceType()
 	{
 		return m_deviceType;
+	}
+
+	int GetLocalIndex()
+	{
+		return g_SISyncClass.GetLocalIndex(m_iDeviceNumber);
 	}
 };
 

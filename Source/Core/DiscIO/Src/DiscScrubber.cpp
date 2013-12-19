@@ -7,7 +7,6 @@
 #include "FileUtil.h"
 #include "DiscScrubber.h"
 
-#include <cinttypes>
 
 namespace DiscIO
 {
