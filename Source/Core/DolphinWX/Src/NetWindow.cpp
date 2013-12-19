@@ -458,9 +458,13 @@ void NetPlayDiag::UpdateHostLabel()
 	}
 	wxString label = _(" (internal IP)");
 	auto DeLabel = [=](wxString str) {
+		if (str == _("Localhost"))
+			return std::string("!local!");
 		return WxStrToStr(str.Left(str.Len() - label.Len()));
 	};
-	auto EnLabel = [=](std::string str) {
+	auto EnLabel = [=](std::string str) -> wxString {
+		if (str == "!local!")
+			return _("Localhost");
 		return StrToWxStr(str) + label;
 	};
 	int sel = m_host_type_choice->GetSelection();

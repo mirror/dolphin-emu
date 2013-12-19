@@ -151,7 +151,7 @@ std::vector<std::pair<std::string, std::string>> NetPlayServer::GetInterfaceList
 			CFRelease(key);
 			if (!props)
 				continue;
-			CFArrayRef ipary = (CFArrayRef) CFDictionaryGetValue(props, kSCPropNetIPv4Addresses); 
+			CFArrayRef ipary = (CFArrayRef) CFDictionaryGetValue(props, kSCPropNetIPv4Addresses);
 			if (ipary)
 			{
 				for (CFIndex j = 0; j < CFArrayGetCount(ipary); j++)
@@ -186,7 +186,7 @@ std::vector<std::pair<std::string, std::string>> NetPlayServer::GetInterfaceList
 	}
 #endif
 	if (result.empty())
-		result.push_back(std::make_pair("?", "127.0.0.1:"));
+		result.push_back(std::make_pair("!local!", "127.0.0.1"));
 	return result;
 }
 
