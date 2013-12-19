@@ -421,9 +421,12 @@ void NetHost::ThreadFunc()
 			case ENET_EVENT_TYPE_DISCONNECT:
 				{
 				size_t pid = event.peer - m_Host->peers;
-				auto& pi = m_PeerInfo[pid];
-				pi.m_ConnectTicker = -1;
-				pi.m_IncomingPackets.clear();
+				if (pid < m_PeerInfo.size())
+				{
+					auto& pi = m_PeerInfo[pid];
+					pi.m_ConnectTicker = -1;
+					pi.m_IncomingPackets.clear();
+				}
 				m_Client->OnENetEvent(&event);
 				}
 				break;

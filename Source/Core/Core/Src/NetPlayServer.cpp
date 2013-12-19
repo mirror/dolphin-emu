@@ -299,6 +299,9 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 void NetPlayServer::OnDisconnect(PlayerId pid)
 {
 	WARN_LOG(NETPLAY, "Disconnecting player %d", pid);
+	if (pid >= m_players.size())
+		return;
+
 	Client& player = m_players[pid];
 
 	if (!player.connected)
