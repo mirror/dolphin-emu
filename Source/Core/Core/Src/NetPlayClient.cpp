@@ -89,6 +89,7 @@ NetPlayClient::NetPlayClient(const std::string& hostSpec, const std::string& nam
 void NetPlayClient::DoDirectConnect(const ENetAddress& addr)
 {
 	m_state = Connecting;
+	WARN_LOG(NETPLAY, "DoDirectConnect to %s", ENetUtil::AddressToString(addr).c_str());
 	enet_host_connect(m_net_host->m_Host, &addr, /*channelCount=*/0, /*data=*/0);
 }
 

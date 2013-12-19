@@ -49,6 +49,14 @@ void ENetUtil::Wakeup(ENetHost* host)
 	enet_socket_send(host->socket, &address, &buf, 1);
 }
 
+std::string ENetUtil::AddressToString(const ENetAddress& addr)
+{
+	char ip[64] = "?";
+	enet_address_get_host_ip(&addr, ip, sizeof(ip));
+	sprintf(ip + strlen(ip), ":%d", addr.port);
+	return std::string(ip);
+}
+
 static void CompressIntoPacket(PWBuffer& vec, Packet& container)
 {
 	z_stream strm = {0};

@@ -50,6 +50,7 @@ namespace ENetUtil
 	void SendPacket(ENetPeer* peer, Packet&& pac, bool reliable = true) ON(NET);
 	Packet MakePacket(ENetPacket* epacket);
 	void Wakeup(ENetHost* host);
+	std::string AddressToString(const ENetAddress& addr);
 	int ENET_CALLBACK nterceptCallback(ENetHost* host, ENetEvent* event) /* ON(NET) */;
 }
 
