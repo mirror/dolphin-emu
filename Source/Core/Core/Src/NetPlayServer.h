@@ -111,9 +111,8 @@ private:
 
 	NetSettings     m_settings;
 	bool            m_is_running ACCESS_ON(NET);
-	Common::Timer	m_ping_timer ACCESS_ON(NET);
+	u64				m_ping_after ACCESS_ON(NET);
 	u32		m_ping_key;
-	bool            m_update_pings;
 	u32		m_current_game;
 	u32				m_target_buffer_size;
 

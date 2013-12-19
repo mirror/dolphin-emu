@@ -62,6 +62,7 @@ NetPlayServer::NetPlayServer()
 	m_traversal_client = g_TraversalClient.get();
 	m_net_host = g_MainNetHost.get();
 	m_enet_host = m_net_host->m_Host;
+	m_ping_after = 0;
 
 	if (g_TraversalClient->m_State == TraversalClient::Failure)
 		g_TraversalClient->ReconnectToServer();
@@ -75,10 +76,8 @@ void NetPlayServer::UpdatePings()
 	ping.W((MessageId)NP_MSG_PING);
 	ping.W(m_ping_key);
 
-	m_ping_timer.Start();
+	m_ping_after = m_ping_key + 1000;
 	SendToClientsOnThread(std::move(ping));
-
-	m_update_pings = false;
 }
 
 // Does this "player" have no input devices assigned?
@@ -98,7 +97,7 @@ bool NetPlayServer::IsSpectator(PlayerId pid)
 void NetPlayServer::OnENetEvent(ENetEvent* event)
 {
 	// update pings every so many seconds
-	if (m_ping_timer.GetTimeElapsed() > (2 * 1000))
+	if ((s32) (Common::Timer::GetTimeMs() - m_ping_after) >= 0)
 		UpdatePings();
 
 	PlayerId pid = event->peer - m_enet_host->peers;
@@ -256,8 +255,6 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 		m_net_host->SendPacket(peer, std::move(opacket));
 	}
 
-	UpdatePings();
-
 	// send new client the selected game
 	{
 		std::lock_guard<std::recursive_mutex> lk(m_crit);
@@ -292,6 +289,10 @@ MessageId NetPlayServer::OnConnect(PlayerId pid, Packet& hello)
 			m_net_host->SendPacket(peer, std::move(opacket));
 		}
 	}
+
+	// Get a ping ASAP, but not instantly, because that causes too high pings
+	// for whatever reason
+	m_ping_after = Common::Timer::GetTimeMs() + 50;
 
 	return 0;
 }
@@ -548,7 +549,6 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 
 	case NP_MSG_PONG :
 		{
-			const u32 ping = (u32)m_ping_timer.GetTimeElapsed();
 			u32 ping_key = 0;
 			packet.Do(ping_key);
 			if (packet.failure)
@@ -556,7 +556,7 @@ void NetPlayServer::OnData(ENetEvent* event, Packet&& packet)
 
 			if (m_ping_key == ping_key)
 			{
-				player.ping = ping;
+				player.ping = Common::Timer::GetTimeMs() - m_ping_key;
 			}
 
 			Packet opacket;
