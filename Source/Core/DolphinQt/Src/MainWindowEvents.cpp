@@ -289,13 +289,17 @@ void DMainWindow::OnAbout()
 {
 	// TODO: Improve SCM information
 	QMessageBox::about(this, tr("About Dolphin"),
-						tr(	"Dolphin SCM revision %1\n"
-							"Copyright (c) 2003-2012 Dolphin Team\n"
+						tr(	"Dolphin %1\n"
+							"Copyright (c) 2003-2014 Dolphin Team\n"
+							"\n"
+							"Branch: %2\n"
+							"Revision: %3\n"
+							"Compiled: %4 @ %5\n"
 							"\n"
 							"Dolphin is a Gamecube/Wii emulator, which was\n"
 							"originally written by F|RES and ector.\n"
-							"Today Dolphin is an open source project with too\n"
-							"many contributors to list.\n"
+							"Today Dolphin is an open source project with many\n"
+							"contributors, too many to list.\n"
 							"If interested, just go check out the project page at\n"
 							"http://code.google.com/p/dolphin-emu/ .\n"
 							"\n"
@@ -313,9 +317,8 @@ void DMainWindow::OnAbout()
 							"\n"
 							"We are not affiliated with Nintendo in any way.\n"
 							"Gamecube and Wii are trademarks of Nintendo.\n"
-							"The emulator is for educational purposes only\n"
-							"and should not be used to play games you do\n"
-							"not legally own.").arg(scm_rev_str));
+							"The emulator should not be used to play games\n"
+							"you do not legally own.").arg(scm_desc_str).arg(scm_branch_str).arg(scm_rev_git_str).arg(__DATE__).arg(__TIME__));
 }
 
 void DMainWindow::OnLogWindowClosed()
