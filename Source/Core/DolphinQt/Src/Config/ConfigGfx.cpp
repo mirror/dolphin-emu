@@ -15,8 +15,8 @@ static std::string GetIniName(VideoBackend* backend)
 {
 	if (backend->GetName().compare("D3D") == 0) return std::string("gfx_dx11.ini");
 	else if (backend->GetName().compare("OGL") == 0) return std::string("gfx_opengl.ini");
-	else if (backend->GetName().compare("Software Renderer") == 0) return std::string(); // TODO: other stuff for VideoSoftware..
-	else return std::string();
+	else if (backend->GetName().compare("Software Renderer") == 0) return std::string("gfx_software.ini");
+	else return std::string(); // TODO: This case causes our ini loading code to hang indefinitely....
 }
 
 QWidget* DConfigGfx::CreateGeneralTabWidget()
