@@ -62,7 +62,7 @@ void VideoBackend::UpdateFPSDisplay(const char *text)
 	EmuWindow::SetWindowText(temp);
 }
 
-std::string VideoBackend::GetName() const
+std::string VideoBackend::GetName()
 {
 	return "D3D";
 }
