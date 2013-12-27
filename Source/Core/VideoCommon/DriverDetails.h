@@ -149,6 +149,14 @@ namespace DriverDetails
 		// The drivers on OS X has broken primitive restart.
 		// Intel HD 4000 series isn't affected by the bug
 		BUG_PRIMITIVERESTART,
+		// Bug: ARB_buffer_storage doesn't work with ARRAY_BUFFER type streams 
+		// Affected devices: Geforce 4xx+
+		// Started Version: -1
+		// Ended Version: -1
+		// The buffer_storage streaming method is required for greater speed gains in our buffer streaming
+		// It reduces what is needed for streaming to basically a memcpy call
+		// It seems to work for all buffer types except GL_ARRAY_BUFFER
+		BUG_BROKENBUFFERSTORAGE,
 	};
 
 	// Initializes our internal vendor, device family, and driver version

@@ -439,6 +439,7 @@ Renderer::Renderer()
 	g_ogl_config.bSupportsGLPinnedMemory = GLExtensions::Supports("GL_AMD_pinned_memory");
 	g_ogl_config.bSupportsGLSync = GLExtensions::Supports("GL_ARB_sync");
 	g_ogl_config.bSupportsGLBaseVertex = GLExtensions::Supports("GL_ARB_draw_elements_base_vertex");
+	g_ogl_config.bSupportsGLBufferStorage = GLExtensions::Supports("GL_ARB_buffer_storage");
 	g_ogl_config.bSupportCoverageMSAA = GLExtensions::Supports("GL_NV_framebuffer_multisample_coverage");
 	g_ogl_config.bSupportSampleShading = GLExtensions::Supports("GL_ARB_sample_shading");
 	g_ogl_config.bSupportOGL31 = GLExtensions::Version() >= 310;
@@ -531,6 +532,7 @@ Renderer::Renderer()
 			g_ogl_config.bSupportsGLPinnedMemory ? "" : "PinnedMemory ",
 			g_ogl_config.bSupportsGLSLCache ? "" : "ShaderCache ",
 			g_ogl_config.bSupportsGLBaseVertex ? "" : "BaseVertex ",
+			g_ogl_config.bSupportsGLBufferStorage ? "" : "BufferStorage ",
 			g_ogl_config.bSupportsGLSync ? "" : "Sync ",
 			g_ogl_config.bSupportCoverageMSAA ? "" : "CSAA ",
 			g_ogl_config.bSupportSampleShading ? "" : "SSAA "
