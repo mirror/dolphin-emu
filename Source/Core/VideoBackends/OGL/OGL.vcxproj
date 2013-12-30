@@ -44,6 +44,7 @@
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
     <ClCompile Include="Src\FramebufferManager.cpp" />
+    <ClCompile Include="Src\GLExtensions\GLExtensions.cpp" />
     <ClCompile Include="Src\GLUtil.cpp" />
     <ClCompile Include="Src\main.cpp" />
     <ClCompile Include="Src\NativeVertexFormat.cpp" />
@@ -63,6 +64,34 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Src\FramebufferManager.h" />
+    <ClInclude Include="Src\GLExtensions\ARB_blend_func_extended.h" />
+    <ClInclude Include="Src\GLExtensions\ARB_buffer_storage.h" />
+    <ClInclude Include="Src\GLExtensions\ARB_debug_output.h" />
+    <ClInclude Include="Src\GLExtensions\ARB_draw_elements_base_vertex.h" />
+    <ClInclude Include="Src\GLExtensions\ARB_ES2_compatibility.h" />
+    <ClInclude Include="Src\GLExtensions\ARB_framebuffer_object.h" />
+    <ClInclude Include="Src\GLExtensions\ARB_get_program_binary.h" />
+    <ClInclude Include="Src\GLExtensions\ARB_map_buffer_range.h" />
+    <ClInclude Include="Src\GLExtensions\ARB_sampler_objects.h" />
+    <ClInclude Include="Src\GLExtensions\ARB_sample_shading.h" />
+    <ClInclude Include="Src\GLExtensions\ARB_sync.h" />
+    <ClInclude Include="Src\GLExtensions\ARB_uniform_buffer_object.h" />
+    <ClInclude Include="Src\GLExtensions\ARB_vertex_array_object.h" />
+    <ClInclude Include="Src\GLExtensions\ARB_viewport_array.h" />
+    <ClInclude Include="Src\GLExtensions\GLExtensions.h" />
+    <ClInclude Include="Src\GLExtensions\gl_1_1.h" />
+    <ClInclude Include="Src\GLExtensions\gl_1_2.h" />
+    <ClInclude Include="Src\GLExtensions\gl_1_3.h" />
+    <ClInclude Include="Src\GLExtensions\gl_1_4.h" />
+    <ClInclude Include="Src\GLExtensions\gl_1_5.h" />
+    <ClInclude Include="Src\GLExtensions\gl_2_0.h" />
+    <ClInclude Include="Src\GLExtensions\gl_3_0.h" />
+    <ClInclude Include="Src\GLExtensions\gl_3_1.h" />
+    <ClInclude Include="Src\GLExtensions\gl_3_2.h" />
+    <ClInclude Include="Src\GLExtensions\gl_common.h" />
+    <ClInclude Include="Src\GLExtensions\KHR_debug.h" />
+    <ClInclude Include="Src\GLExtensions\NV_framebuffer_multisample_coverage.h" />
+    <ClInclude Include="Src\GLExtensions\NV_primitive_restart.h" />
     <ClInclude Include="Src\Globals.h" />
     <ClInclude Include="Src\GLUtil.h" />
     <ClInclude Include="Src\main.h" />
