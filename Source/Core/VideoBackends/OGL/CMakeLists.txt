@@ -1,17 +1,18 @@
-set(SRCS	Src/FramebufferManager.cpp
-			Src/GLUtil.cpp
-			Src/main.cpp
-			Src/NativeVertexFormat.cpp
-			Src/PerfQuery.cpp
-			Src/PostProcessing.cpp
-			Src/ProgramShaderCache.cpp
-			Src/RasterFont.cpp
-			Src/Render.cpp
-			Src/SamplerCache.cpp
-			Src/StreamBuffer.cpp
-			Src/TextureCache.cpp
-			Src/TextureConverter.cpp
-			Src/VertexManager.cpp)
+set(SRCS	Src/GLExtensions/GLExtensions.cpp
+		Src/FramebufferManager.cpp
+		Src/GLUtil.cpp
+		Src/main.cpp
+		Src/NativeVertexFormat.cpp
+		Src/PerfQuery.cpp
+		Src/PostProcessing.cpp
+		Src/ProgramShaderCache.cpp
+		Src/RasterFont.cpp
+		Src/Render.cpp
+		Src/SamplerCache.cpp
+		Src/StreamBuffer.cpp
+		Src/TextureCache.cpp
+		Src/TextureConverter.cpp
+		Src/VertexManager.cpp)
 
 set(LIBS	videocommon
 			SOIL
@@ -25,10 +26,8 @@ endif()
 if(USE_GLES3)
 	set(LIBS ${LIBS}
 		GLESv2)
-	set(SRCS ${SRCS} Src/GLFunctions.cpp)
 else()
 	set(LIBS ${LIBS}
-		GLEW
 		${OPENGL_LIBRARIES})
 endif()
 
