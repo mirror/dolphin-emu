@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -43,26 +43,27 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
-    <ClCompile Include="Src\FramebufferManager.cpp" />
-    <ClCompile Include="Src\GLExtensions\GLExtensions.cpp" />
-    <ClCompile Include="Src\GLUtil.cpp" />
-    <ClCompile Include="Src\main.cpp" />
-    <ClCompile Include="Src\NativeVertexFormat.cpp" />
-    <ClCompile Include="Src\PerfQuery.cpp" />
-    <ClCompile Include="Src\PostProcessing.cpp" />
-    <ClCompile Include="Src\ProgramShaderCache.cpp" />
-    <ClCompile Include="Src\RasterFont.cpp" />
-    <ClCompile Include="Src\Render.cpp" />
-    <ClCompile Include="Src\SamplerCache.cpp" />
-    <ClCompile Include="Src\stdafx.cpp">
+    <ClCompile Include="FramebufferManager.cpp" />
+    <ClCompile Include="GLExtensions\GLExtensions.cpp" />
+    <ClCompile Include="GLUtil.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="NativeVertexFormat.cpp" />
+    <ClCompile Include="PerfQuery.cpp" />
+    <ClCompile Include="PostProcessing.cpp" />
+    <ClCompile Include="ProgramShaderCache.cpp" />
+    <ClCompile Include="RasterFont.cpp" />
+    <ClCompile Include="Render.cpp" />
+    <ClCompile Include="SamplerCache.cpp" />
+    <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Src\StreamBuffer.cpp" />
-    <ClCompile Include="Src\TextureCache.cpp" />
-    <ClCompile Include="Src\TextureConverter.cpp" />
-    <ClCompile Include="Src\VertexManager.cpp" />
+    <ClCompile Include="StreamBuffer.cpp" />
+    <ClCompile Include="TextureCache.cpp" />
+    <ClCompile Include="TextureConverter.cpp" />
+    <ClCompile Include="VertexManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+<<<<<<< HEAD
     <ClInclude Include="Src\FramebufferManager.h" />
     <ClInclude Include="Src\GLExtensions\ARB_blend_func_extended.h" />
     <ClInclude Include="Src\GLExtensions\ARB_buffer_storage.h" />
@@ -107,6 +108,24 @@
     <ClInclude Include="Src\TextureConverter.h" />
     <ClInclude Include="Src\VertexManager.h" />
     <ClInclude Include="Src\VideoBackend.h" />
+=======
+    <ClInclude Include="FramebufferManager.h" />
+    <ClInclude Include="Globals.h" />
+    <ClInclude Include="GLUtil.h" />
+    <ClInclude Include="main.h" />
+    <ClInclude Include="PerfQuery.h" />
+    <ClInclude Include="PostProcessing.h" />
+    <ClInclude Include="ProgramShaderCache.h" />
+    <ClInclude Include="RasterFont.h" />
+    <ClInclude Include="Render.h" />
+    <ClInclude Include="SamplerCache.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="StreamBuffer.h" />
+    <ClInclude Include="TextureCache.h" />
+    <ClInclude Include="TextureConverter.h" />
+    <ClInclude Include="VertexManager.h" />
+    <ClInclude Include="VideoBackend.h" />
+>>>>>>> master
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />
