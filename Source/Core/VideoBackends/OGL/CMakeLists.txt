@@ -1,18 +1,18 @@
-set(SRCS	Src/GLExtensions/GLExtensions.cpp
-		Src/FramebufferManager.cpp
-		Src/GLUtil.cpp
-		Src/main.cpp
-		Src/NativeVertexFormat.cpp
-		Src/PerfQuery.cpp
-		Src/PostProcessing.cpp
-		Src/ProgramShaderCache.cpp
-		Src/RasterFont.cpp
-		Src/Render.cpp
-		Src/SamplerCache.cpp
-		Src/StreamBuffer.cpp
-		Src/TextureCache.cpp
-		Src/TextureConverter.cpp
-		Src/VertexManager.cpp)
+set(SRCS	GLExtensions/GLExtensions.cpp
+		FramebufferManager.cpp
+		GLUtil.cpp
+		main.cpp
+		NativeVertexFormat.cpp
+		PerfQuery.cpp
+		PostProcessing.cpp
+		ProgramShaderCache.cpp
+		RasterFont.cpp
+		Render.cpp
+		SamplerCache.cpp
+		StreamBuffer.cpp
+		TextureCache.cpp
+		TextureConverter.cpp
+		VertexManager.cpp)
 
 set(LIBS	videocommon
 			SOIL
