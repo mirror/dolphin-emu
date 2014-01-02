@@ -36,6 +36,8 @@
 #include "HW/EXI.h"
 #include "HW/SystemTimers.h"
 
+#include "VideoConfigDiag.h"
+
 #include "IPC_HLE/WII_IPC_HLE_Device_usb.h"
 
 #include "PowerPC/PowerPC.h"
@@ -629,7 +631,22 @@ void VideoThrottle()
 		if (timeDifference < frametime)
 		{
 			Common::SleepCurrentThread(frametime - timeDifference - 1);
+			g_ActiveConfig.bVSync = true;
 		}
+		else
+		{
+			g_ActiveConfig.bVSync = false;
+		}
+
+#if 0
+		// display on change
+		static bool sync_state = false;
+		if (g_ActiveConfig.bVSync != sync_state)
+		{
+			sync_state = g_ActiveConfig.bVSync;
+			OSD::AddMessage(StringFromFormat("vsync on", (int)sync_state));
+		}
+#endif
 
 		while ((u32)Timer.GetTimeDifference() < frametime)
 			Common::YieldCPU();
@@ -701,8 +718,8 @@ void UpdateTitle()
 	u32 Speed = DrawnVideo * (100 * 1000) / (VideoInterface::TargetRefreshRate * ElapseTime);
 
 	// Settings are shown the same for both extended and summary info
-	std::string SSettings = StringFromFormat("%s %s | %s | %s", cpu_core_base->GetName(),	_CoreParameter.bCPUThread ? "DC" : "SC",
-		g_video_backend->GetName().c_str(), _CoreParameter.bDSPHLE ? "HLE" : "LLE");
+	std::string SSettings = StringFromFormat("%s %s | %s | %s | V%d", cpu_core_base->GetName(),	_CoreParameter.bCPUThread ? "DC" : "SC",
+		g_video_backend->GetName().c_str(), _CoreParameter.bDSPHLE ? "HLE" : "LLE", (int)g_ActiveConfig.bVSync);
 
 	// Use extended or summary information. The summary information does not print the ticks data,
 	// that's more of a debugging interest, it can always be optional of course if someone is interested.
