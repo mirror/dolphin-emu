@@ -627,16 +627,20 @@ void VideoThrottle()
 		isTabPressed = false;
 		u32 frametime = ((SConfig::GetInstance().b_UseFPS)? Common::AtomicLoad(DrawnFrame) : DrawnVideo) * 1000 / TargetVPS;
 
+		static u32 slow_frames = 0;
+
 		u32 timeDifference = (u32)Timer.GetTimeDifference();
 		if (timeDifference < frametime)
 		{
 			Common::SleepCurrentThread(frametime - timeDifference - 1);
-			g_ActiveConfig.bVSync = true;
+			slow_frames = 0;
 		}
 		else
 		{
-			g_ActiveConfig.bVSync = false;
+			slow_frames = std::min(slow_frames + 1, (u32)1000);
 		}
+
+		g_ActiveConfig.bVSync = (slow_frames <= 2);
 
 #if 0
 		// display on change
