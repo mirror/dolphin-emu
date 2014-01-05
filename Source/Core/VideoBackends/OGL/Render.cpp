@@ -363,7 +363,6 @@ Renderer::Renderer()
 	g_ogl_config.glsl_version = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
 
 	InitDriverInfo();
-	
 	// check for the max vertex attributes
 	GLint numvertexattribs = 0;
 	glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &numvertexattribs);
@@ -436,6 +435,7 @@ Renderer::Renderer()
 	g_Config.backend_info.bSupportsPrimitiveRestart = !DriverDetails::HasBug(DriverDetails::BUG_PRIMITIVERESTART) &&
 				((GLExtensions::Version() >= 310) || GLExtensions::Supports("GL_NV_primitive_restart"));
 	g_Config.backend_info.bSupportsEarlyZ = GLExtensions::Supports("GL_ARB_shader_image_load_store");
+	g_Config.backend_info.bSupportShadingLanguage420pack = GLExtensions::Supports("GL_ARB_shading_language_420pack");
 	g_ogl_config.bSupportsGLSLCache = GLExtensions::Supports("GL_ARB_get_program_binary");
 	g_ogl_config.bSupportsGLPinnedMemory = GLExtensions::Supports("GL_AMD_pinned_memory");
 	g_ogl_config.bSupportsGLSync = GLExtensions::Supports("GL_ARB_sync");
