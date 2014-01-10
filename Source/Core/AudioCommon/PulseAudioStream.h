@@ -13,8 +13,6 @@
 #include "Common.h"
 #include "SoundStream.h"
 
-#include "Thread.h"
-
 #include <vector>
 
 class PulseAudio : public SoundStream
@@ -23,26 +21,15 @@ class PulseAudio : public SoundStream
 public:
 	PulseAudio(CMixer *mixer);
 
-	virtual bool Start();
-	virtual void Stop();
-
 	static bool isValid() {return true;}
 
 	virtual bool usesMixer() const {return true;}
 
-	virtual void Update();
+	virtual bool Init(u32 sample_rate);
+	virtual void Shutdown();
+	virtual u32 Push(u32 num_samples, short * samples);
 
 private:
-	virtual void SoundLoop();
-
-	bool PulseInit();
-	void PulseShutdown();
-	void Write(const void *data, size_t bytes);
-
-	std::vector<s16> mix_buffer;
-	std::thread thread;
-	volatile bool run_thread;
-
 	pa_simple* pa;
 #else
 public:
