@@ -8,12 +8,11 @@
 #include <stdlib.h>
 #include "SoundStream.h"
 
-#define BUF_SIZE (48000 * 4 / 32)
-
 class NullSound : public SoundStream
 {
-	// playback position
-	short realtimeBuffer[BUF_SIZE / sizeof(short)];
+	u32 time_last_updated;
+	int samples_in_fake_buffer;
+	int samples_per_ms;
 
 public:
 	NullSound(CMixer *mixer)
@@ -22,14 +21,11 @@ public:
 
 	virtual ~NullSound() {}
 
-	virtual bool Start();
-	virtual void SoundLoop();
-	virtual void SetVolume(int volume);
-	virtual void Stop();
-	virtual void Clear(bool mute);
 	static bool isValid() { return true; }
 	virtual bool usesMixer() const { return true; }
-	virtual void Update();
+
+	virtual bool Init(u32 sample_rate);
+	virtual u32 Push(u32 num_samples, short * samples);
 };
 
 #endif //_NULLSOUNDSTREAM_H_

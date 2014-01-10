@@ -3,39 +3,26 @@
 // Refer to the license.txt file included.
 
 #include "NullSoundStream.h"
-#include "../Core/HW/SystemTimers.h"
-#include "../Core/HW/AudioInterface.h"
+#include "Timer.h"
 
-void NullSound::SoundLoop()
+u32 NullSound::Push(u32 num_samples, short int* samples)
 {
+	u32 now = Common::Timer::GetTimeMs();
+	samples_in_fake_buffer += num_samples;
+	samples_in_fake_buffer -= (now-time_last_updated) * samples_per_ms;
+	time_last_updated = now;
+
+	if(samples_in_fake_buffer > samples_per_ms)
+		Common::SleepCurrentThread(samples_in_fake_buffer / samples_per_ms);
+
+	return num_samples;
 }
 
-bool NullSound::Start()
+bool NullSound::Init(u32 sample_rate)
 {
+	time_last_updated = Common::Timer::GetTimeMs();
+	samples_per_ms = sample_rate / 1000;
+	samples_in_fake_buffer = 0;
 	return true;
 }
 
-void NullSound::SetVolume(int volume)
-{
-}
-
-void NullSound::Update()
-{
-	// num_samples_to_render in this update - depends on SystemTimers::AUDIO_DMA_PERIOD.
-	const u32 stereo_16_bit_size = 4;
-	const u32 dma_length = 32;
-	const u64 audio_dma_period = SystemTimers::GetTicksPerSecond() / (AudioInterface::GetAIDSampleRate() * stereo_16_bit_size / dma_length);
-	const u64 ais_samples_per_second = 48000 * stereo_16_bit_size;
-	const u64 num_samples_to_render = (audio_dma_period * ais_samples_per_second) / SystemTimers::GetTicksPerSecond();
-
-	m_mixer->Mix(realtimeBuffer, (unsigned int)num_samples_to_render);
-}
-
-void NullSound::Clear(bool mute)
-{
-	m_muted = mute;
-}
-
-void NullSound::Stop()
-{
-}
