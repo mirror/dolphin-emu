@@ -19,11 +19,7 @@ class AlsaSound : public SoundStream
 #if defined(HAVE_ALSA) && HAVE_ALSA
 public:
 	AlsaSound(CMixer *mixer);
-	virtual ~AlsaSound();
-
-	virtual bool Start();
-	virtual void SoundLoop();
-	virtual void Stop();
+	virtual ~AlsaSound() {};
 
 	static bool isValid() {
 		return true;
@@ -32,21 +28,12 @@ public:
 		return true;
 	}
 
-	virtual void Update();
+	virtual bool Init(u32 sample_rate);
+	virtual void Shutdown();
+	virtual u32 Push(u32 num_samples, short * samples);
 
 private:
-	bool AlsaInit();
-	void AlsaShutdown();
-
-	u8 *mix_buffer;
-	std::thread thread;
-	// 0 = continue
-	// 1 = shutdown
-	// 2 = done shutting down.
-	volatile int thread_data;
-
 	snd_pcm_t *handle;
-	int frames_to_deliver;
 #else
 public:
 	AlsaSound(CMixer *mixer) : SoundStream(mixer) {}
