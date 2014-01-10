@@ -10,16 +10,17 @@
 
 #if defined(HAVE_AO) && HAVE_AO
 
-void AOSound::SoundLoop()
+AOSound::~AOSound()
 {
-	Common::SetCurrentThreadName("Audio thread - ao");
+}
 
-	uint_32 numBytesToRender = 256;
+bool AOSound::Init(u32 sample_rate)
+{
 	ao_initialize();
-	default_driver = ao_default_driver_id();
+	int default_driver = ao_default_driver_id();
 	format.bits = 16;
 	format.channels = 2;
-	format.rate = m_mixer->GetSampleRate();
+	format.rate = sample_rate;
 	format.byte_format = AO_FMT_LITTLE;
 
 	device = ao_open_live(default_driver, &format, NULL /* no options */);
@@ -27,31 +28,23 @@ void AOSound::SoundLoop()
 	{
 		PanicAlertT("AudioCommon: Error opening AO device.\n");
 		ao_shutdown();
-		Stop();
-		return;
+		return false;
 	}
 
-	buf_size = format.bits/8 * format.channels * format.rate;
-
-	while (!threadData)
-	{
-		m_mixer->Mix(realtimeBuffer, numBytesToRender >> 2);
-
-		{
-		std::lock_guard<std::mutex> lk(soundCriticalSection);
-		ao_play(device, (char*)realtimeBuffer, numBytesToRender);
-		}
-
-		soundSyncEvent.Wait();
-	}
+	return true;
 }
 
-bool AOSound::Start()
+u32 AOSound::Push(u32 num_samples, short int* samples)
 {
-	memset(realtimeBuffer, 0, sizeof(realtimeBuffer));
+	std::lock_guard<std::mutex> lk(soundCriticalSection);
+	int samples_played = ao_play(device, (char*)samples, num_samples*4);
 
-	thread = std::thread(std::mem_fun(&AOSound::SoundLoop), this);
-	return true;
+	soundSyncEvent.Wait();
+
+	if(samples_played < 0)
+		return 0;
+
+	return samples_played;
 }
 
 void AOSound::Update()
@@ -59,14 +52,11 @@ void AOSound::Update()
 	soundSyncEvent.Set();
 }
 
-void AOSound::Stop()
+void AOSound::Shutdown()
 {
-	threadData = 1;
 	soundSyncEvent.Set();
 
-	{
 	std::lock_guard<std::mutex> lk(soundCriticalSection);
-	thread.join();
 
 	if (device)
 		ao_close(device);
@@ -74,11 +64,6 @@ void AOSound::Stop()
 	ao_shutdown();
 
 	device = NULL;
-	}
-}
-
-AOSound::~AOSound()
-{
 }
 
 #endif

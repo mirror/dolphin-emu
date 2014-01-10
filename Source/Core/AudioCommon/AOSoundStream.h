@@ -6,7 +6,6 @@
 #define _AOSOUNDSTREAM_H_
 
 #include "SoundStream.h"
-#include "Thread.h"
 
 #if defined(HAVE_AO) && HAVE_AO
 #include <ao/ao.h>
@@ -15,28 +14,16 @@
 class AOSound : public SoundStream
 {
 #if defined(HAVE_AO) && HAVE_AO
-	std::thread thread;
 	std::mutex soundCriticalSection;
 	Common::Event soundSyncEvent;
 
-	int buf_size;
-
 	ao_device *device;
 	ao_sample_format format;
-	int default_driver;
-
-	short realtimeBuffer[1024 * 1024];
 
 public:
 	AOSound(CMixer *mixer) : SoundStream(mixer) {}
 
 	virtual ~AOSound();
-
-	virtual bool Start();
-
-	virtual void SoundLoop();
-
-	virtual void Stop();
 
 	static bool isValid() {
 		return true;
@@ -47,6 +34,10 @@ public:
 	}
 
 	virtual void Update();
+
+	virtual bool Init(u32 sample_rate);
+	virtual void Shutdown();
+	virtual u32 Push(u32 num_samples, short * samples);
 
 #else
 public:
