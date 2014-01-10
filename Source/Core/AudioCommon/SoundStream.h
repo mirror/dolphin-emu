@@ -6,6 +6,7 @@
 #define _SOUNDSTREAM_H_
 
 #include "Common.h"
+#include "Thread.h"
 #include "Mixer.h"
 #include "WaveFile.h"
 
@@ -20,17 +21,16 @@ protected:
 	bool m_logAudio;
 	WaveFileWriter g_wave_writer;
 	bool m_muted;
+	std::thread thread;
+	u32 frames_to_deliver;
 
 public:
-	SoundStream(CMixer *mixer) : m_mixer(mixer), threadData(0), m_logAudio(false), m_muted(false) {}
+	SoundStream(CMixer *mixer) : m_mixer(mixer), threadData(0), m_logAudio(false), m_muted(false), frames_to_deliver(256) {}
 	virtual ~SoundStream() { delete m_mixer; }
 
 	static  bool isValid() { return false; }
 	virtual CMixer *GetMixer() const { return m_mixer; }
-	virtual bool Start() { return false; }
 	virtual void SetVolume(int) {}
-	virtual void SoundLoop() {}
-	virtual void Stop() {}
 	virtual void Update() {}
 	virtual void Clear(bool mute) { m_muted = mute; }
 	bool IsMuted() const { return m_muted; }
@@ -54,6 +54,35 @@ public:
 			WARN_LOG(DSPHLE, "Audio logging already stopped");
 		}
 	}
+
+	virtual bool Start() {
+		thread = std::thread(std::mem_fun(&SoundStream::SoundLoop), this);
+		return true;
+	}
+
+	virtual void Stop() {
+		threadData = 1;
+		thread.join();
+	}
+
+	virtual void SoundLoop() {
+		if(!Init(m_mixer->GetSampleRate())) {
+			threadData = 1;
+			return;
+		}
+		Common::SetCurrentThreadName("Audio thread");
+		short *buffer = new short[frames_to_deliver*2];
+		while(!threadData) {
+			u32 samples = m_mixer->Mix(buffer, frames_to_deliver);
+			Push(samples, buffer);
+		}
+		delete [] buffer;
+		Shutdown();
+	}
+
+	virtual bool Init(u32 sample_rate) { return false; }
+	virtual void Shutdown() {}
+	virtual u32 Push(u32 num_samples, short * samples) { return 0; }
 };
 
 #endif // _SOUNDSTREAM_H_
