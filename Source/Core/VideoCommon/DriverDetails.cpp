@@ -40,7 +40,7 @@ namespace DriverDetails
 	// This is a list of all known bugs for each vendor
 	// We use this to check if the device and driver has a issue
 	BugInfo m_known_bugs[] = {
-		{OS_ALL,    VENDOR_QUALCOMM, DRIVER_QUALCOMM_3XX, -1, BUG_NODYNUBOACCESS,      14.0, 46.0, true},
+		{OS_ALL,    VENDOR_QUALCOMM, DRIVER_QUALCOMM_3XX, -1, BUG_NODYNUBOACCESS,      14.0, -1.0, true},
 		{OS_ALL,    VENDOR_QUALCOMM, DRIVER_QUALCOMM_3XX, -1, BUG_BROKENCENTROID,      14.0, 46.0, true},
 		{OS_ALL,    VENDOR_QUALCOMM, DRIVER_QUALCOMM_3XX, -1, BUG_BROKENINFOLOG,       -1.0, 46.0, true},
 		{OS_ALL,    VENDOR_QUALCOMM, DRIVER_QUALCOMM_3XX, -1, BUG_ANNIHILATEDUBOS,     41.0, 46.0, true},
@@ -54,7 +54,7 @@ namespace DriverDetails
 		{OS_ALL,    VENDOR_ATI,      DRIVER_ATI,          -1, BUG_BROKENHACKEDBUFFER,  -1.0, -1.0, true},
 		{OS_LINUX,  VENDOR_ATI,      DRIVER_ATI,          -1, BUG_BROKENPINNEDMEMORY,  -1.0, -1.0, true},
 		{OS_ALL,    VENDOR_MESA,     DRIVER_NOUVEAU,      -1, BUG_BROKENHACKEDBUFFER,  -1.0, -1.0, true},
-		{OS_ALL,    VENDOR_NVIDIA,   DRIVER_NVIDIA,       -1, BUG_BROKENBUFFERSTORAGE, -1.0, -1.0, true},
+		{OS_ALL,    VENDOR_NVIDIA,   DRIVER_NVIDIA,       -1, BUG_BROKENBUFFERSTORAGE, -1.0, 33220.0, true},
 		{OS_OSX,    VENDOR_INTEL,    DRIVER_INTEL,      3000, BUG_PRIMITIVERESTART,    -1.0, -1.0, true},
 	};
 

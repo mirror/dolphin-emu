@@ -284,7 +284,7 @@ static inline void GeneratePixelShader(T& out, DSTALPHA_MODE dstAlphaMode, API_T
 	out.Write("\n");
 
 	if (g_ActiveConfig.backend_info.bSupportsGLSLUBO)
-		out.Write("layout(std140) uniform PSBlock {\n");
+		out.Write("layout(std140%s) uniform PSBlock {\n", g_ActiveConfig.backend_info.bSupportShadingLanguage420pack ? ", binding = 1" : "");
 
 	DeclareUniform(out, ApiType, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_COLORS, "float4", I_COLORS"[4]");
 	DeclareUniform(out, ApiType, g_ActiveConfig.backend_info.bSupportsGLSLUBO, C_KCOLORS, "float4", I_KCOLORS"[4]");
@@ -1128,10 +1128,10 @@ static const char *tevFogFuncsTable[] =
 	"",																// ?
 	"",																// Linear
 	"",																// ?
-	"\tfog = 1.0 - pow(2.0, -8.0 * fog);\n",						// exp
-	"\tfog = 1.0 - pow(2.0, -8.0 * fog * fog);\n",				// exp2
-	"\tfog = pow(2.0, -8.0 * (1.0 - fog));\n",					// backward exp
-	"\tfog = 1.0 - fog;\n   fog = pow(2.0, -8.0 * fog * fog);\n"	// backward exp2
+	"\tfog = 1.0 - exp2(-8.0 * fog);\n",						// exp
+	"\tfog = 1.0 - exp2(-8.0 * fog * fog);\n",				// exp2
+	"\tfog = exp2(-8.0 * (1.0 - fog));\n",					// backward exp
+	"\tfog = 1.0 - fog;\n   fog = exp2(-8.0 * fog * fog);\n"	// backward exp2
 };
 
 template<class T>
