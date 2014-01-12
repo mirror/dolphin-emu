@@ -8,9 +8,7 @@
 #ifdef _WIN32
 #include "../VideoBackends/D3D/VideoBackend.h"
 #endif
-#if !defined(USE_GLES) || USE_GLES3
 #include "../VideoBackends/OGL/VideoBackend.h"
-#endif
 #include "../VideoBackends/Software/VideoBackend.h"
 
 std::vector<VideoBackend*> g_available_video_backends;
@@ -45,9 +43,7 @@ void VideoBackend::PopulateList()
 	if (IsGteVista())
 		g_available_video_backends.push_back(backends[0] = new DX11::VideoBackend);
 #endif
-#if !defined(USE_GLES) || USE_GLES3
 	g_available_video_backends.push_back(backends[1] = new OGL::VideoBackend);
-#endif
 	g_available_video_backends.push_back(backends[3] = new SW::VideoSoftware);
 
 	for (auto& backend : backends)
