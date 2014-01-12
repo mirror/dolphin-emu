@@ -98,7 +98,10 @@ std::string VideoBackend::GetName()
 
 std::string VideoBackend::GetDisplayName()
 {
-	return "OpenGL";
+	if (g_renderer && GLInterface->GetMode() == GLInterfaceMode::MODE_OPENGLES3)
+		return "OpenGLES";
+	else
+		return "OpenGL";
 }
 
 void GetShaders(std::vector<std::string> &shaders)
