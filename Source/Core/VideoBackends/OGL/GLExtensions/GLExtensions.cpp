@@ -9,6 +9,9 @@
 #if defined(__linux__) || defined(__APPLE__)
 #include <dlfcn.h>
 #endif
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include <unordered_map>
 
 // gl_1_1
@@ -777,6 +780,9 @@ namespace GLExtensions
 	bool _isES3;
 	bool _isES;
 	u32 _GLVersion;
+#ifdef _WIN32
+	HINSTANCE dllHandle = NULL;  
+#endif
 	std::unordered_map<std::string, bool> _extensionlist;
 	// Forward declared init functions
 	bool init_gl_1_1();
@@ -950,6 +956,9 @@ namespace GLExtensions
 			// Give it a second try with dlsym
 			*func = dlsym(RTLD_NEXT, name.c_str());
 #endif
+#ifdef _WIN32
+			*func = (void*)GetProcAddress(dllHandle, name.c_str());
+#endif
 			if (*func == NULL && _isES)
 				*func = (void*)0xFFFFFFFF; // Easy to determine invalid function, just so we continue on
 			if (*func == NULL)
@@ -970,7 +979,9 @@ namespace GLExtensions
 		bool success = true;
 		_isES3 = GLInterface->GetMode() == GLInterfaceMode::MODE_OPENGLES3;
 		_isES = GLInterface->GetMode() == GLInterfaceMode::MODE_OPENGLES3 || GLInterface->GetMode() == GLInterfaceMode::MODE_OPENGLES2;
-
+#ifdef _WIN32
+		dllHandle = LoadLibrary("OpenGL32.dll");
+#endif
 		// Grab glGetStringi and glGetIntegerv immediately
 		// We need them to grab the extension list
 		// If it fails then the user's drivers don't support GL 3.0	
@@ -1034,7 +1045,9 @@ namespace GLExtensions
 		a++;
 		if (success && !init_arb_buffer_storage()) { PanicAlert("Fail %d", a); success = false; }
 		a++;
-
+#ifdef _WIN32
+		FreeLibrary(dllHandle); 
+#endif
 		return success;
 	}
 
