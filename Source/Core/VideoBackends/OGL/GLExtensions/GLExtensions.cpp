@@ -949,7 +949,7 @@ namespace GLExtensions
 
 	void* GetFuncAddress(std::string name, void **func)
 	{
-		*func = GLInterface->GetFuncAddress(name);
+		*func = GLInterface->GetProcAddress(name);
 		if (*func == NULL)
 		{
 #if defined(__linux__) || defined(__APPLE__)
@@ -957,7 +957,7 @@ namespace GLExtensions
 			*func = dlsym(RTLD_NEXT, name.c_str());
 #endif
 #ifdef _WIN32
-			*func = (void*)GetProcAddress(dllHandle, (LPCWSTR)name.c_str());
+			*func = (void*)GetProcAddress(dllHandle, (LPCSTR)name.c_str());
 #endif
 			if (*func == NULL && _isES)
 				*func = (void*)0xFFFFFFFF; // Easy to determine invalid function, just so we continue on
