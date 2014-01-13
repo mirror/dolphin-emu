@@ -3,6 +3,7 @@
 // Refer to the license.txt file included.
 
 #include "GLExtensions.h"
+#include "MsgHandler.h"
 #include "Log.h"
 
 #if defined(__linux__) || defined(__APPLE__)
