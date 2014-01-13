@@ -980,33 +980,59 @@ namespace GLExtensions
 
 		InitVersion();
 		InitExtensionList();
-		
-		if (success && !init_gl_1_1()) success = false;
-		if (success && !init_gl_1_2()) success = false;
-		if (success && !init_gl_1_3()) success = false;
-		if (success && !init_gl_1_4()) success = false;
-		if (success && !init_gl_1_5()) success = false;
-		if (success && !init_gl_2_0()) success = false;
-		if (success && !init_gl_3_0()) success = false;
-		if (success && !init_gl_3_1()) success = false;
-		if (success && !init_gl_3_2()) success = false;
-		if (success && !init_arb_uniform_buffer_object()) success = false;
-		if (success && !init_arb_sampler_objects()) success = false;
-		if (success && !init_arb_map_buffer_range()) success = false;
-		if (success && !init_arb_vertex_array_object()) success = false;
-		if (success && !init_arb_framebuffer_object()) success = false;
-		if (success && !init_arb_get_program_binary()) success = false;
-		if (success && !init_arb_sync()) success = false;
-		if (success && !init_arb_es2_compatibility()) success = false;
-		if (success && !init_nv_primitive_restart()) success = false;
-		if (success && !init_arb_blend_func_extended()) success = false;
-		if (success && !init_arb_viewport_array()) success = false;
-		if (success && !init_arb_draw_elements_base_vertex()) success = false;
-		if (success && !init_arb_sample_shading()) success = false;
-		if (success && !init_arb_debug_output()) success = false;
-		if (success && !init_nv_framebuffer_multisample_coverage()) success = false;
-		if (success && !init_khr_debug()) success = false;
-		if (success && !init_arb_buffer_storage()) success = false;
+		int a = 0;	
+		if (success && !init_gl_1_1()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_gl_1_2()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_gl_1_3()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_gl_1_4()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_gl_1_5()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_gl_2_0()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_gl_3_0()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_gl_3_1()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_gl_3_2()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_arb_uniform_buffer_object()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_arb_sampler_objects()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_arb_map_buffer_range()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_arb_vertex_array_object()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_arb_framebuffer_object()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_arb_get_program_binary()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_arb_sync()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_arb_es2_compatibility()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_nv_primitive_restart()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_arb_blend_func_extended()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_arb_viewport_array()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_arb_draw_elements_base_vertex()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_arb_sample_shading()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_arb_debug_output()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_nv_framebuffer_multisample_coverage()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_khr_debug()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
+		if (success && !init_arb_buffer_storage()) { PanicAlert("Fail %d", a); success = false; }
+		a++;
 
 		return success;
 	}
