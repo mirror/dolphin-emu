@@ -947,9 +947,9 @@ namespace GLExtensions
 			_GLVersion = 330; // Get all the fun things
 	}
 
-	void* GetProcAddress(std::string name, void **func)
+	void* GetFuncAddress(std::string name, void **func)
 	{
-		*func = GLInterface->GetProcAddress(name);
+		*func = GLInterface->GetFuncAddress(name);
 		if (*func == NULL)
 		{
 #if defined(__linux__) || defined(__APPLE__)
@@ -985,9 +985,9 @@ namespace GLExtensions
 		// Grab glGetStringi and glGetIntegerv immediately
 		// We need them to grab the extension list
 		// If it fails then the user's drivers don't support GL 3.0	
-		if (GetProcAddress ("glGetIntegerv", (void**)&glGetIntegerv) == NULL)
+		if (GetFuncAddress ("glGetIntegerv", (void**)&glGetIntegerv) == NULL)
 			return false;
-		if (GetProcAddress("glGetStringi", (void**)&glGetStringi) == NULL)
+		if (GetFuncAddress("glGetStringi", (void**)&glGetStringi) == NULL)
 			return false;
 
 		InitVersion();
@@ -1060,9 +1060,9 @@ namespace GLExtensions
 	// eg if (GrabFunction(glGetStringi)) return true;
 
 #define GrabFunction(x) \
-	 (!!GetProcAddress(#x, (void**)&x)) 
+	 (!!GetFuncAddress(#x, (void**)&x)) 
 #define GrabFunctionSuffix(x, y) \
-	 (!!GetProcAddress(#x #y, (void**)&x)) 
+	 (!!GetFuncAddress(#x #y, (void**)&x)) 
 	
 	bool init_gl_1_1()
 	{
