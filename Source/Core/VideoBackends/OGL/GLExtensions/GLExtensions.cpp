@@ -980,7 +980,7 @@ namespace GLExtensions
 		_isES3 = GLInterface->GetMode() == GLInterfaceMode::MODE_OPENGLES3;
 		_isES = GLInterface->GetMode() == GLInterfaceMode::MODE_OPENGLES3 || GLInterface->GetMode() == GLInterfaceMode::MODE_OPENGLES2;
 #ifdef _WIN32
-		dllHandle = LoadLibrary("OpenGL32.dll");
+		dllHandle = LoadLibrary((LPCWSTR)"OpenGL32.dll");
 #endif
 		// Grab glGetStringi and glGetIntegerv immediately
 		// We need them to grab the extension list
