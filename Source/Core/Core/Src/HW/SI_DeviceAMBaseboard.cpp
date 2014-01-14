@@ -85,6 +85,8 @@ CSIDevice_AMBaseboard::CSIDevice_AMBaseboard(SIDevices device, int _iDeviceNumbe
 	: ISIDevice(device, _iDeviceNumber)
 {
 	memset(coin, 0, sizeof(coin));
+
+	STRInit = 0;
 }
 
 /*	MKGP controls mapping:
@@ -161,7 +163,7 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 							Pad::GetStatus(ISIDevice::m_iDeviceNumber, &PadStatus);
 							res[resp++] = 0x10;
 							res[resp++] = 0x2;
-							int d10_0 = 0xdf;
+							int d10_0 = 0xFF;
 
 							/* baseboard test/service switches ???, disabled for a while
 							if (PadStatus.button & PAD_BUTTON_Y)	// Test
@@ -226,13 +228,60 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 						}
 					case 0x31:
 						ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command 31 (UNKNOWN)");
-						res[resp++] = 0x31;
-						res[resp++] = 0x02;
-						res[resp++] = 0x00;
-						res[resp++] = 0x00;
+
+						if( ptr(1) )
+						{
+							u32 cmd =(ptr(2)^0x80) << 24;
+								cmd|= ptr(3) << 16;
+								cmd|= ptr(4) <<  8;
+							//	cmd|= ptr(5) <<  0;	// Checksum
+							
+							if( cmd == 0xffffff00 )
+							{
+								res[resp++] = 0x31;
+								res[resp++] = 0x03;
+				
+								res[resp++] = 'C';
+								res[resp++] = '0';
+
+								if( STRInit == 0 )
+								{
+									res[resp++] = '1';
+									STRInit = 1;
+								} else {
+									res[resp++] = '6';
+								}
+
+							} else if( cmd == 0xff000000 ) {
+						
+								res[resp++] = 0x31;
+								res[resp++] = 0x03;
+				
+								res[resp++] = 'C';
+								res[resp++] = '0';
+								res[resp++] = '1';
+
+							} else {
+				
+								res[resp++] = 0x31;
+								res[resp++] = 0x03;
+				
+								res[resp++] = 'C';
+								res[resp++] = '0';
+								res[resp++] = '6';
+							}
+
+						} else {
+							res[resp++] = 0x31;
+							res[resp++] = 0x03;
+				
+							res[resp++] = 'C';
+							res[resp++] = '0';
+							res[resp++] = '1';	
+						}
 						break;
 					case 0x32:
-						ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command 32 (UNKNOWN)");
+						ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command 32 (CARD-Interface)");
 						res[resp++] = 0x32;
 						res[resp++] = 0x02;
 						res[resp++] = 0x00;
@@ -308,6 +357,12 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 										msg.addData((void *)"\x03\x08\x00\x00", 4);  // 8 analogs
 										msg.addData((void *)"\x12\x0c\x00\x00", 4);  // 12bit out
 										msg.addData((void *)"\x00\x00\x00\x00", 4);
+									} else if (!memcmp(SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str(), "GFXJ01", 6)) {
+										msg.addData((void *)"\x01\x01\x13\x00", 4);  // 2 players, 19 bit
+										msg.addData((void *)"\x02\x01\x00\x00", 4);  // 1 coin slots
+										msg.addData((void *)"\x03\x08\x00\x00", 4);  // 8 analogs
+										msg.addData((void *)"\x12\x08\x00\x00", 4);  // 6bit out
+										msg.addData((void *)"\x00\x00\x00\x00", 4);
 									} else {
 										msg.addData((void *)"\x01\x02\x0d\x00", 4);  // 2 players, 13 bit
 										msg.addData((void *)"\x02\x02\x00\x00", 4);  // 2 coin slots
@@ -357,6 +412,21 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 													player_data[1] |= 0x20;
 												if (PadStatus.button & PAD_BUTTON_B)	// Cancel button
 													player_data[1] |= 0x10;
+											} else if (!memcmp(SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str(), "GFXJ01", 6)) {	// F-Zero AX
+												if (PadStatus.button & PAD_BUTTON_START)// Test button
+													player_data[0] |= 0x80;
+												if (PadStatus.button & PAD_TRIGGER_R)	// Service button
+													player_data[0] |= 0x40;													
+												if (PadStatus.button & PAD_BUTTON_A)	// Boost
+													player_data[0] |= 0x02;
+												if (PadStatus.button & PAD_BUTTON_RIGHT)// View change 1
+													player_data[0] |= 0x20;
+												if (PadStatus.button & PAD_BUTTON_LEFT)	// View change 2
+													player_data[0] |= 0x10;
+												if (PadStatus.button & PAD_BUTTON_UP)	// View change 3
+													player_data[0] |= 0x08;
+												if (PadStatus.button & PAD_BUTTON_DOWN)	// View change 4
+													player_data[0] |= 0x04;
 											} else {
 												if (PadStatus.button & PAD_BUTTON_START)
 													player_data[0] |= 0x80;
@@ -407,21 +477,47 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 									SPADStatus PadStatus;
 									Pad::GetStatus(0, &PadStatus);
 
-									// 8 bit to 16 bit conversion
-									msg.addData(PadStatus.stickX);	// steering
-									msg.addData(PadStatus.stickX);
+									if (!memcmp(SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str(), "GFXJ01", 6)) {										
+										msg.addData(PadStatus.stickX);		// steering
+										msg.addData((u8)0);
 
-									// 8 bit to 16 bit conversion
-									msg.addData(PadStatus.triggerRight);	// gas
-									msg.addData(PadStatus.triggerRight);
+										msg.addData(PadStatus.stickY);		// steering
+										msg.addData((u8)0);
 
-									// 8 bit to 16 bit conversion
-									msg.addData(PadStatus.triggerLeft);	// brake
-									msg.addData(PadStatus.triggerLeft);
+										msg.addData((u8)0);					// unused
+										msg.addData((u8)0);
 
-									for( i=0; i < (analogs - 3); i++ ) {
-										msg.addData( 0 );
-										msg.addData( 0 );
+										msg.addData((u8)0);					// unused
+										msg.addData((u8)0);
+
+										msg.addData(PadStatus.triggerRight);// gas
+										msg.addData((u8)0);
+
+										msg.addData(PadStatus.triggerLeft);	// brake
+										msg.addData((u8)0);
+
+										msg.addData((u8)0);					// unused
+										msg.addData((u8)0);
+
+										msg.addData((u8)0);					// unused
+										msg.addData((u8)0);
+									} else {
+										// 8 bit to 16 bit conversion
+										msg.addData(PadStatus.stickX);	// steering
+										msg.addData(PadStatus.stickX);
+
+										// 8 bit to 16 bit conversion
+										msg.addData(PadStatus.triggerRight);	// gas
+										msg.addData(PadStatus.triggerRight);
+
+										// 8 bit to 16 bit conversion
+										msg.addData(PadStatus.triggerLeft);	// brake
+										msg.addData(PadStatus.triggerLeft);
+
+										for( i=0; i < (analogs - 3); i++ ) {
+											msg.addData( 0 );
+											msg.addData( 0 );
+										}
 									}
 								} break;
 								case 0x30:	// sub coins

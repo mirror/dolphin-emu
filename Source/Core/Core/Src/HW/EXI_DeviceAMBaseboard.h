@@ -20,6 +20,8 @@ private:
 	int m_position;
 	bool m_have_irq;
 	unsigned char m_command[4];
+	unsigned short m_backoffset;
+	FILE *m_backup;
 };
 
 #endif

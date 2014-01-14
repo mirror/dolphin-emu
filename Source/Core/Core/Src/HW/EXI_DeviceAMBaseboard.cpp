@@ -11,6 +11,7 @@ CEXIAMBaseboard::CEXIAMBaseboard()
 	: m_position(0)
 	, m_have_irq(false)
 {
+	m_backup = fopen("User/tribackup.bin","wb+");
 }
 
 void CEXIAMBaseboard::SetCS(int cs)
@@ -80,23 +81,50 @@ void CEXIAMBaseboard::TransferByte(u8& _byte)
 	{
 		if (m_position == 4)
 		{
-			_byte = 4;
-			ERROR_LOG(SP1, "AM-BB COMMAND: %02x %02x %02x", m_command[0], m_command[1], m_command[2]);
+			switch (m_command[0])
+			{
+			case 0x01:
+				m_backoffset = (m_command[1] << 8) | m_command[2];
+				DEBUG_LOG(OSREPORT,"AM-BB COMMAND: Backup Offset:%04X", m_backoffset );
+				fseek( m_backup, m_backoffset, SEEK_SET );
+				_byte = 0x01;
+				break;
+			case 0x02:
+				DEBUG_LOG(OSREPORT,"AM-BB COMMAND: Backup Write:%04X-%02X", m_backoffset, m_command[1] );
+				fputc( m_command[1], m_backup );
+				fflush( m_backup);
+				_byte = 0x01;
+				break;
+			case 0x03:
+				DEBUG_LOG(OSREPORT,"AM-BB COMMAND: Backup Read :%04X", m_backoffset );
+				_byte = (u32)(0x0100 | fgetc(m_backup));
+				break;
+			default:
+				_byte = 4;
+				ERROR_LOG(SP1, "AM-BB COMMAND: %02x %02x %02x", m_command[0], m_command[1], m_command[2]);
 
-			if ((m_command[0] == 0xFF) && (m_command[1] == 0) && (m_command[2] == 0))
-				m_have_irq = false;
-			else if (m_command[0] == 0x82)
-				m_have_irq = false;
+				if ((m_command[0] == 0xFF) && (m_command[1] == 0) && (m_command[2] == 0))
+					m_have_irq = false;
+				else if (m_command[0] == 0x82)
+					m_have_irq = false;
+				break;
+			}
 		}
 		else if (m_position > 4)
 		{
 			switch (m_command[0])
 			{
 			case 0xFF: // lan
-				_byte = 0xFF;
+				_byte = 0x04;
+				break;
+			case 0x83: // ?
+				_byte = 0x04;
 				break;
 			case 0x86: // imr
-				_byte = 0x00;
+				_byte = 0x04;
+				break;
+			case 0x87: // ?
+				_byte = 0x04;
 				break;
 			case 0x82: // isr
 				_byte = m_have_irq ? 0xFF : 0;

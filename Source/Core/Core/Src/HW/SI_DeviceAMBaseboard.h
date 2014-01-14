@@ -17,6 +17,9 @@ private:
 
 	unsigned short coin[2];
 	int coin_pressed[2];
+
+	u32 STRInit;
+
 public:
 	// constructor
 	CSIDevice_AMBaseboard(SIDevices device, int _iDeviceNumber);
