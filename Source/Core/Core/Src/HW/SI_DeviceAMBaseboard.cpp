@@ -85,6 +85,22 @@ CSIDevice_AMBaseboard::CSIDevice_AMBaseboard(SIDevices device, int _iDeviceNumbe
 	: ISIDevice(device, _iDeviceNumber)
 {
 	memset(coin, 0, sizeof(coin));
+	
+	CARDMemSize = 0;
+	CARDInserted = 0;
+
+	CARDROff = 0;
+	CARDCommand = 0;
+	CARDClean = 0;
+
+	CARDWriteLength = 0;
+	CARDWriteWrote = 0;
+
+	CARDReadLength = 0;
+	CARDReadRead = 0;
+
+	CARDBit = 0;
+	CardStateCallCount = 0;
 
 	STRInit = 0;
 }
@@ -282,10 +298,350 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 						break;
 					case 0x32:
 						ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command 32 (CARD-Interface)");
-						res[resp++] = 0x32;
-						res[resp++] = 0x02;
-						res[resp++] = 0x00;
-						res[resp++] = 0x00;
+						if( ptr(1) )
+						{
+							if( ptr(1) == 1 && ptr(2) == 0x05 )
+							{
+								if( CARDReadLength )
+								{
+									res[resp++] = 0x32;
+									u32 ReadLength = CARDReadLength - CARDReadRead;		
+																
+									if( ReadLength > 0x2F )
+										ReadLength = 0x2F;
+
+									res[resp++] = ReadLength;	// 0x2F (max size per packet)
+
+									memcpy( res+resp, CARDReadPacket+CARDReadRead, ReadLength );
+									
+									resp			+= ReadLength;
+									CARDReadRead	+= ReadLength;
+
+									if( CARDReadRead >= CARDReadLength )
+										CARDReadLength = 0;
+
+									break;
+								}
+
+								res[resp++] = 0x32;
+								u32 CMDLenO	= resp;
+								res[resp++] = 0x00;	// len
+							
+								res[resp++] = 0x02; //
+								u32 ChkStart = resp;
+
+								res[resp++] = 0x00;	// 0x00		 len
+
+								switch(CARDCommand)
+								{
+									case CARD_INIT:
+									{
+										res[resp++] = 0x10;	// 0x01
+										res[resp++] = 0x00;	// 0x02
+										res[resp++] = '0';	// 0x03
+									} break;
+									case CARD_IS_PRESENT:
+									{
+										res[resp++] = 0x40;	// 0x01
+										res[resp++] = 0x22;	// 0x02
+										res[resp++] = '0';	// 0x03
+									} break;
+									case CARD_GET_CARD_STATE:
+									{
+										res[resp++] = 0x20;	// 0x01
+										res[resp++] = 0x20|CARDBit;	// 0x02
+										/*
+											bit 0: PLease take your card
+											bit 1: endless waiting casues UNK_E to be called
+										*/
+										res[resp++] = 0x00;	// 0x03
+									} break;
+									case CARD_7A:
+									{
+										res[resp++] = 0x7A;	// 0x01
+										res[resp++] = 0x00;	// 0x02
+										res[resp++] = 0x00;	// 0x03
+									} break;
+									case CARD_78:
+									{
+										res[resp++] = 0x78;	// 0x01
+										res[resp++] = 0x00;	// 0x02
+										res[resp++] = 0x00;	// 0x03
+									} break;
+									case CARD_WRITE_INFO:
+									{
+										res[resp++] = 0x7C;	// 0x01
+										res[resp++] = 0x02;	// 0x02
+										res[resp++] = 0x00;	// 0x03
+									} break;
+									case CARD_D0:
+									{
+										res[resp++] = 0xD0;	// 0x01
+										res[resp++] = 0x00;	// 0x02
+										res[resp++] = 0x00;	// 0x03
+									} break;
+									case CARD_80:
+									{
+										res[resp++] = 0x80;	// 0x01
+										res[resp++] = 0x01;	// 0x02
+										res[resp++] = '0';	// 0x03
+									} break;
+									case CARD_CLEAN_CARD:
+									{
+										res[resp++] = 0xA0;	// 0x01
+										res[resp++] = 0x02;	// 0x02
+										res[resp++] = 0x00;	// 0x03
+									} break;
+									case CARD_LOAD_CARD:
+									{
+										res[resp++] = 0xB0;	// 0x01
+										res[resp++] = 0x02;	// 0x02
+										res[resp++] = '0';	// 0x03
+									} break;
+									case CARD_WRITE:
+									{
+										res[resp++] = 'S';	// 0x01
+										res[resp++] = 0x02;	// 0x02
+										res[resp++] = 0x00;	// 0x03
+									} break;
+									case CARD_READ:
+									{
+										res[resp++] = 0x33;	// 0x01
+										res[resp++] = 0x02;	// 0x02
+										res[resp++] = 'S';	// 0x03
+									} break;									
+								}
+
+								res[resp++] = '0';	// 0x04
+								res[resp++] = 0x00;	// 0x05
+
+								res[resp++] = 0x03;	// 0x06
+
+								res[ChkStart] = resp-ChkStart;	// 0x00 len
+
+								u32 i;
+								res[resp] = 0;		// 0x07
+								for( i=0; i < res[ChkStart]; ++i )
+									res[resp] ^= res[ChkStart+i];
+							
+								resp++;	
+
+								res[CMDLenO] = res[ChkStart] + 2;
+
+							} else {
+
+								for( u32 i=0; i < ptr(1); ++i )
+									CARDRBuf[CARDROff+i] = ptr(2+i);
+
+								CARDROff += ptr(1);
+						
+								//Check if we got complete CMD
+
+								if( CARDRBuf[0] == 0x02 )
+								if( CARDRBuf[1] == CARDROff - 2 )
+								{
+									if( CARDRBuf[CARDROff-2] == 0x03 )
+									{
+										u32 cmd = CARDRBuf[2] << 24;
+											cmd|= CARDRBuf[3] << 16;
+											cmd|= CARDRBuf[4] <<  8;
+											cmd|= CARDRBuf[5] <<  0;
+
+										switch(cmd)
+										{
+											default:
+											{
+											//	ERROR_LOG(AMBASEBOARDDEBUG, "CARD:Unhandled cmd!");
+											//	ERROR_LOG(AMBASEBOARDDEBUG, "CARD:[%08X]", cmd );
+											//	hexdump( CARDRBuf, CARDROff );
+											} break;
+											case 0x10000000:
+											{
+												ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command CARD Init");
+												CARDCommand = CARD_INIT;
+
+												CARDWriteLength		= 0;
+												CARDBit				= 0;
+												CARDMemSize			= 0;
+												CardStateCallCount	= 0;
+
+											} break;
+											case 0x20000000:
+											{
+												ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command CARD GetState(%02X)", CARDBit );
+												CARDCommand = CARD_GET_CARD_STATE;
+
+												if( CARDMemSize )
+												{
+													CardStateCallCount++;
+													if( CardStateCallCount > 10 )
+													{
+														if( CARDBit & 2 )
+															CARDBit &= ~2;
+														else
+															CARDBit |= 2;
+
+														CardStateCallCount = 0;
+													}
+												}
+
+												if( CARDClean == 1 )
+												{
+													CARDClean = 2;
+												} else if( CARDClean == 2 )
+												{
+													FILE *out = fopen("User/tricard.bin","rb+");
+													if( out != NULL )
+													{
+														fseek( out, 0, SEEK_END );
+														if( ftell(out) > 0 )
+														{
+															CARDMemSize = ftell(out);
+															CARDBit = 2;
+														}
+														fclose(out);
+													}
+													CARDClean = 0;
+												}
+											} break;
+											case 0x40000000:
+											{
+												ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command CARD IsPresent");
+												CARDCommand = CARD_IS_PRESENT;
+											} break;
+											case 0x7A000000:
+											{
+												ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command CARD Unknown7A");
+												CARDCommand = CARD_7A;
+											} break;
+											case 0xB0000000:
+											{
+												ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command CARD LoadCard");
+												CARDCommand = CARD_LOAD_CARD;
+											} break;
+											case 0xA0000000:
+											{
+												ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command CARD IsCleanCard");
+												CARDCommand = CARD_CLEAN_CARD;
+												CARDClean = 1;
+											} break;
+											case 0x33000000:
+											{
+												ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command CARD Read");
+												CARDCommand = CARD_READ;
+
+												//Prepare read packet
+												memset( CARDReadPacket, 0, 0xDB );
+												u32 POff=0;
+
+												FILE *card = fopen( "User/tricard.bin", "rb");
+												if( card != NULL )
+												{
+													if( CARDMemSize == 0 )
+													{
+														fseek( card, 0, SEEK_END );
+														CARDMemSize = ftell(card);
+														fseek( card, 0, SEEK_SET );
+													}
+
+													fread( CARDMem, sizeof(char), CARDMemSize, card );
+													fclose( card );
+
+													CARDInserted = 1;
+												}
+
+												CARDReadPacket[POff++] = 0x02;	// SUB CMD
+												CARDReadPacket[POff++] = 0x00;	// SUB CMDLen
+											
+												CARDReadPacket[POff++] = 0x33;	// CARD CMD
+
+												if( CARDInserted )
+												{
+													CARDReadPacket[POff++] = '1';	// CARD Status
+												} else {
+													CARDReadPacket[POff++] = '0';	// CARD Status
+												}
+
+												CARDReadPacket[POff++] = '0';		// 
+												CARDReadPacket[POff++] = '0';		// 
+
+
+												//Data reply
+												memcpy( CARDReadPacket + POff, CARDMem, CARDMemSize );
+												POff += CARDMemSize;
+
+												CARDReadPacket[POff++] = 0x03;
+											
+												CARDReadPacket[1] = POff-1;	// SUB CMDLen
+
+												u32 i;
+												for( i=0; i < POff-1; ++i )
+													CARDReadPacket[POff] ^= CARDReadPacket[1+i];
+
+												POff++;
+
+												CARDReadLength	= POff;
+												CARDReadRead	= 0;
+											} break;
+											case 0x53000000:
+											{
+												CARDCommand = CARD_WRITE;
+
+												CARDMemSize = CARDRBuf[1] - 9;
+
+												memcpy( CARDMem, CARDRBuf+9, CARDMemSize );										
+										
+												ERROR_LOG(AMBASEBOARDDEBUG, "CARDWrite: %u", CARDMemSize );
+
+												FILE *card = fopen( "User/tricard.bin", "wb");
+												if( card != NULL )
+												{
+													fwrite( CARDMem, sizeof(char), CARDMemSize, card );
+													fclose( card );
+												}
+
+												CARDBit = 2;
+
+												CardStateCallCount = 0;
+											} break;
+											case 0x78000000:
+											{
+												ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command CARD Unknown78");
+												CARDCommand	= CARD_78;
+											} break;
+											case 0x7C000000:
+											{
+												ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command CARD WriteCardInfo");
+												CARDCommand	= CARD_WRITE_INFO;
+											} break;
+											case 0x7D000000:
+											{
+												ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command CARD Print");
+												CARDCommand	= CARD_7D;
+											} break;
+											case 0x80000000:
+											{
+												ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command CARD Unknown80");
+												CARDCommand	= CARD_80;
+											} break;
+											case 0xD0000000:
+											{
+												ERROR_LOG(AMBASEBOARDDEBUG, "GC-AM: Command CARD UnknownD0");
+												CARDCommand	= CARD_D0;
+											} break;
+										}
+										CARDROff = 0;
+									}
+								}		
+
+								res[resp++] = 0x32;
+								res[resp++] = 0x01;	// len
+								res[resp++] = 0x06;	// OK
+							}
+						} else {
+							res[resp++] = 0x32;
+							res[resp++] = 0x00;	// len
+						}
 						break;
 					case 0x40:
 					case 0x41:
@@ -468,7 +824,7 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 										msg.addData((coin[i]>>8)&0x3f);
 										msg.addData(coin[i]&0xff);
 									}
-									//dbgprintf("JVS-IO:Get Coins Slots:%u Unk:%u\n", slots, unk );
+									//ERROR_LOG(AMBASEBOARDDEBUG, "JVS-IO:Get Coins Slots:%u Unk:%u", slots, unk );
 								} break;
 								case 0x22: // analogs
 								{
@@ -547,7 +903,7 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 										msg.addData(0xff);
 									} else {
 										msg.addData(1);
-										///dbgprintf("JVS-IO:Unknown\n");
+										///ERROR_LOG(AMBASEBOARDDEBUG, "JVS-IO:Unknown");
 									}
 								} break;
 								case 0xf0:

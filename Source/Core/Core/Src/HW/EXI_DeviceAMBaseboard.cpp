@@ -11,7 +11,7 @@ CEXIAMBaseboard::CEXIAMBaseboard()
 	: m_position(0)
 	, m_have_irq(false)
 {
-	m_backup = fopen("User/tribackup.bin","wb+");
+	m_backup = fopen("User/tribackup.bin","ab+");
 }
 
 void CEXIAMBaseboard::SetCS(int cs)
