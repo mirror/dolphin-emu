@@ -958,7 +958,7 @@ namespace GLExtensions
 #endif
 #ifdef _WIN32
 			if (*func == NULL)
-				*func = (void*)GetProcAddress(GetModuleHandle(NULL), (LPCSTR)name.c_str());
+				*func = (void*)GetProcAddress(dllHandle, (LPCSTR)name.c_str());
 #endif
 			if (*func == NULL && _isES)
 				*func = (void*)0xFFFFFFFF; // Easy to determine invalid function, just so we continue on
@@ -981,7 +981,9 @@ namespace GLExtensions
 		_isES3 = GLInterface->GetMode() == GLInterfaceMode::MODE_OPENGLES3;
 		_isES = GLInterface->GetMode() == GLInterfaceMode::MODE_OPENGLES3 || GLInterface->GetMode() == GLInterfaceMode::MODE_OPENGLES2;
 #ifdef _WIN32
-		dllHandle = LoadLibrary((LPCWSTR)"OpenGL32.dll");
+		dllHandle = LoadLibrary(TEXT("OpenGL32.dll"));
+		if (!dllHandle)
+			PanicAlert("WARK WARK WARK");
 #endif
 		// Grab glGetStringi and glGetIntegerv immediately
 		// We need them to grab the extension list
@@ -1046,9 +1048,6 @@ namespace GLExtensions
 		a++;
 		if (success && !init_arb_buffer_storage()) { PanicAlert("Fail %d", a); success = false; }
 		a++;
-#ifdef _WIN32
-		FreeLibrary(dllHandle); 
-#endif
 		return success;
 	}
 
