@@ -957,7 +957,8 @@ namespace GLExtensions
 			*func = dlsym(RTLD_NEXT, name.c_str());
 #endif
 #ifdef _WIN32
-			*func = (void*)GetProcAddress(dllHandle, (LPCSTR)name.c_str());
+			if (*func == NULL)
+				*func = (void*)GetProcAddress(dllHandle, (LPCSTR)name.c_str());
 #endif
 			if (*func == NULL && _isES)
 				*func = (void*)0xFFFFFFFF; // Easy to determine invalid function, just so we continue on
