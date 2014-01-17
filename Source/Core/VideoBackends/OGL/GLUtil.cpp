@@ -29,7 +29,7 @@ unsigned int VideoBackend::PeekMessages()
 void VideoBackend::UpdateFPSDisplay(const char *text)
 {
 	char temp[100];
-	snprintf(temp, sizeof temp, "%s | OpenGL | %s", scm_rev_str, text);
+	snprintf(temp, sizeof temp, "%s | %s | %s", scm_rev_str, GetDisplayName().c_str(), text);
 	return GLInterface->UpdateFPSDisplay(temp);
 }
 
