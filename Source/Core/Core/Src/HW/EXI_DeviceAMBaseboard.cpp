@@ -11,7 +11,15 @@ CEXIAMBaseboard::CEXIAMBaseboard()
 	: m_position(0)
 	, m_have_irq(false)
 {
-	m_backup = fopen("User/tribackup.bin","ab+");
+	m_backup = fopen("User/tribackup.bin","rb+");
+	if( m_backup == (FILE*)NULL )
+	{
+		m_backup = fopen("User/tribackup.bin","wb+");
+		if( m_backup == (FILE*)NULL )
+		{
+			ERROR_LOG( SP1, "AM-BB Failed to open backup file" );
+		}
+	}
 }
 
 void CEXIAMBaseboard::SetCS(int cs)
@@ -85,20 +93,21 @@ void CEXIAMBaseboard::TransferByte(u8& _byte)
 			{
 			case 0x01:
 				m_backoffset = (m_command[1] << 8) | m_command[2];
-				DEBUG_LOG(OSREPORT,"AM-BB COMMAND: Backup Offset:%04X", m_backoffset );
+				DEBUG_LOG(SP1,"AM-BB COMMAND: Backup Offset:%04X", m_backoffset );
 				fseek( m_backup, m_backoffset, SEEK_SET );
 				_byte = 0x01;
 				break;
 			case 0x02:
-				DEBUG_LOG(OSREPORT,"AM-BB COMMAND: Backup Write:%04X-%02X", m_backoffset, m_command[1] );
+				DEBUG_LOG(SP1,"AM-BB COMMAND: Backup Write:%04X-%02X", m_backoffset, m_command[1] );
 				fputc( m_command[1], m_backup );
-				fflush( m_backup);
+				fflush(m_backup);
 				_byte = 0x01;
 				break;
 			case 0x03:
-				DEBUG_LOG(OSREPORT,"AM-BB COMMAND: Backup Read :%04X", m_backoffset );
-				_byte = (u32)(0x0100 | fgetc(m_backup));
-				break;
+			{
+				DEBUG_LOG(SP1,"AM-BB COMMAND: Backup Read :%04X", m_backoffset );				
+				_byte = 0x01;
+			} break;
 			default:
 				_byte = 4;
 				ERROR_LOG(SP1, "AM-BB COMMAND: %02x %02x %02x", m_command[0], m_command[1], m_command[2]);
@@ -114,6 +123,9 @@ void CEXIAMBaseboard::TransferByte(u8& _byte)
 		{
 			switch (m_command[0])
 			{
+			case 0x03:
+				_byte = (char)fgetc(m_backup);
+				break;	
 			case 0xFF: // lan
 				_byte = 0x04;
 				break;
