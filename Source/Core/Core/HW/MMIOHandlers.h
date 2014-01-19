@@ -48,8 +48,10 @@ template <typename T> ReadHandlingMethod<T>* Constant(T value);
 
 // Direct: use when all the MMIO does is read/write the given value to/from a
 // global variable, with an optional mask applied on the read/written value.
-template <typename T> ReadHandlingMethod<T>* Direct(const T* addr, u32 mask = 0xFFFFFFFF);
-template <typename T> WriteHandlingMethod<T>* Direct(T* addr, u32 mask = 0xFFFFFFFF);
+template <typename T> ReadHandlingMethod<T>* DirectRead(const T* addr, u32 mask = 0xFFFFFFFF);
+template <typename T> ReadHandlingMethod<T>* DirectRead(volatile const T* addr, u32 mask = 0xFFFFFFFF);
+template <typename T> WriteHandlingMethod<T>* DirectWrite(T* addr, u32 mask = 0xFFFFFFFF);
+template <typename T> WriteHandlingMethod<T>* DirectWrite(volatile T* addr, u32 mask = 0xFFFFFFFF);
 
 // Complex: use when no other handling method fits your needs. These allow you
 // to directly provide a function that will be called when a read/write needs
@@ -155,8 +157,10 @@ private:
 // (where MaybeExtern = "extern") and definition (MaybeExtern = "").
 #define MMIO_PUBLIC_SPECIALIZATIONS(MaybeExtern, T) \
 	MaybeExtern template ReadHandlingMethod<T>* Constant<T>(T value); \
-	MaybeExtern template ReadHandlingMethod<T>* Direct(const T* addr, u32 mask); \
-	MaybeExtern template WriteHandlingMethod<T>* Direct(T* addr, u32 mask); \
+	MaybeExtern template ReadHandlingMethod<T>* DirectRead(const T* addr, u32 mask); \
+	MaybeExtern template ReadHandlingMethod<T>* DirectRead(volatile const T* addr, u32 mask); \
+	MaybeExtern template WriteHandlingMethod<T>* DirectWrite(T* addr, u32 mask); \
+	MaybeExtern template WriteHandlingMethod<T>* DirectWrite(volatile T* addr, u32 mask); \
 	MaybeExtern template ReadHandlingMethod<T>* Complex<T>(std::function<T()>); \
 	MaybeExtern template WriteHandlingMethod<T>* Complex<T>(std::function<void(T)>); \
 	MaybeExtern template ReadHandlingMethod<T>* InvalidRead<T>(); \

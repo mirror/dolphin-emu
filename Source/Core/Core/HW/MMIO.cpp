@@ -99,14 +99,24 @@ private:
 	u32 mask_;
 };
 template <typename T>
-ReadHandlingMethod<T>* Direct(const T* addr, u32 mask)
+ReadHandlingMethod<T>* DirectRead(const T* addr, u32 mask)
 {
 	return new DirectHandlingMethod<T>(const_cast<T*>(addr), mask);
 }
 template <typename T>
-WriteHandlingMethod<T>* Direct(T* addr, u32 mask)
+ReadHandlingMethod<T>* DirectRead(volatile const T* addr, u32 mask)
+{
+	return new DirectHandlingMethod<T>((T*)addr, mask);
+}
+template <typename T>
+WriteHandlingMethod<T>* DirectWrite(T* addr, u32 mask)
 {
 	return new DirectHandlingMethod<T>(addr, mask);
+}
+template <typename T>
+WriteHandlingMethod<T>* DirectWrite(volatile T* addr, u32 mask)
+{
+	return new DirectHandlingMethod<T>((T*)addr, mask);
 }
 
 // Complex: holds a lambda that is called when a read or a write is executed.
