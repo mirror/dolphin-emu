@@ -68,8 +68,9 @@ public:
 	void Register(u32 addr, ReadHandlingMethod<u##Size>* read, \
 	              WriteHandlingMethod<u##Size>* write) \
 	{ \
-		m_Read##Size##Handlers[UniqueID(addr)].ResetMethod(read); \
-		m_Write##Size##Handlers[UniqueID(addr)].ResetMethod(write); \
+		u32 id = UniqueID(addr) / sizeof (u##Size); \
+		m_Read##Size##Handlers[id].ResetMethod(read); \
+		m_Write##Size##Handlers[id].ResetMethod(write); \
 	}
 	REGISTER_FUNC(8) REGISTER_FUNC(16) REGISTER_FUNC(32)
 #undef REGISTER_FUNC
