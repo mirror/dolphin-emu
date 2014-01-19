@@ -46,7 +46,7 @@ const u32 BLOCK_SIZE = 0x10000;
 const u32 NUM_MMIOS = NUM_BLOCKS * BLOCK_SIZE;
 
 // Compute the internal unique ID for a given MMIO address. This ID is computed
-// from a very simple formula: block_id * lower_16_bits(address).
+// from a very simple formula: (1 + block_id) * lower_16_bits(address).
 //
 // The block ID can easily be computed by simply checking bit 24 (CC vs. CD).
 inline u32 UniqueID(u32 address)
@@ -56,7 +56,7 @@ inline u32 UniqueID(u32 address)
 	                         ((address & 0xFFFF0000) == 0xCD800000),
 	                 "Trying to get the ID of a non-existing MMIO address.");
 
-	return (address & 0xFFFF) * ((address >> 24) & 1);
+	return (address & 0xFFFF) * (1 + ((address >> 24) & 1));
 }
 
 
