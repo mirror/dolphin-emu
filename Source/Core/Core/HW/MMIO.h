@@ -51,9 +51,9 @@ const u32 NUM_MMIOS = NUM_BLOCKS * BLOCK_SIZE;
 // The block ID can easily be computed by simply checking bit 24 (CC vs. CD).
 inline u32 UniqueID(u32 address)
 {
-	_dbg_assert_msg_(MEMMAP, ((address & 0xFFFF0000) == 0xCC00) ||
-	                         ((address & 0xFFFF0000) == 0xCD00) ||
-	                         ((address & 0xFFFF0000) == 0xCD80),
+	_dbg_assert_msg_(MEMMAP, ((address & 0xFFFF0000) == 0xCC000000) ||
+	                         ((address & 0xFFFF0000) == 0xCD000000) ||
+	                         ((address & 0xFFFF0000) == 0xCD800000),
 	                 "Trying to get the ID of a non-existing MMIO address.");
 
 	return (address & 0xFFFF) * ((address >> 24) & 1);
