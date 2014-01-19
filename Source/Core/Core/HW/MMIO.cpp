@@ -264,7 +264,7 @@ void ReadHandler<T>::ResetMethod(ReadHandlingMethod<T>* method)
 		virtual void VisitInvalid()
 		{
 			ret = []() {
-				ERROR_LOG(MEMMAP, "Trying to access invalid MMIO");
+				ERROR_LOG(MEMMAP, "Trying to read an invalid MMIO");
 				return -1;
 			};
 		}
@@ -321,7 +321,7 @@ void WriteHandler<T>::ResetMethod(WriteHandlingMethod<T>* method)
 		virtual void VisitInvalid()
 		{
 			ret = [](T) {
-				ERROR_LOG(MEMMAP, "Trying to access invalid MMIO");
+				ERROR_LOG(MEMMAP, "Trying to write to an invalid MMIO");
 			};
 		}
 	};
