@@ -29,6 +29,7 @@
 
 // Global declarations
 class PointerWrap;
+namespace MMIO { class Mapping; }
 
 typedef void (*writeFn8 )(const u8, const u32);
 typedef void (*writeFn16)(const u16,const u32);
@@ -83,6 +84,9 @@ enum
 	MEMVIEW32_MASK  = 0x3FFFFFFF,
 #endif
 };
+
+// MMIO mapping object.
+extern MMIO::Mapping* mmio_mapping;
 
 // Init and Shutdown
 bool IsInitialized();
