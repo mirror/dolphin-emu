@@ -34,51 +34,20 @@ UidChecker<VertexShaderUid,VertexShaderCode> ProgramShaderCache::vertex_uid_chec
 static char s_glsl_header[1024] = "";
 
 
-
 // Annoying sure, can be removed once we drop our UBO workaround
-
 const char *UniformNames[NUM_UNIFORMS] =
 {
-	// PIXEL SHADER UNIFORMS
-	I_COLORS,
-	I_KCOLORS,
-	I_ALPHA,
-	I_TEXDIMS,
-	I_ZBIAS ,
-	I_INDTEXSCALE ,
-	I_INDTEXMTX,
-	I_FOG,
-	// VERTEX SHADER UNIFORMS
-	I_POSNORMALMATRIX,
-	I_PROJECTION ,
-	I_MATERIALS,
-	I_LIGHTS,
-	I_TEXMATRICES,
-	I_TRANSFORMMATRICES ,
-	I_NORMALMATRICES ,
-	I_POSTTRANSFORMMATRICES,
+#define ADD_CONSTANT(type, name, elements, shadername, register) shadername,
+#include "Constants.h"
+#undef ADD_CONSTANT
 };
 
-const static int PSVar_Loc[NUM_UNIFORMS] = {
-	offsetof(Constants, colors)/16,
-	offsetof(Constants, kcolors)/16,
-	offsetof(Constants, alpha)/16,
-	offsetof(Constants, texdims)/16,
-	offsetof(Constants, zbias)/16,
-	offsetof(Constants, indtexscale)/16,
-	offsetof(Constants, indtexmtx)/16,
-	offsetof(Constants, fog)/16,
-	
-	offsetof(Constants, posnormalmatrix)/16,
-	offsetof(Constants, projection)/16,
-	offsetof(Constants, materials)/16,
-	offsetof(Constants, lights)/16,
-	offsetof(Constants, texmatrices)/16,
-	offsetof(Constants, transformmatrices)/16,
-	offsetof(Constants, normalmatrices)/16,
-	offsetof(Constants, posttransformmatrices)/16,
+const static int PSVar_Loc[NUM_UNIFORMS] =
+{
+#define ADD_CONSTANT(type, name, elements, shadername, register) offsetof(Constants, name)/16,
+#include "Constants.h"
+#undef ADD_CONSTANT
 };
-
 // End of UBO workaround
 
 void SHADER::SetProgramVariables()

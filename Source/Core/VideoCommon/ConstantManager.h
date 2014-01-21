@@ -10,27 +10,6 @@ typedef float float4[4];
 typedef u32 uint4[4];
 typedef s32 int4[4];
 
-struct Constants
-{
-	float4 colors[4];
-	float4 kcolors[4];
-	float4 alpha;
-	float4 texdims[8];
-	float4 zbias[2];
-	float4 indtexscale[2];
-	float4 indtexmtx[6];
-	float4 fog[3];
-	
-	float4 posnormalmatrix[6];
-	float4 projection[4];
-	float4 materials[4];
-	float4 lights[40];
-	float4 texmatrices[24];
-	float4 transformmatrices[64];
-	float4 normalmatrices[32];
-	float4 posttransformmatrices[64];
-};
-
 // shader variables
 #define I_COLORS      "color"
 #define I_KCOLORS     "k"
@@ -70,6 +49,13 @@ struct Constants
 #define C_NORMALMATRICES        (C_TRANSFORMMATRICES + 64)	//172
 #define C_POSTTRANSFORMMATRICES (C_NORMALMATRICES + 32)		//204
 #define C_VENVCONST_END         (C_POSTTRANSFORMMATRICES + 64)
+
+struct Constants
+{
+#define ADD_CONSTANT(type, name, elements, shadername, register) type name[elements];
+#include "Constants.h"
+#undef ADD_CONSTANT
+};
 
 class ConstantManager
 {

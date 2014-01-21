@@ -119,6 +119,7 @@
     <ClInclude Include="PixelEngine.h" />
     <ClInclude Include="PixelShaderGen.h" />
     <ClInclude Include="ConstantManager.h" />
+    <ClInclude Include="Constants.h" />
     <ClInclude Include="RenderBase.h" />
     <ClInclude Include="ShaderGenCommon.h" />
     <ClInclude Include="Statistics.h" />

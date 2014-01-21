@@ -567,14 +567,14 @@ void ConstantManager::SetColorChanged(int type, int num)
 
 void ConstantManager::SetAlpha()
 {
-	constants.alpha[0] = bpmem.alpha_test.ref0 / 255.0f;
-	constants.alpha[1] = bpmem.alpha_test.ref1 / 255.0f;
+	constants.alpha[0][0] = bpmem.alpha_test.ref0 / 255.0f;
+	constants.alpha[0][1] = bpmem.alpha_test.ref1 / 255.0f;
 	dirty = true;
 }
 
 void ConstantManager::SetDestAlpha()
 {
-	constants.alpha[3] = bpmem.dstalpha.alpha / 255.0f;
+	constants.alpha[0][3] = bpmem.dstalpha.alpha / 255.0f;
 	dirty = true;
 }
 

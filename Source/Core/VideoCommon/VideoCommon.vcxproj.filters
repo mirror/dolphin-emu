@@ -217,6 +217,9 @@
     <ClInclude Include="ConstantManager.h">
       <Filter>Shader Managers</Filter>
     </ClInclude>
+    <ClInclude Include="Constants.h">
+      <Filter>Shader Managers</Filter>
+    </ClInclude>
     <ClInclude Include="AVIDump.h">
       <Filter>Util</Filter>
     </ClInclude>
