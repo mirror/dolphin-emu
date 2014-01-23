@@ -3,6 +3,7 @@
 // Refer to the license.txt file included.
 
 #include "../Core.h"
+#include "../ConfigManager.h"
 
 #include "EXI_Device.h"
 #include "EXI_DeviceAMBaseboard.h"
@@ -11,53 +12,35 @@ CEXIAMBaseboard::CEXIAMBaseboard()
 	: m_position(0)
 	, m_have_irq(false)
 {
-	m_backup = fopen("User/tribackup.bin","rb+");
+	char BackupPath[_MAX_PATH];
+
+	sprintf_s( BackupPath, _MAX_PATH, "User/tribackup_%s.bin", SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str() );
+
+	m_backup = fopen( BackupPath, "rb+" );
 	if( m_backup == (FILE*)NULL )
 	{
-		m_backup = fopen("User/tribackup.bin","wb+");
+		m_backup = fopen( BackupPath, "wb+" );
 		if( m_backup == (FILE*)NULL )
 		{
-			ERROR_LOG( SP1, "AM-BB Failed to open backup file" );
+			PanicAlertT( "AM-BB Failed to open/create backup file" );
 		}
 	}
 }
 
 void CEXIAMBaseboard::SetCS(int cs)
 {
-	ERROR_LOG(SP1, "AM-BB ChipSelect=%d", cs);
+	DEBUG_LOG(SP1, "AM-BB ChipSelect=%d", cs);
 	if (cs)
 		m_position = 0;
 }
 
 bool CEXIAMBaseboard::IsPresent()
 {
-	return false;
+	return true;
 }
 
 void CEXIAMBaseboard::TransferByte(u8& _byte)
 {
-	/*
-	ID:
-		00 00 xx xx xx xx
-		xx xx 06 04 10 00
-	CMD:
-		01 00 00 b3 xx
-		xx xx xx xx 04
-	exi_lanctl_write:
-		ff 02 01 63 xx
-		xx xx xx xx 04
-	exi_imr_read:
-		86 00 00 f5 xx xx xx
-		xx xx xx xx 04 rr rr
-	exi_imr_write:
-		87 80 5c 17 xx
-		xx xx xx xx 04
-
-	exi_isr_read:
-		82 .. .. .. xx xx xx 
-		xx xx xx xx 04 rr rr
-		3 byte command, 1 byte checksum
-	*/
 	DEBUG_LOG(SP1, "AM-BB > %02x", _byte);
 	if (m_position < 4)
 	{
@@ -67,6 +50,7 @@ void CEXIAMBaseboard::TransferByte(u8& _byte)
 
 	if ((m_position >= 2) && (m_command[0] == 0 && m_command[1] == 0))
 	{
+		// Read serial ID
 		_byte = "\x06\x04\x10\x00"[(m_position-2)&3];
 	}
 	else if (m_position == 3)
@@ -93,28 +77,27 @@ void CEXIAMBaseboard::TransferByte(u8& _byte)
 			{
 			case 0x01:
 				m_backoffset = (m_command[1] << 8) | m_command[2];
-				DEBUG_LOG(SP1,"AM-BB COMMAND: Backup Offset:%04X", m_backoffset );
+				INFO_LOG(SP1,"AM-BB COMMAND: Backup Offset:%04X", m_backoffset );
 				fseek( m_backup, m_backoffset, SEEK_SET );
 				_byte = 0x01;
 				break;
 			case 0x02:
-				DEBUG_LOG(SP1,"AM-BB COMMAND: Backup Write:%04X-%02X", m_backoffset, m_command[1] );
+				INFO_LOG(SP1,"AM-BB COMMAND: Backup Write:%04X-%02X", m_backoffset, m_command[1] );
 				fputc( m_command[1], m_backup );
 				fflush(m_backup);
 				_byte = 0x01;
 				break;
 			case 0x03:
-			{
-				DEBUG_LOG(SP1,"AM-BB COMMAND: Backup Read :%04X", m_backoffset );				
+				INFO_LOG(SP1,"AM-BB COMMAND: Backup Read :%04X", m_backoffset );				
 				_byte = 0x01;
-			} break;
+				break;
 			default:
 				_byte = 4;
-				ERROR_LOG(SP1, "AM-BB COMMAND: %02x %02x %02x", m_command[0], m_command[1], m_command[2]);
+				INFO_LOG(SP1, "AM-BB COMMAND: %02x %02x %02x", m_command[0], m_command[1], m_command[2]);
 
 				if ((m_command[0] == 0xFF) && (m_command[1] == 0) && (m_command[2] == 0))
-					m_have_irq = false;
-				else if (m_command[0] == 0x82)
+					m_have_irq = true;
+				else if ((m_command[0] == 0x82) || (m_command[0] == 0x83))
 					m_have_irq = false;
 				break;
 			}
@@ -123,23 +106,20 @@ void CEXIAMBaseboard::TransferByte(u8& _byte)
 		{
 			switch (m_command[0])
 			{
+			// Read backup - 1 byte out
 			case 0x03:
-				_byte = (char)fgetc(m_backup);
-				break;	
-			case 0xFF: // lan
-				_byte = 0x04;
+				_byte = fgetc(m_backup);
 				break;
-			case 0x83: // ?
-				_byte = 0x04;
+			// IMR - 2 byte out
+			case 0x82:
+				if( m_position == 6 )
+					_byte = 0x02;
+				else
+					_byte = 0x00;
 				break;
-			case 0x86: // imr
-				_byte = 0x04;
-				break;
+			case 0x86: // ?
 			case 0x87: // ?
 				_byte = 0x04;
-				break;
-			case 0x82: // isr
-				_byte = m_have_irq ? 0xFF : 0;
 				break;
 			default:
 				_dbg_assert_msg_(SP1, 0, "Unknown AM-BB command");
@@ -158,7 +138,7 @@ void CEXIAMBaseboard::TransferByte(u8& _byte)
 bool CEXIAMBaseboard::IsInterruptSet()
 {
 	if (m_have_irq)
-		ERROR_LOG(SP1, "AM-BB IRQ");
+		DEBUG_LOG(SP1, "AM-BB IRQ");
 	return m_have_irq;
 }
 

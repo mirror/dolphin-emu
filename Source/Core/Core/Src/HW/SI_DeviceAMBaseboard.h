@@ -31,31 +31,33 @@ private:
 		CARD_80				= 0x80,
 	};
 
-	unsigned short coin[2];
-	int coin_pressed[2];
+	unsigned short m_coin[2];
+	int m_coin_pressed[2];
 	
-	u32 CARDMemSize;
-	u32 CARDInserted;
+	u32 m_controltype;
+	
+	u8	m_card_memory[0xD0];
+	u8	m_card_read_packet[0xDB];
+	u8  m_card_buffer[0x100];
+	u32 m_card_memory_size;
+	u32 m_card_is_inserted;
+	u32 m_card_command;
+	u32 m_card_clean;
+	u32 m_card_write_length;
+	u32 m_card_wrote;
+	u32 m_card_read_length;
+	u32 m_card_read;
+	u32 m_card_bit;
+	u32 m_card_state_call_count;
+	u8  m_card_offset=0;
+	
+	u32 m_wheelinit;
 
-	u8 CARDRBuf[0x100];
-	u8 CARDROff=0;
-	u32 CARDCommand;
-	u32 CARDClean;
-
-	u8	CARDMem[0xD0];
-	u8	CARDReadPacket[0xDB];
-
-
-	u32 CARDWriteLength;
-	u32 CARDWriteWrote;
-
-	u32 CARDReadLength;
-	u32 CARDReadRead;
-
-	u32 CARDBit;
-	u32 CardStateCallCount;
-
-	u32 STRInit;
+	u32 m_motorinit;
+	u8  m_motorreply[6];
+	u32 m_motorforce;
+	s16 m_motorforce_x;
+	s16 m_motorforce_y;
 
 public:
 	// constructor

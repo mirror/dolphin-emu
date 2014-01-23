@@ -26,7 +26,7 @@
 #if defined(_DEBUG) || defined(DEBUGFAST)
 	#define ENABLE_MEM_CHECK
 #endif
-
+#define ENABLE_MEM_CHECK
 // Global declarations
 class PointerWrap;
 

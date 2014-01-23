@@ -58,7 +58,7 @@ bool CBoot::EmulatedBS2_GC()
 	Memory::Write_U32(0x10000006, 0x8000002C);	// Console type - DevKit  (retail ID == 0x00000003) see yagcd 4.2.1.1.2
 
 	Memory::Write_U32(SConfig::GetInstance().m_LocalCoreStartupParameter.bNTSC
-						 ? 0 : 1, 0x800000CC);	// fake the VI Init of the IPL (yagcd 4.2.1.4)
+						 ? 6 : 6, 0x800000CC);	// fake the VI Init of the IPL (yagcd 4.2.1.4)
 
 	Memory::Write_U32(0x01000000, 0x800000d0);	// ARAM Size. 16MB main + 4/16/32MB external (retail consoles have no external ARAM)
 
@@ -154,6 +154,18 @@ bool CBoot::EmulatedBS2_GC()
 
 	// If we have any patches that need to be applied very early, here's a good place
 	PatchEngine::ApplyFramePatches();
+	
+	int GCAM = ((SConfig::GetInstance().m_SIDevice[0] == SIDEVICE_AM_BASEBOARD)
+		&& (SConfig::GetInstance().m_EXIDevice[2] == EXIDEVICE_AM_BASEBOARD))
+		? 1 : 0;
+
+	//Clear mediaboard encryption seeds
+	if(GCAM)
+	{
+		char *ptr = (char*)(Memory::GetPointer(0));
+		memset( ptr, 0, 12 );
+	}
+
 
 	return true;
 }

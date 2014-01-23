@@ -112,14 +112,14 @@ static bool VerifyRoms(const char *irom_filename, const char *coef_filename)
 			return false;
 	}
 
-	if (rom_idx == 1)
-		PanicAlertT("You are using an old free DSP ROM made by the Dolphin Team.\n"
-					"Only games using the Zelda UCode will work correctly.\n");
+	//if (rom_idx == 1)
+	//	PanicAlertT("You are using an old free DSP ROM made by the Dolphin Team.\n"
+	//				"Only games using the Zelda UCode will work correctly.\n");
 
-	if (rom_idx == 2)
-		PanicAlertT("You are using a free DSP ROM made by the Dolphin Team.\n"
-					"All Wii games will work correctly, and most GC games should "
-					"also work fine, but the GBA/IPL/CARD UCodes will not work.\n");
+	//if (rom_idx == 2)
+	//	PanicAlertT("You are using a free DSP ROM made by the Dolphin Team.\n"
+	//				"All Wii games will work correctly, and most GC games should "
+	//				"also work fine, but the GBA/IPL/CARD UCodes will not work.\n");
 
 	return true;
 }

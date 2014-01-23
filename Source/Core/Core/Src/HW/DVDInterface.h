@@ -39,6 +39,7 @@ void Read32(u32& _uReturnValue, const u32 _iAddress);
 // Write32
 void Write32(const u32 _iValue, const u32 _iAddress);
 
+void GCAMExecuteCommand( void );
 
 // Not sure about endianness here. I'll just name them like this...
 enum DIErrorLow
@@ -102,6 +103,15 @@ enum DICommand
 	DVDLowRequestError			= 0xe0,
 	DVDLowStopMotor				= 0xe3,
 	DVDLowAudioBufferConfig		= 0xe4
+};
+
+enum DINetworkTypes
+{
+	NETWORK_NONE						= 0,
+	NETWORK_ETHER_MOBILE_DEFAULT_ETHER	= 1,
+	NETWORK_ETHER_MOBILE_DEFAULT_MOBILE = 2,
+	NETWORK_ETHER						= 3,
+	NETWORK_MOBILE						= 4,
 };
 
 } // end of namespace DVDInterface
