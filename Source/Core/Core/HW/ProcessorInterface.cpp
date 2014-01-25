@@ -95,7 +95,7 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 {
 	mmio->Register(base | PI_INTERRUPT_CAUSE,
 		MMIO::DirectRead<u32>(&m_InterruptCause),
-		MMIO::Complex<u32>([](u32 val) {
+		MMIO::Complex<u32>([](u32, u32 val) {
 			Common::AtomicAnd(m_InterruptCause, ~val);
 			UpdateException();
 		})
@@ -103,7 +103,7 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 
 	mmio->Register(base | PI_INTERRUPT_MASK,
 		MMIO::DirectRead<u32>(&m_InterruptMask),
-		MMIO::Complex<u32>([](u32 val) {
+		MMIO::Complex<u32>([](u32, u32 val) {
 			m_InterruptMask = val;
 			UpdateException();
 		})
@@ -126,7 +126,7 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 
 	mmio->Register(base | PI_FIFO_RESET,
 		MMIO::InvalidRead<u32>(),
-		MMIO::Complex<u32>([](u32 val) {
+		MMIO::Complex<u32>([](u32, u32 val) {
 			WARN_LOG(PROCESSORINTERFACE, "Fifo reset (%08x)", val);
 		})
 	);

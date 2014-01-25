@@ -91,7 +91,7 @@ public:
 	void Read(u32 addr, u##Size& val) const \
 	{ \
 		u32 id = UniqueID(addr) / sizeof (u##Size); \
-		val = m_Read##Size##Handlers[id].Read(); \
+		val = m_Read##Size##Handlers[id].Read(addr); \
 	}
 	READ_FUNC(8) READ_FUNC(16) READ_FUNC(32)
 #undef READ_FUNC
@@ -100,7 +100,7 @@ public:
 	void Write(u32 addr, u##Size val) const \
 	{ \
 		u32 id = UniqueID(addr) / sizeof (u##Size); \
-		m_Write##Size##Handlers[id].Write(val); \
+		m_Write##Size##Handlers[id].Write(addr, val); \
 	}
 	WRITE_FUNC(8) WRITE_FUNC(16) WRITE_FUNC(32)
 #undef WRITE_FUNC

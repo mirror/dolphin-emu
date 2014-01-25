@@ -60,8 +60,8 @@ template <typename T> WriteHandlingMethod<T>* DirectWrite(volatile T* addr, u32 
 // Complex: use when no other handling method fits your needs. These allow you
 // to directly provide a function that will be called when a read/write needs
 // to be done.
-template <typename T> ReadHandlingMethod<T>* Complex(std::function<T()>);
-template <typename T> WriteHandlingMethod<T>* Complex(std::function<void(T)>);
+template <typename T> ReadHandlingMethod<T>* Complex(std::function<T(u32)>);
+template <typename T> WriteHandlingMethod<T>* Complex(std::function<void(u32, T)>);
 
 // Invalid: log an error and return -1 in case of a read. These are the default
 // handlers set for all MMIO types.
@@ -78,7 +78,7 @@ class ReadHandlingMethodVisitor
 public:
 	virtual void VisitConstant(T value) = 0;
 	virtual void VisitDirect(const T* addr, u32 mask) = 0;
-	virtual void VisitComplex(std::function<T()> lambda) = 0;
+	virtual void VisitComplex(std::function<T(u32)> lambda) = 0;
 };
 template <typename T>
 class WriteHandlingMethodVisitor
@@ -86,7 +86,7 @@ class WriteHandlingMethodVisitor
 public:
 	virtual void VisitNop() = 0;
 	virtual void VisitDirect(T* addr, u32 mask) = 0;
-	virtual void VisitComplex(std::function<void(T)> lambda) = 0;
+	virtual void VisitComplex(std::function<void(u32, T)> lambda) = 0;
 };
 
 // These classes are INTERNAL. Do not use outside of the MMIO implementation
@@ -107,9 +107,9 @@ public:
 	// Entry point for read handling method visitors.
 	void Visit(ReadHandlingMethodVisitor<T>& visitor) const;
 
-	T Read() const
+	T Read(u32 addr) const
 	{
-		return m_ReadFunc();
+		return m_ReadFunc(addr);
 	}
 
 	// Internal method called when changing the internal method object. Its
@@ -118,7 +118,7 @@ public:
 
 private:
 	std::unique_ptr<ReadHandlingMethod<T>> m_Method;
-	std::function<T()> m_ReadFunc;
+	std::function<T(u32)> m_ReadFunc;
 };
 template <typename T>
 class WriteHandler : public NonCopyable
@@ -134,9 +134,9 @@ public:
 	// Entry point for write handling method visitors.
 	void Visit(WriteHandlingMethodVisitor<T>& visitor) const;
 
-	void Write(T val) const
+	void Write(u32 addr, T val) const
 	{
-		m_WriteFunc(val);
+		m_WriteFunc(addr, val);
 	}
 
 	// Internal method called when changing the internal method object. Its
@@ -146,7 +146,7 @@ public:
 
 private:
 	std::unique_ptr<WriteHandlingMethod<T>> m_Method;
-	std::function<void(T)> m_WriteFunc;
+	std::function<void(u32, T)> m_WriteFunc;
 };
 
 // Boilerplate boilerplate boilerplate.
@@ -165,8 +165,8 @@ private:
 	MaybeExtern template ReadHandlingMethod<T>* DirectRead(volatile const T* addr, u32 mask); \
 	MaybeExtern template WriteHandlingMethod<T>* DirectWrite(T* addr, u32 mask); \
 	MaybeExtern template WriteHandlingMethod<T>* DirectWrite(volatile T* addr, u32 mask); \
-	MaybeExtern template ReadHandlingMethod<T>* Complex<T>(std::function<T()>); \
-	MaybeExtern template WriteHandlingMethod<T>* Complex<T>(std::function<void(T)>); \
+	MaybeExtern template ReadHandlingMethod<T>* Complex<T>(std::function<T(u32)>); \
+	MaybeExtern template WriteHandlingMethod<T>* Complex<T>(std::function<void(u32, T)>); \
 	MaybeExtern template ReadHandlingMethod<T>* InvalidRead<T>(); \
 	MaybeExtern template WriteHandlingMethod<T>* InvalidWrite<T>(); \
 	MaybeExtern template class ReadHandler<T>; \

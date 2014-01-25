@@ -147,12 +147,12 @@ class ComplexHandlingMethod : public ReadHandlingMethod<T>,
                               public WriteHandlingMethod<T>
 {
 public:
-	explicit ComplexHandlingMethod(std::function<T()> read_lambda)
+	explicit ComplexHandlingMethod(std::function<T(u32)> read_lambda)
 		: read_lambda_(read_lambda), write_lambda_(InvalidWriteLambda())
 	{
 	}
 
-	explicit ComplexHandlingMethod(std::function<void(T)> write_lambda)
+	explicit ComplexHandlingMethod(std::function<void(u32, T)> write_lambda)
 		: read_lambda_(InvalidReadLambda()), write_lambda_(write_lambda)
 	{
 	}
@@ -170,33 +170,33 @@ public:
 	}
 
 private:
-	std::function<T()> InvalidReadLambda() const
+	std::function<T(u32)> InvalidReadLambda() const
 	{
-		return []() {
+		return [](u32) {
 			_dbg_assert_msg_(MEMMAP, 0, "Called the read lambda on a write "
 			                            "complex handler.");
 			return 0;
 		};
 	}
 
-	std::function<void(T)> InvalidWriteLambda() const
+	std::function<void(u32, T)> InvalidWriteLambda() const
 	{
-		return [](T) {
+		return [](u32, T) {
 			_dbg_assert_msg_(MEMMAP, 0, "Called the write lambda on a read "
 			                            "complex handler.");
 		};
 	}
 
-	std::function<T()> read_lambda_;
-	std::function<void(T)> write_lambda_;
+	std::function<T(u32)> read_lambda_;
+	std::function<void(u32, T)> write_lambda_;
 };
 template <typename T>
-ReadHandlingMethod<T>* Complex(std::function<T()> lambda)
+ReadHandlingMethod<T>* Complex(std::function<T(u32)> lambda)
 {
 	return new ComplexHandlingMethod<T>(lambda);
 }
 template <typename T>
-WriteHandlingMethod<T>* Complex(std::function<void(T)> lambda)
+WriteHandlingMethod<T>* Complex(std::function<void(u32, T)> lambda)
 {
 	return new ComplexHandlingMethod<T>(lambda);
 }
@@ -206,17 +206,18 @@ WriteHandlingMethod<T>* Complex(std::function<void(T)> lambda)
 template <typename T>
 ReadHandlingMethod<T>* InvalidRead()
 {
-	return Complex<T>([]() {
-		ERROR_LOG(MEMMAP, "Trying to read from an invalid MMIO");
+	return Complex<T>([](u32 addr) {
+		ERROR_LOG(MEMMAP, "Trying to read from an invalid MMIO (addr=%08x)",
+			addr);
 		return -1;
 	});
 }
 template <typename T>
 WriteHandlingMethod<T>* InvalidWrite()
 {
-	return Complex<T>([](T val) {
-		ERROR_LOG(MEMMAP, "Trying to write to an invalid MMIO (val=%08x)",
-			(u32)val);
+	return Complex<T>([](u32 addr, T val) {
+		ERROR_LOG(MEMMAP, "Trying to write to an invalid MMIO (addr=%08x, val=%08x)",
+			addr, (u32)val);
 	});
 }
 
@@ -254,19 +255,19 @@ void ReadHandler<T>::ResetMethod(ReadHandlingMethod<T>* method)
 
 	struct FuncCreatorVisitor : public ReadHandlingMethodVisitor<T>
 	{
-		std::function<T()> ret;
+		std::function<T(u32)> ret;
 
 		virtual void VisitConstant(T value)
 		{
-			ret = [value]() { return value; };
+			ret = [value](u32) { return value; };
 		}
 
 		virtual void VisitDirect(const T* addr, u32 mask)
 		{
-			ret = [addr, mask]() { return *addr & mask; };
+			ret = [addr, mask](u32) { return *addr & mask; };
 		}
 
-		virtual void VisitComplex(std::function<T()> lambda)
+		virtual void VisitComplex(std::function<T(u32)> lambda)
 		{
 			ret = lambda;
 		}
@@ -308,19 +309,19 @@ void WriteHandler<T>::ResetMethod(WriteHandlingMethod<T>* method)
 
 	struct FuncCreatorVisitor : public WriteHandlingMethodVisitor<T>
 	{
-		std::function<void(T)> ret;
+		std::function<void(u32, T)> ret;
 
 		virtual void VisitNop()
 		{
-			ret = [](T) {};
+			ret = [](u32, T) {};
 		}
 
-		virtual void VisitDirect(T* addr, u32 mask)
+		virtual void VisitDirect(T* ptr, u32 mask)
 		{
-			ret = [addr, mask](T val) { *addr = val & mask; };
+			ret = [ptr, mask](u32, T val) { *ptr = val & mask; };
 		}
 
-		virtual void VisitComplex(std::function<void(T)> lambda)
+		virtual void VisitComplex(std::function<void(u32, T)> lambda)
 		{
 			ret = lambda;
 		}
