@@ -79,7 +79,6 @@ public:
 	virtual void VisitConstant(T value) = 0;
 	virtual void VisitDirect(const T* addr, u32 mask) = 0;
 	virtual void VisitComplex(std::function<T()> lambda) = 0;
-	virtual void VisitInvalid() = 0;
 };
 template <typename T>
 class WriteHandlingMethodVisitor
@@ -88,7 +87,6 @@ public:
 	virtual void VisitNop() = 0;
 	virtual void VisitDirect(T* addr, u32 mask) = 0;
 	virtual void VisitComplex(std::function<void(T)> lambda) = 0;
-	virtual void VisitInvalid() = 0;
 };
 
 // These classes are INTERNAL. Do not use outside of the MMIO implementation

@@ -201,33 +201,23 @@ WriteHandlingMethod<T>* Complex(std::function<void(T)> lambda)
 	return new ComplexHandlingMethod<T>(lambda);
 }
 
-// Invalid: does not hold anything, just provides visitor facilities.
-template <typename T>
-class InvalidHandlingMethod : public ReadHandlingMethod<T>,
-                              public WriteHandlingMethod<T>
-{
-public:
-	virtual ~InvalidHandlingMethod() {}
-
-	virtual void AcceptReadVisitor(ReadHandlingMethodVisitor<T>& v) const
-	{
-		v.VisitInvalid();
-	}
-
-	virtual void AcceptWriteVisitor(WriteHandlingMethodVisitor<T>& v) const
-	{
-		v.VisitInvalid();
-	}
-};
+// Invalid: specialization of the complex handling type with lambdas that
+// display error messages.
 template <typename T>
 ReadHandlingMethod<T>* InvalidRead()
 {
-	return new InvalidHandlingMethod<T>();
+	return Complex<T>([]() {
+		ERROR_LOG(MEMMAP, "Trying to read from an invalid MMIO");
+		return -1;
+	});
 }
 template <typename T>
 WriteHandlingMethod<T>* InvalidWrite()
 {
-	return new InvalidHandlingMethod<T>();
+	return Complex<T>([](T val) {
+		ERROR_LOG(MEMMAP, "Trying to write to an invalid MMIO (val=%08x)",
+			(u32)val);
+	});
 }
 
 // Inplementation of the ReadHandler and WriteHandler class. There is a lot of
@@ -279,14 +269,6 @@ void ReadHandler<T>::ResetMethod(ReadHandlingMethod<T>* method)
 		virtual void VisitComplex(std::function<T()> lambda)
 		{
 			ret = lambda;
-		}
-
-		virtual void VisitInvalid()
-		{
-			ret = []() {
-				ERROR_LOG(MEMMAP, "Trying to read an invalid MMIO");
-				return -1;
-			};
 		}
 	};
 
@@ -341,13 +323,6 @@ void WriteHandler<T>::ResetMethod(WriteHandlingMethod<T>* method)
 		virtual void VisitComplex(std::function<void(T)> lambda)
 		{
 			ret = lambda;
-		}
-
-		virtual void VisitInvalid()
-		{
-			ret = [](T) {
-				ERROR_LOG(MEMMAP, "Trying to write to an invalid MMIO");
-			};
 		}
 	};
 
