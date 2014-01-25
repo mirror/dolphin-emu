@@ -9,6 +9,7 @@
 #include "SI_Device.h"
 class PointerWrap;
 class ISIDevice;
+namespace MMIO { class Mapping; }
 
 // SI number of channels
 enum
@@ -22,6 +23,8 @@ namespace SerialInterface
 void Init();
 void Shutdown();
 void DoState(PointerWrap &p);
+
+void RegisterMMIO(MMIO::Mapping* mmio, u32 base);
 
 void UpdateDevices();
 
