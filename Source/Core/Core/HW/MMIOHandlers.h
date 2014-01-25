@@ -46,6 +46,10 @@ template <typename T> class WriteHandlingMethod;
 // only for reads.
 template <typename T> ReadHandlingMethod<T>* Constant(T value);
 
+// Nop: use for writes that shouldn't have any effect and shouldn't log an
+// error either.
+template <typename T> WriteHandlingMethod<T>* Nop();
+
 // Direct: use when all the MMIO does is read/write the given value to/from a
 // global variable, with an optional mask applied on the read/written value.
 template <typename T> ReadHandlingMethod<T>* DirectRead(const T* addr, u32 mask = 0xFFFFFFFF);
@@ -81,6 +85,7 @@ template <typename T>
 class WriteHandlingMethodVisitor
 {
 public:
+	virtual void VisitNop() = 0;
 	virtual void VisitDirect(T* addr, u32 mask) = 0;
 	virtual void VisitComplex(std::function<void(T)> lambda) = 0;
 	virtual void VisitInvalid() = 0;
@@ -157,6 +162,7 @@ private:
 // (where MaybeExtern = "extern") and definition (MaybeExtern = "").
 #define MMIO_PUBLIC_SPECIALIZATIONS(MaybeExtern, T) \
 	MaybeExtern template ReadHandlingMethod<T>* Constant<T>(T value); \
+	MaybeExtern template WriteHandlingMethod<T>* Nop<T>(); \
 	MaybeExtern template ReadHandlingMethod<T>* DirectRead(const T* addr, u32 mask); \
 	MaybeExtern template ReadHandlingMethod<T>* DirectRead(volatile const T* addr, u32 mask); \
 	MaybeExtern template WriteHandlingMethod<T>* DirectWrite(T* addr, u32 mask); \

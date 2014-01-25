@@ -70,6 +70,26 @@ ReadHandlingMethod<T>* Constant(T value)
 	return new ConstantHandlingMethod<T>(value);
 }
 
+// Nop: extremely simple write handling method that does nothing at all, only
+// respond to visitors and dispatch to the correct method. This is write only
+// since reads should always at least return a value.
+template <typename T>
+class NopHandlingMethod : public WriteHandlingMethod<T>
+{
+public:
+	NopHandlingMethod() {}
+	virtual ~NopHandlingMethod() {}
+	virtual void AcceptWriteVisitor(WriteHandlingMethodVisitor<T>& v) const
+	{
+		v.VisitNop();
+	}
+};
+template <typename T>
+WriteHandlingMethod<T>* Nop()
+{
+	return new NopHandlingMethod<T>();
+}
+
 // Direct: handling method holds a pointer to the value where to read/write the
 // data from, as well as a mask that is used to restrict reading/writing only
 // to a given set of bits.
@@ -307,6 +327,11 @@ void WriteHandler<T>::ResetMethod(WriteHandlingMethod<T>* method)
 	struct FuncCreatorVisitor : public WriteHandlingMethodVisitor<T>
 	{
 		std::function<void(T)> ret;
+
+		virtual void VisitNop()
+		{
+			ret = [](T) {};
+		}
 
 		virtual void VisitDirect(T* addr, u32 mask)
 		{
