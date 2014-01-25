@@ -191,12 +191,12 @@ private:
 	std::function<void(u32, T)> write_lambda_;
 };
 template <typename T>
-ReadHandlingMethod<T>* Complex(std::function<T(u32)> lambda)
+ReadHandlingMethod<T>* ComplexRead(std::function<T(u32)> lambda)
 {
 	return new ComplexHandlingMethod<T>(lambda);
 }
 template <typename T>
-WriteHandlingMethod<T>* Complex(std::function<void(u32, T)> lambda)
+WriteHandlingMethod<T>* ComplexWrite(std::function<void(u32, T)> lambda)
 {
 	return new ComplexHandlingMethod<T>(lambda);
 }
@@ -206,7 +206,7 @@ WriteHandlingMethod<T>* Complex(std::function<void(u32, T)> lambda)
 template <typename T>
 ReadHandlingMethod<T>* InvalidRead()
 {
-	return Complex<T>([](u32 addr) {
+	return ComplexRead<T>([](u32 addr) {
 		ERROR_LOG(MEMMAP, "Trying to read from an invalid MMIO (addr=%08x)",
 			addr);
 		return -1;
@@ -215,7 +215,7 @@ ReadHandlingMethod<T>* InvalidRead()
 template <typename T>
 WriteHandlingMethod<T>* InvalidWrite()
 {
-	return Complex<T>([](u32 addr, T val) {
+	return ComplexWrite<T>([](u32 addr, T val) {
 		ERROR_LOG(MEMMAP, "Trying to write to an invalid MMIO (addr=%08x, val=%08x)",
 			addr, (u32)val);
 	});

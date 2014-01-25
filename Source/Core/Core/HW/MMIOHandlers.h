@@ -60,8 +60,8 @@ template <typename T> WriteHandlingMethod<T>* DirectWrite(volatile T* addr, u32 
 // Complex: use when no other handling method fits your needs. These allow you
 // to directly provide a function that will be called when a read/write needs
 // to be done.
-template <typename T> ReadHandlingMethod<T>* Complex(std::function<T(u32)>);
-template <typename T> WriteHandlingMethod<T>* Complex(std::function<void(u32, T)>);
+template <typename T> ReadHandlingMethod<T>* ComplexRead(std::function<T(u32)>);
+template <typename T> WriteHandlingMethod<T>* ComplexWrite(std::function<void(u32, T)>);
 
 // Invalid: log an error and return -1 in case of a read. These are the default
 // handlers set for all MMIO types.
@@ -165,8 +165,8 @@ private:
 	MaybeExtern template ReadHandlingMethod<T>* DirectRead(volatile const T* addr, u32 mask); \
 	MaybeExtern template WriteHandlingMethod<T>* DirectWrite(T* addr, u32 mask); \
 	MaybeExtern template WriteHandlingMethod<T>* DirectWrite(volatile T* addr, u32 mask); \
-	MaybeExtern template ReadHandlingMethod<T>* Complex<T>(std::function<T(u32)>); \
-	MaybeExtern template WriteHandlingMethod<T>* Complex<T>(std::function<void(u32, T)>); \
+	MaybeExtern template ReadHandlingMethod<T>* ComplexRead<T>(std::function<T(u32)>); \
+	MaybeExtern template WriteHandlingMethod<T>* ComplexWrite<T>(std::function<void(u32, T)>); \
 	MaybeExtern template ReadHandlingMethod<T>* InvalidRead<T>(); \
 	MaybeExtern template WriteHandlingMethod<T>* InvalidWrite<T>(); \
 	MaybeExtern template class ReadHandler<T>; \

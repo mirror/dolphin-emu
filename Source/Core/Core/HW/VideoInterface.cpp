@@ -249,28 +249,28 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 	// XFB related MMIOs that require special handling on writes.
 	mmio->Register(base | VI_FB_LEFT_TOP_HI,
 		MMIO::DirectRead<u16>(&m_XFBInfoTop.Hi),
-		MMIO::Complex<u16>([](u32, u16 val) {
+		MMIO::ComplexWrite<u16>([](u32, u16 val) {
 			m_XFBInfoTop.Hi = val;
 			if (m_XFBInfoTop.CLRPOFF) m_XFBInfoTop.POFF = 0;
 		})
 	);
 	mmio->Register(base | VI_FB_LEFT_BOTTOM_HI,
 		MMIO::DirectRead<u16>(&m_XFBInfoBottom.Hi),
-		MMIO::Complex<u16>([](u32, u16 val) {
+		MMIO::ComplexWrite<u16>([](u32, u16 val) {
 			m_XFBInfoBottom.Hi = val;
 			if (m_XFBInfoBottom.CLRPOFF) m_XFBInfoBottom.POFF = 0;
 		})
 	);
 	mmio->Register(base | VI_FB_RIGHT_TOP_HI,
 		MMIO::DirectRead<u16>(&m_3DFBInfoTop.Hi),
-		MMIO::Complex<u16>([](u32, u16 val) {
+		MMIO::ComplexWrite<u16>([](u32, u16 val) {
 			m_3DFBInfoTop.Hi = val;
 			if (m_3DFBInfoTop.CLRPOFF) m_3DFBInfoTop.POFF = 0;
 		})
 	);
 	mmio->Register(base | VI_FB_RIGHT_BOTTOM_HI,
 		MMIO::DirectRead<u16>(&m_3DFBInfoBottom.Hi),
-		MMIO::Complex<u16>([](u32, u16 val) {
+		MMIO::ComplexWrite<u16>([](u32, u16 val) {
 			m_3DFBInfoBottom.Hi = val;
 			if (m_3DFBInfoBottom.CLRPOFF) m_3DFBInfoBottom.POFF = 0;
 		})
@@ -279,13 +279,13 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 	// MMIOs with unimplemented writes that trigger warnings.
 	mmio->Register(base | VI_VERTICAL_BEAM_POSITION,
 		MMIO::DirectRead<u16>(&m_VBeamPos),
-		MMIO::Complex<u16>([](u32, u16 val) {
+		MMIO::ComplexWrite<u16>([](u32, u16 val) {
 			WARN_LOG(VIDEOINTERFACE, "Changing vertical beam position to 0x%04x - not documented or implemented yet", val);
 		})
 	);
 	mmio->Register(base | VI_HORIZONTAL_BEAM_POSITION,
 		MMIO::DirectRead<u16>(&m_HBeamPos),
-		MMIO::Complex<u16>([](u32, u16 val) {
+		MMIO::ComplexWrite<u16>([](u32, u16 val) {
 			WARN_LOG(VIDEOINTERFACE, "Changing horizontal beam position to 0x%04x - not documented or implemented yet", val);
 		})
 	);
@@ -294,28 +294,28 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 	// on writes.
 	mmio->Register(base | VI_PRERETRACE_HI,
 		MMIO::DirectRead<u16>(&m_InterruptRegister[0].Hi),
-		MMIO::Complex<u16>([](u32, u16 val) {
+		MMIO::ComplexWrite<u16>([](u32, u16 val) {
 			m_InterruptRegister[0].Hi = val;
 			UpdateInterrupts();
 		})
 	);
 	mmio->Register(base | VI_POSTRETRACE_HI,
 		MMIO::DirectRead<u16>(&m_InterruptRegister[1].Hi),
-		MMIO::Complex<u16>([](u32, u16 val) {
+		MMIO::ComplexWrite<u16>([](u32, u16 val) {
 			m_InterruptRegister[1].Hi = val;
 			UpdateInterrupts();
 		})
 	);
 	mmio->Register(base | VI_DISPLAY_INTERRUPT_2_HI,
 		MMIO::DirectRead<u16>(&m_InterruptRegister[2].Hi),
-		MMIO::Complex<u16>([](u32, u16 val) {
+		MMIO::ComplexWrite<u16>([](u32, u16 val) {
 			m_InterruptRegister[2].Hi = val;
 			UpdateInterrupts();
 		})
 	);
 	mmio->Register(base | VI_DISPLAY_INTERRUPT_3_HI,
 		MMIO::DirectRead<u16>(&m_InterruptRegister[3].Hi),
-		MMIO::Complex<u16>([](u32, u16 val) {
+		MMIO::ComplexWrite<u16>([](u32, u16 val) {
 			m_InterruptRegister[3].Hi = val;
 			UpdateInterrupts();
 		})
@@ -324,19 +324,19 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 	// Unknown anti-aliasing related MMIO register: puts a warning on log and
 	// needs to shift/mask when reading/writing.
 	mmio->Register(base | VI_UNK_AA_REG_HI,
-		MMIO::Complex<u16>([](u32) {
+		MMIO::ComplexRead<u16>([](u32) {
 			return m_UnkAARegister >> 16;
 		}),
-		MMIO::Complex<u16>([](u32, u16 val) {
+		MMIO::ComplexWrite<u16>([](u32, u16 val) {
 			m_UnkAARegister = (m_UnkAARegister & 0x0000FFFF) | ((u32)val << 16);
 			WARN_LOG(VIDEOINTERFACE, "Writing to the unknown AA register (hi)");
 		})
 	);
 	mmio->Register(base | VI_UNK_AA_REG_LO,
-		MMIO::Complex<u16>([](u32) {
+		MMIO::ComplexRead<u16>([](u32) {
 			return m_UnkAARegister & 0xFFFF;
 		}),
-		MMIO::Complex<u16>([](u32, u16 val) {
+		MMIO::ComplexWrite<u16>([](u32, u16 val) {
 			m_UnkAARegister = (m_UnkAARegister & 0xFFFF0000) | val;
 			WARN_LOG(VIDEOINTERFACE, "Writing to the unknown AA register (lo)");
 		})
@@ -346,7 +346,7 @@ void RegisterMMIO(MMIO::Mapping* mmio, u32 base)
 	// processing needs to be done if a reset is requested.
 	mmio->Register(base | VI_CONTROL_REGISTER,
 		MMIO::DirectRead<u16>(&m_DisplayControlRegister.Hex),
-		MMIO::Complex<u16>([](u32, u16 val) {
+		MMIO::ComplexWrite<u16>([](u32, u16 val) {
 			UVIDisplayControlRegister tmpConfig(val);
 			m_DisplayControlRegister.ENB = tmpConfig.ENB;
 			m_DisplayControlRegister.NIN = tmpConfig.NIN;
