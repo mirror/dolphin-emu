@@ -1516,7 +1516,7 @@ void XEmitter::WriteFloatLoadStore(int bits, FloatOp op, OpArg arg)
 	switch (bits) {
 		case 32: mf = 0b00; break;
 		case 64: mf = 0b10; break;
-		default: assert(false);
+		default: _assert_msg_(DYNA_REC, 0, "WriteFloatLoadStore: bits is not 32 or 64");
 	}
 	Write8(0b11011001 | (mf << 1));
 	// x87 instructions use the reg field of the ModR/M byte as opcode:
