@@ -8,6 +8,7 @@
 #include "Common.h"
 class PointerWrap;
 class DSPEmulator;
+namespace MMIO { class Mapping; }
 
 namespace DSP
 {
@@ -28,6 +29,8 @@ enum
 
 void Init(bool hle);
 void Shutdown();
+
+void RegisterMMIO(MMIO::Mapping* mmio, u32 base);
 
 DSPEmulator *GetDSPEmulator();
 
