@@ -7,6 +7,7 @@
 
 #include "CommonTypes.h"
 class PointerWrap;
+namespace MMIO { class Mapping; }
 
 namespace DVDInterface
 {
@@ -14,6 +15,8 @@ namespace DVDInterface
 void Init();
 void Shutdown();
 void DoState(PointerWrap &p);
+
+void RegisterMMIO(MMIO::Mapping* mmio, u32 base);
 
 // Disc detection and swapping
 void SetDiscInside(bool _DiscInside);
