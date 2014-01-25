@@ -10,6 +10,7 @@
 #include "GCPadStatus.h"
 #include "GCPad.h"
 #include "../ConfigManager.h"
+#include "AMBaseboard.h"
 
 // where to put baseboard debug
 #define AMBASEBOARDDEBUG OSREPORT
@@ -215,8 +216,8 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 						NOTICE_LOG(AMBASEBOARDDEBUG, "GC-AM: Command 1f, %02x %02x %02x %02x %02x (REGION)", ptr(1), ptr(2), ptr(3), ptr(4), ptr(5));
 						unsigned char string[] =  
 							"\x00\x00\x30\x00"
-							//"\x01\xfe\x00\x00" // JAPAN
-							"\x02\xfd\x00\x00" // USA
+							"\x01\xfe\x00\x00" // JAPAN
+							//"\x02\xfd\x00\x00" // USA
 							//"\x03\xfc\x00\x00" // export
 							"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff";
 						res[resp++] = 0x1f;
@@ -226,12 +227,40 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 							res[resp++] = string[i];
 						break;
 					}
+					case 0x23:
+						if( ptr(1) )
+						{
+							DEBUG_LOG(AMBASEBOARDDEBUG, "GC-AM: Command 23, %02x %02x %02x %02x %02x", ptr(1), ptr(2), ptr(3), ptr(4), ptr(5) );
+							res[resp++] = 0x23;
+							res[resp++] = 0x00;
+						}
+						else
+						{
+							res[resp++] = 0x23;
+							res[resp++] = 0x00;
+						}
+						break;
+					case 0x24:
+						if( ptr(1) )
+						{
+							DEBUG_LOG(AMBASEBOARDDEBUG, "GC-AM: Command 0x24, %02x %02x %02x %02x %02x", ptr(1), ptr(2), ptr(3), ptr(4), ptr(5) );
+							res[resp++] = 0x24;
+							res[resp++] = 0x00;
+						}
+						else
+						{
+							res[resp++] = 0x24;
+							res[resp++] = 0x00;
+						}
+						break;
 					case 0x31:
 					//	NOTICE_LOG(AMBASEBOARDDEBUG, "GC-AM: Command 31 (MOTOR) %02x %02x %02x %02x %02x", ptr(1), ptr(2), ptr(3), ptr(4), ptr(5));
 
 						// Command Length
 						if( ptr(1) )
 						{
+							// All commands are OR'd with 0x80
+							// Last byte (ptr(5)) is checksum which we don't care about
 							u32 cmd =(ptr(2)^0x80) << 16;
 								cmd|= ptr(3) << 8;
 								cmd|= ptr(4);
@@ -479,16 +508,14 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 												m_card_clean = 2;
 											} else if( m_card_clean == 2 )
 											{
-												FILE *out = fopen("User/tricard.bin","rb+");
-												if( out != NULL )
+												std::string card_filename( File::GetUserPath(D_TRIUSER_IDX) + 
+												"tricard_" + SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID() + ".bin" );
+
+												if( File::Exists( card_filename ) )
 												{
-													fseek( out, 0, SEEK_END );
-													if( ftell(out) > 0 )
-													{
-														m_card_memory_size = ftell(out);
+													m_card_memory_size = (u32)File::GetSize(card_filename);
+													if( m_card_memory_size )
 														m_card_bit = 2;
-													}
-													fclose(out);
 												}
 												m_card_clean = 0;
 											}
@@ -520,18 +547,19 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 											memset( m_card_read_packet, 0, 0xDB );
 											u32 POff=0;
 
-											FILE *card = fopen( "User/tricard.bin", "rb");
-											if( card != NULL )
+											std::string card_filename( File::GetUserPath(D_TRIUSER_IDX) + 
+											"tricard_" + SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID() + ".bin" );
+
+											if( File::Exists( card_filename ) )
 											{
+												File::IOFile card = File::IOFile( card_filename, "rb+" );
 												if( m_card_memory_size == 0 )
 												{
-													fseek( card, 0, SEEK_END );
-													m_card_memory_size = ftell(card);
-													fseek( card, 0, SEEK_SET );
+													m_card_memory_size = (u32)card.GetSize();
 												}
 
-												fread( m_card_memory, sizeof(char), m_card_memory_size, card );
-												fclose( card );
+												card.ReadBytes( m_card_memory, m_card_memory_size );
+												card.Close();
 
 												m_card_is_inserted = 1;
 											}
@@ -579,13 +607,13 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 											memcpy( m_card_memory, m_card_buffer+9, m_card_memory_size );										
 										
 											NOTICE_LOG(AMBASEBOARDDEBUG, "CARDWrite: %u", m_card_memory_size );
+											
+											std::string card_filename( File::GetUserPath(D_TRIUSER_IDX) + 
+											"tricard_" + SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID() + ".bin" );
 
-											FILE *card = fopen( "User/tricard.bin", "wb");
-											if( card != NULL )
-											{
-												fwrite( m_card_memory, sizeof(char), m_card_memory_size, card );
-												fclose( card );
-											}
+											File::IOFile card = File::IOFile( card_filename, "wb+" );
+											card.WriteBytes( m_card_memory, m_card_memory_size );
+											card.Close();
 
 											m_card_bit = 2;
 
@@ -699,48 +727,52 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 									msg.addData(1);
 									msg.addData(0x10);
 									break;
-								// get slave features 
+								// get slave features
+								/*
+									0x01: Player count, Bit per channel
+									0x02: Coin slots
+									0x03: Analog-in
+									0x04: Rotary
+									0x05: Keycode
+									0x06: Screen, x, y, ch
+									....: unused
+									0x10: Card
+									0x11: Hopper-out								
+									0x12: Driver-out
+									0x13: Analog-out
+									0x14: Character, Line (?)
+									0x15: Backup
+								*/
 								case 0x14:
 									msg.addData(1);
-
-									// Features for F-Zero AX
-									if( !memcmp( SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str(), "SBGE", 4) )
+									switch(AMBaseboard::GetControllerType())
 									{
-										// 1 Player, 1 Coin slot, 6 Analogs, 8Bit out
-										msg.addData((void *)"\x01\x01\x13\x00", 4);
-										msg.addData((void *)"\x02\x01\x00\x00", 4);
-										msg.addData((void *)"\x03\x06\x00\x00", 4);
-										msg.addData((void *)"\x12\x08\x00\x00", 4);
-										msg.addData((void *)"\x00\x00\x00\x00", 4);
-
-										m_controltype = 1;
-									}
-									// Features for Virtua Striker 3 ver.2002, Virtua Striker 4, VIRTUA STRIKER 4 Ver.2006 and VIRTUA STRIKER 4 VER.A
-									else if( !memcmp( SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str(), "SBEJ", 4) ||
-											 !memcmp( SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str(), "SBJJ", 4) ||
-											 !memcmp( SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str(), "SBLJ", 4) ||
-											 !memcmp( SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str(), "SBHJ", 4) )
-									{
-										// 2 Player, 2 Coin slots, 4 Analogs, 8Bit out
-										msg.addData((void *)"\x01\x02\x0D\x00", 4);
-										msg.addData((void *)"\x02\x02\x00\x00", 4);
-										msg.addData((void *)"\x03\x04\x00\x00", 4);
-										msg.addData((void *)"\x12\x08\x00\x00", 4);
-										msg.addData((void *)"\x00\x00\x00\x00", 4);
-
-										m_controltype = 2;
-									}
-									// Features for Mario Kart GP, Mario Kart GP 2 and others
-									else
-									{
-										// 1 Player, 1 Coin slot, 3 Analogs, 8Bit out
-										msg.addData((void *)"\x01\x01\x13\x00", 4);
-										msg.addData((void *)"\x02\x02\x00\x00", 4);
-										msg.addData((void *)"\x03\x03\x00\x00", 4);
-										msg.addData((void *)"\x12\x0c\x00\x00", 4);
-										msg.addData((void *)"\x00\x00\x00\x00", 4);
-
-										m_controltype = 3;
+										case 1:
+											// Taken from real F-Zero AX
+											// 2 Player (12-bits), 2 Coin slot, 8 Analog-in, 22 Driver-out
+											msg.addData((void *)"\x01\x02\x0C\x00", 4);
+											msg.addData((void *)"\x02\x02\x00\x00", 4);
+											msg.addData((void *)"\x03\x08\x00\x00", 4);
+											msg.addData((void *)"\x12\x16\x00\x00", 4);
+											msg.addData((void *)"\x00\x00\x00\x00", 4);
+											break;
+										case 2:
+											// 2 Player, 2 Coin slots, 4 Analogs, 8Bit out
+											msg.addData((void *)"\x01\x02\x0D\x00", 4);
+											msg.addData((void *)"\x02\x02\x00\x00", 4);
+											msg.addData((void *)"\x03\x04\x00\x00", 4);
+											msg.addData((void *)"\x12\x08\x00\x00", 4);
+											msg.addData((void *)"\x00\x00\x00\x00", 4);
+											break;
+										default:
+										case 3:
+											// 1 Player, 1 Coin slot, 3 Analogs, 8Bit out
+											msg.addData((void *)"\x01\x01\x13\x00", 4);
+											msg.addData((void *)"\x02\x02\x00\x00", 4);
+											msg.addData((void *)"\x03\x03\x00\x00", 4);
+											msg.addData((void *)"\x13\x08\x00\x00", 4);
+											msg.addData((void *)"\x00\x00\x00\x00", 4);
+											break;
 									}
 									break;
 								// convey ID of main board 
@@ -901,9 +933,9 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 											}
 
 											// Unused
-											msg.addData((u8)0);					
 											msg.addData((u8)0);
-											msg.addData((u8)0);					
+											msg.addData((u8)0);
+											msg.addData((u8)0);
 											msg.addData((u8)0);
 
 											// Gas
@@ -913,6 +945,13 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 											// Brake
 											msg.addData(PadStatus.triggerLeft);
 											msg.addData((u8)0);
+
+											// Unused
+											msg.addData((u8)0);
+											msg.addData((u8)0);
+											msg.addData((u8)0);
+											msg.addData((u8)0);
+
 											break;
 										//  Virtua Strike games
 										case 2:
@@ -996,7 +1035,7 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 									d10_1 &= ~1;
 									break;
 								default:
-									ERROR_LOG(AMBASEBOARDDEBUG, "JVS IO, node=%d, command=%02x", node, cmd);
+									DEBUG_LOG(AMBASEBOARDDEBUG, "JVS IO, node=%d, command=%02x", node, cmd);
 									break;
 								}
 

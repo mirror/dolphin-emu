@@ -804,6 +804,7 @@ const std::string& GetUserPath(const unsigned int DirIDX, const std::string &new
 #endif
 
 		paths[D_GCUSER_IDX]			= paths[D_USER_IDX] + GC_USER_DIR DIR_SEP;
+		paths[D_TRIUSER_IDX]		= paths[D_USER_IDX] + TRIFORCE_USER_DIR DIR_SEP;
 		paths[D_WIIROOT_IDX]		= paths[D_USER_IDX] + WII_USER_DIR;
 		paths[D_WIIUSER_IDX]		= paths[D_WIIROOT_IDX] + DIR_SEP;
 		paths[D_CONFIG_IDX]			= paths[D_USER_IDX] + CONFIG_DIR DIR_SEP;

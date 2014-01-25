@@ -20,6 +20,8 @@ void SetDiscInside(bool _DiscInside);
 bool IsDiscInside();
 void ChangeDisc(const char* _FileName);
 
+bool IsAMBaseboard();
+
 // Lid Functions
 void SetLidOpen(bool _bOpen = true);
 bool IsLidOpen();

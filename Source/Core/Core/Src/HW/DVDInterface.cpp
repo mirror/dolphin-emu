@@ -17,6 +17,7 @@
 #include "../VolumeHandler.h"
 #include "AudioInterface.h"
 #include "../Movie.h"
+#include "AMBaseboard.h"
 
 // Disc transfer rate measured in bytes per second
 static const u32 DISC_TRANSFER_RATE_GC = 5 * 1024 * 1024;
@@ -195,19 +196,11 @@ static u32			CurrentStart;
 static u32			LoopLength;
 static u32			CurrentLength;
 
-static FILE			*m_netcfg;
-static FILE			*m_netctrl;
-static FILE			*m_dimm;
-static u32			m_protocolversion;
-
 u32	 g_ErrorCode = 0;
 bool g_bDiscInside = false;
 bool g_bStream = false;
+bool g_GCAM = false;
 int  tc = 0;
-
-// GC-AM only
-static unsigned char media_buffer[0x60];
-static unsigned char media_reply_buffer[0x20];
 
 // Needed because data and streaming audio access needs to be managed by the "drive"
 // (both requests can happen at the same time, audio takes precedence)
@@ -254,8 +247,6 @@ void TransferComplete(u64 userdata, int cyclesLate)
 
 void Init()
 {
-	char FilePath[_MAX_PATH];
-
 	m_DISR.Hex		= 0;
 	m_DICVR.Hex		= 0;
 	m_DICMDBUF[0].Hex= 0;
@@ -274,41 +265,14 @@ void Init()
 	CurrentStart = 0;
 	CurrentLength = 0;
 
-	m_protocolversion = 2;
+	g_GCAM = ((SConfig::GetInstance().m_SIDevice[0] == SIDEVICE_AM_BASEBOARD)
+	&& (SConfig::GetInstance().m_EXIDevice[2] == EXIDEVICE_AM_BASEBOARD))
+	? 1 : 0;
 
-	memset( media_buffer, 0, sizeof(media_buffer) );
-	
-	m_netcfg = fopen("User/trinetcfg.bin","rb+");
-	if( m_netcfg == (FILE*)NULL )
+	if(g_GCAM)
 	{
-		m_netcfg = fopen("User/trinetcfg.bin","wb+");
-		if( m_netcfg == (FILE*)NULL )
-		{
-			PanicAlertT( "AM-BB Failed to open network config file" );
-		}
+		AMBaseboard::Init();
 	}
-
-	m_netctrl = fopen("User/trinetctrl.bin","rb+");
-	if( m_netctrl == (FILE*)NULL )
-	{
-		m_netctrl = fopen("User/trinetctrl.bin","wb+");
-		if( m_netctrl == (FILE*)NULL )
-		{
-			PanicAlertT( "AM-BB Failed to open network control file" );
-		}
-	}
-
-	sprintf_s( FilePath, _MAX_PATH, "User/tridimm_%s.bin", SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str() );
-
-	m_dimm = fopen( FilePath, "rb+" );
-	if( m_dimm == (FILE*)NULL )
-	{
-		m_dimm = fopen( FilePath, "wb+" );
-		if( m_dimm == (FILE*)NULL )
-		{
-			PanicAlertT( "AM-BB Failed to open DIMM file" );
-		}
-	}	
 	
 	g_bStream = false;
 
@@ -320,6 +284,13 @@ void Init()
 
 void Shutdown()
 {
+	if( g_GCAM )
+		AMBaseboard::Shutdown();
+}
+
+bool IsAMBaseboard( void )
+{
+	return g_GCAM;
 }
 
 void SetDiscInside(bool _DiscInside)
@@ -596,53 +567,44 @@ void GenerateDIInterrupt(DI_InterruptType _DVDInterrupt)
 	UpdateInterrupts();
 }
 
+
 void ExecuteCommand(UDICR& _DICR)
 {
 //	_dbg_assert_(DVDINTERFACE, _DICR.RW == 0); // only DVD to Memory
-	int GCAM = ((SConfig::GetInstance().m_SIDevice[0] == SIDEVICE_AM_BASEBOARD)
-		&& (SConfig::GetInstance().m_EXIDevice[2] == EXIDEVICE_AM_BASEBOARD))
-		? 1 : 0;
 
-	if (GCAM)
+	if(g_GCAM)
 	{
-		m_DICMDBUF[0].Hex <<= 24;
+		m_DIIMMBUF.Hex = AMBaseboard::ExecuteCommand( m_DICMDBUF[0].Hex << 24,
+						 m_DILENGTH.Hex, m_DIMAR.Hex, m_DICMDBUF[1].Hex << 2 );
 
-		NOTICE_LOG(DVDINTERFACE,
-			"DVD: %08x, %08x, %08x, DMA=addr:%08x,len:%08x,ctrl:%08x",
-			m_DICMDBUF[0].Hex, m_DICMDBUF[1].Hex<<2, m_DICMDBUF[2].Hex,
-			m_DIMAR.Hex, m_DILENGTH.Hex, m_DICR.Hex);
+		// transfer is done
+		_DICR.TSTART = 0;
+		m_DILENGTH.Length = 0;
+		GenerateDIInterrupt(INT_TCINT);
+		g_ErrorCode = 0;
+
+		return;
 	}
-
 
 	switch (m_DICMDBUF[0].CMDBYTE0)
 	{
 	case DVDLowInquiry:
-		if (GCAM)
+		// small safety check, dunno if it's needed
+		if ((m_DICMDBUF[1].Hex == 0) && (m_DILENGTH.Length == 0x20))
 		{
-			if( m_protocolversion == 2 )
-				m_DIIMMBUF.Hex = 0xA9484100;
-			else
-				m_DIIMMBUF.Hex = 0x21000000;
-		}
-		else
-		{
-			// small safety check, dunno if it's needed
-			if ((m_DICMDBUF[1].Hex == 0) && (m_DILENGTH.Length == 0x20))
-			{
-				u8* driveInfo = Memory::GetPointer(m_DIMAR.Address);
-				// gives the correct output in GCOS - 06 2001/08 (61)
-				// there may be other stuff missing ?
-				driveInfo[4] = 0x20;
-				driveInfo[5] = 0x01;
-				driveInfo[6] = 0x06;
-				driveInfo[7] = 0x08;
-				driveInfo[8] = 0x61;
+			u8* driveInfo = Memory::GetPointer(m_DIMAR.Address);
+			// gives the correct output in GCOS - 06 2001/08 (61)
+			// there may be other stuff missing ?
+			driveInfo[4] = 0x20;
+			driveInfo[5] = 0x01;
+			driveInfo[6] = 0x06;
+			driveInfo[7] = 0x08;
+			driveInfo[8] = 0x61;
 
-				// Just for fun
-				INFO_LOG(DVDINTERFACE, "Drive Info: %02x %02x%02x/%02x (%02x)",
-					driveInfo[6], driveInfo[4], driveInfo[5], driveInfo[7], driveInfo[8]);
-			}
-		}
+			// Just for fun
+			INFO_LOG(DVDINTERFACE, "Drive Info: %02x %02x%02x/%02x (%02x)",
+				driveInfo[6], driveInfo[4], driveInfo[5], driveInfo[7], driveInfo[8]);
+		}		
 		break;
 
 	// "Set Extension"...not sure what it does
@@ -663,105 +625,6 @@ void ExecuteCommand(UDICR& _DICR)
 					DEBUG_LOG(DVDINTERFACE, "Read: DVDOffset=%08x, DMABuffer=%08x, SrcLength=%08x, DMALength=%08x",
 						iDVDOffset, m_DIMAR.Address, m_DICMDBUF[2].Hex, m_DILENGTH.Length);
 					_dbg_assert_(DVDINTERFACE, m_DICMDBUF[2].Hex == m_DILENGTH.Length);
-
-					if (GCAM)
-					{
-						u32 len = m_DILENGTH.Length / 4;
-						if (iDVDOffset & 0x80000000) // read request to hardware buffer
-						{
-							switch (iDVDOffset)
-							{
-							case 0x80000000:
-								NOTICE_LOG(DVDINTERFACE, "GC-AM: READ MEDIA BOARD STATUS (80000000)");
-								for (u32 i = 0; i < len; i++)
-									Memory::Write_U32(0, m_DIMAR.Address + i * 4);
-								break;
-							case 0x84000020:
-								NOTICE_LOG(DVDINTERFACE, "GC-AM: READ MEDIA BOARD STATUS (1) (84000020)");
-								if( m_protocolversion == 2 )
-								{
-									memcpy(Memory::GetPointer(m_DIMAR.Address), media_reply_buffer, m_DILENGTH.Length );
-	
-									NOTICE_LOG(DVDINTERFACE, "GC-AM: %08x %08x %08x %08x",	Memory::Read_U32(m_DIMAR.Address),
-																							Memory::Read_U32(m_DIMAR.Address+4),
-																							Memory::Read_U32(m_DIMAR.Address+8),
-																							Memory::Read_U32(m_DIMAR.Address+12) );
-									NOTICE_LOG(DVDINTERFACE, "GC-AM: %08x %08x %08x %08x",	Memory::Read_U32(m_DIMAR.Address+16),
-																							Memory::Read_U32(m_DIMAR.Address+20),
-																							Memory::Read_U32(m_DIMAR.Address+24),
-																							Memory::Read_U32(m_DIMAR.Address+28) );
-								}
-								else
-								{
-									for (u32 i = 0; i < len; i++)
-										Memory::Write_U32(0, m_DIMAR.Address + i * 4);
-								}	
-								break;
-							case 0x80000040:
-								NOTICE_LOG(DVDINTERFACE, "GC-AM: READ MEDIA BOARD STATUS (2) (80000040)");
-								for (u32 i = 0; i < len; i++)
-									Memory::Write_U32(~0, m_DIMAR.Address + i * 4);
-								Memory::Write_U32(0x00000020, m_DIMAR.Address); // DIMM SIZE, LE
-								Memory::Write_U32(0x4743414D, m_DIMAR.Address + 4); // GCAM signature
-								break;
-							case 0x80000120:
-								NOTICE_LOG(DVDINTERFACE, "GC-AM: READ FIRMWARE STATUS (80000120)");
-								for (u32 i = 0; i < len; i++)
-									Memory::Write_U32(0x01010101, m_DIMAR.Address + i * 4);
-								break;
-							case 0x80000140:
-								NOTICE_LOG(DVDINTERFACE, "GC-AM: READ FIRMWARE STATUS (80000140)");
-								for (u32 i = 0; i < len; i++)
-									Memory::Write_U32(0x01010101, m_DIMAR.Address + i * 4);
-								break;
-							default:
-								NOTICE_LOG(DVDINTERFACE, "GC-AM: UNKNOWN MEDIA BOARD LOCATION %x", iDVDOffset);
-								break;
-							}
-							break;
-						}
-						else if( (iDVDOffset >= 0x1F000000) && (iDVDOffset <= 0x1F300000) )
-						{
-							u32 Offset = iDVDOffset - 0x1F000000;
-
-							NOTICE_LOG(DVDINTERFACE, "GC-AM: READ MEDIA BOARD DIMM MEMORY (%08X)", Offset );
-											
-							fseek( m_dimm, Offset, SEEK_SET );
-							fread( Memory::GetPointer(m_DIMAR.Address), sizeof(char), len, m_dimm );				
-						}
-						else if ((iDVDOffset == 0x1f900000) || (iDVDOffset == 0x1f900020))
-						{
-							NOTICE_LOG(DVDINTERFACE, "GC-AM: READ MEDIA BOARD COMM AREA (1F900020)");
-							memcpy(Memory::GetPointer(m_DIMAR.Address), media_buffer + iDVDOffset - 0x1f900000, m_DILENGTH.Length);
-							NOTICE_LOG(DVDINTERFACE, "GC-AM: %08x %08x %08x %08x",	Memory::Read_U32(m_DIMAR.Address),
-																					Memory::Read_U32(m_DIMAR.Address+4),
-																					Memory::Read_U32(m_DIMAR.Address+8),
-																					Memory::Read_U32(m_DIMAR.Address+12) );
-							NOTICE_LOG(DVDINTERFACE, "GC-AM: %08x %08x %08x %08x",	Memory::Read_U32(m_DIMAR.Address+16),
-																					Memory::Read_U32(m_DIMAR.Address+20),
-																					Memory::Read_U32(m_DIMAR.Address+24),
-																					Memory::Read_U32(m_DIMAR.Address+28) );
-							break;
-						} else if( iDVDOffset == 0x1FFEFFE0 )
-						{
-							NOTICE_LOG(DVDINTERFACE, "GC-AM: READ MEDIA BOARD NETWORK CONTROL (0x1FFEFFE0)");
-								for (u32 i = 0; i < len; i++)
-									Memory::Write_U32(0x00000000, m_DIMAR.Address + i * 4);
-
-							fseek( m_netctrl, 0, SEEK_SET );
-							fread( Memory::GetPointer(m_DIMAR.Address), sizeof(char), m_DILENGTH.Length, m_netctrl );
-
-							break;
-						} else if( (iDVDOffset == 0) && (m_DILENGTH.Length == 0x80) ) {
-							
-							NOTICE_LOG(DVDINTERFACE, "GC-AM: READ MEDIA BOARD NETWORK CONFIG");
-
-							fseek( m_netcfg, 0, SEEK_SET );
-							fread( Memory::GetPointer(m_DIMAR.Address), sizeof(char), m_DILENGTH.Length, m_netcfg );
-
-							break;
-						}
-					}
 
 					// Here is the actual Disk Reading
 					if (!DVDRead(iDVDOffset, m_DIMAR.Address, m_DILENGTH.Length))
@@ -796,108 +659,10 @@ void ExecuteCommand(UDICR& _DICR)
 			return;
 		}
 		break;
-
-	// GC-AM
-	case 0xAA:
-		if (GCAM)
-		{
-			ERROR_LOG(DVDINTERFACE, "GC-AM: 0xAA, DMABuffer=%08x, DMALength=%08x", m_DIMAR.Address, m_DILENGTH.Length);
-			u32 iDVDOffset = m_DICMDBUF[1].Hex << 2;
-			unsigned int len = m_DILENGTH.Length; 
-			u32 offset = iDVDOffset - 0x1F900000;
-			/*
-			if (iDVDOffset == 0x84800000)
-			{
-				ERROR_LOG(DVDINTERFACE, "firmware upload");
-			}
-			else*/
-			
-			// Protocol version 2.xx and higher
-			if( (iDVDOffset >= 0x84000000) && (iDVDOffset < 0x84000060) )
-			{
-				offset = iDVDOffset - 0x84000000;
-
-				u32 addr = m_DIMAR.Address;
-				memcpy(media_buffer + offset, Memory::GetPointer(addr), len);
-
-				if( (iDVDOffset == 0x84000040) && (media_buffer[0x40] == 1 ) )
-				{
-					GCAMExecuteCommand();
-				}
-
-				while (len >= 4)
-				{
-					ERROR_LOG(DVDINTERFACE, "GC-AM Media Board WRITE (0xAA): %08x: %08x", iDVDOffset, Memory::Read_U32(addr));
-					addr += 4;
-					len -= 4;
-					iDVDOffset += 4;
-				}
-
-			}
-			// Set IP address
-			else if( iDVDOffset == 0x1F800200 )
-			{
-				NOTICE_LOG(DVDINTERFACE, "MEDIA BOARD SET IP:%.13s", Memory::GetPointer(m_DIMAR.Address) );					
-			}
-			// DIMM memory
-			else if( (iDVDOffset >= 0x1F000000) && (iDVDOffset <= 0x1F300000) )
-			{
-				u32 Offset = iDVDOffset - 0x1F000000;
-				NOTICE_LOG(DVDINTERFACE, "WRITE MEDIA BOARD DIMM MEMORY (%08X)", Offset );				
-				fseek( m_dimm, Offset, SEEK_SET );
-				fwrite( Memory::GetPointer(m_DIMAR.Address), sizeof(char), len, m_dimm );
-				fflush( m_dimm );
-			} 
-			else if( (iDVDOffset >= 0) && (iDVDOffset <= 0x80) )
-			{
-				NOTICE_LOG(DVDINTERFACE, "GC-AM Media Board WRITE NETWORK CONFIG Type:%u Remote:%u", Memory::Read_U16(m_DIMAR.Address) , Memory::Read_U16(m_DIMAR.Address+2) );
-				fseek( m_netcfg, iDVDOffset, SEEK_SET );
-				fwrite( Memory::GetPointer(m_DIMAR.Address), sizeof(char), len, m_netcfg );
-				fflush( m_netcfg );
-			}
-			else if ((offset < 0) || ((offset + len) > 0x40) || len > 0x40)
-			{
-				u32 addr = m_DIMAR.Address;
-				if (iDVDOffset == 0x84800000) {
-					ERROR_LOG(DVDINTERFACE, "FIRMWARE UPLOAD");
-				} else {
-					ERROR_LOG(DVDINTERFACE, "ILLEGAL MEDIA WRITE");
-				}
-				while (len >= 4)
-				{
-					ERROR_LOG(DVDINTERFACE, "GC-AM Media Board WRITE (0xAA): %08x: %08x (ignored)", iDVDOffset, Memory::Read_U32(addr));
-					addr += 4;
-					len -= 4;
-					iDVDOffset += 4;
-				}
-			}
-			else
-			{
-				u32 addr = m_DIMAR.Address;
-				memcpy(media_buffer + offset, Memory::GetPointer(addr), len);
-				//while (len >= 4)
-				//{
-				//	ERROR_LOG(DVDINTERFACE, "GC-AM Media Board WRITE (0xAA): %08x: %08x", iDVDOffset, Memory::Read_U32(addr));
-				//	addr += 4;
-				//	len -= 4;
-				//	iDVDOffset += 4;
-				//}
-			}
-		}
-		break;
-
 	// Seek (immediate)
 	case DVDLowSeek:
-		if (!GCAM)
-		{
-			// We don't care :)
-			DEBUG_LOG(DVDINTERFACE, "Seek: offset=%08x (ignoring)", m_DICMDBUF[1].Hex << 2);
-		}
-		else
-		{
-			GCAMExecuteCommand();
-			m_DIIMMBUF.Hex = 0x66556677; // just a random value that works.
-		}
+		// We don't care :)
+		DEBUG_LOG(DVDINTERFACE, "Seek: offset=%08x (ignoring)", m_DICMDBUF[1].Hex << 2);
 		break;
 
 	case DVDLowOffset:
@@ -1045,156 +810,6 @@ void ExecuteCommand(UDICR& _DICR)
 	m_DILENGTH.Length = 0;
 	GenerateDIInterrupt(INT_TCINT);
 	g_ErrorCode = 0;
-}
-
-static void GCAMExecuteCommand( void )
-{
-	memset(media_reply_buffer, 0, 0x20);
-
-	media_reply_buffer[0] = media_buffer[0x20]; // ID
-	media_reply_buffer[4] = media_buffer[0x22];
-	media_reply_buffer[5] = media_buffer[0x23] | 0x80;
-	int cmd = (media_buffer[0x23]<<8)|media_buffer[0x22];
-	ERROR_LOG(DVDINTERFACE, "GC-AM: execute buffer, cmd=%04x", cmd);
-	switch (cmd)
-	{
-	case 0x00:
-		break;
-	case 0x01:
-		// DIMM size
-		media_reply_buffer[7] = 0x20;
-		break;
-	case 0x100:		
-		// Status
-		media_reply_buffer[4] = 0x05;
-		// Progress in %
-		media_reply_buffer[8] = 0x64;
-		break;		
-	case 0x101:
-		// Media board version: 3.03
-		media_reply_buffer[4] = 3;
-		media_reply_buffer[5] = 3; 
-		media_reply_buffer[6] = 1; // xxx
-		media_reply_buffer[8] = 1;
-		media_reply_buffer[16] = 0xFF;
-		media_reply_buffer[17] = 0xFF;
-		media_reply_buffer[18] = 0xFF;
-		media_reply_buffer[19] = 0xFF;
-		break;
-	// System flags (Region,DevFlag)
-	case 0x102:
-		// Error: 
-		// 0 (E01) Media Board doesn't support game
-		// 1 (E15) "
-		// 2 OK
-		media_reply_buffer[4] = 2;
-		media_reply_buffer[5] = 0;
-		// enable development mode (Sega Boot)
-		media_reply_buffer[6] = 1;
-		break;
-	case 0x103:
-		// Media board Serial
-		memcpy(media_reply_buffer + 4, "A89E27A50364511", 15);
-		break;
-	case 0x104:
-		media_reply_buffer[4] = 1;
-		break;
-	// Media Board Test
-	case 0x301:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x301: (%08X)", *(u32*)(media_buffer+0x24) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x28) );
-
-		Memory::Write_U32( 100, *(u32*)(media_buffer+0x28) );
-
-		*(u32*)(media_buffer+0x04) = *(u32*)(media_buffer+0x24);
-		break;
-	case 0x401:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x401: (%08X)", *(u32*)(media_buffer+0x24) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x28) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x2C) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x30) );
-		break;
-	case 0x403:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x403: (%08X)", *(u32*)(media_buffer+0x24) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x28) );
-		media_buffer[4] = 1;
-		break;
-	case 0x404:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x404: (%08X)", *(u32*)(media_buffer+0x2C) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x30) );
-		break;
-	case 0x408:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x408: (%08X)", *(u32*)(media_buffer+0x24) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x28) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x2C) );
-		break;
-	case 0x40B:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x40B: (%08X)", *(u32*)(media_buffer+0x24) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x28) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x2C) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x30) );
-		break;
-	case 0x40C:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x40C: (%08X)", *(u32*)(media_buffer+0x24) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x28) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x2C) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x30) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x34) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x38) );
-		break;
-	case 0x40E:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x40E: (%08X)", *(u32*)(media_buffer+0x28) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x2C) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x30) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x34) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x38) );
-		break;
-	case 0x410:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x410: (%08X)", *(u32*)(media_buffer+0x28) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x2C) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x30) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x34) );
-		break;
-	case 0x411:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x411: (%08X)", *(u32*)(media_buffer+0x24) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x28) );
-
-		*(u32*)(media_reply_buffer+4) = 0x46;
-		break;
-	case 0x415:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x415: (%08X)", *(u32*)(media_buffer+0x24) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x28) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x2C) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x30) );
-		break;
-	case 0x601:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x601");
-		break;
-	case 0x606:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x606: (%04X)", *(u16*)(media_buffer+0x24) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%04X)", *(u16*)(media_buffer+0x26) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%02X)", *( u8*)(media_buffer+0x28) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%02X)", *( u8*)(media_buffer+0x29) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%04X)", *(u16*)(media_buffer+0x2A) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x2C) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x30) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x34) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x38) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x3C) );
-		break;
-	case 0x607:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x607: (%04X)", *(u16*)(media_buffer+0x24) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%04X)", *(u16*)(media_buffer+0x26) );
-		ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x28) );
-		break;
-	case 0x614:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: 0x601");
-		break;
-	default:
-		ERROR_LOG(DVDINTERFACE, "GC-AM: execute buffer UNKNOWN:%03X", cmd );
-		break;
-	}
-	memset( media_buffer + 0x20, 0, 0x20 );	
 }
 
 }  // namespace

@@ -15,13 +15,15 @@ public:
 	virtual bool IsInterruptSet();
 	virtual void DoState(PointerWrap &p);
 
+	~CEXIAMBaseboard();
+
 private:
 	virtual void TransferByte(u8& _uByte);
 	int m_position;
 	bool m_have_irq;
 	unsigned char m_command[4];
 	unsigned short m_backoffset;
-	FILE *m_backup;
+	File::IOFile *m_backup;
 };
 
 #endif

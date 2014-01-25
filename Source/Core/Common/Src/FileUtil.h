@@ -19,6 +19,7 @@
 enum {
 	D_USER_IDX,
 	D_GCUSER_IDX,
+	D_TRIUSER_IDX,
 	D_WIIROOT_IDX,
 	D_WIIUSER_IDX,
 	D_CONFIG_IDX, // global settings

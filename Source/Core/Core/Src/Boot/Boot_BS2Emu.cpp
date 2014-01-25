@@ -154,18 +154,13 @@ bool CBoot::EmulatedBS2_GC()
 
 	// If we have any patches that need to be applied very early, here's a good place
 	PatchEngine::ApplyFramePatches();
-	
-	int GCAM = ((SConfig::GetInstance().m_SIDevice[0] == SIDEVICE_AM_BASEBOARD)
-		&& (SConfig::GetInstance().m_EXIDevice[2] == EXIDEVICE_AM_BASEBOARD))
-		? 1 : 0;
 
-	//Clear mediaboard encryption seeds
-	if(GCAM)
+	//Clear media board encryption seeds
+	if(DVDInterface::IsAMBaseboard())
 	{
 		char *ptr = (char*)(Memory::GetPointer(0));
 		memset( ptr, 0, 12 );
 	}
-
 
 	return true;
 }
