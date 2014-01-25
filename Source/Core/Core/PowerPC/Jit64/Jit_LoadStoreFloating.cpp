@@ -49,8 +49,9 @@ void Jit64::lfs(UGeckoInstruction inst)
 	MOV(32, M(&temp32), R(EAX));
 	fpr.Lock(d);
 	fpr.BindToRegister(d, false);
-	CVTSS2SD(fpr.RX(d), M(&temp32));
-	MOVDDUP(fpr.RX(d), fpr.R(d));
+	FLD(32, M(&temp32));
+	FSTP(64, M(&temp64));
+	MOVDDUP(fpr.RX(d), M(&temp64));
 
 	MEMCHECK_END
 
@@ -235,13 +236,18 @@ void Jit64::stfs(UGeckoInstruction inst)
 		return;
 	}
 
+	fpr.BindToRegister(s, true, false);
+	MOVSD(M(&temp64), fpr.RX(s));
+	FLD(64, M(&temp64));
+	FSTP(32, M(&temp32));
+	MOVSS(XMM0, M(&temp32));
+
 	if (gpr.R(a).IsImm())
 	{
 		u32 addr = (u32)(gpr.R(a).offset + offset);
 		if (Memory::IsRAMAddress(addr))
 		{
 			if (cpu_info.bSSSE3) {
-				CVTSD2SS(XMM0, fpr.R(s));
 				PSHUFB(XMM0, M((void *)bswapShuffle1x4));
 				WriteFloatToConstRamAddress(XMM0, addr);
 				return;
@@ -250,7 +256,6 @@ void Jit64::stfs(UGeckoInstruction inst)
 		else if (addr == 0xCC008000)
 		{
 			// Float directly to write gather pipe! Fun!
-			CVTSD2SS(XMM0, fpr.R(s));
 			CALL((void*)asm_routines.fifoDirectWriteFloat);
 			// TODO
 			js.fifoBytesThisBlock += 4;
@@ -275,7 +280,6 @@ void Jit64::stfs(UGeckoInstruction inst)
 
 		MEMCHECK_END
 	}
-	CVTSD2SS(XMM0, fpr.R(s));
 	SafeWriteFloatToReg(XMM0, ABI_PARAM2, RegistersInUse());
 	gpr.UnlockAll();
 	gpr.UnlockAllX();
@@ -294,8 +298,11 @@ void Jit64::stfsx(UGeckoInstruction inst)
 	MOV(32, R(ABI_PARAM1), gpr.R(inst.RB));
 	if (inst.RA)
 		ADD(32, R(ABI_PARAM1), gpr.R(inst.RA));
-	CVTSD2SS(XMM0, fpr.R(inst.RS));
-	MOVD_xmm(R(EAX), XMM0);
+	fpr.BindToRegister(inst.RS, true, false);
+	MOVSD(M(&temp64), fpr.RX(inst.RS));
+	FLD(64, M(&temp64));
+	FSTP(32, M(&temp32));
+	MOV(32, R(EAX), M(&temp32));
 	SafeWriteRegToReg(EAX, ABI_PARAM1, 32, 0, RegistersInUse());
 
 	gpr.UnlockAllX();
@@ -336,7 +343,9 @@ void Jit64::lfsx(UGeckoInstruction inst)
 		MEMCHECK_START
 
 		MOV(32, M(&temp32), R(EAX));
-		CVTSS2SD(XMM0, M(&temp32));
+	        FLD(32, M(&temp32));
+	        FSTP(64, M(&temp64));
+	        MOVSD(XMM0, M(&temp64));
 		fpr.Lock(inst.RS);
 		fpr.BindToRegister(inst.RS, false, true);
 		MOVDDUP(fpr.R(inst.RS).GetSimpleReg(), R(XMM0));
