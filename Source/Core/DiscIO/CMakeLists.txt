@@ -16,6 +16,7 @@ set(SRCS	BannerLoader.cpp
 			VolumeCommon.cpp
 			VolumeCreator.cpp
 			VolumeDirectory.cpp
+			VolumeElf.cpp
 			VolumeGC.cpp
 			VolumeWad.cpp
 			VolumeWiiCrypted.cpp

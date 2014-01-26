@@ -71,6 +71,7 @@ struct SConfig : NonCopyable
 	bool m_ListKorea;
 	bool m_ListTaiwan;
 	bool m_ListUnknown;
+	bool m_ListElf;
 	int m_ListSort;
 	int m_ListSort2;
 

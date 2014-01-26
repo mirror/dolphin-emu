@@ -262,6 +262,8 @@ void CFrame::CreateMenu()
 	platformMenu->Check(IDM_LISTGC, SConfig::GetInstance().m_ListGC);
 	platformMenu->AppendCheckItem(IDM_LISTWAD, _("Show Wad"));
 	platformMenu->Check(IDM_LISTWAD, SConfig::GetInstance().m_ListWad);
+	platformMenu->AppendCheckItem(IDM_LIST_ELF, _("Show elfs and dols"));
+	platformMenu->Check(IDM_LIST_ELF, SConfig::GetInstance().m_ListElf);
 
 	wxMenu *regionMenu = new wxMenu;
 	viewMenu->AppendSubMenu(regionMenu, _("Show Regions"));
@@ -1758,6 +1760,9 @@ void CFrame::GameListChanged(wxCommandEvent& event)
 		break;
 	case IDM_LISTWAD:
 		SConfig::GetInstance().m_ListWad = event.IsChecked();
+		break;
+	case IDM_LIST_ELF:
+		SConfig::GetInstance().m_ListElf = event.IsChecked();
 		break;
 	case IDM_LISTJAP:
 		SConfig::GetInstance().m_ListJap = event.IsChecked();

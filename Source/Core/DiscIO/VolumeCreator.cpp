@@ -13,6 +13,7 @@
 #include "VolumeGC.h"
 #include "VolumeWiiCrypted.h"
 #include "VolumeWad.h"
+#include "VolumeElf.h"
 
 #include "Hash.h"
 #include "StringUtil.h"
@@ -25,7 +26,8 @@ enum EDiscType
 	DISC_TYPE_WII,
 	DISC_TYPE_WII_CONTAINER,
 	DISC_TYPE_GC,
-	DISC_TYPE_WAD
+	DISC_TYPE_WAD,
+	DISC_TYPE_ELF
 };
 
 #ifndef _WIN32
@@ -83,6 +85,8 @@ IVolume* CreateVolumeFromFilename(const std::string& _rFilename, u32 _PartitionG
 
 		case DISC_TYPE_WAD:
 			return new CVolumeWAD(pReader);
+		case DISC_TYPE_ELF:
+			return new CVolumeELF(pReader);
 
 		case DISC_TYPE_WII_CONTAINER:
 		{
@@ -239,6 +243,10 @@ EDiscType GetDiscType(IBlobReader& _rReader)
 	// check for GC
 	if (GCMagic == 0xC2339F3D)
 		return DISC_TYPE_GC;
+
+	//TODO: fix
+	else
+		return DISC_TYPE_ELF;
 
 	WARN_LOG(DISCIO, "No known magic words found");
 	WARN_LOG(DISCIO, "Wii  offset: 0x18 value: 0x%08x", WiiMagic);

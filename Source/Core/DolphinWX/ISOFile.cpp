@@ -51,6 +51,9 @@ GameListItem::GameListItem(const std::string& _rFileName)
 		{
 			if (!DiscIO::IsVolumeWadFile(pVolume))
 				m_Platform = DiscIO::IsVolumeWiiDisc(pVolume) ? WII_DISC : GAMECUBE_DISC;
+			//TODO: fix
+			else if (_rFileName.find(".elf") != std::string::npos || _rFileName.find(".dol") != std::string::npos)
+				m_Platform = ELF_DOL;
 			else
 			{
 				m_Platform = WII_WAD;

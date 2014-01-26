@@ -351,7 +351,8 @@ void CGameListCtrl::Update()
 			SConfig::GetInstance().m_ListWad) &&
 			(SConfig::GetInstance().m_ListJap &&
 			SConfig::GetInstance().m_ListUsa  &&
-			SConfig::GetInstance().m_ListPal))
+			SConfig::GetInstance().m_ListPal &&
+			SConfig::GetInstance().m_ListElf))
 		{
 			errorString = _("Dolphin could not find any GC/Wii ISOs.  Doubleclick here to browse for files...");
 		}
@@ -511,6 +512,11 @@ void CGameListCtrl::ScanForISOs()
 	}
 	if (SConfig::GetInstance().m_ListWad)
 		Extensions.push_back("*.wad");
+	if (SConfig::GetInstance().m_ListElf)
+	{
+		Extensions.push_back("*.elf");
+		Extensions.push_back("*.dol");
+	}
 
 	CFileSearch FileSearch(Extensions, Directories);
 	const CFileSearch::XStringVector& rFilenames = FileSearch.GetFileNames();
@@ -555,6 +561,10 @@ void CGameListCtrl::ScanForISOs()
 						break;
 					case GameListItem::WII_WAD:
 						if (!SConfig::GetInstance().m_ListWad)
+							list = false;
+						break;
+					case GameListItem::ELF_DOL:
+						if (!SConfig::GetInstance().m_ListElf)
 							list = false;
 						break;
 					default:

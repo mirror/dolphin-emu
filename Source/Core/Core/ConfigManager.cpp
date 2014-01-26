@@ -225,6 +225,7 @@ void SConfig::SaveSettings()
 	ini.Set("GameList", "ListKorea",	m_ListKorea);
 	ini.Set("GameList", "ListTaiwan",	m_ListTaiwan);
 	ini.Set("GameList", "ListUnknown",	m_ListUnknown);
+	ini.Set("GameList", "ListElf",		m_ListElf);
 	ini.Set("GameList", "ListSort",		m_ListSort);
 	ini.Set("GameList", "ListSortSecondary", m_ListSort2);
 
@@ -380,6 +381,7 @@ void SConfig::LoadSettings()
 		ini.Get("GameList", "ListKorea",	&m_ListKorea,	true);
 		ini.Get("GameList", "ListTaiwan",	&m_ListTaiwan,	true);
 		ini.Get("GameList", "ListUnknown",	&m_ListUnknown,	true);
+		ini.Get("GameList", "ListElf",		&m_ListElf, true);
 		ini.Get("GameList", "ListSort",		&m_ListSort,	3);
 		ini.Get("GameList", "ListSortSecondary",&m_ListSort2,	0);
 
