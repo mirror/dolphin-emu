@@ -32,7 +32,7 @@ void Init( void )
 	sscanf( SConfig::GetInstance().m_LocalCoreStartupParameter.GetUniqueID().c_str(), "%s", &gameid );
 
 	// This is checking for the real game IDs (not those people made up) (See boot.id within the game)
-	switch(_byteswap_ulong(gameid))
+	switch(Common::swap32(gameid))
 	{
 		// SBGE - F-ZERO AX
 		case 0x53424745:		
