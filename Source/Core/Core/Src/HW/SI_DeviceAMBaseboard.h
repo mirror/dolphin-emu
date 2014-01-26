@@ -33,9 +33,7 @@ private:
 
 	unsigned short m_coin[2];
 	int m_coin_pressed[2];
-	
-	u32 m_controltype;
-	
+		
 	u8	m_card_memory[0xD0];
 	u8	m_card_read_packet[0xDB];
 	u8  m_card_buffer[0x100];

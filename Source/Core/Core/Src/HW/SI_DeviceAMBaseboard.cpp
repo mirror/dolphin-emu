@@ -102,9 +102,7 @@ CSIDevice_AMBaseboard::CSIDevice_AMBaseboard(SIDevices device, int _iDeviceNumbe
 
 	m_card_bit = 0;
 	m_card_state_call_count = 0;
-
-	m_controltype	= 0;
-
+	
 	m_wheelinit		= 0;
 
 	m_motorinit		= 0;
@@ -285,7 +283,7 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 								}								
 								break;
 							}
-							
+/*							
 							// Serial - Motor
 							m_motorreply[0] = 0x31;
 							m_motorreply[1] = 0x04;
@@ -332,6 +330,7 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 								res[resp++] = 0x31;
 								res[resp++] = 0x00;
 							}
+						*/
 						}
 						break;
 					case 0x32:
@@ -727,6 +726,7 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 									msg.addData(1);
 									msg.addData(0x10);
 									break;
+
 								// get slave features
 								/*
 									0x01: Player count, Bit per channel
@@ -748,12 +748,10 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 									switch(AMBaseboard::GetControllerType())
 									{
 										case 1:
-											// Taken from real F-Zero AX
-											// 2 Player (12-bits), 2 Coin slot, 8 Analog-in, 22 Driver-out
-											msg.addData((void *)"\x01\x02\x0C\x00", 4);
-											msg.addData((void *)"\x02\x02\x00\x00", 4);
-											msg.addData((void *)"\x03\x08\x00\x00", 4);
-											msg.addData((void *)"\x12\x16\x00\x00", 4);
+											// 1 Player (12-bits), 1 Coin slot, 8 Analog-in
+											msg.addData((void *)"\x01\x01\x0C\x00", 4);
+											msg.addData((void *)"\x02\x01\x00\x00", 4);
+											msg.addData((void *)"\x03\x06\x00\x00", 4);
 											msg.addData((void *)"\x00\x00\x00\x00", 4);
 											break;
 										case 2:
@@ -803,7 +801,7 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 										Pad::GetStatus(i, &PadStatus);
 										unsigned char player_data[3] = {0,0,0};
 
-										switch(m_controltype)
+										switch(AMBaseboard::GetControllerType())
 										{
 										// Controller configuration for F-Zero AX
 										case 1:
@@ -910,7 +908,7 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 									SPADStatus PadStatus;
 									Pad::GetStatus(0, &PadStatus);
 
-									switch(m_controltype)
+									switch(AMBaseboard::GetControllerType())
 									{
 										// F-Zero AX
 										case 1:
@@ -944,12 +942,6 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 
 											// Brake
 											msg.addData(PadStatus.triggerLeft);
-											msg.addData((u8)0);
-
-											// Unused
-											msg.addData((u8)0);
-											msg.addData((u8)0);
-											msg.addData((u8)0);
 											msg.addData((u8)0);
 
 											break;

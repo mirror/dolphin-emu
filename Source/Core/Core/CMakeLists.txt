@@ -89,6 +89,7 @@ set(SRCS	Src/ActionReplay.cpp
 			Src/HW/DSPLLE/DSPLLE.cpp
 			Src/HW/DSPLLE/DSPLLETools.cpp
 			Src/HW/DVDInterface.cpp
+			Src/HW/AMBaseboard.cpp
 			Src/HW/EXI_Channel.cpp
 			Src/HW/EXI.cpp
 			Src/HW/EXI_Device.cpp
