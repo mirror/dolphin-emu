@@ -22,7 +22,7 @@ static File::IOFile		*m_dimm;
 static u32 m_controllertype;
 
 static unsigned char media_buffer[0x60];
-static unsigned char ip_buffer[0x200];
+static unsigned char network_command_buffer[0x200];
 
 static inline void PrintMBBuffer( u32 Address )
 {
@@ -176,11 +176,10 @@ u32 ExecuteCommand( u32 Command, u32 Length, u32 Address, u32 Offset )
 				PrintMBBuffer(Address);
 				return 0;
 			}
-			// Get IP address
+			// Network command
 			if( (Offset >= 0x1F800200) && (Offset <= 0x1F8003FF) )
 			{
-				NOTICE_LOG(DVDINTERFACE, "GC-AM: Get IP:%s", Memory::GetPointer(Address) );
-				memcpy( Memory::GetPointer(Address), ip_buffer, Length ); 		 
+				memcpy( Memory::GetPointer(Address), network_command_buffer, Length ); 		 
 				return 0;
 			}
 			// DIMM command
@@ -242,11 +241,10 @@ u32 ExecuteCommand( u32 Command, u32 Length, u32 Address, u32 Offset )
 				m_dimm->WriteBytes( Memory::GetPointer(Address), Length );
 				return 0;
 			}
-			// Set IP address
+			// Network command
 			if( (Offset >= 0x1F800200) && (Offset <= 0x1F8003FF) )
 			{
-				NOTICE_LOG(DVDINTERFACE, "GC-AM: Set IP:%s", Memory::GetPointer(Address) );
-				memcpy( ip_buffer, Memory::GetPointer(Address), Length ); 		 
+				memcpy( network_command_buffer, Memory::GetPointer(Address), Length ); 		 
 				return 0;
 			}
 			// DIMM command
@@ -318,7 +316,7 @@ u32 ExecuteCommand( u32 Command, u32 Length, u32 Address, u32 Offset )
 						break;
 					// DIMM size
 					case 0x001:
-						*(u32*)(media_buffer+4) = 0x20;
+						*(u32*)(media_buffer+4) = 0x20000000;
 						break;
 					// Media board status
 					/*
@@ -339,22 +337,32 @@ u32 ExecuteCommand( u32 Command, u32 Length, u32 Address, u32 Offset )
 					// Media board version: 3.03
 					case 0x101:
 						// Version
-						*(u32*)(media_buffer+4) = 0x303;
+						*(u16*)(media_buffer+4) = Common::swap16(0x0303);
 						// Unknown
-						*(u32*)(media_buffer+8) = 0x10000;
-						*(u32*)(media_buffer+12)= 1;
+						*(u16*)(media_buffer+6) = Common::swap16(0x0100);
+						*(u32*)(media_buffer+8)= 1;
 						*(u32*)(media_buffer+16)= 0xFFFFFFFF;
 						break;
-					// System flags (Error,DevFlag)
+					// System flags
 					case 0x102:
-						// Error: 
-						// 0 (E01) Media Board doesn't support game
-						// 1 (E15) "
-						// 2 OK
-						media_buffer[4] = 2;
+						// 1: GD-ROM					
+						media_buffer[4] = 1;
 						media_buffer[5] = 0;
 						// enable development mode (Sega Boot)
 						media_buffer[6] = 1;
+						// Only used when inquiry 0x29
+						/*
+							0: NAND/MASK BOARD(HDD)
+							1: NAND/MASK BOARD(MASK)
+							2: NAND/MASK BOARD(NAND)
+							3: NAND/MASK BOARD(NAND)
+							4: DIMM BOARD (TYPE 3)
+							5: DIMM BOARD (TYPE 3)
+							6: DIMM BOARD (TYPE 3)
+							7: N/A
+							8: Unknown
+						*/
+						//media_buffer[7] = 0;
 						break;
 					// Media board serial
 					case 0x103:
@@ -435,12 +443,20 @@ u32 ExecuteCommand( u32 Command, u32 Length, u32 Address, u32 Offset )
 
 						*(u32*)(media_buffer+4) = 0x46;
 						break;
+					// Set IP
 					case 0x415:
+					{
 						ERROR_LOG(DVDINTERFACE, "GC-AM: 0x415: (%08X)", *(u32*)(media_buffer+0x24) );
+						// Address of string
 						ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x28) );
+						// Length of string
 						ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x2C) );
 						ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x30) );
+
+						u32 offset = *(u32*)(media_buffer+0x28) - 0x1F800200;						
+						NOTICE_LOG(DVDINTERFACE, "GC-AM: Set IP:%s", (char*)(network_command_buffer+offset) );
 						break;
+					}
 					case 0x601:
 						ERROR_LOG(DVDINTERFACE, "GC-AM: 0x601");
 						break;
