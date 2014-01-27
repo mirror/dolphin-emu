@@ -74,28 +74,62 @@ void CEXIAMBaseboard::TransferByte(u8& _byte)
 			{
 			case 0x01:
 				m_backoffset = (m_command[1] << 8) | m_command[2];
-				WARN_LOG(SP1,"AM-BB COMMAND: Backup Offset:%04X", m_backoffset );
+				DEBUG_LOG(SP1,"AM-BB COMMAND: Backup Offset:%04X", m_backoffset );
 				m_backup->Seek( m_backoffset, SEEK_SET );
 				_byte = 0x01;
 				break;
 			case 0x02:
-				WARN_LOG(SP1,"AM-BB COMMAND: Backup Write:%04X-%02X", m_backoffset, m_command[1] );
+				DEBUG_LOG(SP1,"AM-BB COMMAND: Backup Write:%04X-%02X", m_backoffset, m_command[1] );
 				m_backup->WriteBytes( &m_command[1], 1 );
 				m_backup->Flush();
 				_byte = 0x01;
 				break;
 			case 0x03:
-				WARN_LOG(SP1,"AM-BB COMMAND: Backup Read :%04X", m_backoffset );				
+				DEBUG_LOG(SP1,"AM-BB COMMAND: Backup Read :%04X", m_backoffset );				
 				_byte = 0x01;
+				break;
+			// Unknown
+			case 0x05:		
+				_byte = 0x04;
+				break;
+			// Clear IRQ
+			case 0x82:
+				WARN_LOG(SP1,"AM-BB COMMAND: 0x82 :%02X %02X", m_command[1], m_command[2] );	
+				_byte = 0x04;
+				break;
+			// Unknown
+			case 0x83:
+				WARN_LOG(SP1,"AM-BB COMMAND: 0x83 :%02X %02X", m_command[1], m_command[2] );	
+				_byte = 0x04;
+				break;
+			// Unknown - 2 byte out
+			case 0x86:
+				WARN_LOG(SP1,"AM-BB COMMAND: 0x86 :%02X %02X", m_command[1], m_command[2] );	
+				_byte = 0x04;
+				break;
+			// Unknown
+			case 0x87:
+				WARN_LOG(SP1,"AM-BB COMMAND: 0x87 :%02X %02X", m_command[1], m_command[2] );	
+				_byte = 0x04;
+				break;
+			// Unknown
+			case 0xFF:
+				WARN_LOG(SP1,"AM-BB COMMAND: 0xFF :%02X %02X", m_command[1], m_command[2] );	
+				if( (m_command[1] == 0) && (m_command[2] == 0) )
+				{
+					m_have_irq = true;
+					m_irq_timer = 0;
+					m_irq_status = 0x02;
+				}
+				if( (m_command[1] == 2) && (m_command[2] == 1) )
+				{
+					m_irq_status = 0;
+				}
+				_byte = 0x04;
 				break;
 			default:
 				_byte = 4;
 				ERROR_LOG(SP1, "AM-BB COMMAND: %02x %02x %02x", m_command[0], m_command[1], m_command[2]);
-
-				if ((m_command[0] == 0xFF) && (m_command[1] == 0) && (m_command[2] == 0))
-					m_have_irq = false;
-				else if (m_command[0] == 0x82)
-					m_have_irq = false;
 				break;
 			}
 		}
@@ -109,11 +143,19 @@ void CEXIAMBaseboard::TransferByte(u8& _byte)
 				break;
 			// IMR - 2 byte out
 			case 0x82:
-				_byte = 0x00;
+				if(m_position == 6)
+				{
+					_byte = m_irq_status;
+					m_have_irq = false;
+				}
+				else
+				{
+					_byte = 0x00;
+				}
 				break;
-			case 0x86: // ?
-			case 0x87: // ?
-				_byte = 0x04;
+			// ? - 2 byte out
+			case 0x86:
+				_byte = 0x00;
 				break;
 			default:
 				_dbg_assert_msg_(SP1, 0, "Unknown AM-BB command");
@@ -132,8 +174,16 @@ void CEXIAMBaseboard::TransferByte(u8& _byte)
 bool CEXIAMBaseboard::IsInterruptSet()
 {
 	if (m_have_irq)
+	{
 		DEBUG_LOG(SP1, "AM-BB IRQ");
-	return m_have_irq;
+		if( ++m_irq_timer > 4 )
+			m_have_irq = false;
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 void CEXIAMBaseboard::DoState(PointerWrap &p)

@@ -21,7 +21,20 @@ static File::IOFile		*m_dimm;
 
 static u32 m_controllertype;
 
-static unsigned char media_buffer[0x40];
+static unsigned char media_buffer[0x60];
+static unsigned char ip_buffer[0x200];
+
+static inline void PrintMBBuffer( u32 Address )
+{
+	NOTICE_LOG(DVDINTERFACE, "GC-AM: %08x %08x %08x %08x",	Memory::Read_U32(Address),
+															Memory::Read_U32(Address+4),
+															Memory::Read_U32(Address+8),
+															Memory::Read_U32(Address+12) );
+	NOTICE_LOG(DVDINTERFACE, "GC-AM: %08x %08x %08x %08x",	Memory::Read_U32(Address+16),
+															Memory::Read_U32(Address+20),
+															Memory::Read_U32(Address+24),
+															Memory::Read_U32(Address+28) );
+}
 
 void Init( void )
 {
@@ -55,7 +68,7 @@ void Init( void )
 			m_controllertype = 3;
 			break;
 		default:
-			PanicAlertT("Unknown game ID, using default controls.");
+		//	PanicAlertT("Unknown game ID, using default controls.");
 			m_controllertype = 3;
 			break;
 	}
@@ -103,13 +116,13 @@ u32 ExecuteCommand( u32 Command, u32 Length, u32 Address, u32 Offset )
 			break;
 		// Read
 		case 0xA8:
-			if( Offset & 0x80000000 )
+			if( (Offset & 0x8FFF0000) == 0x80000000 )
 			{
 				switch(Offset)
 				{
 				// Media board status (1)
 				case 0x80000000:
-					memset( Memory::GetPointer(Address), 0, Length );
+					Memory::Write_U16( Common::swap16( 0x0100 ), Address );
 					break;
 				// Media board status (2)
 				case 0x80000020:
@@ -118,21 +131,22 @@ u32 ExecuteCommand( u32 Command, u32 Length, u32 Address, u32 Offset )
 				// Media board status (3)
 				case 0x80000040:
 					memset( Memory::GetPointer(Address), 0xFFFFFFFF, Length );
-					// DIMM size
-					Memory::Write_U32( 0x20, Address );
+					// DIMM size (512MB)
+					Memory::Write_U32( Common::swap32( 0x20000000 ), Address );
 					// GCAM signature
 					Memory::Write_U32( 0x4743414D, Address+4 );
 					break;
 				// Firmware status (1)
 				case 0x80000120:
-					memset( Memory::GetPointer(Address), 0x01010101, Length );
+					Memory::Write_U32( Common::swap32( (u32)0x00000001 ), Address );
 					break;
 				// Firmware status (2)
 				case 0x80000140:
-					memset( Memory::GetPointer(Address), 0x01010101, Length );
+					Memory::Write_U32( Common::swap32( (u32)0x00000001 ), Address );
 					break;
 				default:
-					PanicAlertT("Unknown Media Board Read");
+					PrintMBBuffer(Address);
+					PanicAlertT("Unhandled Media Board Read");
 					break;
 				}
 				return 0;
@@ -159,20 +173,45 @@ u32 ExecuteCommand( u32 Command, u32 Length, u32 Address, u32 Offset )
 				memcpy( Memory::GetPointer(Address), media_buffer + dimmoffset, Length );
 				
 				NOTICE_LOG(DVDINTERFACE, "GC-AM: Read MEDIA BOARD COMM AREA (%08x)", dimmoffset );
-				NOTICE_LOG(DVDINTERFACE, "GC-AM: %08x %08x %08x %08x",	Memory::Read_U32(Address),
-																		Memory::Read_U32(Address+4),
-																		Memory::Read_U32(Address+8),
-																		Memory::Read_U32(Address+12) );
-				NOTICE_LOG(DVDINTERFACE, "GC-AM: %08x %08x %08x %08x",	Memory::Read_U32(Address+16),
-																		Memory::Read_U32(Address+20),
-																		Memory::Read_U32(Address+24),
-																		Memory::Read_U32(Address+28) );
+				PrintMBBuffer(Address);
+				return 0;
+			}
+			// Get IP address
+			if( (Offset >= 0x1F800200) && (Offset <= 0x1F8003FF) )
+			{
+				NOTICE_LOG(DVDINTERFACE, "GC-AM: Get IP:%s", Memory::GetPointer(Address) );
+				memcpy( Memory::GetPointer(Address), ip_buffer, Length ); 		 
+				return 0;
+			}
+			// DIMM command
+			if( (Offset >= 0x84000000) && (Offset <= 0x8400005F) )
+			{
+				u32 dimmoffset = Offset - 0x84000000;
+				memcpy( Memory::GetPointer(Address), media_buffer + dimmoffset, Length );
+				
+				NOTICE_LOG(DVDINTERFACE, "GC-AM: Read MEDIA BOARD COMM AREA (%08x)", dimmoffset );
+				PrintMBBuffer(Address);
+				return 0;
+			}
+			// DIMM memory (8MB)
+			if( (Offset >= 0xFF000000) && (Offset <= 0xFF800000) )
+			{
+				u32 dimmoffset = Offset - 0xFF000000;
+				m_dimm->Seek( dimmoffset, SEEK_SET );
+				m_dimm->ReadBytes( Memory::GetPointer(Address), Length );
+				return 0;
+			}
+			// Network control
+			if( (Offset == 0xFFFF0000) && (Length == 0x20) )
+			{
+				m_netctrl->Seek( 0, SEEK_SET );
+				m_netctrl->ReadBytes( Memory::GetPointer(Address), Length );
 				return 0;
 			}
 			// Max GC disc offset
 			if( Offset >= 0x57058000 )
 			{
-				_dbg_assert_msg_(DVDINTERFACE, 0, "Unhandeled Media Board Read");
+				PanicAlertT("Unhandled Media Board Read");
 			}
 			if( !DVDInterface::DVDRead( Offset, Address, Length) )
 			{
@@ -203,6 +242,13 @@ u32 ExecuteCommand( u32 Command, u32 Length, u32 Address, u32 Offset )
 				m_dimm->WriteBytes( Memory::GetPointer(Address), Length );
 				return 0;
 			}
+			// Set IP address
+			if( (Offset >= 0x1F800200) && (Offset <= 0x1F8003FF) )
+			{
+				NOTICE_LOG(DVDINTERFACE, "GC-AM: Set IP:%s", Memory::GetPointer(Address) );
+				memcpy( ip_buffer, Memory::GetPointer(Address), Length ); 		 
+				return 0;
+			}
 			// DIMM command
 			if( (Offset >= 0x1F900000) && (Offset <= 0x1F90003F) )
 			{
@@ -210,20 +256,44 @@ u32 ExecuteCommand( u32 Command, u32 Length, u32 Address, u32 Offset )
 				memcpy( media_buffer + dimmoffset, Memory::GetPointer(Address), Length );
 				
 				ERROR_LOG(DVDINTERFACE, "GC-AM: Write MEDIA BOARD COMM AREA (%08x)", dimmoffset );
-				ERROR_LOG(DVDINTERFACE, "GC-AM: %08x %08x %08x %08x",	Memory::Read_U32(Address),
-																		Memory::Read_U32(Address+4),
-																		Memory::Read_U32(Address+8),
-																		Memory::Read_U32(Address+12) );
-				ERROR_LOG(DVDINTERFACE, "GC-AM: %08x %08x %08x %08x",	Memory::Read_U32(Address+16),
-																		Memory::Read_U32(Address+20),
-																		Memory::Read_U32(Address+24),
-																		Memory::Read_U32(Address+28) );
+				PrintMBBuffer(Address);
+				return 0;
+			}
+			// DIMM command
+			if( (Offset >= 0x84000000) && (Offset <= 0x8400005F) )
+			{
+				u32 dimmoffset = Offset - 0x84000000;
+				memcpy( media_buffer + dimmoffset, Memory::GetPointer(Address), Length );
+
+				if( dimmoffset == 0x40 )
+				{
+					ERROR_LOG(DVDINTERFACE, "GC-AM: EXECUTE (%03x)", *(u16*)(media_buffer+0x22) );
+				}
+				
+				ERROR_LOG(DVDINTERFACE, "GC-AM: Write MEDIA BOARD COMM AREA (%08x)", dimmoffset );
+				PrintMBBuffer(Address);
+				return 0;
+			}
+			// DIMM memory (8MB)
+			if( (Offset >= 0xFF000000) && (Offset <= 0xFF800000) )
+			{
+				u32 dimmoffset = Offset - 0xFF000000;
+				m_dimm->Seek( dimmoffset, SEEK_SET );
+				m_dimm->WriteBytes( Memory::GetPointer(Address), Length );
+				return 0;
+			}
+			// Network control
+			if( (Offset == 0xFFFF0000) && (Length == 0x20) )
+			{
+				m_netctrl->Seek( 0, SEEK_SET );
+				m_netctrl->WriteBytes( Memory::GetPointer(Address), Length );
 				return 0;
 			}
 			// Max GC disc offset
 			if( Offset >= 0x57058000 )
 			{
-				PanicAlertT("Unhandeled Media Board Write");
+				PrintMBBuffer(Address);
+				PanicAlertT("Unhandled Media Board Write");
 			}
 			break;
 		// Execute
@@ -286,19 +356,29 @@ u32 ExecuteCommand( u32 Command, u32 Length, u32 Address, u32 Offset )
 						// enable development mode (Sega Boot)
 						media_buffer[6] = 1;
 						break;
+					// Media board serial
 					case 0x103:
-						// Media board Serial
 						memcpy(media_buffer + 4, "A89E27A50364511", 15);
 						break;
 					case 0x104:
 						media_buffer[4] = 1;
 						break;
-					// Media Board Test
+					// Hardware test
 					case 0x301:
+						// Test type
+						/*
+							0x01: Media board
+							0x04: Network
+						*/
 						ERROR_LOG(DVDINTERFACE, "GC-AM: 0x301: (%08X)", *(u32*)(media_buffer+0x24) );
+
+						//Pointer to a memory address that is directly displayed on screen as a string
 						ERROR_LOG(DVDINTERFACE, "GC-AM:        (%08X)", *(u32*)(media_buffer+0x28) );
 
-						Memory::Write_U32( 100, *(u32*)(media_buffer+0x28) );
+						// On real system it shows the status about the DIMM/GD-ROM here
+						// We just show "TEST OK"
+						Memory::Write_U32( 0x54534554, *(u32*)(media_buffer+0x28) );
+						Memory::Write_U32( 0x004B4F20, *(u32*)(media_buffer+0x28)+4 );
 
 						*(u32*)(media_buffer+0x04) = *(u32*)(media_buffer+0x24);
 						break;
@@ -393,7 +473,7 @@ u32 ExecuteCommand( u32 Command, u32 Length, u32 Address, u32 Offset )
 				return 0x66556677;
 			}
 
-			PanicAlertT("Unhandeled Media Board Execute");
+			PanicAlertT("Unhandled Media Board Execute");
 			break;
 	}
 

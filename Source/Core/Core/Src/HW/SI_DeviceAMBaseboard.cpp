@@ -868,10 +868,10 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 												player_data[0] |= 0x40;
 											// Item button
 											if( PadStatus.button & PAD_BUTTON_A )		
-												player_data[1] |= 0x40;	
+												player_data[1] |= 0x20;	
 											// VS-Cancel button
 											if( PadStatus.button & PAD_BUTTON_B )		
-												player_data[1] |= 0x10;
+												player_data[1] |= 0x02;
 											break;
 										}
 
@@ -1027,7 +1027,7 @@ int CSIDevice_AMBaseboard::RunBuffer(u8* _pBuffer, int _iLength)
 									d10_1 &= ~1;
 									break;
 								default:
-									DEBUG_LOG(AMBASEBOARDDEBUG, "JVS IO, node=%d, command=%02x", node, cmd);
+									ERROR_LOG(AMBASEBOARDDEBUG, "JVS IO, node=%d, command=%02x", node, cmd);
 									break;
 								}
 

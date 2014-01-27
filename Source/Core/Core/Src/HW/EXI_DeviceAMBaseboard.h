@@ -21,6 +21,8 @@ private:
 	virtual void TransferByte(u8& _uByte);
 	int m_position;
 	bool m_have_irq;
+	u32 m_irq_timer;
+	u32 m_irq_status;
 	unsigned char m_command[4];
 	unsigned short m_backoffset;
 	File::IOFile *m_backup;
