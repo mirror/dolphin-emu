@@ -1,0 +1,1 @@
+call "%VS100COMNTOOLS%..\..\vc\vcvarsall.bat"
