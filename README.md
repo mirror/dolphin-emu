@@ -1,6 +1,8 @@
-## Active repo
+## ARCHIVED
 
-**Please use https://github.com/dolphin-emu/dolphin this  repository is only a discussion archive**
+**You are probably looking for https://github.com/dolphin-emu/dolphin to contribute to this project**
+
+The contents of this archive is a large number of discussions about pending merges. There is no time limit for this but I really want something like the command line `timedemo` commands I created. I like to track performance over the years with a standard demo loop that measures frame drawing time. Slow drawing is a notorious problem in emulators and a contentious issue over shortcuts. In Sweden we say a shortcut (genväg) becomes a longcut (senväg)
 
 ## Repo history
 
